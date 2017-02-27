@@ -61,9 +61,11 @@ class TimeSerie(object):
                 print('Fisrt insertion of %s by %s' % (name, author))
                 return
 
-            snapshot, tip_id = self._get_snapshot(cnx, table)
+            # NOTE: this depends on the snapshot being always maintained
+            #       at the top-level
+            snapshot, tip_id = self._read_latest_snapshot(cnx, table)
             # this is the diff between our computed parent
-            diff = self.compute_diff(snapshot, newts)
+            diff = self._compute_diff(snapshot, newts)
 
             if len(diff) == 0:
                 print('No difference in %s by %s' % (name, author))
@@ -71,7 +73,7 @@ class TimeSerie(object):
 
             assert tip_id is not None
             # full state computation & insertion
-            newsnapshot = self.apply_diff(snapshot, diff)
+            newsnapshot = self._apply_diff(snapshot, diff)
             value = {
                 'data': tojson(diff),
                 'snapshot': tojson(newsnapshot),
@@ -97,9 +99,9 @@ class TimeSerie(object):
             return
 
         if revision_date is None:
-            current, _ = self._get_snapshot(cnx, table)
+            current, _ = self._read_latest_snapshot(cnx, table)
         else:
-            current, _ = self.apply_diffs_upto(cnx, table, revision_date)
+            current, _ = self._build_snapshot_upto(cnx, table, revision_date)
 
         if current is not None:
             current.name = name
@@ -123,7 +125,7 @@ class TimeSerie(object):
             cnx.execute(sql)
 
             # apply on flat
-            current, parent_id = self.apply_diffs_upto(cnx, table)
+            current, parent_id = self._build_snapshot_upto(cnx, table)
 
             update_snapshot_sql = table.update(
             ).where(table.c.id == parent_id
@@ -135,7 +137,7 @@ class TimeSerie(object):
     # /API
     # Helpers
 
-    def _get_snapshot(self, cnx, table):
+    def _read_latest_snapshot(self, cnx, table):
         sql = select([table.c.id,
                       table.c.snapshot]
         ).order_by(desc(table.c.id)
@@ -152,7 +154,7 @@ class TimeSerie(object):
 
         return snapshot, int(diff_id)
 
-    def compute_diff(self, ts1, ts2):
+    def _compute_diff(self, ts1, ts2):
         mask_overlap = ts2.index.isin(ts1.index)
         ts_bef_overlap = ts1[ts2.index[mask_overlap]]
         ts_overlap = ts2[mask_overlap]
@@ -162,7 +164,7 @@ class TimeSerie(object):
         ts_result = pd.concat([ts_diff_overlap, ts_diff_new])
         return ts_result
 
-    def apply_diff(self, base_ts, new_ts):
+    def _apply_diff(self, base_ts, new_ts):
         """Produce a new ts using base_ts as a base and
         taking any intersecting and new values from new_ts
         """
@@ -176,7 +178,7 @@ class TimeSerie(object):
         result_ts.sort_index(inplace=True)
         return result_ts
 
-    def apply_diffs_upto(self, cnx, table, revision_date=None):
+    def _build_snapshot_upto(self, cnx, table, revision_date=None):
         sql = select([table.c.id,
                       table.c.data,
                       table.c.parent,
@@ -204,6 +206,6 @@ class TimeSerie(object):
             child_row = alldiffs.loc[alldiffs.loc[:, 'parent'] == parent_id, :]
             child_ts = fromjson(child_row['data'].iloc[0])
             parent_id = child_row['id'].iloc[0]
-            ts = self.apply_diff(ts, child_ts)
+            ts = self._apply_diff(ts, child_ts)
             if parent_id not in alldiffs['parent'].tolist():
                 return ts, int(parent_id)
