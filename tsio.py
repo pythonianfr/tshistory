@@ -3,10 +3,11 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
+from sqlalchemy import Table, Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.sql.expression import select, desc
+from sqlalchemy.dialects.postgresql import JSONB
 
-from tshistory.schema import make_ts_table, get_ts_table
-
+from tshistory import schema
 
 PRECISION = 1e-14
 
@@ -45,11 +46,11 @@ class TimeSerie(object):
         newts.name = name
 
         with engine.connect() as cnx:
-            table = get_ts_table(cnx, name)
+            table = self._get_ts_table(cnx, name)
 
             if table is None:
                 # initial insertion
-                table = make_ts_table(cnx, name)
+                table = self._make_ts_table(cnx, name)
                 jsonts = tojson(newts)
                 value = {
                     'data': jsonts,
@@ -94,7 +95,7 @@ class TimeSerie(object):
         """Compute the top-most timeseries of a given name
         with manual overrides applied
         """
-        table = get_ts_table(cnx, name)
+        table = self._get_ts_table(cnx, name)
         if table is None:
             return
 
@@ -109,7 +110,7 @@ class TimeSerie(object):
 
     def delete_last_diff(self, engine, name):
         with engine.connect() as cnx:
-            table = get_ts_table(cnx, name)
+            table = self._get_ts_table(cnx, name)
             sql = select([table.c.id,
                           table.c.parent]
             ).order_by(desc(table.c.id)
@@ -136,6 +137,43 @@ class TimeSerie(object):
 
     # /API
     # Helpers
+
+    def _ts_table_name(self, name):
+        return 'ts_%s' % name
+
+    def _table_definition_for(self, tablename):
+        return Table(
+            tablename, schema.meta,
+            Column('id', Integer, primary_key=True),
+            Column('author', String, index=True, nullable=False),
+            Column('insertion_date', DateTime, index=True, nullable=False),
+            Column('data', JSONB, nullable=False),
+            Column('snapshot', JSONB),
+            Column('parent',
+                   Integer,
+                   ForeignKey('%s.id' % tablename, ondelete='cascade'),
+                   nullable=True,
+                   unique=True,
+                   index=True),
+        )
+
+    def _make_ts_table(self, cnx, name):
+        tablename = self._ts_table_name(name)
+        table = self._table_definition_for(tablename)
+        table.create(cnx)
+        sql = schema.ts_registry.insert().values(
+            name=name,
+            table_name=tablename)
+        cnx.execute(sql)
+        return table
+
+    def _get_ts_table(self, cnx, name):
+        reg = schema.ts_registry
+        sql = reg.select().where(reg.c.name == name)
+        tid = cnx.execute(sql).scalar()
+        if tid:
+            return Table(self._ts_table_name(name), schema.meta,
+                         autoload=True, autoload_with=cnx.engine)
 
     def _read_latest_snapshot(self, cnx, table):
         sql = select([table.c.id,
