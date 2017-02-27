@@ -138,16 +138,31 @@ def test_differential(engine):
 2010-01-07    3.0
 """.strip() == get_ts(engine, 'ts_mixte').to_string().strip()
 
-    allts = pd.read_sql('select name, id, parent from ts_revlog order by id',
+    hist = pd.read_sql('select id, parent from ts_ts_test order by id',
                         engine)
     assert """
-       name  id  parent
-0   ts_test   1     NaN
-1   ts_test   2     1.0
-2   ts_test   3     2.0
-3  ts_mixte   4     NaN
-4  ts_mixte   5     4.0
-5  ts_mixte   6     5.0
+   id  parent
+0   1     NaN
+1   2     1.0
+2   3     2.0
+""".strip() == hist.to_string().strip()
+
+    hist = pd.read_sql('select id, parent from ts_ts_mixte order by id',
+                        engine)
+    assert """
+   id  parent
+0   1     NaN
+1   2     1.0
+2   3     2.0
+""".strip() == hist.to_string().strip()
+
+    allts = pd.read_sql('select id, name, table_name from ts_registry',
+                        engine)
+
+    assert """
+   id      name   table_name
+0   1   ts_test   ts_ts_test
+1   2  ts_mixte  ts_ts_mixte
 """.strip() == allts.to_string().strip()
 
     assert """
@@ -172,17 +187,6 @@ def test_differential(engine):
 2010-01-05    2.0
 2010-01-06    2.0
 """.strip() == get_ts(engine, 'ts_mixte').to_string().strip()
-
-    allts = pd.read_sql('select name, id, parent from ts_revlog order by id',
-                        engine)
-    assert """
-       name  id  parent
-0   ts_test   1     NaN
-1   ts_test   2     1.0
-2   ts_test   3     2.0
-3  ts_mixte   4     NaN
-4  ts_mixte   5     4.0
-""".strip() == allts.to_string().strip()
 
 
 def test_bad_import(engine):

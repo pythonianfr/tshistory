@@ -5,7 +5,7 @@ import numpy as np
 
 from sqlalchemy.sql.expression import select, desc
 
-from tshistory.schema import ts_revlog
+from tshistory.schema import make_ts_table, get_ts_table
 
 
 PRECISION = 1e-14
@@ -28,24 +28,24 @@ def insert_ts(engine, newts, name, author):
     newts = newts.astype('float64')
     newts.name = name
 
-    newrev_sql = ts_revlog.insert()
     with engine.connect() as cnx:
-        snapshot, tip_id = _get_snapshot(cnx, name)
+        table = get_ts_table(cnx, name)
 
-        if snapshot is None:
+        if table is None:
             # initial insertion
+            table = make_ts_table(cnx, name)
             jsonts = tojson(newts)
             value = {
                 'data': jsonts,
                 'snapshot': jsonts,
                 'insertion_date': datetime.now(),
-                'author': author,
-                'name': name,
+                'author': author
             }
-            cnx.execute(newrev_sql.values(value))
+            cnx.execute(table.insert().values(value))
             print('Fisrt insertion of %s by %s' % (name, author))
             return
 
+        snapshot, tip_id = _get_snapshot(cnx, table)
         # this is the diff between our computed parent
         diff = compute_diff(snapshot, newts)
 
@@ -61,27 +61,30 @@ def insert_ts(engine, newts, name, author):
             'snapshot': tojson(newsnapshot),
             'insertion_date': datetime.now(),
             'author': author,
-            'name': name,
             'parent': tip_id,
         }
-        cnx.execute(newrev_sql.values(value))
+        cnx.execute(table.insert().values(value))
 
         cnx.execute(
-            ts_revlog.update(
-            ).where(ts_revlog.c.id == tip_id
+            table.update(
+            ).where(table.c.id == tip_id
             ).values(snapshot=None)
         )
         print('Insertion differential of %s by %s' % (name, author))
 
 
-def get_ts(engine, name, revision_date=None):
+def get_ts(cnx, name, revision_date=None):
     """Compute the top-most timeseries of a given name
     with manual overrides applied
     """
+    table = get_ts_table(cnx, name)
+    if table is None:
+        return
+
     if revision_date is None:
-        current, _ = _get_snapshot(engine, name)
+        current, _ = _get_snapshot(cnx, table)
     else:
-        current, _ = apply_diffs_upto(engine, name, revision_date)
+        current, _ = apply_diffs_upto(cnx, table, revision_date)
 
     if current is not None:
         current.name = name
@@ -98,14 +101,13 @@ def fromjson(jsonb):
                         typ='series', dtype=False)
 
 
-def _get_snapshot(engine, name):
-    sql = select([ts_revlog.c.id,
-                  ts_revlog.c.snapshot]
-    ).order_by(desc(ts_revlog.c.id)
-    ).limit(1
-    ).where(ts_revlog.c.name == name)
+def _get_snapshot(cnx, table):
+    sql = select([table.c.id,
+                  table.c.snapshot]
+    ).order_by(desc(table.c.id)
+    ).limit(1)
 
-    df = pd.read_sql(sql, engine)
+    df = pd.read_sql(sql, cnx)
     if len(df) == 0:
         return None, None
 
@@ -143,15 +145,14 @@ def apply_diff(base_ts, new_ts):
     return result_ts
 
 
-def apply_diffs_upto(engine, name, revision_date=None):
-    sql = select([ts_revlog.c.id,
-                  ts_revlog.c.data,
-                  ts_revlog.c.parent,
-                  ts_revlog.c.insertion_date]
-    ).order_by(ts_revlog.c.id
-    ).where(ts_revlog.c.name == name)
+def apply_diffs_upto(cnx, table, revision_date=None):
+    sql = select([table.c.id,
+                  table.c.data,
+                  table.c.parent,
+                  table.c.insertion_date]
+    ).order_by(table.c.id)
 
-    alldiffs = pd.read_sql(sql, engine)
+    alldiffs = pd.read_sql(sql, cnx)
 
     if revision_date:
         alldiffs = alldiffs[alldiffs['insertion_date'] <= revision_date]
@@ -179,26 +180,26 @@ def apply_diffs_upto(engine, name, revision_date=None):
 
 def delete_last_diff(engine, name):
     with engine.connect() as cnx:
-        sql = select([ts_revlog.c.id,
-                      ts_revlog.c.parent]
-        ).order_by(desc(ts_revlog.c.id)
-        ).limit(1
-        ).where(ts_revlog.c.name == name)
+        table = get_ts_table(cnx, name)
+        sql = select([table.c.id,
+                      table.c.parent]
+        ).order_by(desc(table.c.id)
+        ).limit(1)
 
         diff_id, parent_id = cnx.execute(sql).fetchone()
         if not diff_id:
             return False
 
-        sql = ts_revlog.delete().where(
-            ts_revlog.c.id == diff_id
+        sql = table.delete().where(
+            table.c.id == diff_id
         )
         cnx.execute(sql)
 
         # apply on flat
-        current, parent_id = apply_diffs_upto(cnx, name)
+        current, parent_id = apply_diffs_upto(cnx, table)
 
-        update_snapshot_sql = ts_revlog.update(
-        ).where(ts_revlog.c.id == parent_id
+        update_snapshot_sql = table.update(
+        ).where(table.c.id == parent_id
         ).values(snapshot=tojson(current))
 
         cnx.execute(update_snapshot_sql)
