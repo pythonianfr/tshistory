@@ -231,19 +231,16 @@ class TimeSerie(object):
         if len(alldiffs) == 0:
             return None, None
 
-        base = alldiffs.loc[alldiffs.loc[:, 'parent'].isnull()]
+        base = alldiffs.iloc[0]
         # initial ts and its id
-        ts = fromjson(base['data'].iloc[0])
-        parent_id = base['id'].iloc[0]  # actually the root
+        ts = fromjson(base['data'])
+        parent_id = base['id']  # actually the root
 
         if len(alldiffs) == 1:
             assert ts.index.dtype.name == 'datetime64[ns]' or len(ts) == 0
             return ts, parent_id
 
-        while True:
-            child_row = alldiffs.loc[alldiffs.loc[:, 'parent'] == parent_id, :]
-            child_ts = fromjson(child_row['data'].iloc[0])
-            parent_id = child_row['id'].iloc[0]
-            ts = self._apply_diff(ts, child_ts)
-            if parent_id not in alldiffs['parent'].tolist():
-                return ts, int(parent_id)
+        for _, row in alldiffs[1:].iterrows():
+            diff = fromjson(row['data'])
+            ts = self._apply_diff(ts, diff)
+        return ts, int(row['id'])
