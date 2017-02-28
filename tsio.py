@@ -223,10 +223,10 @@ class TimeSerie(object):
                       table.c.insertion_date]
         ).order_by(table.c.id)
 
-        alldiffs = pd.read_sql(sql, cnx)
-
         if revision_date:
-            alldiffs = alldiffs[alldiffs['insertion_date'] <= revision_date]
+            sql = sql.where(table.c.insertion_date <= revision_date)
+
+        alldiffs = pd.read_sql(sql, cnx)
 
         if len(alldiffs) == 0:
             return None, None
