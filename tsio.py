@@ -28,7 +28,7 @@ class TimeSerie(object):
 
     # API : insert, get
 
-    def insert(self, engine, newts, name, author):
+    def insert(self, engine, newts, name, author, extra_scalars={}):
         """Create a new revision of a given time series
         ts: pandas.Series with date index and float values
         name: str unique identifier of the serie
@@ -58,23 +58,21 @@ class TimeSerie(object):
                     'insertion_date': datetime.now(),
                     'author': author
                 }
+                # callback for extenders
+                self._complete_insertion_value(value, extra_scalars)
+
                 cnx.execute(table.insert().values(value))
                 print('Fisrt insertion of %s by %s' % (name, author))
                 return
 
-            # NOTE: this depends on the snapshot being always maintained
-            #       at the top-level
-            snapshot = self._read_latest_snapshot(cnx, table)
-            # this is the diff between our computed parent
-            diff = self._compute_diff(snapshot, newts)
-
-            if len(diff) == 0:
+            diff, newsnapshot = self._compute_diff_and_newsnapshot(
+                cnx, table, newts, **extra_scalars
+            )
+            if diff is None:
                 print('No difference in %s by %s' % (name, author))
                 return
 
             tip_id = self._get_tip_id(cnx, table)
-            # full state computation & insertion
-            newsnapshot = self._apply_diff(snapshot, diff)
             value = {
                 'data': tojson(diff),
                 'snapshot': tojson(newsnapshot),
@@ -82,6 +80,8 @@ class TimeSerie(object):
                 'author': author,
                 'parent': tip_id,
             }
+            # callback for extenders
+            self._complete_insertion_value(value, extra_scalars)
             cnx.execute(table.insert().values(value))
 
             cnx.execute(
@@ -102,7 +102,9 @@ class TimeSerie(object):
         if revision_date is None:
             current = self._read_latest_snapshot(cnx, table)
         else:
-            current = self._build_snapshot_upto(cnx, table, revision_date)
+            current = self._build_snapshot_upto(
+                cnx, table, lambda table: table.c.insertion_date <= revision_date
+            )
 
         if current is not None:
             current.name = name
@@ -180,6 +182,23 @@ class TimeSerie(object):
         sql = select([func.max(table.c.id)])
         return cnx.execute(sql).scalar()
 
+    def _complete_insertion_value(self, value, extra_scalars):
+        pass
+
+    def _compute_diff_and_newsnapshot(self, cnx, table, newts, **extra_scalars):
+        # NOTE: this depends on the snapshot being always maintained
+        #       at the top-level
+        snapshot = self._read_latest_snapshot(cnx, table)
+        # this is the diff between our computed parent
+        diff = self._compute_diff(snapshot, newts)
+
+        if len(diff) == 0:
+            return None, None
+
+        # full state computation & insertion
+        newsnapshot = self._apply_diff(snapshot, diff)
+        return diff, newsnapshot
+
     def _read_latest_snapshot(self, cnx, table):
         sql = select([table.c.snapshot]
         ).order_by(desc(table.c.id)
@@ -191,6 +210,8 @@ class TimeSerie(object):
         return fromjson(snapjson)
 
     def _compute_diff(self, ts1, ts2):
+        if ts1 is None:
+            return ts2
         mask_overlap = ts2.index.isin(ts1.index)
         ts_bef_overlap = ts1[ts2.index[mask_overlap]]
         ts_overlap = ts2[mask_overlap]
@@ -214,15 +235,15 @@ class TimeSerie(object):
         result_ts.sort_index(inplace=True)
         return result_ts
 
-    def _build_snapshot_upto(self, cnx, table, revision_date=None):
+    def _build_snapshot_upto(self, cnx, table, *qfilter):
         sql = select([table.c.id,
                       table.c.data,
                       table.c.parent,
                       table.c.insertion_date]
         ).order_by(table.c.id)
 
-        if revision_date:
-            sql = sql.where(table.c.insertion_date <= revision_date)
+        for filtercb in qfilter:
+            sql = sql.where(filtercb(table))
 
         alldiffs = pd.read_sql(sql, cnx)
 
