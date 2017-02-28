@@ -110,7 +110,7 @@ class TimeSerie(object):
             current.name = name
         return current
 
-    def delete_last_diff(self, engine, name):
+    def delete_last_diff(self, engine, name, **kw):
         with engine.connect() as cnx:
             table = self._get_ts_table(cnx, name)
             sql = select([table.c.id,
