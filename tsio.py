@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.sql.expression import select, desc
+from sqlalchemy.sql.expression import select, desc, func
 from sqlalchemy.dialects.postgresql import JSONB
 
 from tshistory import schema
@@ -64,7 +64,7 @@ class TimeSerie(object):
 
             # NOTE: this depends on the snapshot being always maintained
             #       at the top-level
-            snapshot, tip_id = self._read_latest_snapshot(cnx, table)
+            snapshot = self._read_latest_snapshot(cnx, table)
             # this is the diff between our computed parent
             diff = self._compute_diff(snapshot, newts)
 
@@ -72,7 +72,7 @@ class TimeSerie(object):
                 print('No difference in %s by %s' % (name, author))
                 return
 
-            assert tip_id is not None
+            tip_id = self._get_tip_id(cnx, table)
             # full state computation & insertion
             newsnapshot = self._apply_diff(snapshot, diff)
             value = {
@@ -100,9 +100,9 @@ class TimeSerie(object):
             return
 
         if revision_date is None:
-            current, _ = self._read_latest_snapshot(cnx, table)
+            current = self._read_latest_snapshot(cnx, table)
         else:
-            current, _ = self._build_snapshot_upto(cnx, table, revision_date)
+            current = self._build_snapshot_upto(cnx, table, revision_date)
 
         if current is not None:
             current.name = name
@@ -126,7 +126,8 @@ class TimeSerie(object):
             cnx.execute(sql)
 
             # apply on flat
-            current, parent_id = self._build_snapshot_upto(cnx, table)
+            current = self._build_snapshot_upto(cnx, table)
+            parent_id = self._get_tip_id(cnx, table)
 
             update_snapshot_sql = table.update(
             ).where(table.c.id == parent_id
@@ -175,22 +176,19 @@ class TimeSerie(object):
             return Table(self._ts_table_name(name), schema.meta,
                          autoload=True, autoload_with=cnx.engine)
 
+    def _get_tip_id(self, cnx, table):
+        sql = select([func.max(table.c.id)])
+        return cnx.execute(sql).scalar()
+
     def _read_latest_snapshot(self, cnx, table):
-        sql = select([table.c.id,
-                      table.c.snapshot]
+        sql = select([table.c.snapshot]
         ).order_by(desc(table.c.id)
         ).limit(1)
 
-        df = pd.read_sql(sql, cnx)
-        if len(df) == 0:
-            return None, None
-
-        assert len(df) == 1
-
-        diff_id = df['id'].iloc[0]
-        snapshot = fromjson(df['snapshot'].iloc[0])
-
-        return snapshot, int(diff_id)
+        snapjson = cnx.execute(sql).scalar()
+        if snapjson is None:
+            return
+        return fromjson(snapjson)
 
     def _compute_diff(self, ts1, ts2):
         mask_overlap = ts2.index.isin(ts1.index)
@@ -229,18 +227,12 @@ class TimeSerie(object):
         alldiffs = pd.read_sql(sql, cnx)
 
         if len(alldiffs) == 0:
-            return None, None
+            return None
 
-        base = alldiffs.iloc[0]
-        # initial ts and its id
-        ts = fromjson(base['data'])
-        parent_id = base['id']  # actually the root
-
-        if len(alldiffs) == 1:
-            assert ts.index.dtype.name == 'datetime64[ns]' or len(ts) == 0
-            return ts, parent_id
-
+        # initial ts
+        ts = fromjson(alldiffs.iloc[0]['data'])
         for _, row in alldiffs[1:].iterrows():
             diff = fromjson(row['data'])
             ts = self._apply_diff(ts, diff)
-        return ts, int(row['id'])
+        assert ts.index.dtype.name == 'datetime64[ns]' or len(ts) == 0
+        return ts
