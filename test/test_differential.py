@@ -6,10 +6,26 @@ from dateutil import parser
 import pandas as pd
 import numpy as np
 from mock import patch
+import pytest
 
 from tshistory.tsio import TimeSerie
 
 DATADIR = Path(__file__).parent / 'data'
+
+
+def test_transaction(engine):
+    # instantiate one time serie handler object
+    tso = TimeSerie()
+
+    index = pd.date_range(start=datetime(2017, 1, 1), freq='D', periods=3)
+
+    with engine.connect() as cnx:
+        with tso.newchangeset(cnx, 'babar'):
+            tso.insert(cnx, pd.Series([1,2,3], index=index), 'ts_values')
+            tso.insert(cnx, pd.Series([5,6,7], index=index), 'ts_othervalues')
+
+    with pytest.raises(AssertionError):
+        tso.insert(engine, pd.Series([2,3,4], index=index), 'ts_values')
 
 
 def test_differential(engine):
@@ -158,13 +174,14 @@ def test_differential(engine):
 2   3     2.0
 """.strip() == hist.to_string().strip()
 
-    allts = pd.read_sql('select id, name, table_name from ts_registry',
+    allts = pd.read_sql("select name, table_name from ts_registry "
+                        "where name in ('ts_test', 'ts_mixte')",
                         engine)
 
     assert """
-   id      name   table_name
-0   1   ts_test   ts_ts_test
-1   2  ts_mixte  ts_ts_mixte
+       name   table_name
+0   ts_test   ts_ts_test
+1  ts_mixte  ts_ts_mixte
 """.strip() == allts.to_string().strip()
 
     assert """

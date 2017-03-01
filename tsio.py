@@ -1,9 +1,10 @@
 from datetime import datetime
+from contextlib import contextmanager
 
 import pandas as pd
 import numpy as np
 
-from sqlalchemy import Table, Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Table, Column, Integer, String, ForeignKey
 from sqlalchemy.sql.expression import select, desc, func
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -23,20 +24,30 @@ def fromjson(jsonb):
                         typ='series', dtype=False)
 
 
-
 class TimeSerie(object):
+    _csid = None
 
-    # API : insert, get
+    # API : changeset, insert, get, delete
+    @contextmanager
+    def newchangeset(self, cnx, author):
+        assert self._csid is None
+        self._csid = self._newchangeset(cnx, author)
+        yield
+        del self._csid
 
-    def insert(self, engine, newts, name, author, extra_scalars={}):
+    def insert(self, engine, newts, name, author=None,
+               extra_scalars={}):
         """Create a new revision of a given time series
         ts: pandas.Series with date index and float values
         name: str unique identifier of the serie
         author: str free-form author name
         """
+        assert self._csid or author, 'author is mandatory'
+        if self._csid and author:
+            print('author will not be used when in a changeset')
         assert isinstance(newts, pd.Series)
-        newts = newts[~newts.isnull()]  # wipe the the NaNs
 
+        newts = newts[~newts.isnull()]  # wipe the the NaNs
         if len(newts):
             assert newts.index.dtype.name == 'datetime64[ns]'
         else:
@@ -53,10 +64,9 @@ class TimeSerie(object):
                 table = self._make_ts_table(cnx, name)
                 jsonts = tojson(newts)
                 value = {
+                    'csid': self._csid or self._newchangeset(cnx, author),
                     'data': jsonts,
                     'snapshot': jsonts,
-                    'insertion_date': datetime.now(),
-                    'author': author
                 }
                 # callback for extenders
                 self._complete_insertion_value(value, extra_scalars)
@@ -74,10 +84,9 @@ class TimeSerie(object):
 
             tip_id = self._get_tip_id(cnx, table)
             value = {
+                'csid': self._csid or self._newchangeset(cnx, author),
                 'data': tojson(diff),
                 'snapshot': tojson(newsnapshot),
-                'insertion_date': datetime.now(),
-                'author': author,
                 'parent': tip_id,
             }
             # callback for extenders
@@ -103,7 +112,7 @@ class TimeSerie(object):
             current = self._read_latest_snapshot(cnx, table)
         else:
             current = self._build_snapshot_upto(
-                cnx, table, lambda table: table.c.insertion_date <= revision_date
+                cnx, table, lambda cset, _: cset.c.insertion_date <= revision_date
             )
 
         if current is not None:
@@ -148,8 +157,8 @@ class TimeSerie(object):
         return Table(
             tablename, schema.meta,
             Column('id', Integer, primary_key=True),
-            Column('author', String, index=True, nullable=False),
-            Column('insertion_date', DateTime, index=True, nullable=False),
+            Column('csid', Integer, ForeignKey('ts_changeset.id'),
+                   nullable=False),
             Column('data', JSONB, nullable=False),
             Column('snapshot', JSONB),
             Column('parent',
@@ -177,6 +186,13 @@ class TimeSerie(object):
         if tid:
             return Table(self._ts_table_name(name), schema.meta,
                          autoload=True, autoload_with=cnx.engine)
+
+    def _newchangeset(self, cnx, author):
+        table = schema.ts_changeset
+        sql = table.insert().values(
+            author=author,
+            insertion_date=datetime.now())
+        return cnx.execute(sql).inserted_primary_key[0]
 
     def _get_tip_id(self, cnx, table):
         sql = select([func.max(table.c.id)])
@@ -236,14 +252,16 @@ class TimeSerie(object):
         return result_ts
 
     def _build_snapshot_upto(self, cnx, table, *qfilter):
+        cset = schema.ts_changeset
         sql = select([table.c.id,
                       table.c.data,
                       table.c.parent,
-                      table.c.insertion_date]
-        ).order_by(table.c.id)
+                      cset.c.insertion_date]
+        ).order_by(table.c.id
+        ).where(table.c.csid == cset.c.id)
 
         for filtercb in qfilter:
-            sql = sql.where(filtercb(table))
+            sql = sql.where(filtercb(cset, table))
 
         alldiffs = pd.read_sql(sql, cnx)
 
