@@ -35,7 +35,7 @@ class TimeSerie(object):
         yield
         del self._csid
 
-    def insert(self, engine, newts, name, author=None,
+    def insert(self, cnx, newts, name, author=None,
                extra_scalars={}):
         """Create a new revision of a given time series
         ts: pandas.Series with date index and float values
@@ -56,49 +56,48 @@ class TimeSerie(object):
         newts = newts.astype('float64')
         newts.name = name
 
-        with engine.connect() as cnx:
-            table = self._get_ts_table(cnx, name)
+        table = self._get_ts_table(cnx, name)
 
-            if table is None:
-                # initial insertion
-                table = self._make_ts_table(cnx, name)
-                jsonts = tojson(newts)
-                value = {
-                    'csid': self._csid or self._newchangeset(cnx, author),
-                    'data': jsonts,
-                    'snapshot': jsonts,
-                }
-                # callback for extenders
-                self._complete_insertion_value(value, extra_scalars)
-
-                cnx.execute(table.insert().values(value))
-                print('Fisrt insertion of %s by %s' % (name, author))
-                return
-
-            diff, newsnapshot = self._compute_diff_and_newsnapshot(
-                cnx, table, newts, **extra_scalars
-            )
-            if diff is None:
-                print('No difference in %s by %s' % (name, author))
-                return
-
-            tip_id = self._get_tip_id(cnx, table)
+        if table is None:
+            # initial insertion
+            table = self._make_ts_table(cnx, name)
+            jsonts = tojson(newts)
             value = {
                 'csid': self._csid or self._newchangeset(cnx, author),
-                'data': tojson(diff),
-                'snapshot': tojson(newsnapshot),
-                'parent': tip_id,
+                'data': jsonts,
+                'snapshot': jsonts,
             }
             # callback for extenders
             self._complete_insertion_value(value, extra_scalars)
-            cnx.execute(table.insert().values(value))
 
-            cnx.execute(
-                table.update(
-                ).where(table.c.id == tip_id
-                ).values(snapshot=None)
-            )
-            print('Insertion differential of %s by %s' % (name, author))
+            cnx.execute(table.insert().values(value))
+            print('Fisrt insertion of %s by %s' % (name, author))
+            return
+
+        diff, newsnapshot = self._compute_diff_and_newsnapshot(
+            cnx, table, newts, **extra_scalars
+        )
+        if diff is None:
+            print('No difference in %s by %s' % (name, author))
+            return
+
+        tip_id = self._get_tip_id(cnx, table)
+        value = {
+            'csid': self._csid or self._newchangeset(cnx, author),
+            'data': tojson(diff),
+            'snapshot': tojson(newsnapshot),
+            'parent': tip_id,
+        }
+        # callback for extenders
+        self._complete_insertion_value(value, extra_scalars)
+        cnx.execute(table.insert().values(value))
+
+        cnx.execute(
+            table.update(
+            ).where(table.c.id == tip_id
+            ).values(snapshot=None)
+        )
+        print('Insertion differential of %s by %s' % (name, author))
 
     def get(self, cnx, name, revision_date=None):
         """Compute the top-most timeseries of a given name
@@ -119,33 +118,32 @@ class TimeSerie(object):
             current.name = name
         return current
 
-    def delete_last_diff(self, engine, name, **kw):
-        with engine.connect() as cnx:
-            table = self._get_ts_table(cnx, name)
-            sql = select([table.c.id,
-                          table.c.parent]
-            ).order_by(desc(table.c.id)
-            ).limit(1)
+    def delete_last_diff(self, cnx, name, **kw):
+        table = self._get_ts_table(cnx, name)
+        sql = select([table.c.id,
+                      table.c.parent]
+        ).order_by(desc(table.c.id)
+        ).limit(1)
 
-            diff_id, parent_id = cnx.execute(sql).fetchone()
-            if not diff_id:
-                return False
+        diff_id, parent_id = cnx.execute(sql).fetchone()
+        if not diff_id:
+            return False
 
-            sql = table.delete().where(
-                table.c.id == diff_id
-            )
-            cnx.execute(sql)
+        sql = table.delete().where(
+            table.c.id == diff_id
+        )
+        cnx.execute(sql)
 
-            # apply on flat
-            current = self._build_snapshot_upto(cnx, table)
-            parent_id = self._get_tip_id(cnx, table)
+        # apply on flat
+        current = self._build_snapshot_upto(cnx, table)
+        parent_id = self._get_tip_id(cnx, table)
 
-            update_snapshot_sql = table.update(
-            ).where(table.c.id == parent_id
-            ).values(snapshot=tojson(current))
+        update_snapshot_sql = table.update(
+        ).where(table.c.id == parent_id
+        ).values(snapshot=tojson(current))
 
-            cnx.execute(update_snapshot_sql)
-            return True
+        cnx.execute(update_snapshot_sql)
+        return True
 
     # /API
     # Helpers
