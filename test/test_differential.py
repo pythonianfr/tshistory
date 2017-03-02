@@ -13,19 +13,59 @@ from tshistory.tsio import TimeSerie
 DATADIR = Path(__file__).parent / 'data'
 
 
-def test_transaction(engine):
+def test_changeset(engine):
     # instantiate one time serie handler object
     tso = TimeSerie()
 
     index = pd.date_range(start=datetime(2017, 1, 1), freq='D', periods=3)
+    data = [1,2,3]
 
     with engine.connect() as cnx:
         with tso.newchangeset(cnx, 'babar'):
-            tso.insert(cnx, pd.Series([1,2,3], index=index), 'ts_values')
+            tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
             tso.insert(cnx, pd.Series([5,6,7], index=index), 'ts_othervalues')
 
     with pytest.raises(AssertionError):
         tso.insert(engine, pd.Series([2,3,4], index=index), 'ts_values')
+
+    with engine.connect() as cnx:
+        data.append(data.pop(0))
+        with tso.newchangeset(cnx, 'celeste'):
+            tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
+            # below should be a noop
+            tso.insert(cnx, pd.Series([5,6,7], index=index), 'ts_othervalues')
+
+    assert """
+2017-01-01    2.0
+2017-01-02    3.0
+2017-01-03    1.0
+""".strip() == tso.get(engine, 'ts_values').to_string().strip()
+
+    assert """
+2017-01-01    5.0
+2017-01-02    6.0
+2017-01-03    7.0
+""".strip() == tso.get(engine, 'ts_othervalues').to_string().strip()
+
+    tso.delete_last_changeset_for(engine, 'ts_values')
+
+    assert """
+2017-01-01    1.0
+2017-01-02    2.0
+2017-01-03    3.0
+""".strip() == tso.get(engine, 'ts_values').to_string().strip()
+
+    assert """
+2017-01-01    5.0
+2017-01-02    6.0
+2017-01-03    7.0
+""".strip() == tso.get(engine, 'ts_othervalues').to_string().strip()
+
+    tso.delete_last_changeset_for(engine, 'ts_values')
+
+    assert tso.get(engine, 'ts_values') is None
+
+    assert tso.get(engine, 'ts_othervalues') is None
 
 
 def test_differential(engine):
@@ -196,7 +236,7 @@ def test_differential(engine):
                        revision_date=datetime.now()).to_string().strip()
 
     # test striping the last diff
-    tso.delete_last_diff(engine, 'ts_mixte')
+    tso.delete_last_changeset_for(engine, 'ts_mixte')
 
     assert """
 2010-01-01    2.0

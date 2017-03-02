@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import pandas as pd
 import numpy as np
 
-from sqlalchemy import Table, Column, Integer, String, ForeignKey
+from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.sql.expression import select, desc, func
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -62,8 +62,9 @@ class TimeSerie(object):
             # initial insertion
             table = self._make_ts_table(cnx, name)
             jsonts = tojson(newts)
+            csid = self._csid or self._newchangeset(cnx, author)
             value = {
-                'csid': self._csid or self._newchangeset(cnx, author),
+                'csid': csid,
                 'data': jsonts,
                 'snapshot': jsonts,
             }
@@ -71,6 +72,7 @@ class TimeSerie(object):
             self._complete_insertion_value(value, extra_scalars)
 
             cnx.execute(table.insert().values(value))
+            self._finalize_insertion(cnx, csid, name)
             print('Fisrt insertion of %s by %s' % (name, author))
             return
 
@@ -82,8 +84,9 @@ class TimeSerie(object):
             return
 
         tip_id = self._get_tip_id(cnx, table)
+        csid = self._csid or self._newchangeset(cnx, author)
         value = {
-            'csid': self._csid or self._newchangeset(cnx, author),
+            'csid': csid,
             'data': tojson(diff),
             'snapshot': tojson(newsnapshot),
             'parent': tip_id,
@@ -91,6 +94,7 @@ class TimeSerie(object):
         # callback for extenders
         self._complete_insertion_value(value, extra_scalars)
         cnx.execute(table.insert().values(value))
+        self._finalize_insertion(cnx, csid, name)
 
         cnx.execute(
             table.update(
@@ -118,31 +122,30 @@ class TimeSerie(object):
             current.name = name
         return current
 
-    def delete_last_diff(self, cnx, name, **kw):
+    def delete_last_changeset_for(self, cnx, name, **kw):
         table = self._get_ts_table(cnx, name)
-        sql = select([table.c.id,
-                      table.c.parent]
-        ).order_by(desc(table.c.id)
-        ).limit(1)
+        sql = select([table.c.csid]).order_by(desc(table.c.id)).limit(1)
 
-        diff_id, parent_id = cnx.execute(sql).fetchone()
-        if not diff_id:
+        csid = cnx.execute(sql).scalar()
+        if not csid:
             return False
 
-        sql = table.delete().where(
-            table.c.id == diff_id
-        )
-        cnx.execute(sql)
+        tables = self._changeset_tables(cnx, csid)
+        for table in tables:
+            sql = table.delete().where(
+                table.c.csid == csid
+            )
+            cnx.execute(sql)
 
-        # apply on flat
-        current = self._build_snapshot_upto(cnx, table)
-        parent_id = self._get_tip_id(cnx, table)
+            # apply on flat
+            newsnapshot = self._build_snapshot_upto(cnx, table)
+            parent_id = self._get_tip_id(cnx, table)
 
-        update_snapshot_sql = table.update(
-        ).where(table.c.id == parent_id
-        ).values(snapshot=tojson(current))
+            update_snapshot_sql = table.update(
+            ).where(table.c.id == parent_id
+            ).values(snapshot=tojson(newsnapshot))
 
-        cnx.execute(update_snapshot_sql)
+            cnx.execute(update_snapshot_sql)
         return True
 
     # /API
@@ -199,6 +202,14 @@ class TimeSerie(object):
     def _complete_insertion_value(self, value, extra_scalars):
         pass
 
+    def _finalize_insertion(self, cnx, csid, name):
+        table = schema.ts_changeset_series
+        sql = table.insert().values(
+            csid=csid,
+            serie=name
+        )
+        cnx.execute(sql)
+
     def _compute_diff_and_newsnapshot(self, cnx, table, newts, **extra_scalars):
         # NOTE: this depends on the snapshot being always maintained
         #       at the top-level
@@ -248,6 +259,14 @@ class TimeSerie(object):
         result_ts[new_ts.index] = new_ts
         result_ts.sort_index(inplace=True)
         return result_ts
+
+    def _changeset_tables(self, cnx, csid):
+        cset_serie = schema.ts_changeset_series
+        sql = select([cset_serie.c.serie]
+        ).where(cset_serie.c.csid == csid)
+
+        return [self._get_ts_table(cnx, seriename)
+                for seriename, in cnx.execute(sql).fetchall()]
 
     def _build_snapshot_upto(self, cnx, table, *qfilter):
         cset = schema.ts_changeset
