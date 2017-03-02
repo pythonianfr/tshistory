@@ -151,6 +151,8 @@ class TimeSerie(object):
     # /API
     # Helpers
 
+    # serie name -> table handling
+
     def _ts_table_name(self, name):
         return 'ts_%s' % name
 
@@ -188,12 +190,24 @@ class TimeSerie(object):
             return Table(self._ts_table_name(name), schema.meta,
                          autoload=True, autoload_with=cnx.engine)
 
+    # changeset handling
+
     def _newchangeset(self, cnx, author):
         table = schema.ts_changeset
         sql = table.insert().values(
             author=author,
             insertion_date=datetime.now())
         return cnx.execute(sql).inserted_primary_key[0]
+
+    def _changeset_tables(self, cnx, csid):
+        cset_serie = schema.ts_changeset_series
+        sql = select([cset_serie.c.serie]
+        ).where(cset_serie.c.csid == csid)
+
+        return [self._get_ts_table(cnx, seriename)
+                for seriename, in cnx.execute(sql).fetchall()]
+
+    # insertion handling
 
     def _get_tip_id(self, cnx, table):
         sql = select([func.max(table.c.id)])
@@ -209,6 +223,8 @@ class TimeSerie(object):
             serie=name
         )
         cnx.execute(sql)
+
+    # snapshot handling
 
     def _compute_diff_and_newsnapshot(self, cnx, table, newts, **extra_scalars):
         # NOTE: this depends on the snapshot being always maintained
@@ -234,40 +250,6 @@ class TimeSerie(object):
             return
         return fromjson(snapjson)
 
-    def _compute_diff(self, ts1, ts2):
-        if ts1 is None:
-            return ts2
-        mask_overlap = ts2.index.isin(ts1.index)
-        ts_bef_overlap = ts1[ts2.index[mask_overlap]]
-        ts_overlap = ts2[mask_overlap]
-        mask_equal = np.isclose(ts_bef_overlap, ts_overlap, atol=PRECISION)
-        ts_diff_overlap = ts2[mask_overlap][~mask_equal]
-        ts_diff_new = ts2[~mask_overlap]
-        ts_result = pd.concat([ts_diff_overlap, ts_diff_new])
-        return ts_result
-
-    def _apply_diff(self, base_ts, new_ts):
-        """Produce a new ts using base_ts as a base and
-        taking any intersecting and new values from new_ts
-        """
-        if base_ts is None:
-            return new_ts
-        if new_ts is None:
-            return base_ts
-        result_ts = pd.Series([0.0], index=base_ts.index.union(new_ts.index))
-        result_ts[base_ts.index] = base_ts
-        result_ts[new_ts.index] = new_ts
-        result_ts.sort_index(inplace=True)
-        return result_ts
-
-    def _changeset_tables(self, cnx, csid):
-        cset_serie = schema.ts_changeset_series
-        sql = select([cset_serie.c.serie]
-        ).where(cset_serie.c.csid == csid)
-
-        return [self._get_ts_table(cnx, seriename)
-                for seriename, in cnx.execute(sql).fetchall()]
-
     def _build_snapshot_upto(self, cnx, table, *qfilter):
         cset = schema.ts_changeset
         sql = select([table.c.id,
@@ -292,3 +274,38 @@ class TimeSerie(object):
             ts = self._apply_diff(ts, diff)
         assert ts.index.dtype.name == 'datetime64[ns]' or len(ts) == 0
         return ts
+
+    # diff handling
+
+    def _compute_diff(self, ts1, ts2):
+        """Compute the difference between ts1 and ts2 (like in ts2 - ts1).
+
+        Deletions are not handled.  New lines in ts2 and lines that
+        changed in ts2 relatively to ts2 will appear in the diff.
+
+        """
+        if ts1 is None:
+            return ts2
+        mask_overlap = ts2.index.isin(ts1.index)
+        ts_bef_overlap = ts1[ts2.index[mask_overlap]]
+        ts_overlap = ts2[mask_overlap]
+        mask_equal = np.isclose(ts_bef_overlap, ts_overlap, atol=PRECISION)
+        ts_diff_overlap = ts2[mask_overlap][~mask_equal]
+        ts_diff_new = ts2[~mask_overlap]
+        ts_result = pd.concat([ts_diff_overlap, ts_diff_new])
+        return ts_result
+
+    def _apply_diff(self, base_ts, new_ts):
+        """Produce a new ts using base_ts as a base and taking any
+        intersecting and new values from new_ts
+
+        """
+        if base_ts is None:
+            return new_ts
+        if new_ts is None:
+            return base_ts
+        result_ts = pd.Series([0.0], index=base_ts.index.union(new_ts.index))
+        result_ts[base_ts.index] = base_ts
+        result_ts[new_ts.index] = new_ts
+        result_ts.sort_index(inplace=True)
+        return result_ts
