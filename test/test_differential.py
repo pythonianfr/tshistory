@@ -13,6 +13,13 @@ from tshistory.tsio import TimeSerie
 DATADIR = Path(__file__).parent / 'data'
 
 
+def assert_group_equals(g1, g2):
+    for (n1, s1), (n2, s2) in zip(sorted(g1.items()),
+                                  sorted(g2.items())):
+        assert n1 == n2
+        assert s1.equals(s2)
+
+
 def test_changeset(engine):
     # instantiate one time serie handler object
     tso = TimeSerie()
@@ -25,6 +32,10 @@ def test_changeset(engine):
             tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
             tso.insert(cnx, pd.Series([5,6,7], index=index), 'ts_othervalues')
 
+    g = tso.get_group(engine, 'ts_values')
+    g2 = tso.get_group(engine, 'ts_othervalues')
+    assert_group_equals(g, g2)
+
     with pytest.raises(AssertionError):
         tso.insert(engine, pd.Series([2,3,4], index=index), 'ts_values')
 
@@ -34,6 +45,9 @@ def test_changeset(engine):
             tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
             # below should be a noop
             tso.insert(cnx, pd.Series([5,6,7], index=index), 'ts_othervalues')
+
+    g = tso.get_group(engine, 'ts_values')
+    assert ['ts_values'] == list(g.keys())
 
     assert """
 2017-01-01    2.0
