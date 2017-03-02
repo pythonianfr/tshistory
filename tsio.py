@@ -30,6 +30,16 @@ class TimeSerie(object):
     # API : changeset, insert, get, delete
     @contextmanager
     def newchangeset(self, cnx, author):
+        """A context manager to allow insertion of several series within the
+        same changeset identifier
+
+        This allows to group changes to several series, hence
+        producing a macro-change.
+
+        It is possible to strip a changeset using
+        `.delete_last_changeset_for`.
+
+        """
         assert self._csid is None
         self._csid = self._newchangeset(cnx, author)
         yield
@@ -38,9 +48,14 @@ class TimeSerie(object):
     def insert(self, cnx, newts, name, author=None,
                extra_scalars={}):
         """Create a new revision of a given time series
-        ts: pandas.Series with date index and float values
+
+        newts: pandas.Series with date index and float values
+
         name: str unique identifier of the serie
-        author: str free-form author name
+
+        author: str free-form author name (mandatory, unless provided
+        to the newchangeset context manager).
+
         """
         assert self._csid or author, 'author is mandatory'
         if self._csid and author:
@@ -104,8 +119,11 @@ class TimeSerie(object):
         print('Insertion differential of %s by %s' % (name, author))
 
     def get(self, cnx, name, revision_date=None):
-        """Compute the top-most timeseries of a given name
-        with manual overrides applied
+        """Compute and return the serie of a given name
+
+        revision_date: datetime filter to get previous versions of the
+        serie
+
         """
         table = self._get_ts_table(cnx, name)
         if table is None:
@@ -123,6 +141,12 @@ class TimeSerie(object):
         return current
 
     def delete_last_changeset_for(self, cnx, name, **kw):
+        """Delete the most recent changeset associated with a serie.
+
+        Not only will the named serie be stripped but all other series
+        particiapting in the changeset (if any) will also be stripped.
+
+        """
         table = self._get_ts_table(cnx, name)
         sql = select([table.c.csid]).order_by(desc(table.c.id)).limit(1)
 
