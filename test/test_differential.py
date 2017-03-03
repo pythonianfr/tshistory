@@ -25,12 +25,12 @@ def test_changeset(engine):
     tso = TimeSerie()
 
     index = pd.date_range(start=datetime(2017, 1, 1), freq='D', periods=3)
-    data = [1,2,3]
+    data = [1., 2., 3.]
 
     with engine.connect() as cnx:
         with tso.newchangeset(cnx, 'babar'):
             tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
-            tso.insert(cnx, pd.Series([5,6,7], index=index), 'ts_othervalues')
+            tso.insert(cnx, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
 
     g = tso.get_group(engine, 'ts_values')
     g2 = tso.get_group(engine, 'ts_othervalues')
@@ -44,7 +44,7 @@ def test_changeset(engine):
         with tso.newchangeset(cnx, 'celeste'):
             tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
             # below should be a noop
-            tso.insert(cnx, pd.Series([5,6,7], index=index), 'ts_othervalues')
+            tso.insert(cnx, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
 
     g = tso.get_group(engine, 'ts_values')
     assert ['ts_values'] == list(g.keys())
@@ -56,9 +56,9 @@ def test_changeset(engine):
 """.strip() == tso.get(engine, 'ts_values').to_string().strip()
 
     assert """
-2017-01-01    5.0
-2017-01-02    6.0
-2017-01-03    7.0
+2017-01-01    a
+2017-01-02    b
+2017-01-03    c
 """.strip() == tso.get(engine, 'ts_othervalues').to_string().strip()
 
     tso.delete_last_changeset_for(engine, 'ts_values')
@@ -70,9 +70,9 @@ def test_changeset(engine):
 """.strip() == tso.get(engine, 'ts_values').to_string().strip()
 
     assert """
-2017-01-01    5.0
-2017-01-02    6.0
-2017-01-03    7.0
+2017-01-01    a
+2017-01-02    b
+2017-01-03    c
 """.strip() == tso.get(engine, 'ts_othervalues').to_string().strip()
 
     tso.delete_last_changeset_for(engine, 'ts_values')
@@ -91,32 +91,32 @@ def test_differential(engine):
     tso.insert(engine, ts_begin, 'ts_test', 'test')
 
     assert """
-2010-01-01    0.0
-2010-01-02    1.0
-2010-01-03    2.0
-2010-01-04    3.0
-2010-01-05    4.0
-2010-01-06    5.0
-2010-01-07    6.0
-2010-01-08    7.0
-2010-01-09    8.0
-2010-01-10    9.0
+2010-01-01    0
+2010-01-02    1
+2010-01-03    2
+2010-01-04    3
+2010-01-05    4
+2010-01-06    5
+2010-01-07    6
+2010-01-08    7
+2010-01-09    8
+2010-01-10    9
 """.strip() == tso.get(engine, 'ts_test').to_string().strip()
 
     # we should detect the emission of a message
     tso.insert(engine, ts_begin, 'ts_test', 'babar')
 
     assert """
-2010-01-01    0.0
-2010-01-02    1.0
-2010-01-03    2.0
-2010-01-04    3.0
-2010-01-05    4.0
-2010-01-06    5.0
-2010-01-07    6.0
-2010-01-08    7.0
-2010-01-09    8.0
-2010-01-10    9.0
+2010-01-01    0
+2010-01-02    1
+2010-01-03    2
+2010-01-04    3
+2010-01-05    4
+2010-01-06    5
+2010-01-07    6
+2010-01-08    7
+2010-01-09    8
+2010-01-10    9
 """.strip() == tso.get(engine, 'ts_test').to_string().strip()
 
     ts_slight_variation = ts_begin.copy()
@@ -125,16 +125,16 @@ def test_differential(engine):
     tso.insert(engine, ts_slight_variation, 'ts_test', 'celeste')
 
     assert """
-2010-01-01    0.0
-2010-01-02    1.0
-2010-01-03    2.0
-2010-01-04    0.0
-2010-01-05    4.0
-2010-01-06    5.0
-2010-01-07    0.0
-2010-01-08    7.0
-2010-01-09    8.0
-2010-01-10    9.0
+2010-01-01    0
+2010-01-02    1
+2010-01-03    2
+2010-01-04    0
+2010-01-05    4
+2010-01-06    5
+2010-01-07    0
+2010-01-08    7
+2010-01-09    8
+2010-01-10    9
 """.strip() == tso.get(engine, 'ts_test').to_string().strip()
 
     ts_longer = pd.Series(range(15))
@@ -173,11 +173,11 @@ def test_differential(engine):
 
     # -1 represents bogus upstream data
     assert """
-2010-01-01    2.0
-2010-01-02    2.0
-2010-01-03    2.0
-2010-01-04   -1.0
-2010-01-05    2.0
+2010-01-01    2
+2010-01-02    2
+2010-01-03    2
+2010-01-04   -1
+2010-01-05    2
 """.strip() == tso.get(engine, 'ts_mixte').to_string().strip()
 
     # refresh all the period + 1 extra data point
@@ -274,7 +274,7 @@ def test_bad_import(engine):
 
     tso.insert(engine, ts, 'SND_SC', 'test')
     result = tso.get(engine, 'SND_SC')
-    assert result.dtype == 'float64'
+    assert result.dtype == 'int64'
 
     # insertion of empty ts
     ts = pd.Series(name='truc', dtype='object')
@@ -342,30 +342,30 @@ def test_revision_date(engine):
     ts = tso.get(engine, 'ts_through_time')
 
     assert """
-2010-01-04    3.0
-2010-01-05    3.0
-2010-01-06    3.0
-2010-01-07    3.0
+2010-01-04    3
+2010-01-05    3
+2010-01-06    3
+2010-01-07    3
 """.strip() == ts.to_string().strip()
 
     ts = tso.get(engine, 'ts_through_time',
                  revision_date=datetime(2015, 1, 2, 18, 43, 23) )
 
     assert """
-2010-01-04    2.0
-2010-01-05    2.0
-2010-01-06    2.0
-2010-01-07    2.0
+2010-01-04    2
+2010-01-05    2
+2010-01-06    2
+2010-01-07    2
 """.strip() == ts.to_string().strip()
 
     ts = tso.get(engine, 'ts_through_time',
                  revision_date=datetime(2015, 1, 1, 18, 43, 23))
 
     assert """
-2010-01-04    1.0
-2010-01-05    1.0
-2010-01-06    1.0
-2010-01-07    1.0
+2010-01-04    1
+2010-01-05    1
+2010-01-06    1
+2010-01-07    1
 """.strip() == ts.to_string().strip()
 
     ts = tso.get(engine, 'ts_through_time',

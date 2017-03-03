@@ -63,14 +63,10 @@ class TimeSerie(object):
         assert isinstance(newts, pd.Series)
 
         newts = newts[~newts.isnull()]  # wipe the the NaNs
-        if len(newts):
-            assert newts.index.dtype.name == 'datetime64[ns]'
-        else:
+        if not len(newts):
             return
 
-        newts = newts.astype('float64')
         newts.name = name
-
         table = self._get_ts_table(cnx, name)
 
         if table is None:
@@ -85,7 +81,6 @@ class TimeSerie(object):
             }
             # callback for extenders
             self._complete_insertion_value(value, extra_scalars)
-
             cnx.execute(table.insert().values(value))
             self._finalize_insertion(cnx, csid, name)
             print('Fisrt insertion of %s by %s' % (name, author))
@@ -313,23 +308,28 @@ class TimeSerie(object):
 
     # diff handling
 
-    def _compute_diff(self, ts1, ts2):
-        """Compute the difference between ts1 and ts2 (like in ts2 - ts1).
+    def _compute_diff(self, fromts, tots):
+        """Compute the difference between fromts and tots (like in tots - fromts).
 
-        Deletions are not handled.  New lines in ts2 and lines that
-        changed in ts2 relatively to ts2 will appear in the diff.
+        Deletions are not handled.  New lines in tots and lines that
+        changed in tots relatively to tots will appear in the diff.
 
         """
-        if ts1 is None:
-            return ts2
-        mask_overlap = ts2.index.isin(ts1.index)
-        ts_bef_overlap = ts1[ts2.index[mask_overlap]]
-        ts_overlap = ts2[mask_overlap]
-        mask_equal = np.isclose(ts_bef_overlap, ts_overlap, atol=PRECISION)
-        ts_diff_overlap = ts2[mask_overlap][~mask_equal]
-        ts_diff_new = ts2[~mask_overlap]
-        ts_result = pd.concat([ts_diff_overlap, ts_diff_new])
-        return ts_result
+        if fromts is None:
+            return tots
+
+        mask_overlap = tots.index.isin(fromts.index)
+        fromts_overlap = fromts[tots.index[mask_overlap]]
+        tots_overlap = tots[mask_overlap]
+
+        if fromts.dtype == 'float64':
+            mask_equal = np.isclose(fromts_overlap, tots_overlap, atol=PRECISION)
+        else:
+            mask_equal = fromts_overlap == tots_overlap
+
+        diff_overlap = tots[mask_overlap][~mask_equal]
+        diff_new = tots[~mask_overlap]
+        return pd.concat([diff_overlap, diff_new])
 
     def _apply_diff(self, base_ts, new_ts):
         """Produce a new ts using base_ts as a base and taking any
