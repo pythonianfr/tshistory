@@ -106,7 +106,7 @@ class TimeSerie(object):
         csid = self._csid or self._newchangeset(cnx, author)
         value = {
             'csid': csid,
-            'data': tojson(diff),
+            'diff': tojson(diff),
             'snapshot': tojson(newsnapshot),
             'parent': tip_id,
         }
@@ -187,8 +187,8 @@ class TimeSerie(object):
             Column('id', Integer, primary_key=True),
             Column('csid', Integer, ForeignKey('ts_changeset.id'),
                    nullable=False),
-            # constraint: there is either .data or .snapshot
-            Column('data', JSONB),
+            # constraint: there is either .diff or .snapshot
+            Column('diff', JSONB),
             Column('snapshot', JSONB),
             Column('parent',
                    Integer,
@@ -294,7 +294,7 @@ class TimeSerie(object):
 
         cset = schema.ts_changeset
         sql = select([table.c.id,
-                      table.c.data,
+                      table.c.diff,
                       table.c.parent,
                       cset.c.insertion_date]
         ).order_by(table.c.id
@@ -312,7 +312,7 @@ class TimeSerie(object):
         # initial ts
         ts = snapshot
         for _, row in alldiffs.iterrows():
-            diff = fromjson(row['data'])
+            diff = fromjson(row['diff'])
             ts = self._apply_diff(ts, diff)
         assert ts.index.dtype.name == 'datetime64[ns]' or len(ts) == 0
         return ts
