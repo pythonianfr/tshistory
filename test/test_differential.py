@@ -61,7 +61,7 @@ def test_changeset(engine):
 2017-01-03    c
 """.strip() == tso.get(engine, 'ts_othervalues').to_string().strip()
 
-    tso.delete_last_changeset_for(engine, 'ts_values')
+    assert tso.delete_last_changeset_for(engine, 'ts_values')
 
     assert """
 2017-01-01    1.0
@@ -75,11 +75,11 @@ def test_changeset(engine):
 2017-01-03    c
 """.strip() == tso.get(engine, 'ts_othervalues').to_string().strip()
 
-    tso.delete_last_changeset_for(engine, 'ts_values')
-
+    assert tso.delete_last_changeset_for(engine, 'ts_values')
     assert tso.get(engine, 'ts_values') is None
-
     assert tso.get(engine, 'ts_othervalues') is None
+
+    assert not tso.delete_last_changeset_for(engine, 'ts_values')
 
 
 def test_differential(engine):
@@ -250,7 +250,7 @@ def test_differential(engine):
                        revision_date=datetime.now()).to_string().strip()
 
     # test striping the last diff
-    tso.delete_last_changeset_for(engine, 'ts_mixte')
+    assert tso.delete_last_changeset_for(engine, 'ts_mixte')
 
     assert """
 2010-01-01    2.0
