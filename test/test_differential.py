@@ -173,11 +173,11 @@ def test_differential(engine):
 
     # -1 represents bogus upstream data
     assert """
-2010-01-01    2
-2010-01-02    2
-2010-01-03    2
-2010-01-04   -1
-2010-01-05    2
+2010-01-01    2.0
+2010-01-02    2.0
+2010-01-03    2.0
+2010-01-04   -1.0
+2010-01-05    2.0
 """.strip() == tso.get(engine, 'ts_mixte').to_string().strip()
 
     # refresh all the period + 1 extra data point
@@ -274,7 +274,7 @@ def test_bad_import(engine):
 
     tso.insert(engine, ts, 'SND_SC', 'test')
     result = tso.get(engine, 'SND_SC')
-    assert result.dtype == 'int64'
+    assert result.dtype == 'float64'
 
     # insertion of empty ts
     ts = pd.Series(name='truc', dtype='object')
@@ -342,30 +342,30 @@ def test_revision_date(engine):
     ts = tso.get(engine, 'ts_through_time')
 
     assert """
-2010-01-04    3
-2010-01-05    3
-2010-01-06    3
-2010-01-07    3
+2010-01-04    3.0
+2010-01-05    3.0
+2010-01-06    3.0
+2010-01-07    3.0
 """.strip() == ts.to_string().strip()
 
     ts = tso.get(engine, 'ts_through_time',
                  revision_date=datetime(2015, 1, 2, 18, 43, 23) )
 
     assert """
-2010-01-04    2
-2010-01-05    2
-2010-01-06    2
-2010-01-07    2
+2010-01-04    2.0
+2010-01-05    2.0
+2010-01-06    2.0
+2010-01-07    2.0
 """.strip() == ts.to_string().strip()
 
     ts = tso.get(engine, 'ts_through_time',
                  revision_date=datetime(2015, 1, 1, 18, 43, 23))
 
     assert """
-2010-01-04    1
-2010-01-05    1
-2010-01-06    1
-2010-01-07    1
+2010-01-04    1.0
+2010-01-05    1.0
+2010-01-06    1.0
+2010-01-07    1.0
 """.strip() == ts.to_string().strip()
 
     ts = tso.get(engine, 'ts_through_time',

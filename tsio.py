@@ -60,7 +60,7 @@ class TimeSerie(object):
                extra_scalars={}):
         """Create a new revision of a given time series
 
-        newts: pandas.Series with date index and float values
+        newts: pandas.Series with date index
 
         name: str unique identifier of the serie
 
@@ -73,6 +73,8 @@ class TimeSerie(object):
             L.info('author will not be used when in a changeset')
         assert isinstance(newts, pd.Series)
 
+        if newts.dtype == 'int64':
+            newts = newts.astype('float64')
         newts = newts[~newts.isnull()]  # wipe the the NaNs
         if not len(newts):
             return
