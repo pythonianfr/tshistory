@@ -1,5 +1,6 @@
 from datetime import datetime
 from contextlib import contextmanager
+import logging
 
 import pandas as pd
 import numpy as np
@@ -11,6 +12,15 @@ from sqlalchemy.dialects.postgresql import JSONB
 from tshistory import schema
 
 PRECISION = 1e-14
+
+
+def setuplogging():
+    logger = logging.getLogger('tshistory.tsio')
+    logger.addHandler(logging.StreamHandler())
+    logger.setLevel(logging.INFO)
+    return logger
+
+L = setuplogging()
 
 
 def tojson(ts):
@@ -59,7 +69,7 @@ class TimeSerie(object):
         """
         assert self._csid or author, 'author is mandatory'
         if self._csid and author:
-            print('author will not be used when in a changeset')
+            L.info('author will not be used when in a changeset')
         assert isinstance(newts, pd.Series)
 
         newts = newts[~newts.isnull()]  # wipe the the NaNs
@@ -83,14 +93,14 @@ class TimeSerie(object):
             self._complete_insertion_value(value, extra_scalars)
             cnx.execute(table.insert().values(value))
             self._finalize_insertion(cnx, csid, name)
-            print('Fisrt insertion of %s by %s' % (name, author))
+            L.info('Fisrt insertion of %s by %s', name, author)
             return
 
         diff, newsnapshot = self._compute_diff_and_newsnapshot(
             cnx, table, newts, **extra_scalars
         )
         if diff is None:
-            print('No difference in %s by %s' % (name, author))
+            L.info('No difference in %s by %s', name, author)
             return
 
         tip_id = self._get_tip_id(cnx, table)
@@ -111,7 +121,7 @@ class TimeSerie(object):
             ).where(table.c.id == tip_id
             ).values(snapshot=None)
         )
-        print('Insertion differential of %s by %s' % (name, author))
+        L.info('Insertion differential of %s by %s', name, author)
 
     def get(self, cnx, name, revision_date=None):
         """Compute and return the serie of a given name
