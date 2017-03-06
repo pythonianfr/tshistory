@@ -373,3 +373,36 @@ def test_revision_date(engine):
 
     assert ts is None
 
+
+def test_snapshots(engine):
+    tso = TimeSerie()
+    tso._snapshot_interval = 5
+
+    with engine.connect() as cnx:
+        for tscount in range(11):
+            ts = pd.Series([1] * tscount,
+                           index=pd.date_range(datetime(2015, 1, 1),
+                                               freq='D', periods=tscount))
+            tso.insert(cnx, ts, 'growing', 'babar')
+
+    df = pd.read_sql("select id from ts_growing where not snapshot @> 'null'", engine)
+    assert """
+   id
+0   1
+1   5
+2  10
+""".strip() == df.to_string().strip()
+
+    ts = tso.get(engine, 'growing')
+    assert """
+2015-01-01    1.0
+2015-01-02    1.0
+2015-01-03    1.0
+2015-01-04    1.0
+2015-01-05    1.0
+2015-01-06    1.0
+2015-01-07    1.0
+2015-01-08    1.0
+2015-01-09    1.0
+2015-01-10    1.0
+""".strip() == ts.to_string().strip()

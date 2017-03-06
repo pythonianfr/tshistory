@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
-from sqlalchemy.sql.expression import select, desc, func
+from sqlalchemy.sql.expression import select, desc, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from tshistory import schema
@@ -36,6 +36,7 @@ def fromjson(jsonb):
 
 class TimeSerie(object):
     _csid = None
+    _snapshot_interval = 10
 
     # API : changeset, insert, get, delete
     @contextmanager
@@ -114,7 +115,7 @@ class TimeSerie(object):
         cnx.execute(table.insert().values(value))
         self._finalize_insertion(cnx, csid, name)
 
-        if tip_id > 1:
+        if tip_id > 1 and tip_id % self._snapshot_interval:
             cnx.execute(
                 table.update(
                 ).where(table.c.id == tip_id
@@ -274,7 +275,7 @@ class TimeSerie(object):
         sql = select([func.max(table.c.id), table.c.snapshot]
         ).group_by(table.c.id, table.c.snapshot
         ).where(table.c.csid == cset.c.id
-        ).where(table.c.snapshot != None)
+        ).where(text("not snapshot @> 'null'")) # jsonb weirdness
 
         if qfilter:
             for filtercb in qfilter:
