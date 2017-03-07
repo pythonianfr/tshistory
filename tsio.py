@@ -118,11 +118,7 @@ class TimeSerie(object):
         self._finalize_insertion(cnx, csid, name)
 
         if tip_id > 1 and tip_id % self._snapshot_interval:
-            cnx.execute(
-                table.update(
-                ).where(table.c.id == tip_id
-                ).values(snapshot=None)
-            )
+            self._purge_snapshot_at(cnx, table, tip_id)
         L.info('Insertion differential of %s by %s', name, author)
 
     def get(self, cnx, name, revision_date=None):
@@ -255,6 +251,13 @@ class TimeSerie(object):
             serie=name
         )
         cnx.execute(sql)
+
+    def _purge_snapshot_at(self, cnx, table, diffid):
+        cnx.execute(
+            table.update(
+            ).where(table.c.id == diffid
+            ).values(snapshot=None)
+        )
 
     # snapshot handling
 
