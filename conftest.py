@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sqlalchemy import create_engine, select, Table
+from sqlalchemy import create_engine
 from sqlalchemy.schema import CreateSchema
 
 import pytest

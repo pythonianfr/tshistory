@@ -209,10 +209,11 @@ class TimeSerie(object):
 
     def _get_ts_table(self, cnx, name):
         reg = schema.registry
-        sql = reg.select().where(reg.c.name == name)
+        tablename = self._ts_table_name(name)
+        sql = reg.select().where(reg.c.table_name == tablename)
         tid = cnx.execute(sql).scalar()
         if tid:
-            return Table(self._ts_table_name(name), schema.meta,
+            return Table(tablename, schema.meta,
                          autoload=True, autoload_with=cnx.engine)
 
     # changeset handling
