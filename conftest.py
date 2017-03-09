@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from sqlalchemy import create_engine, select, Table, MetaData
+from sqlalchemy import create_engine, select, Table
+from sqlalchemy.schema import CreateSchema
+
 import pytest
 
 from pytest_sa_pg.fixture import db
@@ -20,13 +22,9 @@ def engine(request):
     engine = create_engine(uri)
 
     # explicitly cleanup the ts tables
-    reg = schema.ts_registry
-    if reg.exists(engine):
-        meta = MetaData()
-        for tname, in engine.execute(select([reg.c.table_name])):
-            table = Table(tname, meta)
-            with engine.connect() as cnx:
-                table.drop(cnx)
+    if schema.registry.exists(engine):
+        engine.execute('drop schema timeserie cascade')
+    engine.execute(CreateSchema('timeserie'))
     # /cleanup
 
     metadata = schema.meta

@@ -210,7 +210,7 @@ def test_differential(engine):
 2010-01-07    3.0
 """.strip() == tso.get(engine, 'ts_mixte').to_string().strip()
 
-    hist = pd.read_sql('select id, parent from ts_ts_test order by id',
+    hist = pd.read_sql('select id, parent from timeserie.ts_test order by id',
                         engine)
     assert """
    id  parent
@@ -219,7 +219,7 @@ def test_differential(engine):
 2   3     2.0
 """.strip() == hist.to_string().strip()
 
-    hist = pd.read_sql('select id, parent from ts_ts_mixte order by id',
+    hist = pd.read_sql('select id, parent from timeserie.ts_mixte order by id',
                         engine)
     assert """
    id  parent
@@ -228,14 +228,14 @@ def test_differential(engine):
 2   3     2.0
 """.strip() == hist.to_string().strip()
 
-    allts = pd.read_sql("select name, table_name from ts_registry "
+    allts = pd.read_sql("select name, table_name from timeserie.registry "
                         "where name in ('ts_test', 'ts_mixte')",
                         engine)
 
     assert """
-       name   table_name
-0   ts_test   ts_ts_test
-1  ts_mixte  ts_ts_mixte
+       name          table_name
+0   ts_test   timeserie.ts_test
+1  ts_mixte  timeserie.ts_mixte
 """.strip() == allts.to_string().strip()
 
     assert """
@@ -385,7 +385,8 @@ def test_snapshots(engine):
                                                freq='D', periods=tscount))
             tso.insert(cnx, ts, 'growing', 'babar')
 
-    df = pd.read_sql("select id from ts_growing where not snapshot @> 'null'", engine)
+    df = pd.read_sql("select id from timeserie.growing where snapshot is not null",
+                     engine)
     assert """
    id
 0   1
@@ -407,7 +408,7 @@ def test_snapshots(engine):
 2015-01-10    1.0
 """.strip() == ts.to_string().strip()
 
-    df = pd.read_sql("select id, diff, snapshot from ts_growing", engine)
+    df = pd.read_sql("select id, diff, snapshot from timeserie.growing", engine)
     for attr in ('diff', 'snapshot'):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 

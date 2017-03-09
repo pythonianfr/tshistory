@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
-from sqlalchemy.sql.expression import select, func, text
+from sqlalchemy.sql.expression import select, func
 from sqlalchemy.dialects.postgresql import JSONB
 
 from tshistory import schema
@@ -176,37 +176,39 @@ class TimeSerie(object):
     # serie table handling
 
     def _ts_table_name(self, name):
-        return 'ts_%s' % name
+        return 'timeserie.%s' % name
 
-    def _table_definition_for(self, tablename):
+    def _table_definition_for(self, name):
         return Table(
-            tablename, schema.meta,
+            name, schema.meta,
             Column('id', Integer, primary_key=True),
-            Column('csid', Integer, ForeignKey('ts_changeset.id'),
+            Column('csid', Integer, ForeignKey('timeserie.changeset.id'),
                    nullable=False),
             # constraint: there is either .diff or .snapshot
             Column('diff', JSONB(none_as_null=True)),
             Column('snapshot', JSONB(none_as_null=True)),
             Column('parent',
                    Integer,
-                   ForeignKey('%s.id' % tablename, ondelete='cascade'),
+                   ForeignKey('timeserie.%s.id' % name,
+                              ondelete='cascade'),
                    nullable=True,
                    unique=True,
                    index=True),
+            schema='timeserie'
         )
 
     def _make_ts_table(self, cnx, name):
         tablename = self._ts_table_name(name)
-        table = self._table_definition_for(tablename)
+        table = self._table_definition_for(name)
         table.create(cnx)
-        sql = schema.ts_registry.insert().values(
+        sql = schema.registry.insert().values(
             name=name,
             table_name=tablename)
         cnx.execute(sql)
         return table
 
     def _get_ts_table(self, cnx, name):
-        reg = schema.ts_registry
+        reg = schema.registry
         sql = reg.select().where(reg.c.name == name)
         tid = cnx.execute(sql).scalar()
         if tid:
@@ -216,7 +218,7 @@ class TimeSerie(object):
     # changeset handling
 
     def _newchangeset(self, cnx, author):
-        table = schema.ts_changeset
+        table = schema.changeset
         sql = table.insert().values(
             author=author,
             insertion_date=datetime.now())
@@ -228,7 +230,7 @@ class TimeSerie(object):
         return cnx.execute(sql).scalar()
 
     def _changeset_series(self, cnx, csid):
-        cset_serie = schema.ts_changeset_series
+        cset_serie = schema.changeset_series
         sql = select([cset_serie.c.serie]
         ).where(cset_serie.c.csid == csid)
 
@@ -244,7 +246,7 @@ class TimeSerie(object):
         pass
 
     def _finalize_insertion(self, cnx, csid, name):
-        table = schema.ts_changeset_series
+        table = schema.changeset_series
         sql = table.insert().values(
             csid=csid,
             serie=name
@@ -272,7 +274,7 @@ class TimeSerie(object):
         return diff, newsnapshot
 
     def _find_snapshot(self, cnx, table, *qfilter):
-        cset = schema.ts_changeset
+        cset = schema.changeset
         sql = select([func.max(table.c.id), table.c.snapshot]
         ).group_by(table.c.id, table.c.snapshot
         ).where(table.c.csid == cset.c.id
@@ -293,7 +295,7 @@ class TimeSerie(object):
         if snapid is None:
             return None
 
-        cset = schema.ts_changeset
+        cset = schema.changeset
         sql = select([table.c.id,
                       table.c.diff,
                       table.c.parent,
