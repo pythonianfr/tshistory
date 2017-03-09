@@ -173,7 +173,7 @@ class TimeSerie(object):
     # /API
     # Helpers
 
-    # serie name -> table handling
+    # serie table handling
 
     def _ts_table_name(self, name):
         return 'ts_%s' % name
@@ -251,6 +251,8 @@ class TimeSerie(object):
         )
         cnx.execute(sql)
 
+    # snapshot handling
+
     def _purge_snapshot_at(self, cnx, table, diffid):
         cnx.execute(
             table.update(
@@ -258,13 +260,8 @@ class TimeSerie(object):
             ).values(snapshot=None)
         )
 
-    # snapshot handling
-
     def _compute_diff_and_newsnapshot(self, cnx, table, newts, **extra_scalars):
-        # NOTE: this depends on the snapshot being always maintained
-        #       at the top-level
         snapshot = self._build_snapshot_upto(cnx, table)
-        # this is the diff between our computed parent
         diff = self._compute_diff(snapshot, newts)
 
         if len(diff) == 0:
@@ -324,9 +321,10 @@ class TimeSerie(object):
     # diff handling
 
     def _compute_diff(self, fromts, tots):
-        """Compute the difference between fromts and tots (like in tots - fromts).
+        """Compute the difference between fromts and tots
+        (like in tots - fromts).
 
-        Deletions are not handled.  New lines in tots and lines that
+        Deletions are not handled. New lines in tots and lines that
         changed in tots relatively to tots will appear in the diff.
 
         """
@@ -349,7 +347,7 @@ class TimeSerie(object):
 
     def _apply_diff(self, base_ts, new_ts):
         """Produce a new ts using base_ts as a base and taking any
-        intersecting and new values from new_ts
+        intersecting and new values from new_ts.
 
         """
         if base_ts is None:
