@@ -175,12 +175,13 @@ class TimeSerie(object):
 
     # serie table handling
 
-    def _ts_table_name(self, name):
-        return 'timeserie.%s' % name
+    def _ts_table_name(self, seriename):
+        # namespace.seriename
+        return 'timeserie.%s' % seriename
 
-    def _table_definition_for(self, name):
+    def _table_definition_for(self, seriename):
         return Table(
-            name, schema.meta,
+            seriename, schema.meta,
             Column('id', Integer, primary_key=True),
             Column('csid', Integer, ForeignKey('timeserie.changeset.id'),
                    nullable=False),
@@ -189,12 +190,13 @@ class TimeSerie(object):
             Column('snapshot', JSONB(none_as_null=True)),
             Column('parent',
                    Integer,
-                   ForeignKey('timeserie.%s.id' % name,
+                   ForeignKey('timeserie.%s.id' % seriename,
                               ondelete='cascade'),
                    nullable=True,
                    unique=True,
                    index=True),
-            schema='timeserie'
+            schema='timeserie',
+            extend_existing=True
         )
 
     def _make_ts_table(self, cnx, name):
@@ -213,8 +215,7 @@ class TimeSerie(object):
         sql = reg.select().where(reg.c.table_name == tablename)
         tid = cnx.execute(sql).scalar()
         if tid:
-            return Table(tablename, schema.meta,
-                         autoload=True, autoload_with=cnx.engine)
+            return self._table_definition_for(name)
 
     # changeset handling
 
