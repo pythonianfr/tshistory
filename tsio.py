@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
-from sqlalchemy.sql.expression import select, desc, func, text
+from sqlalchemy.sql.expression import select, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from tshistory import schema
@@ -224,7 +224,7 @@ class TimeSerie(object):
 
     def _latest_csid_for(self, cnx, name):
         table = self._get_ts_table(cnx, name)
-        sql = select([table.c.csid]).order_by(desc(table.c.id)).limit(1)
+        sql = select([func.max(table.c.csid)])
         return cnx.execute(sql).scalar()
 
     def _changeset_series(self, cnx, csid):
