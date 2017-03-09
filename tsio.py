@@ -185,8 +185,8 @@ class TimeSerie(object):
             Column('csid', Integer, ForeignKey('ts_changeset.id'),
                    nullable=False),
             # constraint: there is either .diff or .snapshot
-            Column('diff', JSONB),
-            Column('snapshot', JSONB),
+            Column('diff', JSONB(none_as_null=True)),
+            Column('snapshot', JSONB(none_as_null=True)),
             Column('parent',
                    Integer,
                    ForeignKey('%s.id' % tablename, ondelete='cascade'),
@@ -276,7 +276,7 @@ class TimeSerie(object):
         sql = select([func.max(table.c.id), table.c.snapshot]
         ).group_by(table.c.id, table.c.snapshot
         ).where(table.c.csid == cset.c.id
-        ).where(text("not snapshot @> 'null'")) # jsonb weirdness
+        ).where(table.c.snapshot != None)
 
         if qfilter:
             for filtercb in qfilter:

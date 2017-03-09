@@ -406,3 +406,21 @@ def test_snapshots(engine):
 2015-01-09    1.0
 2015-01-10    1.0
 """.strip() == ts.to_string().strip()
+
+    df = pd.read_sql("select id, diff, snapshot from ts_growing", engine)
+    for attr in ('diff', 'snapshot'):
+        df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
+
+    assert """
+   id  diff  snapshot
+0   1     0        68
+1   2    68         0
+2   3    68         0
+3   5    68       187
+4   4    68         0
+5   6    68         0
+6   7    68         0
+7   8    68         0
+8  10    68       342
+9   9    68         0
+""".strip() == df.to_string().strip()
