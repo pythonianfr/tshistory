@@ -11,8 +11,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from tshistory import schema
 
-PRECISION = 1e-14
-
 
 def setuplogging():
     logger = logging.getLogger('tshistory.tsio')
@@ -37,6 +35,7 @@ def fromjson(jsonb):
 class TimeSerie(object):
     _csid = None
     _snapshot_interval = 10
+    _precision = 1e-14
 
     # API : changeset, insert, get, delete
     @contextmanager
@@ -339,7 +338,8 @@ class TimeSerie(object):
         tots_overlap = tots[mask_overlap]
 
         if fromts.dtype == 'float64':
-            mask_equal = np.isclose(fromts_overlap, tots_overlap, atol=PRECISION)
+            mask_equal = np.isclose(fromts_overlap, tots_overlap,
+                                    atol=self._precision)
         else:
             mask_equal = fromts_overlap == tots_overlap
 
