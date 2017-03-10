@@ -93,7 +93,7 @@ class TimeSerie(object):
             self._complete_insertion_value(value, extra_scalars)
             cnx.execute(table.insert().values(value))
             self._finalize_insertion(cnx, csid, name)
-            L.info('Fisrt insertion of %s by %s', name, author)
+            L.info('First insertion of %s by %s', name, author)
             return newts
 
         diff, newsnapshot = self._compute_diff_and_newsnapshot(
@@ -118,7 +118,7 @@ class TimeSerie(object):
 
         if tip_id > 1 and tip_id % self._snapshot_interval:
             self._purge_snapshot_at(cnx, table, tip_id)
-        L.info('Insertion differential of %s by %s', name, author)
+        L.info('Inserted diff for ts %s by %s', name, author)
         return diff
 
     def get(self, cnx, name, revision_date=None):
