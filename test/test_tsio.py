@@ -379,11 +379,15 @@ def test_snapshots(engine):
     tso._snapshot_interval = 5
 
     with engine.connect() as cnx:
-        for tscount in range(11):
+        for tscount in range(1, 11):
             ts = pd.Series([1] * tscount,
                            index=pd.date_range(datetime(2015, 1, 1),
                                                freq='D', periods=tscount))
-            tso.insert(cnx, ts, 'growing', 'babar')
+            diff = tso.insert(cnx, ts, 'growing', 'babar')
+            assert diff.index[0] == diff.index[-1] == ts.index[-1]
+
+    diff = tso.insert(engine, ts, 'growing', 'babar')
+    assert diff is None
 
     df = pd.read_sql("select id from timeserie.growing where snapshot is not null",
                      engine)
