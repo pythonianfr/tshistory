@@ -376,7 +376,7 @@ def test_revision_date(engine):
 
 def test_snapshots(engine):
     tso = TimeSerie()
-    tso._snapshot_interval = 5
+    tso._snapshot_interval = 4
 
     with engine.connect() as cnx:
         for tscount in range(1, 11):
@@ -394,8 +394,9 @@ def test_snapshots(engine):
     assert """
    id
 0   1
-1   5
-2  10
+1   4
+2   8
+3  10
 """.strip() == df.to_string().strip()
 
     ts = tso.get(engine, 'growing')
@@ -412,7 +413,7 @@ def test_snapshots(engine):
 2015-01-10    1.0
 """.strip() == ts.to_string().strip()
 
-    df = pd.read_sql("select id, diff, snapshot from timeserie.growing", engine)
+    df = pd.read_sql("select id, diff, snapshot from timeserie.growing order by id", engine)
     for attr in ('diff', 'snapshot'):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
@@ -421,11 +422,11 @@ def test_snapshots(engine):
 0   1     0        68
 1   2    68         0
 2   3    68         0
-3   5    68       187
-4   4    68         0
+3   4    68       156
+4   5    68         0
 5   6    68         0
 6   7    68         0
-7   8    68         0
-8  10    68       342
-9   9    68         0
+7   8    68       280
+8   9    68         0
+9  10    68       342
 """.strip() == df.to_string().strip()
