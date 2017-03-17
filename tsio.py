@@ -276,12 +276,12 @@ class TimeSerie(object):
         newsnapshot = self._apply_diff(snapshot, diff)
         return diff, newsnapshot
 
-    def _find_snapshot(self, cnx, table, *qfilter):
+    def _find_snapshot(self, cnx, table, qfilter, column='snapshot'):
         cset = schema.changeset
-        sql = select([func.max(table.c.id), table.c.snapshot]
-        ).group_by(table.c.id, table.c.snapshot
+        sql = select([func.max(table.c.id), table.c[column]]
+        ).group_by(table.c.id, table.c[column]
         ).where(table.c.csid == cset.c.id
-        ).where(table.c.snapshot != None)
+        ).where(table.c[column] != None)
 
         if qfilter:
             for filtercb in qfilter:
@@ -294,7 +294,7 @@ class TimeSerie(object):
         return snapid, fromjson(snapdata)
 
     def _build_snapshot_upto(self, cnx, table, *qfilter):
-        snapid, snapshot = self._find_snapshot(cnx, table, *qfilter)
+        snapid, snapshot = self._find_snapshot(cnx, table, qfilter)
         if snapid is None:
             return None
 
