@@ -184,7 +184,7 @@ class TimeSerie(object):
         return Table(
             seriename, schema.meta,
             Column('id', Integer, primary_key=True),
-            Column('csid', Integer, ForeignKey('timeserie.changeset.id'),
+            Column('csid', Integer, ForeignKey('changeset.id'),
                    nullable=False),
             # constraint: there is either .diff or .snapshot
             Column('diff', JSONB(none_as_null=True)),

@@ -228,7 +228,7 @@ def test_differential(engine):
 2   3     2.0
 """.strip() == hist.to_string().strip()
 
-    allts = pd.read_sql("select name, table_name from timeserie.registry "
+    allts = pd.read_sql("select name, table_name from registry "
                         "where name in ('ts_test', 'ts_mixte')",
                         engine)
 
