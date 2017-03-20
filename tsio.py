@@ -281,10 +281,10 @@ class TimeSerie(object):
         sql = select([table.c.id, table.c[column]]
         ).order_by(desc(table.c.id)
         ).limit(1
-        ).where(table.c.csid == cset.c.id
         ).where(table.c[column] != None)
 
         if qfilter:
+            sql = sql.where(table.c.csid == cset.c.id)
             for filtercb in qfilter:
                 sql = sql.where(filtercb(cset, table))
 
@@ -305,11 +305,12 @@ class TimeSerie(object):
                       table.c.parent,
                       cset.c.insertion_date]
         ).order_by(table.c.id
-        ).where(table.c.csid == cset.c.id
         ).where(table.c.id > snapid)
 
-        for filtercb in qfilter:
-            sql = sql.where(filtercb(cset, table))
+        if qfilter:
+            sql = sql.where(table.c.csid == cset.c.id)
+            for filtercb in qfilter:
+                sql = sql.where(filtercb(cset, table))
 
         alldiffs = pd.read_sql(sql, cnx)
 
