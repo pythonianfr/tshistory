@@ -137,7 +137,7 @@ class TimeSerie(object):
         qfilter = []
         if revision_date:
             qfilter.append(lambda cset, _: cset.c.insertion_date <= revision_date)
-        current = self._build_snapshot_upto(cnx, table, *qfilter)
+        current = self._build_snapshot_upto(cnx, table, qfilter)
 
         if current is not None:
             current.name = name
@@ -278,7 +278,7 @@ class TimeSerie(object):
         newsnapshot = self._apply_diff(snapshot, diff)
         return diff, newsnapshot
 
-    def _find_snapshot(self, cnx, table, qfilter, column='snapshot'):
+    def _find_snapshot(self, cnx, table, qfilter=(), column='snapshot'):
         cset = schema.changeset
         sql = select([table.c.id, table.c[column]]
         ).order_by(desc(table.c.id)
@@ -296,7 +296,7 @@ class TimeSerie(object):
             return None, None
         return snapid, fromjson(snapdata)
 
-    def _build_snapshot_upto(self, cnx, table, *qfilter):
+    def _build_snapshot_upto(self, cnx, table, qfilter=()):
         snapid, snapshot = self._find_snapshot(cnx, table, qfilter)
         if snapid is None:
             return None
