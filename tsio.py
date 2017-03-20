@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
-from sqlalchemy.sql.expression import select, func
+from sqlalchemy.sql.expression import select, func, desc
 from sqlalchemy.dialects.postgresql import JSONB
 
 from tshistory import schema
@@ -278,8 +278,9 @@ class TimeSerie(object):
 
     def _find_snapshot(self, cnx, table, qfilter, column='snapshot'):
         cset = schema.changeset
-        sql = select([func.max(table.c.id), table.c[column]]
-        ).group_by(table.c.id, table.c[column]
+        sql = select([table.c.id, table.c[column]]
+        ).order_by(desc(table.c.id)
+        ).limit(1
         ).where(table.c.csid == cset.c.id
         ).where(table.c[column] != None)
 

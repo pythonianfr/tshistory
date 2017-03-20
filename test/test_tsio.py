@@ -430,3 +430,8 @@ def test_snapshots(engine):
 8   9    68         0
 9  10    68       342
 """.strip() == df.to_string().strip()
+
+    table = tso._get_ts_table(engine, 'growing')
+    snapid, snap = tso._find_snapshot(engine, table, ())
+    assert snapid == 10
+    assert (ts == snap).all()
