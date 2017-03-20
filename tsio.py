@@ -333,7 +333,7 @@ class TimeSerie(object):
         changed in tots relatively to tots will appear in the diff.
 
         """
-        if fromts is None:
+        if fromts is None or not len(fromts):
             return tots
 
         mask_overlap = tots.index.isin(fromts.index)
