@@ -322,6 +322,7 @@ def test_revision_date(engine):
                        index=pd.date_range(start=datetime(2010, 1, 4),
                                            freq='D', periods=4), name='truc')
         tso.insert(engine, ts, 'ts_through_time', 'test')
+        assert mock_date.now.return_value == tso.latest_insertion_date(engine, 'ts_through_time')
 
     with patch('tshistory.tsio.datetime') as mock_date:
         mock_date.now.return_value = datetime(2015, 1, 2, 15, 43, 23)
@@ -330,6 +331,7 @@ def test_revision_date(engine):
                        index=pd.date_range(start=datetime(2010, 1, 4),
                                            freq='D', periods=4), name='truc')
         tso.insert(engine, ts, 'ts_through_time', 'test')
+        assert mock_date.now.return_value == tso.latest_insertion_date(engine, 'ts_through_time')
 
     with patch('tshistory.tsio.datetime') as mock_date:
         mock_date.now.return_value = datetime(2015, 1, 3, 15, 43, 23)
@@ -338,6 +340,7 @@ def test_revision_date(engine):
                        index=pd.date_range(start=datetime(2010, 1, 4),
                                            freq='D', periods=4), name='truc')
         tso.insert(engine, ts, 'ts_through_time', 'test')
+        assert mock_date.now.return_value == tso.latest_insertion_date(engine, 'ts_through_time')
 
     ts = tso.get(engine, 'ts_through_time')
 

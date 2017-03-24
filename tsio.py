@@ -173,6 +173,13 @@ class TimeSerie(object):
             cnx.execute(sql)
         return True
 
+    def latest_insertion_date(self, cnx, name):
+        cset = schema.changeset
+        tstable = self._get_ts_table(cnx, name)
+        sql = select([func.max(cset.c.insertion_date)]
+        ).where(tstable.c.csid == cset.c.id)
+        return cnx.execute(sql).scalar()
+
     # /API
     # Helpers
 
