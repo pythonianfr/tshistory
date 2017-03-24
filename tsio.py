@@ -38,7 +38,7 @@ class TimeSerie(object):
 
     # API : changeset, insert, get, delete
     @contextmanager
-    def newchangeset(self, cnx, author):
+    def newchangeset(self, cnx, author, _insertion_date=None):
         """A context manager to allow insertion of several series within the
         same changeset identifier
 
@@ -48,9 +48,11 @@ class TimeSerie(object):
         It is possible to strip a changeset using
         `.delete_last_changeset_for`.
 
+        _insertion_date is *only* provided for migration purposes and
+        not part of the API.
         """
         assert self._csid is None
-        self._csid = self._newchangeset(cnx, author)
+        self._csid = self._newchangeset(cnx, author, _insertion_date)
         yield
         del self._csid
 
@@ -229,11 +231,11 @@ class TimeSerie(object):
 
     # changeset handling
 
-    def _newchangeset(self, cnx, author):
+    def _newchangeset(self, cnx, author, _insertion_date=None):
         table = schema.changeset
         sql = table.insert().values(
             author=author,
-            insertion_date=datetime.now())
+            insertion_date=_insertion_date or datetime.now())
         return cnx.execute(sql).inserted_primary_key[0]
 
     def _latest_csid_for(self, cnx, name):
