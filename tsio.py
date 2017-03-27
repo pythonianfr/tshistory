@@ -71,6 +71,7 @@ class TimeSerie(object):
         if self._csid and author:
             L.info('author will not be used when in a changeset')
         assert isinstance(newts, pd.Series)
+        assert not newts.index.duplicated().any()
 
         if newts.dtype == 'int64':
             newts = newts.astype('float64')
