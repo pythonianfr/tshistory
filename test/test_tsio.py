@@ -60,26 +60,6 @@ def test_changeset(engine):
 2017-01-03    c
 """.strip() == tso.get(engine, 'ts_othervalues').to_string().strip()
 
-    assert tso.delete_last_changeset_for(engine, 'ts_values')
-
-    assert """
-2017-01-01    1.0
-2017-01-02    2.0
-2017-01-03    3.0
-""".strip() == tso.get(engine, 'ts_values').to_string().strip()
-
-    assert """
-2017-01-01    a
-2017-01-02    b
-2017-01-03    c
-""".strip() == tso.get(engine, 'ts_othervalues').to_string().strip()
-
-    assert tso.delete_last_changeset_for(engine, 'ts_values')
-    assert tso.get(engine, 'ts_values') is None
-    assert tso.get(engine, 'ts_othervalues') is None
-
-    assert not tso.delete_last_changeset_for(engine, 'ts_values')
-
 
 def test_differential(engine):
     # instantiate one time serie handler object
@@ -247,18 +227,6 @@ def test_differential(engine):
 2010-01-07    3.0
 """.strip() == tso.get(engine, 'ts_mixte',
                        revision_date=datetime.now()).to_string().strip()
-
-    # test striping the last diff
-    assert tso.delete_last_changeset_for(engine, 'ts_mixte')
-
-    assert """
-2010-01-01    2.0
-2010-01-02    2.0
-2010-01-03    2.0
-2010-01-04   -1.0
-2010-01-05    2.0
-2010-01-06    2.0
-""".strip() == tso.get(engine, 'ts_mixte').to_string().strip()
 
 
 def test_bad_import(engine):

@@ -155,26 +155,6 @@ class TimeSerie(object):
                 group[seriename] = serie
         return group
 
-    def delete_last_changeset_for(self, cnx, name, **kw):
-        """Delete the most recent changeset associated with a serie.
-
-        Not only will the named serie be stripped but all other series
-        particiapting in the changeset (if any) will also be stripped.
-
-        """
-        csid = self._latest_csid_for(cnx, name)
-        if not csid:
-            return False
-
-        tables = [self._get_ts_table(cnx, seriename)
-                  for seriename in self._changeset_series(cnx, csid)]
-        for table in tables:
-            sql = table.delete().where(
-                table.c.csid == csid
-            )
-            cnx.execute(sql)
-        return True
-
     def latest_insertion_date(self, cnx, name):
         cset = schema.changeset
         tstable = self._get_ts_table(cnx, name)
