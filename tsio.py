@@ -24,12 +24,11 @@ L = setuplogging()
 def tojson(ts):
     if ts is None:
         return None
-    return ts.to_json(orient='split', date_format='iso')
+    return ts.to_json(date_format='iso')
 
 
 def fromjson(jsonb):
-    return pd.read_json(jsonb, orient='split',
-                        typ='series', dtype=False)
+    return pd.read_json(jsonb, typ='series', dtype=False)
 
 
 class TimeSerie(object):

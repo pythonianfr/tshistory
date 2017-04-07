@@ -419,16 +419,16 @@ def test_snapshots(engine):
 
     assert """
    id  diff  snapshot
-0   1     0        68
-1   2    68         0
-2   3    68         0
-3   4    68       156
-4   5    68         0
-5   6    68         0
-6   7    68         0
-7   8    68       280
-8   9    68         0
-9  10    68       342
+0   1     0        32
+1   2    32         0
+2   3    32         0
+3   4    32       125
+4   5    32         0
+5   6    32         0
+6   7    32         0
+7   8    32       249
+8   9    32         0
+9  10    32       311
 """.strip() == df.to_string().strip()
 
     table = tso._get_ts_table(engine, 'growing')
