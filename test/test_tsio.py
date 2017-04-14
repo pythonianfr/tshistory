@@ -435,3 +435,87 @@ def test_snapshots(engine):
     snapid, snap = tso._find_snapshot(engine, table, ())
     assert snapid == 10
     assert (ts == snap).all()
+
+
+def test_deletion(engine):
+    tso = TimeSerie()
+
+    ts_begin = pd.Series(range(10))
+    ts_begin.index = pd.date_range(start=datetime(2010, 1, 1), freq='D', periods=10)
+    tso.insert(engine, ts_begin, 'ts_del', 'test')
+
+    ts_begin.iloc[3] = np.nan
+    ts_begin.iloc[0] = np.nan
+
+    tso.insert(engine, ts_begin, 'ts_del', 'test')
+
+    assert """
+2010-01-02    1.0
+2010-01-03    2.0
+2010-01-05    4.0
+2010-01-06    5.0
+2010-01-07    6.0
+2010-01-08    7.0
+2010-01-09    8.0
+2010-01-10    9.0""".strip() == tso.get(engine, 'ts_del').to_string().strip()
+
+    ts_begin.iloc[0] = 42
+    ts_begin.iloc[3] = 23
+
+    tso.insert(engine, ts_begin, 'ts_del', 'test')
+
+    assert """
+2010-01-01    42.0
+2010-01-02     1.0
+2010-01-03     2.0
+2010-01-04    23.0
+2010-01-05     4.0
+2010-01-06     5.0
+2010-01-07     6.0
+2010-01-08     7.0
+2010-01-09     8.0
+2010-01-10     9.0""".strip() == tso.get(engine, 'ts_del').to_string().strip()
+
+    # now with string!
+
+    ts_string = pd.Series(['machin'] * 10)
+    ts_string.index = pd.date_range(start=datetime(2010, 1, 1), freq='D', periods=10)
+    tso.insert(engine, ts_string, 'ts_string_del', 'test')
+
+    ts_string[4] = None
+    ts_string[5] = None
+
+    tso.insert(engine, ts_string, 'ts_string_del', 'test')
+    assert"""
+2010-01-01    machin
+2010-01-02    machin
+2010-01-03    machin
+2010-01-04    machin
+2010-01-07    machin
+2010-01-08    machin
+2010-01-09    machin
+2010-01-10    machin
+""".strip() == tso.get(engine, 'ts_string_del').to_string().strip()
+
+    ts_string[4] = 'truc'
+    ts_string[6] = 'truc'
+
+    tso.insert(engine, ts_string, 'ts_string_del', 'test')
+    assert """
+2010-01-01    machin
+2010-01-02    machin
+2010-01-03    machin
+2010-01-04    machin
+2010-01-05      truc
+2010-01-07      truc
+2010-01-08    machin
+2010-01-09    machin
+2010-01-10    machin""".strip() == tso.get(engine, 'ts_string_del').to_string().strip()
+
+    # first insertion with only nan
+
+    ts_begin = pd.Series([np.nan] * 10)
+    ts_begin.index = pd.date_range(start=datetime(2010, 1, 1), freq='D', periods=10)
+    tso.insert(engine, ts_begin, 'ts_null', 'test')
+
+    assert tso.get(engine, 'ts_null') is None

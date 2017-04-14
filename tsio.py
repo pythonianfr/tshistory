@@ -74,7 +74,7 @@ class TimeSerie(object):
 
         if str(newts.dtype).startswith('int'):
             newts = newts.astype('float64')
-        newts = newts[~newts.isnull()]  # wipe the the NaNs
+
         if not len(newts):
             return
 
@@ -83,6 +83,8 @@ class TimeSerie(object):
 
         if table is None:
             # initial insertion
+            if newts.isnull().all():
+                return None
             table = self._make_ts_table(cnx, name)
             csid = self._csid or self._newchangeset(cnx, author)
             value = {
@@ -331,9 +333,6 @@ class TimeSerie(object):
         """Compute the difference between fromts and tots
         (like in tots - fromts).
 
-        Deletions are not handled. New lines in tots and lines that
-        changed in tots relatively to tots will appear in the diff.
-
         """
         if fromts is None or not len(fromts):
             return tots
@@ -364,5 +363,6 @@ class TimeSerie(object):
         result_ts = pd.Series([0.0], index=base_ts.index.union(new_ts.index))
         result_ts[base_ts.index] = base_ts
         result_ts[new_ts.index] = new_ts
+        result_ts = result_ts[~result_ts.isnull()]
         result_ts.sort_index(inplace=True)
         return result_ts
