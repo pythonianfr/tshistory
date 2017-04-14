@@ -72,7 +72,7 @@ class TimeSerie(object):
         assert isinstance(newts, pd.Series)
         assert not newts.index.duplicated().any()
 
-        if newts.dtype == 'int64':
+        if str(newts.dtype).startswith('int'):
             newts = newts.astype('float64')
         newts = newts[~newts.isnull()]  # wipe the the NaNs
         if not len(newts):
