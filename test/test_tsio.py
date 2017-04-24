@@ -23,6 +23,19 @@ def assert_df(expected, df):
     assert expected.strip() == df.to_string().strip()
 
 
+def genserie(start, freq, repeat, initval=None, tz=None, name=None):
+    if initval is None:
+        values = range(repeat)
+    else:
+        values = initval * repeat
+    return pd.Series(values,
+                     name=name,
+                     index=pd.date_range(start=start,
+                                         freq=freq,
+                                         periods=repeat,
+                                         tz=tz))
+
+
 def test_changeset(engine):
     # instantiate one time serie handler object
     tso = TimeSerie()
@@ -67,10 +80,8 @@ def test_changeset(engine):
 
 def test_tstamp_roundtrip(engine):
     tso = TimeSerie()
-    ts = pd.Series(range(4),
-                   index=pd.date_range(datetime(2017, 10, 28, 23),
-                                       freq='H', periods=4, tz='UTC')
-    )
+    ts = genserie(datetime(2017, 10, 28, 23),
+                  'H', 4, tz='UTC')
     ts.index = ts.index.tz_convert('Europe/Paris')
 
     assert_df("""
@@ -100,8 +111,7 @@ def test_differential(engine):
     # instantiate one time serie handler object
     tso = TimeSerie()
 
-    ts_begin = pd.Series(range(10))
-    ts_begin.index = pd.date_range(start=datetime(2010, 1, 1), freq='D', periods=10)
+    ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
     tso.insert(engine, ts_begin, 'ts_test', 'test')
 
     assert_df("""
@@ -151,8 +161,7 @@ def test_differential(engine):
 2010-01-10    9.0
 """, tso.get(engine, 'ts_test'))
 
-    ts_longer = pd.Series(range(15))
-    ts_longer.index = pd.date_range(start=datetime(2010, 1, 3), freq='D', periods=15)
+    ts_longer = genserie(datetime(2010, 1, 3), 'D', 15)
     ts_longer.iloc[1] = 2.48
     ts_longer.iloc[3] = 3.14
     ts_longer.iloc[5] = ts_begin.iloc[7]
@@ -180,8 +189,7 @@ def test_differential(engine):
 """, tso.get(engine, 'ts_test'))
 
     # start testing manual overrides
-    ts_begin = pd.Series([2] * 5)
-    ts_begin.index = pd.date_range(start=datetime(2010, 1, 1), freq='D', periods=5)
+    ts_begin = genserie(datetime(2010, 1, 1), 'D', 5, initval=[2])
     ts_begin.loc['2010-01-04'] = -1
     tso.insert(engine, ts_begin, 'ts_mixte', 'test')
 
@@ -195,8 +203,7 @@ def test_differential(engine):
 """, tso.get(engine, 'ts_mixte'))
 
     # refresh all the period + 1 extra data point
-    ts_more = pd.Series([2] * 5)
-    ts_more.index = pd.date_range(start=datetime(2010, 1, 2), freq='D', periods=5)
+    ts_more = genserie(datetime(2010, 1, 2), 'D', 5, [2])
     ts_more.loc['2010-01-04'] = -1
     tso.insert(engine, ts_more, 'ts_mixte', 'test')
 
@@ -210,8 +217,8 @@ def test_differential(engine):
 """, tso.get(engine, 'ts_mixte'))
 
     # just append an extra data point
-    ts_one_more = pd.Series([3])  # with no intersection with the previous ts
-    ts_one_more.index = pd.date_range(start=datetime(2010, 1, 7), freq='D', periods=1)
+    # with no intersection with the previous ts
+    ts_one_more = genserie(datetime(2010, 1, 7), 'D', 1, [3])
     tso.insert(engine, ts_one_more, 'ts_mixte', 'test')
 
     assert_df("""
@@ -285,9 +292,7 @@ def test_bad_import(engine):
 
     # nan in ts
     # all na
-    ts = pd.Series([np.nan] * 10,
-                   index=pd.date_range(start=datetime(2010, 1, 10),
-                                       freq='D', periods=10), name='truc')
+    ts = genserie(datetime(2010, 1, 10), 'D', 10, [np.nan], name='truc')
     tso.insert(engine, ts, 'test_nan', 'test')
     assert tso.get(engine, 'test_nan') is None
 
@@ -320,27 +325,21 @@ def test_revision_date(engine):
     idate1 = datetime(2015, 1, 1, 15, 43, 23)
     with tso.newchangeset(engine, 'test', _insertion_date=idate1):
 
-        ts = pd.Series([1] * 4,
-                       index=pd.date_range(start=datetime(2010, 1, 4),
-                                           freq='D', periods=4), name='truc')
+        ts = genserie(datetime(2010, 1, 4), 'D', 4, [1], name='truc')
         tso.insert(engine, ts, 'ts_through_time')
         assert idate1 == tso.latest_insertion_date(engine, 'ts_through_time')
 
     idate2 = datetime(2015, 1, 2, 15, 43, 23)
     with tso.newchangeset(engine, 'test', _insertion_date=idate2):
 
-        ts = pd.Series([2] * 4,
-                       index=pd.date_range(start=datetime(2010, 1, 4),
-                                           freq='D', periods=4), name='truc')
+        ts = genserie(datetime(2010, 1, 4), 'D', 4, [2], name='truc')
         tso.insert(engine, ts, 'ts_through_time')
         assert idate2 == tso.latest_insertion_date(engine, 'ts_through_time')
 
     idate3 = datetime(2015, 1, 3, 15, 43, 23)
     with tso.newchangeset(engine, 'test', _insertion_date=idate3):
 
-        ts = pd.Series([3] * 4,
-                       index=pd.date_range(start=datetime(2010, 1, 4),
-                                           freq='D', periods=4), name='truc')
+        ts = genserie(datetime(2010, 1, 4), 'D', 4, [3], name='truc')
         tso.insert(engine, ts, 'ts_through_time')
         assert idate3 == tso.latest_insertion_date(engine, 'ts_through_time')
 
@@ -385,9 +384,7 @@ def test_snapshots(engine):
 
     with engine.connect() as cnx:
         for tscount in range(1, 11):
-            ts = pd.Series([1] * tscount,
-                           index=pd.date_range(datetime(2015, 1, 1),
-                                               freq='D', periods=tscount))
+            ts = genserie(datetime(2015, 1, 1), 'D', tscount, [1])
             diff = tso.insert(cnx, ts, 'growing', 'babar')
             assert diff.index[0] == diff.index[-1] == ts.index[-1]
 
@@ -445,8 +442,7 @@ def test_snapshots(engine):
 def test_deletion(engine):
     tso = TimeSerie()
 
-    ts_begin = pd.Series(range(10))
-    ts_begin.index = pd.date_range(start=datetime(2010, 1, 1), freq='D', periods=10)
+    ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
     tso.insert(engine, ts_begin, 'ts_del', 'test')
 
     ts_begin.iloc[3] = np.nan
@@ -485,8 +481,7 @@ def test_deletion(engine):
 
     # now with string!
 
-    ts_string = pd.Series(['machin'] * 10)
-    ts_string.index = pd.date_range(start=datetime(2010, 1, 1), freq='D', periods=10)
+    ts_string = genserie(datetime(2010, 1, 1), 'D', 10, ['machin'])
     tso.insert(engine, ts_string, 'ts_string_del', 'test')
 
     ts_string[4] = None
@@ -522,8 +517,7 @@ def test_deletion(engine):
 
     # first insertion with only nan
 
-    ts_begin = pd.Series([np.nan] * 10)
-    ts_begin.index = pd.date_range(start=datetime(2010, 1, 1), freq='D', periods=10)
+    ts_begin = genserie(datetime(2010, 1, 1), 'D', 10, [np.nan])
     tso.insert(engine, ts_begin, 'ts_null', 'test')
 
     assert tso.get(engine, 'ts_null') is None
