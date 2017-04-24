@@ -19,6 +19,10 @@ def assert_group_equals(g1, g2):
         assert s1.equals(s2)
 
 
+def assert_df(expected, df):
+    assert expected.strip() == df.to_string().strip()
+
+
 def test_changeset(engine):
     # instantiate one time serie handler object
     tso = TimeSerie()
@@ -48,17 +52,17 @@ def test_changeset(engine):
     g = tso.get_group(engine, 'ts_values')
     assert ['ts_values'] == list(g.keys())
 
-    assert """
+    assert_df("""
 2017-01-01    2.0
 2017-01-02    3.0
 2017-01-03    1.0
-""".strip() == tso.get(engine, 'ts_values').to_string().strip()
+""", tso.get(engine, 'ts_values'))
 
-    assert """
+    assert_df("""
 2017-01-01    a
 2017-01-02    b
 2017-01-03    c
-""".strip() == tso.get(engine, 'ts_othervalues').to_string().strip()
+""", tso.get(engine, 'ts_othervalues'))
 
 
 def test_differential(engine):
@@ -69,7 +73,7 @@ def test_differential(engine):
     ts_begin.index = pd.date_range(start=datetime(2010, 1, 1), freq='D', periods=10)
     tso.insert(engine, ts_begin, 'ts_test', 'test')
 
-    assert """
+    assert_df("""
 2010-01-01    0.0
 2010-01-02    1.0
 2010-01-03    2.0
@@ -80,12 +84,12 @@ def test_differential(engine):
 2010-01-08    7.0
 2010-01-09    8.0
 2010-01-10    9.0
-""".strip() == tso.get(engine, 'ts_test').to_string().strip()
+""", tso.get(engine, 'ts_test'))
 
     # we should detect the emission of a message
     tso.insert(engine, ts_begin, 'ts_test', 'babar')
 
-    assert """
+    assert_df("""
 2010-01-01    0.0
 2010-01-02    1.0
 2010-01-03    2.0
@@ -96,14 +100,14 @@ def test_differential(engine):
 2010-01-08    7.0
 2010-01-09    8.0
 2010-01-10    9.0
-""".strip() == tso.get(engine, 'ts_test').to_string().strip()
+""", tso.get(engine, 'ts_test'))
 
     ts_slight_variation = ts_begin.copy()
     ts_slight_variation.iloc[3] = 0
     ts_slight_variation.iloc[6] = 0
     tso.insert(engine, ts_slight_variation, 'ts_test', 'celeste')
 
-    assert """
+    assert_df("""
 2010-01-01    0.0
 2010-01-02    1.0
 2010-01-03    2.0
@@ -114,7 +118,7 @@ def test_differential(engine):
 2010-01-08    7.0
 2010-01-09    8.0
 2010-01-10    9.0
-""".strip() == tso.get(engine, 'ts_test').to_string().strip()
+""", tso.get(engine, 'ts_test'))
 
     ts_longer = pd.Series(range(15))
     ts_longer.index = pd.date_range(start=datetime(2010, 1, 3), freq='D', periods=15)
@@ -124,7 +128,7 @@ def test_differential(engine):
 
     tso.insert(engine, ts_longer, 'ts_test', 'test')
 
-    assert """
+    assert_df("""
 2010-01-01     0.00
 2010-01-02     1.00
 2010-01-03     0.00
@@ -142,7 +146,7 @@ def test_differential(engine):
 2010-01-15    12.00
 2010-01-16    13.00
 2010-01-17    14.00
-""".strip() == tso.get(engine, 'ts_test').to_string().strip()
+""", tso.get(engine, 'ts_test'))
 
     # start testing manual overrides
     ts_begin = pd.Series([2] * 5)
@@ -151,13 +155,13 @@ def test_differential(engine):
     tso.insert(engine, ts_begin, 'ts_mixte', 'test')
 
     # -1 represents bogus upstream data
-    assert """
+    assert_df("""
 2010-01-01    2.0
 2010-01-02    2.0
 2010-01-03    2.0
 2010-01-04   -1.0
 2010-01-05    2.0
-""".strip() == tso.get(engine, 'ts_mixte').to_string().strip()
+""", tso.get(engine, 'ts_mixte'))
 
     # refresh all the period + 1 extra data point
     ts_more = pd.Series([2] * 5)
@@ -165,21 +169,21 @@ def test_differential(engine):
     ts_more.loc['2010-01-04'] = -1
     tso.insert(engine, ts_more, 'ts_mixte', 'test')
 
-    assert """
+    assert_df("""
 2010-01-01    2.0
 2010-01-02    2.0
 2010-01-03    2.0
 2010-01-04   -1.0
 2010-01-05    2.0
 2010-01-06    2.0
-""".strip() == tso.get(engine, 'ts_mixte').to_string().strip()
+""", tso.get(engine, 'ts_mixte'))
 
     # just append an extra data point
     ts_one_more = pd.Series([3])  # with no intersection with the previous ts
     ts_one_more.index = pd.date_range(start=datetime(2010, 1, 7), freq='D', periods=1)
     tso.insert(engine, ts_one_more, 'ts_mixte', 'test')
 
-    assert """
+    assert_df("""
 2010-01-01    2.0
 2010-01-02    2.0
 2010-01-03    2.0
@@ -187,37 +191,37 @@ def test_differential(engine):
 2010-01-05    2.0
 2010-01-06    2.0
 2010-01-07    3.0
-""".strip() == tso.get(engine, 'ts_mixte').to_string().strip()
+""", tso.get(engine, 'ts_mixte'))
 
     hist = pd.read_sql('select id, parent from timeserie.ts_test order by id',
                         engine)
-    assert """
+    assert_df("""
    id  parent
 0   1     NaN
 1   2     1.0
 2   3     2.0
-""".strip() == hist.to_string().strip()
+""", hist)
 
     hist = pd.read_sql('select id, parent from timeserie.ts_mixte order by id',
                         engine)
-    assert """
+    assert_df("""
    id  parent
 0   1     NaN
 1   2     1.0
 2   3     2.0
-""".strip() == hist.to_string().strip()
+""", hist)
 
     allts = pd.read_sql("select name, table_name from registry "
                         "where name in ('ts_test', 'ts_mixte')",
                         engine)
 
-    assert """
+    assert_df("""
        name          table_name
 0   ts_test   timeserie.ts_test
 1  ts_mixte  timeserie.ts_mixte
-""".strip() == allts.to_string().strip()
+""", allts)
 
-    assert """
+    assert_df("""
 2010-01-01    2.0
 2010-01-02    2.0
 2010-01-03    2.0
@@ -225,8 +229,8 @@ def test_differential(engine):
 2010-01-05    2.0
 2010-01-06    2.0
 2010-01-07    3.0
-""".strip() == tso.get(engine, 'ts_mixte',
-                       revision_date=datetime.now()).to_string().strip()
+""", tso.get(engine, 'ts_mixte',
+             revision_date=datetime.now()))
 
 
 def test_bad_import(engine):
@@ -265,13 +269,13 @@ def test_bad_import(engine):
 
     tso.insert(engine, ts, 'test_nan', 'test')
     result = tso.get(engine, 'test_nan')
-    assert """
+    assert_df("""
 2010-01-15    3.0
 2010-01-16    3.0
 2010-01-17    3.0
 2010-01-18    3.0
 2010-01-19    3.0
-""".strip() == result.to_string().strip()
+""", result)
 
     # get_ts with name not in database
 
@@ -311,32 +315,32 @@ def test_revision_date(engine):
 
     ts = tso.get(engine, 'ts_through_time')
 
-    assert """
+    assert_df("""
 2010-01-04    3.0
 2010-01-05    3.0
 2010-01-06    3.0
 2010-01-07    3.0
-""".strip() == ts.to_string().strip()
+""", ts)
 
     ts = tso.get(engine, 'ts_through_time',
                  revision_date=datetime(2015, 1, 2, 18, 43, 23) )
 
-    assert """
+    assert_df("""
 2010-01-04    2.0
 2010-01-05    2.0
 2010-01-06    2.0
 2010-01-07    2.0
-""".strip() == ts.to_string().strip()
+""", ts)
 
     ts = tso.get(engine, 'ts_through_time',
                  revision_date=datetime(2015, 1, 1, 18, 43, 23))
 
-    assert """
+    assert_df("""
 2010-01-04    1.0
 2010-01-05    1.0
 2010-01-06    1.0
 2010-01-07    1.0
-""".strip() == ts.to_string().strip()
+""", ts)
 
     ts = tso.get(engine, 'ts_through_time',
                  revision_date=datetime(2014, 1, 1, 18, 43, 23))
@@ -361,16 +365,16 @@ def test_snapshots(engine):
 
     df = pd.read_sql("select id from timeserie.growing where snapshot is not null",
                      engine)
-    assert """
+    assert_df("""
    id
 0   1
 1   4
 2   8
 3  10
-""".strip() == df.to_string().strip()
+""", df)
 
     ts = tso.get(engine, 'growing')
-    assert """
+    assert_df("""
 2015-01-01    1.0
 2015-01-02    1.0
 2015-01-03    1.0
@@ -381,13 +385,13 @@ def test_snapshots(engine):
 2015-01-08    1.0
 2015-01-09    1.0
 2015-01-10    1.0
-""".strip() == ts.to_string().strip()
+""", ts)
 
     df = pd.read_sql("select id, diff, snapshot from timeserie.growing order by id", engine)
     for attr in ('diff', 'snapshot'):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
-    assert """
+    assert_df("""
    id  diff  snapshot
 0   1     0        32
 1   2    32         0
@@ -399,7 +403,7 @@ def test_snapshots(engine):
 7   8    32       249
 8   9    32         0
 9  10    32       311
-""".strip() == df.to_string().strip()
+""", df)
 
     table = tso._get_ts_table(engine, 'growing')
     snapid, snap = tso._find_snapshot(engine, table, ())
@@ -419,7 +423,7 @@ def test_deletion(engine):
 
     tso.insert(engine, ts_begin, 'ts_del', 'test')
 
-    assert """
+    assert_df("""
 2010-01-02    1.0
 2010-01-03    2.0
 2010-01-05    4.0
@@ -427,14 +431,15 @@ def test_deletion(engine):
 2010-01-07    6.0
 2010-01-08    7.0
 2010-01-09    8.0
-2010-01-10    9.0""".strip() == tso.get(engine, 'ts_del').to_string().strip()
+2010-01-10    9.0
+""", tso.get(engine, 'ts_del'))
 
     ts_begin.iloc[0] = 42
     ts_begin.iloc[3] = 23
 
     tso.insert(engine, ts_begin, 'ts_del', 'test')
 
-    assert """
+    assert_df("""
 2010-01-01    42.0
 2010-01-02     1.0
 2010-01-03     2.0
@@ -444,7 +449,8 @@ def test_deletion(engine):
 2010-01-07     6.0
 2010-01-08     7.0
 2010-01-09     8.0
-2010-01-10     9.0""".strip() == tso.get(engine, 'ts_del').to_string().strip()
+2010-01-10     9.0
+""", tso.get(engine, 'ts_del'))
 
     # now with string!
 
@@ -456,7 +462,7 @@ def test_deletion(engine):
     ts_string[5] = None
 
     tso.insert(engine, ts_string, 'ts_string_del', 'test')
-    assert"""
+    assert_df("""
 2010-01-01    machin
 2010-01-02    machin
 2010-01-03    machin
@@ -465,13 +471,13 @@ def test_deletion(engine):
 2010-01-08    machin
 2010-01-09    machin
 2010-01-10    machin
-""".strip() == tso.get(engine, 'ts_string_del').to_string().strip()
+""", tso.get(engine, 'ts_string_del'))
 
     ts_string[4] = 'truc'
     ts_string[6] = 'truc'
 
     tso.insert(engine, ts_string, 'ts_string_del', 'test')
-    assert """
+    assert_df("""
 2010-01-01    machin
 2010-01-02    machin
 2010-01-03    machin
@@ -480,7 +486,8 @@ def test_deletion(engine):
 2010-01-07      truc
 2010-01-08    machin
 2010-01-09    machin
-2010-01-10    machin""".strip() == tso.get(engine, 'ts_string_del').to_string().strip()
+2010-01-10    machin
+""", tso.get(engine, 'ts_string_del'))
 
     # first insertion with only nan
 
