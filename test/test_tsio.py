@@ -65,6 +65,37 @@ def test_changeset(engine):
 """, tso.get(engine, 'ts_othervalues'))
 
 
+def test_tstamp_roundtrip(engine):
+    tso = TimeSerie()
+    ts = pd.Series(range(4),
+                   index=pd.date_range(datetime(2017, 10, 28, 23),
+                                       freq='H', periods=4, tz='UTC')
+    )
+    ts.index = ts.index.tz_convert('Europe/Paris')
+
+    assert_df("""
+2017-10-29 01:00:00+02:00    0
+2017-10-29 02:00:00+02:00    1
+2017-10-29 02:00:00+01:00    2
+2017-10-29 03:00:00+01:00    3
+Freq: H
+    """, ts)
+
+    tso.insert(engine, ts, 'tztest', 'Babar')
+    back = tso.get(engine, 'tztest')
+
+    # though un localized we understand it's been normalized to utc
+    assert_df("""
+2017-10-28 23:00:00    0.0
+2017-10-29 00:00:00    1.0
+2017-10-29 01:00:00    2.0
+2017-10-29 02:00:00    3.0
+""", back)
+
+    back.index = back.index.tz_localize('UTC')
+    assert (ts.index == back.index).all()
+
+
 def test_differential(engine):
     # instantiate one time serie handler object
     tso = TimeSerie()
