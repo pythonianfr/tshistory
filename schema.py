@@ -25,3 +25,10 @@ changeset_series = Table(
     Column('serie', String, ForeignKey('registry.name'), nullable=False),
     PrimaryKeyConstraint('csid', 'serie', name='changeset_series_pk'),
 )
+
+
+def init(engine):
+    from sqlalchemy.schema import CreateSchema
+    engine.execute(CreateSchema('timeserie'))
+    meta.create_all(engine)
+

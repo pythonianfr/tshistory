@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from sqlalchemy import create_engine
-from sqlalchemy.schema import CreateSchema
 
 import pytest
 
@@ -21,13 +20,12 @@ def engine(request):
     uri = 'postgresql://localhost:{}/postgres'.format(port)
     engine = create_engine(uri)
 
+    metadata = schema.meta
     # explicitly cleanup the ts tables
     if schema.registry.exists(engine):
         engine.execute('drop schema timeserie cascade')
-    engine.execute(CreateSchema('timeserie'))
+    metadata.drop_all(engine)
     # /cleanup
 
-    metadata = schema.meta
-    metadata.drop_all(engine)
-    metadata.create_all(engine)
+    schema.init(engine)
     return create_engine(uri)
