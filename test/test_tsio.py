@@ -447,8 +447,7 @@ def test_deletion(engine):
     tso.insert(engine, ts_begin, 'ts_del', 'test')
 
     ts = tso._build_snapshot_upto(engine, tso._get_ts_table(engine, 'ts_del'))
-    # baaaad
-    assert str(ts.iloc[-1]) == 'nan'
+    assert ts.iloc[-1] == 9.0
 
     ts_begin.iloc[0] = np.nan
     ts_begin.iloc[3] = np.nan
