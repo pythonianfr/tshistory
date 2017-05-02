@@ -87,6 +87,7 @@ class TimeSerie(object):
             # initial insertion
             if newts.isnull().all():
                 return None
+            #newts = newts[~newts.isnull()]
             table = self._make_ts_table(cnx, name)
             csid = self._csid or self._newchangeset(cnx, author)
             value = {

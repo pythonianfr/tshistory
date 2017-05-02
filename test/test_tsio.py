@@ -442,11 +442,16 @@ def test_snapshots(engine):
 def test_deletion(engine):
     tso = TimeSerie()
 
-    ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
+    ts_begin = genserie(datetime(2010, 1, 1), 'D', 11)
+    ts_begin.iloc[-1] = np.nan
     tso.insert(engine, ts_begin, 'ts_del', 'test')
 
-    ts_begin.iloc[3] = np.nan
+    ts = tso._build_snapshot_upto(engine, tso._get_ts_table(engine, 'ts_del'))
+    # baaaad
+    assert str(ts.iloc[-1]) == 'nan'
+
     ts_begin.iloc[0] = np.nan
+    ts_begin.iloc[3] = np.nan
 
     tso.insert(engine, ts_begin, 'ts_del', 'test')
 
@@ -460,6 +465,11 @@ def test_deletion(engine):
 2010-01-09    8.0
 2010-01-10    9.0
 """, tso.get(engine, 'ts_del'))
+
+    ts2 = tso.get(engine, 'ts_del',
+                 # force snapshot reconstruction feature
+                 revision_date=datetime(2038, 1, 1))
+    assert (tso.get(engine, 'ts_del') == ts2).all()
 
     ts_begin.iloc[0] = 42
     ts_begin.iloc[3] = 23
