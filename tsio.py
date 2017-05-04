@@ -24,11 +24,27 @@ L = setuplogging()
 def tojson(ts):
     if ts is None:
         return None
-    return ts.to_json(date_format='iso')
+
+    if not isinstance(ts.index, pd.MultiIndex):
+        return ts.to_json(date_format='iso')
+
+    # multi index case
+    return ts.to_frame().reset_index().to_json(date_format='iso')
 
 
-def fromjson(jsonb):
-    return pd.read_json(jsonb, typ='series', dtype=False)
+def fromjson(jsonb, tsname):
+    result = pd.read_json(jsonb, typ='series', dtype=False)
+    if isinstance(result.index, pd.DatetimeIndex):
+        return result
+
+    # multi index case
+    columns = result.index.values.tolist()
+    columns.remove(tsname)
+    result = pd.read_json(jsonb, typ='frame',
+                          convert_dates=columns)
+    result.set_index(sorted(columns), inplace=True)
+
+    return result.iloc[:,0] # get a Series object
 
 
 class TimeSerie(object):
@@ -82,6 +98,10 @@ class TimeSerie(object):
 
         newts.name = name
         table = self._get_ts_table(cnx, name)
+
+        if isinstance(newts.index, pd.MultiIndex):
+            # we impose an order to survive rountrips
+            newts = newts.reorder_levels(sorted(newts.index.names))
 
         if table is None:
             # initial insertion
@@ -284,7 +304,7 @@ class TimeSerie(object):
             snapid, snapdata = cnx.execute(sql).fetchone()
         except TypeError:
             return None, None
-        return snapid, fromjson(snapdata)
+        return snapid, fromjson(snapdata, table.name)
 
     def _build_snapshot_upto(self, cnx, table, qfilter=()):
         snapid, snapshot = self._find_snapshot(cnx, table, qfilter)
@@ -312,7 +332,7 @@ class TimeSerie(object):
         # initial ts
         ts = snapshot
         for _, row in alldiffs.iterrows():
-            diff = fromjson(row['diff'])
+            diff = fromjson(row['diff'], table.name)
             ts = self._apply_diff(ts, diff)
         assert ts.index.dtype.name == 'datetime64[ns]' or len(ts) == 0
         return ts
@@ -355,4 +375,5 @@ class TimeSerie(object):
         result_ts[new_ts.index] = new_ts
         result_ts = result_ts[~result_ts.isnull()]
         result_ts.sort_index(inplace=True)
+        result_ts.name = base_ts.name
         return result_ts
