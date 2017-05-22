@@ -15,7 +15,4 @@ setup(name='tshistory',
           'sqlalchemy',
           'pytest_sa_pg',
       ],
-      dependency_links=[
-          'hg+https://bitbucket.org/pythonian/pytest_sa_pg#egg=pytest_sa_pg-0',
-      ]
 )
