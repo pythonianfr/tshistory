@@ -359,6 +359,7 @@ class TimeSerie(object):
 
         diff_overlap = tots[mask_overlap][~mask_equal]
         diff_new = tots[~mask_overlap]
+        diff_new = diff_new[~diff_new.isnull()]
         return pd.concat([diff_overlap, diff_new])
 
     def _apply_diff(self, base_ts, new_ts):

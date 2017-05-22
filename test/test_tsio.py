@@ -668,3 +668,31 @@ a          b                   c
         """, pd.DataFrame(ts.sort_index()))
 
     # the result ts have now 3 values for each point in 'a'
+
+
+def test_add_na(engine):
+    tso = TimeSerie()
+
+    # a serie of NaNs won't be insert in base
+    # in case of first insertion
+    ts_nan = genserie(datetime(2010, 1, 1), 'D', 5)
+    ts_nan[[True] * len(ts_nan)] = np.nan
+
+    diff = tso.insert(engine, ts_nan, 'ts_add_na', 'test')
+    assert diff is None
+    result = tso.get(engine, 'ts_add_na')
+    assert result is None
+
+    # in case of insertion in existing data
+    ts_begin = genserie(datetime(2010, 1, 1), 'D', 5)
+    tso.insert(engine, ts_begin, 'ts_add_na', 'test')
+
+    ts_nan = genserie(datetime(2010, 1, 6), 'D', 5)
+    ts_nan[[True] * len(ts_nan)] = np.nan
+    ts_nan = pd.concat([ts_begin, ts_nan])
+
+    diff = tso.insert(engine, ts_nan, 'ts_add_na', 'test')
+    assert diff is None
+
+    result = tso.get(engine, 'ts_add_na')
+    assert len(result) == 5
