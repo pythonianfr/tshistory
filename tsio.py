@@ -33,6 +33,9 @@ def tojson(ts):
 
 
 def fromjson(jsonb, tsname):
+    if jsonb == '{}':
+        return pd.Series(name=tsname)
+
     result = pd.read_json(jsonb, typ='series', dtype=False)
     if isinstance(result.index, pd.DatetimeIndex):
         return result

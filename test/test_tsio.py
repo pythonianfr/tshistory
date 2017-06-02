@@ -523,6 +523,12 @@ def test_deletion(engine):
 2010-01-10    machin
 """, tso.get(engine, 'ts_string_del'))
 
+    ts_string[ts_string.index] = np.nan
+    tso.insert(engine, ts_string, 'ts_string_del', 'test')
+
+    erased = tso.get(engine, 'ts_string_del')
+    assert len(erased) == 0
+
     # first insertion with only nan
 
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10, [np.nan])
