@@ -33,6 +33,10 @@ def tojson(ts):
 
 
 def fromjson(jsonb, tsname):
+    return _fromjson(jsonb, tsname).fillna(value=np.nan)
+
+
+def _fromjson(jsonb, tsname):
     if jsonb == '{}':
         return pd.Series(name=tsname)
 
@@ -183,7 +187,7 @@ class TimeSerie(object):
         ).where(tstable.c.csid == cset.c.id)
         return cnx.execute(sql).scalar()
 
-    def log(self, cnx):
+    def log(self, cnx, diff=False):
         """Build a structure showing the history of all the series in the db,
         per changeset, in chronological order.
         """
@@ -201,6 +205,12 @@ class TimeSerie(object):
                 continue
             log.append({'rev': csetid, 'author': author,
                         'date': revdate, 'names': [tsname]})
+
+        if diff:
+            for rev in log:
+                rev['diff'] = {name: self._diff(cnx, rev['rev'], name)
+                               for name in rev['names']}
+
         return log
 
     # /API
@@ -358,6 +368,25 @@ class TimeSerie(object):
         return ts
 
     # diff handling
+
+    def _diff(self, cnx, csetid, name):
+        table = self._get_ts_table(cnx, name)
+        cset = schema.changeset
+
+        def filtercset(sql):
+            return sql.where(table.c.csid == cset.c.id
+            ).where(cset.c.id == csetid)
+
+        sql = filtercset(select([table.c.id]))
+        tsid = cnx.execute(sql).scalar()
+
+        if tsid == 1:
+            sql = select([table.c.snapshot])
+        else:
+            sql = select([table.c.diff])
+        sql = filtercset(sql)
+
+        return fromjson(cnx.execute(sql).scalar(), name)
 
     def _compute_diff(self, fromts, tots):
         """Compute the difference between fromts and tots
