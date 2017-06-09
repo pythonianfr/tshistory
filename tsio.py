@@ -64,9 +64,6 @@ class TimeSerie(object):
         This allows to group changes to several series, hence
         producing a macro-change.
 
-        It is possible to strip a changeset using
-        `.delete_last_changeset_for`.
-
         _insertion_date is *only* provided for migration purposes and
         not part of the API.
         """
