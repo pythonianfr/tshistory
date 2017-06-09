@@ -6,6 +6,7 @@ from dateutil import parser
 import pandas as pd
 import numpy as np
 import pytest
+from mock import patch
 
 from tshistory.tsio import TimeSerie
 
@@ -42,24 +43,26 @@ def test_changeset(engine):
     index = pd.date_range(start=datetime(2017, 1, 1), freq='D', periods=3)
     data = [1., 2., 3.]
 
-    with engine.connect() as cnx:
-        with tso.newchangeset(cnx, 'babar'):
-            tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
-            tso.insert(cnx, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
+    with patch('tshistory.tsio.datetime') as mock_date:
+        mock_date.now.return_value = datetime(2020, 1, 1)
+        with engine.connect() as cnx:
+            with tso.newchangeset(cnx, 'babar'):
+                tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
+                tso.insert(cnx, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
 
-    g = tso.get_group(engine, 'ts_values')
-    g2 = tso.get_group(engine, 'ts_othervalues')
-    assert_group_equals(g, g2)
+        g = tso.get_group(engine, 'ts_values')
+        g2 = tso.get_group(engine, 'ts_othervalues')
+        assert_group_equals(g, g2)
 
-    with pytest.raises(AssertionError):
-        tso.insert(engine, pd.Series([2,3,4], index=index), 'ts_values')
+        with pytest.raises(AssertionError):
+            tso.insert(engine, pd.Series([2,3,4], index=index), 'ts_values')
 
-    with engine.connect() as cnx:
-        data.append(data.pop(0))
-        with tso.newchangeset(cnx, 'celeste'):
-            tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
-            # below should be a noop
-            tso.insert(cnx, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
+        with engine.connect() as cnx:
+            data.append(data.pop(0))
+            with tso.newchangeset(cnx, 'celeste'):
+                tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
+                # below should be a noop
+                tso.insert(cnx, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
 
     g = tso.get_group(engine, 'ts_values')
     assert ['ts_values'] == list(g.keys())
@@ -75,6 +78,18 @@ def test_changeset(engine):
 2017-01-02    b
 2017-01-03    c
 """, tso.get(engine, 'ts_othervalues'))
+
+    log = tso.log(engine)
+    assert [
+        {'author': 'babar',
+         'rev': 1,
+         'date': datetime(2020, 1, 1, 0, 0),
+         'names': ['ts_values', 'ts_othervalues']},
+        {'author': 'celeste',
+         'rev': 2,
+         'date': datetime(2020, 1, 1, 0, 0),
+         'names': ['ts_values']}
+    ] == log
 
 
 def test_tstamp_roundtrip(engine):

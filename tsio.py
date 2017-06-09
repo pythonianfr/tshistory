@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
-from sqlalchemy.sql.expression import select, func, desc
+from sqlalchemy.sql.expression import select, func, asc, desc
 from sqlalchemy.dialects.postgresql import JSONB
 
 from tshistory import schema
@@ -182,6 +182,26 @@ class TimeSerie(object):
         sql = select([func.max(cset.c.insertion_date)]
         ).where(tstable.c.csid == cset.c.id)
         return cnx.execute(sql).scalar()
+
+    def log(self, cnx):
+        """Build a structure showing the history of all the series in the db,
+        per changeset, in chronological order.
+        """
+        log = []
+        cset, cset_series, reg = schema.changeset, schema.changeset_series, schema.registry
+        sql = select([cset.c.id, cset.c.author, cset.c.insertion_date, reg.c.name]
+        ).order_by(asc(cset.c.id)
+        ).where(cset.c.id == cset_series.c.csid
+        ).where(cset_series.c.serie == reg.c.name)
+
+        rset = cnx.execute(sql)
+        for csetid, author, revdate, tsname in rset.fetchall():
+            if log and csetid == log[-1]['rev']:
+                log[-1]['names'].append(tsname)
+                continue
+            log.append({'rev': csetid, 'author': author,
+                        'date': revdate, 'names': [tsname]})
+        return log
 
     # /API
     # Helpers
