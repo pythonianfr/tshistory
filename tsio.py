@@ -187,15 +187,20 @@ class TimeSerie(object):
         ).where(tstable.c.csid == cset.c.id)
         return cnx.execute(sql).scalar()
 
-    def log(self, cnx, diff=False):
+    def log(self, cnx, limit=0, diff=False):
         """Build a structure showing the history of all the series in the db,
         per changeset, in chronological order.
         """
         log = []
         cset, cset_series, reg = schema.changeset, schema.changeset_series, schema.registry
+
         sql = select([cset.c.id, cset.c.author, cset.c.insertion_date, reg.c.name]
-        ).order_by(asc(cset.c.id)
-        ).where(cset.c.id == cset_series.c.csid
+        ).order_by(desc(cset.c.id))
+
+        if limit:
+            sql = sql.limit(limit)
+
+        sql = sql.where(cset.c.id == cset_series.c.csid
         ).where(cset_series.c.serie == reg.c.name)
 
         rset = cnx.execute(sql)
@@ -211,6 +216,7 @@ class TimeSerie(object):
                 rev['diff'] = {name: self._diff(cnx, rev['rev'], name)
                                for name in rev['names']}
 
+        log.sort(key=lambda rev: rev['rev'])
         return log
 
     # /API
