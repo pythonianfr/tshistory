@@ -194,8 +194,8 @@ class TimeSerie(object):
         log = []
         cset, cset_series, reg = schema.changeset, schema.changeset_series, schema.registry
 
-        sql = select([cset.c.id, cset.c.author, cset.c.insertion_date, reg.c.name]
-        ).order_by(desc(cset.c.id))
+        sql = select([cset.c.id, cset.c.author, cset.c.insertion_date]
+        ).distinct().order_by(desc(cset.c.id))
 
         if limit:
             sql = sql.limit(limit)
@@ -207,12 +207,9 @@ class TimeSerie(object):
         ).where(cset_series.c.serie == reg.c.name)
 
         rset = cnx.execute(sql)
-        for csetid, author, revdate, tsname in rset.fetchall():
-            if log and csetid == log[-1]['rev']:
-                log[-1]['names'].append(tsname)
-                continue
-            log.append({'rev': csetid, 'author': author,
-                        'date': revdate, 'names': [tsname]})
+        for csetid, author, revdate in rset.fetchall():
+            log.append({'rev': csetid, 'author': author, 'date': revdate,
+                        'names': self._changeset_series(cnx, csetid)})
 
         if diff:
             for rev in log:
