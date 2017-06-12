@@ -5,14 +5,14 @@ from sqlalchemy import create_engine
 from tshistory.tsio import TimeSerie
 
 
-FMT = """
+REVFMT = """
 revision: {rev}
 author:   {author}
 date:     {date}
 """.strip()
 
 def format_rev(rev):
-    fmt = FMT + '\n'
+    fmt = REVFMT + '\n'
     if rev.get('diff'):
         fmt += 'series: {names}\n\n'
         lines = []
@@ -25,7 +25,12 @@ def format_rev(rev):
     return fmt.format(**rev)
 
 
-@click.command()
+@click.group()
+def tsh():
+    pass
+
+
+@tsh.command()
 @click.argument('db-uri')
 @click.option('--limit', '-l', default=None)
 @click.option('--show-diff', is_flag=True, default=False)
@@ -43,5 +48,22 @@ def log(db_uri, limit, show_diff, serie, from_rev, to_rev):
         print()
 
 
+INFOFMT = """
+changeset count: {changeset count}
+series count:    {series count}
+series names:    {serie names}
+""".strip()
+
+@tsh.command()
+@click.argument('db-uri')
+def info(db_uri):
+    engine = create_engine(db_uri)
+
+    tsh = TimeSerie()
+    info = tsh.info(engine)
+    info['serie names'] = ', '.join(info['serie names'])
+    print(INFOFMT.format(**info))
+
+
 if __name__ == '__main__':
-    log()
+    tsh()

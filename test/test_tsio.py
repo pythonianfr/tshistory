@@ -102,6 +102,13 @@ def test_changeset(engine):
     log = tso.log(engine, torev=1)
     assert len(log) == 1
 
+    info = tso.info(engine)
+    assert {
+        'changeset count': 2,
+        'serie names': ['ts_othervalues', 'ts_values'],
+        'series count': 2
+    } == info
+
 
 def test_tstamp_roundtrip(engine):
     tso = TimeSerie()

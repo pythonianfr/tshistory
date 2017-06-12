@@ -187,6 +187,17 @@ class TimeSerie(object):
         ).where(tstable.c.csid == cset.c.id)
         return cnx.execute(sql).scalar()
 
+    def info(self, cnx):
+        """Gather global statistics on the current tshistory repository
+        """
+        sql = 'select count(*) from registry'
+        stats = {'series count': cnx.execute(sql).scalar()}
+        sql = 'select max(id) from changeset'
+        stats['changeset count'] = cnx.execute(sql).scalar()
+        sql = 'select distinct name from registry order by name'
+        stats['serie names'] = [row for row, in cnx.execute(sql).fetchall()]
+        return stats
+
     def log(self, cnx, limit=0, diff=False, names=None, fromrev=None, torev=None):
         """Build a structure showing the history of all the series in the db,
         per changeset, in chronological order.
