@@ -12,6 +12,7 @@ from tshistory import schema, tsio
 DATADIR = Path(__file__).parent / 'test' / 'data'
 DBURI = 'postgresql://localhost:5433/postgres'
 
+tshclass = tsio.TimeSerie
 
 @pytest.fixture(scope='session')
 def engine(request):
@@ -32,7 +33,7 @@ def engine(request):
     yield e
 
     # build a ts using the logs from another
-    tsh = tsio.TimeSerie()
+    tsh = tshclass()
     log = tsh.log(engine, diff=True)
     allnames = set()
     for rev in log:
