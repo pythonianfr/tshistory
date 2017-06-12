@@ -45,10 +45,10 @@ def test_changeset(engine):
 
     with patch('tshistory.tsio.datetime') as mock_date:
         mock_date.now.return_value = datetime(2020, 1, 1)
-        with engine.connect() as cnx:
-            with tso.newchangeset(cnx, 'babar'):
-                tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
-                tso.insert(cnx, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
+        with engine.connect() as cn:
+            with tso.newchangeset(cn, 'babar'):
+                tso.insert(cn, pd.Series(data, index=index), 'ts_values')
+                tso.insert(cn, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
 
         g = tso.get_group(engine, 'ts_values')
         g2 = tso.get_group(engine, 'ts_othervalues')
@@ -57,12 +57,12 @@ def test_changeset(engine):
         with pytest.raises(AssertionError):
             tso.insert(engine, pd.Series([2,3,4], index=index), 'ts_values')
 
-        with engine.connect() as cnx:
+        with engine.connect() as cn:
             data.append(data.pop(0))
-            with tso.newchangeset(cnx, 'celeste'):
-                tso.insert(cnx, pd.Series(data, index=index), 'ts_values')
+            with tso.newchangeset(cn, 'celeste'):
+                tso.insert(cn, pd.Series(data, index=index), 'ts_values')
                 # below should be a noop
-                tso.insert(cnx, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
+                tso.insert(cn, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
 
     g = tso.get_group(engine, 'ts_values')
     assert ['ts_values'] == list(g.keys())
@@ -414,10 +414,10 @@ def test_snapshots(engine):
     tso = TimeSerie()
     tso._snapshot_interval = 4
 
-    with engine.connect() as cnx:
+    with engine.connect() as cn:
         for tscount in range(1, 11):
             ts = genserie(datetime(2015, 1, 1), 'D', tscount, [1])
-            diff = tso.insert(cnx, ts, 'growing', 'babar')
+            diff = tso.insert(cn, ts, 'growing', 'babar')
             assert diff.index[0] == diff.index[-1] == ts.index[-1]
 
     diff = tso.insert(engine, ts, 'growing', 'babar')
