@@ -51,7 +51,7 @@ def _fromjson(jsonb, tsname):
                           convert_dates=columns)
     result.set_index(sorted(columns), inplace=True)
 
-    return result.iloc[:,0] # get a Series object
+    return result.iloc[:, 0] # get a Series object
 
 
 class TimeSerie(object):
