@@ -25,9 +25,11 @@ def format_rev(rev):
     return fmt.format(**rev)
 
 
-@click.group()
-def tsh():
-    pass
+@click.group(invoke_without_command=True)
+@click.pass_context
+def tsh(ctx):
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_usage())
 
 
 @tsh.command()

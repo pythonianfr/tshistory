@@ -13,6 +13,12 @@ setup(name='tshistory',
           'pathlib',
           'pandas',
           'sqlalchemy',
+          'click',
+          'mock',
           'pytest_sa_pg',
       ],
+      entry_points={
+          'console_scripts': [
+              'tsh=tshistory.command:tsh'
+          ]}
 )
