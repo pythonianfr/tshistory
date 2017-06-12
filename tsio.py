@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
-from sqlalchemy.sql.expression import select, func, asc, desc
+from sqlalchemy.sql.expression import select, func, desc
 from sqlalchemy.dialects.postgresql import JSONB
 
 from tshistory import schema
