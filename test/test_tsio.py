@@ -96,6 +96,12 @@ def test_changeset(engine):
     assert log[0]['rev'] == 1
     assert log[0]['names'] == ['ts_values', 'ts_othervalues']
 
+    log = tso.log(engine, fromrev=2)
+    assert len(log) == 1
+
+    log = tso.log(engine, torev=1)
+    assert len(log) == 1
+
 
 def test_tstamp_roundtrip(engine):
     tso = TimeSerie()

@@ -30,11 +30,14 @@ def format_rev(rev):
 @click.option('--limit', '-l', default=None)
 @click.option('--show-diff', is_flag=True, default=False)
 @click.option('--serie', '-s', multiple=True)
-def log(db_uri, limit, show_diff, serie):
+@click.option('--from-rev')
+@click.option('--to-rev')
+def log(db_uri, limit, show_diff, serie, from_rev, to_rev):
     engine = create_engine(db_uri)
 
     tsh = TimeSerie()
-    for rev in tsh.log(engine, limit=limit, diff=show_diff, names=serie):
+    for rev in tsh.log(engine, limit=limit, diff=show_diff, names=serie,
+                       fromrev=from_rev, torev=to_rev):
         rev['names'] = ','.join(rev['names'])
         print(format_rev(rev))
         print()

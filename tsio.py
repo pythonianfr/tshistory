@@ -187,7 +187,7 @@ class TimeSerie(object):
         ).where(tstable.c.csid == cset.c.id)
         return cnx.execute(sql).scalar()
 
-    def log(self, cnx, limit=0, diff=False, names=None):
+    def log(self, cnx, limit=0, diff=False, names=None, fromrev=None, torev=None):
         """Build a structure showing the history of all the series in the db,
         per changeset, in chronological order.
         """
@@ -202,6 +202,12 @@ class TimeSerie(object):
 
         if names:
             sql = sql.where(reg.c.name.in_(names))
+
+        if fromrev:
+            sql = sql.where(cset.c.id >= fromrev)
+
+        if torev:
+            sql = sql.where(cset.c.id <= torev)
 
         sql = sql.where(cset.c.id == cset_series.c.csid
         ).where(cset_series.c.serie == reg.c.name)
