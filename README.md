@@ -1,7 +1,10 @@
-# TSHISTORY
+TSHISTORY
+===========
 
 This is a library to store/retrieve pandas timeseries to/from a
 postgres database, tracking their successive versions.
+
+[TOC]
 
 
 # Principles
@@ -73,3 +76,70 @@ Freq: D
 It is important to note that the third value was replaced, and the two
 last values were just appended.
 
+
+# Command line operations
+
+
+A command line tool is provided, called `tsh`. It provides its usage
+guidelines:
+
+```shell
+ $ tsh --help
+ Usage: tsh [OPTIONS] COMMAND [ARGS]...
+
+ Options:
+   --help  Show this message and exit.
+
+ Commands:
+   info
+   log
+```
+
+It currently provides two basic operations `info` and `log`.
+
+`Info` provides an overview of the time series repository (number of
+committed changes, number and series and their names).
+
+```shell
+ $ tsh info postgres://babar:babarpassword@dataserver:5432/banana_studies
+ changeset count: 209
+ series count:    144
+ series names:    banana_spot_price, banana_trades, banana_turnover
+```
+
+`Log` provides the full history of editions to time series in the
+repository.
+
+```shell
+ $ tsh log postgres://babar:babar@dataserver:5432/banana_studies --limit 3
+ revision: 206
+ author:   BABAR
+ date:     2017-06-06 15:32:51.502507
+ series:   banana_spot_price
+
+ revision: 207
+ author:   BABAR
+ date:     2017-06-06 15:32:51.676507
+ series:   banana_trades
+
+ revision: 209
+ author:   CELESTE
+ date:     2017-06-06 15:32:51.977507
+ series:   banana_turnover
+```
+
+All options of all commands can be obtained by using the `--help`
+switch:
+
+```shell
+ $ tsh log --help
+ Usage: tsh log [OPTIONS] DB_URI
+
+ Options:
+   -l, --limit TEXT
+   --show-diff
+   -s, --serie TEXT
+   --from-rev TEXT
+   --to-rev TEXT
+   --help            Show this message and exit.
+```
