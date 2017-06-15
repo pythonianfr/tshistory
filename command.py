@@ -5,6 +5,9 @@ from sqlalchemy import create_engine
 from tshistory.tsio import TimeSerie
 
 
+TSH = TimeSerie()
+
+
 REVFMT = """
 revision: {rev}
 author:   {author}
@@ -42,8 +45,7 @@ def tsh(ctx):
 def log(db_uri, limit, show_diff, serie, from_rev, to_rev):
     engine = create_engine(db_uri)
 
-    tsh = TimeSerie()
-    for rev in tsh.log(engine, limit=limit, diff=show_diff, names=serie,
+    for rev in TSH.log(engine, limit=limit, diff=show_diff, names=serie,
                        fromrev=from_rev, torev=to_rev):
         rev['names'] = ','.join(rev['names'])
         print(format_rev(rev))
@@ -61,8 +63,7 @@ series names:    {serie names}
 def info(db_uri):
     engine = create_engine(db_uri)
 
-    tsh = TimeSerie()
-    info = tsh.info(engine)
+    info = TSH.info(engine)
     info['serie names'] = ', '.join(info['serie names'])
     print(INFOFMT.format(**info))
 
