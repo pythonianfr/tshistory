@@ -17,7 +17,7 @@ def format_rev(rev):
         fmt += 'series: {names}\n\n'
         lines = []
         for ts in rev['diff'].values():
-            lines.append(ts.to_csv())
+            lines.append(ts.to_string())
         fmt += '\n'.join(lines)
     else:
         fmt += 'series:   {names}'
