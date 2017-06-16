@@ -198,7 +198,7 @@ class TimeSerie(object):
         stats['serie names'] = [row for row, in cn.execute(sql).fetchall()]
         return stats
 
-    def log(self, cn, limit=0, diff=False, names=None, fromrev=None, torev=None):
+    def log(self, cn, limit=0, diff=False, names=None, authors=None, fromrev=None, torev=None):
         """Build a structure showing the history of all the series in the db,
         per changeset, in chronological order.
         """
@@ -213,6 +213,9 @@ class TimeSerie(object):
 
         if names:
             sql = sql.where(reg.c.name.in_(names))
+
+        if authors:
+            sql = sql.where(cset.c.author.in_(authors))
 
         if fromrev:
             sql = sql.where(cset.c.id >= fromrev)
