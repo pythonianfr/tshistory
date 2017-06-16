@@ -146,6 +146,9 @@ def test_differential(engine):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
     tso.insert(engine, ts_begin, 'ts_test', 'test')
 
+    assert tso.exists(engine, 'ts_test')
+    assert not tso.exists(engine, 'this_does_not_exist')
+
     assert_df("""
 2010-01-01    0.0
 2010-01-02    1.0

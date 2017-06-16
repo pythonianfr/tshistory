@@ -180,6 +180,9 @@ class TimeSerie(object):
                 group[seriename] = serie
         return group
 
+    def exists(self, cn, name):
+        return self._get_ts_table(cn, name) is not None
+
     def latest_insertion_date(self, cn, name):
         cset = schema.changeset
         tstable = self._get_ts_table(cn, name)
