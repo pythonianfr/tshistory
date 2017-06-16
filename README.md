@@ -77,8 +77,10 @@ It is important to note that the third value was replaced, and the two
 last values were just appended.
 
 
-# Command line operations
+# Command line
 
+
+## Basic operations
 
 A command line tool is provided, called `tsh`. It provides its usage
 guidelines:
@@ -143,3 +145,24 @@ switch:
    --to-rev TEXT
    --help            Show this message and exit.
 ```
+
+
+## Extensions
+
+It is possible to augment the `tsh` command with new subcommands (or
+augment, modify existing commands).
+
+Any program doing so must define a new command and declare a setup
+tools entry point named `tshistory:subcommand` as in e.g.:
+
+```python
+
+    entry_points={'tshistory.subcommands': [
+        'view=tsview.command:view'
+    ]}
+```
+
+For instance, the [tsview][tsview] python package provides such a
+`view` subcommand for generic time series visualisation.
+
+[tsview]: https://bitbucket.org/pythonian/tsview

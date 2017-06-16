@@ -47,6 +47,7 @@ def tsh(ctx):
 @click.option('--from-rev')
 @click.option('--to-rev')
 def log(db_uri, limit, show_diff, serie, from_rev, to_rev):
+    """show revision history of entire repository or series"""
     engine = create_engine(db_uri)
 
     for rev in TSH.log(engine, limit=limit, diff=show_diff, names=serie,
@@ -65,6 +66,7 @@ series names:    {serie names}
 @tsh.command()
 @click.argument('db-uri')
 def info(db_uri):
+    """show global statistics of the repository"""
     engine = create_engine(db_uri)
 
     info = TSH.info(engine)
