@@ -1,4 +1,7 @@
+from pkg_resources import iter_entry_points
+
 import click
+from click_plugins import with_plugins
 
 from sqlalchemy import create_engine
 
@@ -28,6 +31,7 @@ def format_rev(rev):
     return fmt.format(**rev)
 
 
+@with_plugins(iter_entry_points('tshistory.subcommands'))
 @click.group(invoke_without_command=True)
 @click.pass_context
 def tsh(ctx):
