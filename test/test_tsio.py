@@ -595,12 +595,8 @@ Freq: D
     diff = tso.insert(engine, ts_repushed, 'ts_repushed', 'test')
     assert diff is None
 
-    # exhibit bogus diff computation wrt nans
-    assert_df("""
-2010-01-01   NaN
-2010-01-02   NaN
-2010-01-03   NaN
-""", tso._compute_diff(ts_repushed, ts_repushed))
+    # there is no difference
+    assert 0 == len(tso._compute_diff(ts_repushed, ts_repushed))
 
     ts_add = genserie(datetime(2010, 1, 1), 'D', 15)
     ts_add.iloc[0] = np.nan
@@ -609,12 +605,15 @@ Freq: D
     diff = tso._compute_diff(ts_repushed, ts_add)
 
     assert_df("""
-2010-01-01     NaN
 2010-01-02     1.0
 2010-01-03     2.0
 2010-01-09     NaN
 2010-01-12    11.0
 2010-01-13    12.0""", diff)
+    # value on nan => value
+    # nan on value => nan
+    # nan on nan => Nothing
+    # nan on nothing=> Nothing
 
 
 def test_multi_index(engine):

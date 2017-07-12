@@ -435,6 +435,9 @@ class TimeSerie(object):
         else:
             mask_equal = fromts_overlap == tots_overlap
 
+        mask_na_equal = fromts_overlap.isnull() & tots_overlap.isnull()
+        mask_equal = mask_equal | mask_na_equal
+
         diff_overlap = tots[mask_overlap][~mask_equal]
         diff_new = tots[~mask_overlap]
         diff_new = diff_new[~diff_new.isnull()]
