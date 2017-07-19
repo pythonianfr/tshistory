@@ -572,6 +572,50 @@ def test_deletion(engine):
 
     assert tso.get(engine, 'ts_null') is None
 
+    # exhibit issue with nans handling
+    ts_repushed = genserie(datetime(2010, 1, 1), 'D', 11)
+    ts_repushed[0:3] = np.nan
+
+    assert_df("""
+2010-01-01     NaN
+2010-01-02     NaN
+2010-01-03     NaN
+2010-01-04     3.0
+2010-01-05     4.0
+2010-01-06     5.0
+2010-01-07     6.0
+2010-01-08     7.0
+2010-01-09     8.0
+2010-01-10     9.0
+2010-01-11    10.0
+Freq: D
+""", ts_repushed)
+
+    tso.insert(engine, ts_repushed, 'ts_repushed', 'test')
+    diff = tso.insert(engine, ts_repushed, 'ts_repushed', 'test')
+    assert diff is None
+
+    # exhibit bogus diff computation wrt nans
+    assert_df("""
+2010-01-01   NaN
+2010-01-02   NaN
+2010-01-03   NaN
+""", tso._compute_diff(ts_repushed, ts_repushed))
+
+    ts_add = genserie(datetime(2010, 1, 1), 'D', 15)
+    ts_add.iloc[0] = np.nan
+    ts_add.iloc[13:] = np.nan
+    ts_add.iloc[8] = np.nan
+    diff = tso._compute_diff(ts_repushed, ts_add)
+
+    assert_df("""
+2010-01-01     NaN
+2010-01-02     1.0
+2010-01-03     2.0
+2010-01-09     NaN
+2010-01-12    11.0
+2010-01-13    12.0""", diff)
+
 
 def test_multi_index(engine):
     tso = TimeSerie()
