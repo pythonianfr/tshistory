@@ -31,6 +31,11 @@ def tojson(ts):
     # multi index case
     return ts.to_frame().reset_index().to_json(date_format='iso')
 
+def num2float(pdobj):
+    # get a Series or a Dataframe column
+    if str(pdobj.dtype).startswith('int'):
+        return pdobj.astype('float64')
+    return pdobj
 
 def fromjson(jsonb, tsname):
     return _fromjson(jsonb, tsname).fillna(value=np.nan)
@@ -42,6 +47,7 @@ def _fromjson(jsonb, tsname):
 
     result = pd.read_json(jsonb, typ='series', dtype=False)
     if isinstance(result.index, pd.DatetimeIndex):
+        result = num2float(result)
         return result
 
     # multi index case
@@ -50,8 +56,7 @@ def _fromjson(jsonb, tsname):
     result = pd.read_json(jsonb, typ='frame',
                           convert_dates=columns)
     result.set_index(sorted(columns), inplace=True)
-
-    return result.iloc[:, 0] # get a Series object
+    return num2float(result.iloc[:, 0]) # get a Series object
 
 
 class TimeSerie(object):
@@ -94,8 +99,7 @@ class TimeSerie(object):
         assert isinstance(newts, pd.Series)
         assert not newts.index.duplicated().any()
 
-        if str(newts.dtype).startswith('int'):
-            newts = newts.astype('float64')
+        newts = num2float(newts)
 
         if not len(newts):
             return
@@ -336,8 +340,19 @@ class TimeSerie(object):
             ).values(snapshot=None)
         )
 
+    def _validate_type(self, oldts, newts, name):
+        if (oldts is None or newts.isnull().all()):
+            return
+        old_type = oldts.dtype
+        new_type = newts.dtype
+        if new_type != old_type:
+            m = 'Type error when inserting {}, new type is {}, type in base is {}'.format(
+                name, new_type, old_type)
+            raise Exception(m)
+
     def _compute_diff_and_newsnapshot(self, cn, table, newts, **extra_scalars):
         snapshot = self._build_snapshot_upto(cn, table)
+        self._validate_type(snapshot, newts, table.name)
         diff = self._compute_diff(snapshot, newts)
 
         if len(diff) == 0:
