@@ -260,7 +260,7 @@ class TimeSerie(object):
             seriename, schema.meta,
             Column('id', Integer, primary_key=True),
             Column('csid', Integer, ForeignKey('changeset.id'),
-                   nullable=False),
+                   index=True, nullable=False),
             # constraint: there is either .diff or .snapshot
             Column('diff', JSONB(none_as_null=True)),
             Column('snapshot', JSONB(none_as_null=True)),
