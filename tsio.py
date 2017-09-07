@@ -446,7 +446,7 @@ class TimeSerie(object):
 
         if fromts.dtype == 'float64':
             mask_equal = np.isclose(fromts_overlap, tots_overlap,
-                                    atol=self._precision)
+                                    rtol=0, atol=self._precision)
         else:
             mask_equal = fromts_overlap == tots_overlap
 
