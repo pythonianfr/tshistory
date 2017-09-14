@@ -14,6 +14,7 @@ DBURI = 'postgresql://localhost:5433/postgres'
 
 tshclass = tsio.TimeSerie
 
+
 @pytest.fixture(scope='session')
 def engine(request):
     port = 5433
@@ -21,14 +22,9 @@ def engine(request):
     uri = 'postgresql://localhost:{}/postgres'.format(port)
     engine = create_engine(uri)
 
-    metadata = schema.meta
-    # explicitly cleanup the ts tables
-    if schema.registry.exists(engine):
-        engine.execute('drop schema timeserie cascade')
-    metadata.drop_all(engine)
-    # /cleanup
-
+    schema.reset(engine, schema)
     schema.init(engine)
+
     e = create_engine(uri)
     yield e
 

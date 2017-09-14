@@ -33,3 +33,11 @@ def init(engine):
     from sqlalchemy.schema import CreateSchema
     engine.execute(CreateSchema('timeserie'))
     meta.create_all(engine)
+
+
+def reset(engine, schema):
+    metadata = schema.meta
+    # explicitly cleanup the ts tables
+    if schema.registry.exists(engine):
+        engine.execute('drop schema timeserie cascade')
+    metadata.drop_all(engine)
