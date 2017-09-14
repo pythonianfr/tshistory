@@ -1,5 +1,6 @@
 from sqlalchemy import (Table, Column, Integer, String, MetaData, DateTime,
                         ForeignKey, PrimaryKeyConstraint)
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 meta = MetaData()
@@ -9,6 +10,7 @@ registry = Table(
     Column('id', Integer, primary_key=True),
     Column('name', String, index=True, nullable=False, unique=True),
     Column('table_name', String, index=True, nullable=False, unique=True),
+    Column('metadata', JSONB(none_as_null=True))
 )
 
 
@@ -17,6 +19,7 @@ changeset = Table(
     Column('id', Integer, primary_key=True),
     Column('author', String, index=True, nullable=False),
     Column('insertion_date', DateTime, index=True, nullable=False),
+    Column('metadata', JSONB(none_as_null=True))
 )
 
 changeset_series = Table(
