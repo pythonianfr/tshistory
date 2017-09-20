@@ -341,7 +341,9 @@ class TimeSerie(object):
         )
 
     def _validate_type(self, oldts, newts, name):
-        if (oldts is None or newts.isnull().all()):
+        if (oldts is None or
+            oldts.isnull().all() or
+            newts.isnull().all()):
             return
         old_type = oldts.dtype
         new_type = newts.dtype

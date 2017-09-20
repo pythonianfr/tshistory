@@ -615,6 +615,27 @@ Freq: D
     # nan on nan => Nothing
     # nan on nothing=> Nothing
 
+    ## full erasing
+    # numeric
+    ts_begin = genserie(datetime(2010, 1, 1), 'D', 4)
+    tso.insert(engine, ts_begin, 'ts_full_del', 'test')
+
+    ts_begin.iloc[:]= np.nan
+    tso.insert(engine, ts_begin, 'ts_full_del', 'test')
+
+    ts_end = genserie(datetime(2010, 1, 1), 'D', 4)
+    tso.insert(engine, ts_end, 'ts_full_del', 'test')
+
+    # string
+
+    ts_begin = genserie(datetime(2010, 1, 1), 'D', 4, ['text'])
+    tso.insert(engine, ts_begin, 'ts_full_del_str', 'test')
+
+    ts_begin.iloc[:] = np.nan
+    tso.insert(engine, ts_begin, 'ts_full_del_str', 'test')
+
+    ts_end = genserie(datetime(2010, 1, 1), 'D', 4, ['text'])
+    tso.insert(engine, ts_end, 'ts_full_del_str', 'test')
 
 def test_multi_index(engine):
     tso = TimeSerie()
