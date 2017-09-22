@@ -609,7 +609,7 @@ Freq: D
 2010-01-03     2.0
 2010-01-09     NaN
 2010-01-12    11.0
-2010-01-13    12.0""", diff)
+2010-01-13    12.0""", diff.sort_index())
     # value on nan => value
     # nan on value => nan
     # nan on nan => Nothing

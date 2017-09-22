@@ -172,6 +172,7 @@ class TimeSerie(object):
 
         if current is not None:
             current.name = name
+            current = current[~current.isnull()]
         return current
 
     def get_group(self, cn, name, revision_date=None):
@@ -439,9 +440,12 @@ class TimeSerie(object):
         (like in tots - fromts).
 
         """
-        if fromts is None or not len(fromts):
+        if fromts is None:
             return tots
-
+        fromts = fromts[~fromts.isnull()]
+        if not len(fromts):
+            return tots
+        
         mask_overlap = tots.index.isin(fromts.index)
         fromts_overlap = fromts[tots.index[mask_overlap]]
         tots_overlap = tots[mask_overlap]
@@ -472,7 +476,6 @@ class TimeSerie(object):
         result_ts = pd.Series([0.0], index=base_ts.index.union(new_ts.index))
         result_ts[base_ts.index] = base_ts
         result_ts[new_ts.index] = new_ts
-        result_ts = result_ts[~result_ts.isnull()]
         result_ts.sort_index(inplace=True)
         result_ts.name = base_ts.name
         return result_ts
