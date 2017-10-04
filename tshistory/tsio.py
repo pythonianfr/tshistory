@@ -188,6 +188,25 @@ class TimeSerie(object):
                 group[seriename] = serie
         return group
 
+    def get_history(self, cn, name,
+                    from_insertion_date=None,
+                    to_insertion_date=None):
+        table = self._get_ts_table(cn, name)
+        if table is None:
+            return
+
+        logs = self.log(cn, names=[name],
+                        fromdate=from_insertion_date,
+                        todate=to_insertion_date)
+        series = []
+        for log in logs:
+            serie = self.get(cn, name, revision_date=log['date'])
+            revdate = pd.Timestamp(log['date'])
+            mindex = [(revdate, valuestamp) for valuestamp in serie.index]
+            serie.index = pd.MultiIndex.from_tuples(mindex, names=['insertion_date', 'value_date'])
+            series.append(serie)
+        return pd.concat(series)
+
     def exists(self, cn, name):
         return self._get_ts_table(cn, name) is not None
 
@@ -209,7 +228,9 @@ class TimeSerie(object):
         stats['serie names'] = [row for row, in cn.execute(sql).fetchall()]
         return stats
 
-    def log(self, cn, limit=0, diff=False, names=None, authors=None, fromrev=None, torev=None):
+    def log(self, cn, limit=0, diff=False, names=None, authors=None,
+            fromrev=None, torev=None,
+            fromdate=None, todate=None):
         """Build a structure showing the history of all the series in the db,
         per changeset, in chronological order.
         """
@@ -233,6 +254,12 @@ class TimeSerie(object):
 
         if torev:
             sql = sql.where(cset.c.id <= torev)
+
+        if fromdate:
+            sql = sql.where(cset.c.insertion_date >= fromdate)
+
+        if todate:
+            sql = sql.where(cset.c.insertion_date <= todate)
 
         sql = sql.where(cset.c.id == cset_series.c.csid
         ).where(cset_series.c.serie == reg.c.name)

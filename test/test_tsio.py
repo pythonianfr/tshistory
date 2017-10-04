@@ -778,6 +778,91 @@ a          b                   c
     # the result ts have now 3 values for each point in 'a'
 
 
+def test_get_history(engine):
+    tsh = TimeSerie()
+
+    for numserie in (1, 2, 3):
+        with engine.connect() as cn:
+            with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.fr',
+                                  _insertion_date=datetime(2017, 2, numserie)):
+                tsh.insert(cn, genserie(datetime(2017, 1, 1), 'D', numserie), 'smallserie')
+
+    ts = tsh.get(engine, 'smallserie')
+    assert_df("""
+2017-01-01    0.0
+2017-01-02    1.0
+2017-01-03    2.0
+""", ts)
+
+    logs = tsh.log(engine, names=['smallserie'])
+    assert [
+        {'author': 'aurelien.campeas@pythonian.fr',
+         'date': datetime(2017, 2, 1, 0, 0),
+         'names': ['smallserie']
+        },
+        {'author': 'aurelien.campeas@pythonian.fr',
+         'date': datetime(2017, 2, 2, 0, 0),
+         'names': ['smallserie']
+        },
+        {'author': 'aurelien.campeas@pythonian.fr',
+         'date': datetime(2017, 2, 3, 0, 0),
+         'names': ['smallserie']
+        }
+    ] == [{k: v for k, v in log.items() if k != 'rev'}
+          for log in logs]
+    histts = tsh.get_history(engine, 'smallserie')
+
+    assert_df("""
+insertion_date  value_date
+2017-02-01      2017-01-01    0.0
+2017-02-02      2017-01-01    0.0
+                2017-01-02    1.0
+2017-02-03      2017-01-01    0.0
+                2017-01-02    1.0
+                2017-01-03    2.0
+""", histts)
+
+    for idx, idate in enumerate(histts.groupby('insertion_date').groups):
+        with engine.connect() as cn:
+            with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.f',
+                                  _insertion_date=idate):
+                tsh.insert(cn, histts[idate], 'smallserie2')
+
+    # this is perfectly round-tripable
+    assert (tsh.get(engine, 'smallserie2') == ts).all()
+    assert (tsh.get_history(engine, 'smallserie2') == histts).all()
+
+    # get history ranges
+    tsa = tsh.get_history(engine, 'smallserie',
+                          from_insertion_date=datetime(2017, 2, 2))
+    assert_df("""
+insertion_date  value_date
+2017-02-02      2017-01-01    0.0
+                2017-01-02    1.0
+2017-02-03      2017-01-01    0.0
+                2017-01-02    1.0
+                2017-01-03    2.0
+""", tsa)
+
+    tsb = tsh.get_history(engine, 'smallserie',
+                          to_insertion_date=datetime(2017, 2, 2))
+    assert_df("""
+insertion_date  value_date
+2017-02-01      2017-01-01    0.0
+2017-02-02      2017-01-01    0.0
+                2017-01-02    1.0
+""", tsb)
+
+    tsc = tsh.get_history(engine, 'smallserie',
+                          from_insertion_date=datetime(2017, 2, 2),
+                          to_insertion_date=datetime(2017, 2, 2))
+    assert_df("""
+insertion_date  value_date
+2017-02-02      2017-01-01    0.0
+                2017-01-02    1.0
+""", tsc)
+
+
 def test_add_na(engine):
     tsh = TimeSerie()
 
