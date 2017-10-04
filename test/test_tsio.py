@@ -36,6 +36,7 @@ def genserie(start, freq, repeat, initval=None, tz=None, name=None):
                                          periods=repeat,
                                          tz=tz))
 
+
 def test_changeset(engine):
     # instantiate one time serie handler object
     tso = TimeSerie()
@@ -55,7 +56,7 @@ def test_changeset(engine):
         assert_group_equals(g, g2)
 
         with pytest.raises(AssertionError):
-            tso.insert(engine, pd.Series([2,3,4], index=index), 'ts_values')
+            tso.insert(engine, pd.Series([2, 3, 4], index=index), 'ts_values')
 
         with engine.connect() as cn:
             data.append(data.pop(0))
@@ -267,7 +268,7 @@ def test_differential(engine):
 """, tso.get(engine, 'ts_mixte'))
 
     hist = pd.read_sql('select id, parent from timeserie.ts_test order by id',
-                        engine)
+                       engine)
     assert_df("""
    id  parent
 0   1     NaN
@@ -276,7 +277,7 @@ def test_differential(engine):
 """, hist)
 
     hist = pd.read_sql('select id, parent from timeserie.ts_mixte order by id',
-                        engine)
+                       engine)
     assert_df("""
    id  parent
 0   1     NaN
@@ -388,7 +389,7 @@ def test_revision_date(engine):
 """, ts)
 
     ts = tso.get(engine, 'ts_through_time',
-                 revision_date=datetime(2015, 1, 2, 18, 43, 23) )
+                 revision_date=datetime(2015, 1, 2, 18, 43, 23))
 
     assert_df("""
 2010-01-04    2.0
@@ -615,12 +616,12 @@ Freq: D
     # nan on nan => Nothing
     # nan on nothing=> Nothing
 
-    ## full erasing
+    # full erasing
     # numeric
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 4)
     tso.insert(engine, ts_begin, 'ts_full_del', 'test')
 
-    ts_begin.iloc[:]= np.nan
+    ts_begin.iloc[:] = np.nan
     tso.insert(engine, ts_begin, 'ts_full_del', 'test')
 
     ts_end = genserie(datetime(2010, 1, 1), 'D', 4)
@@ -636,6 +637,7 @@ Freq: D
 
     ts_end = genserie(datetime(2010, 1, 1), 'D', 4, ['text'])
     tso.insert(engine, ts_end, 'ts_full_del_str', 'test')
+
 
 def test_multi_index(engine):
     tso = TimeSerie()
