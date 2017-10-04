@@ -81,8 +81,10 @@ class TimeSerie(object):
         """
         assert self._csid is None
         self._csid = self._newchangeset(cn, author, _insertion_date)
+        self._author = author
         yield
         del self._csid
+        del self._author
 
     def insert(self, cn, newts, name, author=None,
                extra_scalars={}):
@@ -129,14 +131,16 @@ class TimeSerie(object):
             self._complete_insertion_value(value, extra_scalars)
             cn.execute(table.insert().values(value))
             self._finalize_insertion(cn, csid, name)
-            L.info('First insertion of %s by %s', name, author)
+            L.info('first insertion of %s (size=%s) by %s',
+                   name, len(newts), author or self._author)
             return newts
 
         diff, newsnapshot = self._compute_diff_and_newsnapshot(
             cn, table, newts, **extra_scalars
         )
         if diff is None:
-            L.info('No difference in %s by %s', name, author)
+            L.info('no difference in %s by %s (for ts of size %s)',
+                   name, author or self._author, len(newts))
             return
 
         tip_id = self._get_tip_id(cn, table)
@@ -154,7 +158,8 @@ class TimeSerie(object):
 
         if tip_id > 1 and tip_id % self._snapshot_interval:
             self._purge_snapshot_at(cn, table, tip_id)
-        L.info('Inserted diff for ts %s by %s', name, author)
+        L.info('inserted diff (size=%s) for ts %s by %s',
+               len(diff), name, author or self._author)
         return diff
 
     def get(self, cn, name, revision_date=None):
