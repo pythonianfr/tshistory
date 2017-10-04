@@ -4,6 +4,7 @@ import click
 from click_plugins import with_plugins
 from sqlalchemy import create_engine
 from dateutil.parser import parse as temporal
+import pandas as pd
 
 from tshistory.tsio import TimeSerie
 
@@ -38,6 +39,22 @@ def format_rev(rev):
 def tsh(ctx):
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_usage())
+
+
+@tsh.command()
+@click.argument('db-uri')
+@click.argument('seriename')
+@click.option('--json', is_flag=True, default=False)
+def get(db_uri, seriename, json):
+    """show a serie in its current state """
+    engine = create_engine(db_uri)
+
+    ts = TSH.get(engine, seriename)
+    if json:
+        print(ts.to_json())
+    else:
+        with pd.option_context('display.max_rows', None, 'display.max_columns', 3):
+            print(ts)
 
 
 @tsh.command()
