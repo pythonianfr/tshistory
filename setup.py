@@ -8,7 +8,6 @@ setup(name='tshistory',
       description='Store timeseries histories into postgres',
 
       packages=['tshistory'],
-      package_dir={'tshistory': '.'},
       install_requires=[
           'pathlib',
           'pandas',
