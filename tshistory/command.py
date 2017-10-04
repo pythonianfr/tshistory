@@ -2,8 +2,8 @@ from pkg_resources import iter_entry_points
 
 import click
 from click_plugins import with_plugins
-
 from sqlalchemy import create_engine
+from dateutil.parser import parse as temporal
 
 from tshistory.tsio import TimeSerie
 
@@ -47,12 +47,16 @@ def tsh(ctx):
 @click.option('--serie', '-s', multiple=True)
 @click.option('--from-rev')
 @click.option('--to-rev')
-def log(db_uri, limit, show_diff, serie, from_rev, to_rev):
+@click.option('--from-insertion-date', type=temporal)
+@click.option('--to-insertion-date', type=temporal)
+def log(db_uri, limit, show_diff, serie, from_rev, to_rev,
+        from_insertion_date, to_insertion_date):
     """show revision history of entire repository or series"""
     engine = create_engine(db_uri)
 
     for rev in TSH.log(engine, limit=limit, diff=show_diff, names=serie,
-                       fromrev=from_rev, torev=to_rev):
+                       fromrev=from_rev, torev=to_rev,
+                       fromdate=from_insertion_date, todate=to_insertion_date):
         rev['names'] = ','.join(rev['names'])
         print(format_rev(rev))
         print()

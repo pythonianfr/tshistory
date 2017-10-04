@@ -11,6 +11,7 @@ setup(name='tshistory',
       install_requires=[
           'pathlib',
           'pandas',
+          'dateutils',
           'sqlalchemy',
           'click',
           'click-plugins',
