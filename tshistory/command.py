@@ -17,6 +17,7 @@ author:   {author}
 date:     {date}
 """.strip()
 
+
 def format_rev(rev):
     fmt = REVFMT + '\n'
     if rev.get('diff'):
@@ -62,6 +63,7 @@ changeset count: {changeset count}
 series count:    {series count}
 series names:    {serie names}
 """.strip()
+
 
 @tsh.command()
 @click.argument('db-uri')
