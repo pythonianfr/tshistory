@@ -18,6 +18,7 @@ def setuplogging():
     logger.setLevel(logging.INFO)
     return logger
 
+
 L = setuplogging()
 
 
@@ -31,11 +32,13 @@ def tojson(ts):
     # multi index case
     return ts.to_frame().reset_index().to_json(date_format='iso')
 
+
 def num2float(pdobj):
     # get a Series or a Dataframe column
     if str(pdobj.dtype).startswith('int'):
         return pdobj.astype('float64')
     return pdobj
+
 
 def fromjson(jsonb, tsname):
     return _fromjson(jsonb, tsname).fillna(value=np.nan)
@@ -56,7 +59,7 @@ def _fromjson(jsonb, tsname):
     result = pd.read_json(jsonb, typ='frame',
                           convert_dates=columns)
     result.set_index(sorted(columns), inplace=True)
-    return num2float(result.iloc[:, 0]) # get a Series object
+    return num2float(result.iloc[:, 0])  # get a Series object
 
 
 class TimeSerie(object):
@@ -445,7 +448,7 @@ class TimeSerie(object):
         fromts = fromts[~fromts.isnull()]
         if not len(fromts):
             return tots
-        
+
         mask_overlap = tots.index.isin(fromts.index)
         fromts_overlap = fromts[tots.index[mask_overlap]]
         tots_overlap = tots[mask_overlap]
