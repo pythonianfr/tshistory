@@ -22,7 +22,7 @@ def engine(request):
     uri = 'postgresql://localhost:{}/postgres'.format(port)
     engine = create_engine(uri)
 
-    schema.reset(engine, schema)
+    schema.reset(engine)
     schema.init(engine)
 
     e = create_engine(uri)
