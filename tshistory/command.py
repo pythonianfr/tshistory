@@ -59,6 +59,22 @@ def get(db_uri, seriename, json):
 
 @tsh.command()
 @click.argument('db-uri')
+@click.argument('seriename')
+@click.option('--json', is_flag=True, default=False)
+def history(db_uri, seriename, json):
+    """show a serie full history """
+    engine = create_engine(db_uri)
+
+    ts = TSH.get_history(engine, seriename)
+    if json:
+        print(ts.to_json())
+    else:
+        with pd.option_context('display.max_rows', None, 'display.max_columns', 3):
+            print(ts)
+
+
+@tsh.command()
+@click.argument('db-uri')
 @click.option('--limit', '-l', default=None)
 @click.option('--show-diff', is_flag=True, default=False)
 @click.option('--serie', '-s', multiple=True)
