@@ -45,3 +45,8 @@ def engine(request):
     # using the logger.
     for name in allnames:
         assert (tsh.get(engine, name) == tsh.get(engine, 'new_' + name)).all()
+
+
+@pytest.fixture()
+def tsh():
+    return tsio.TimeSerie()

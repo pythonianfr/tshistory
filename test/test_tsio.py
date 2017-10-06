@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 from mock import patch
 
-from tshistory.tsio import TimeSerie
 
 DATADIR = Path(__file__).parent / 'data'
 
@@ -37,10 +36,7 @@ def genserie(start, freq, repeat, initval=None, tz=None, name=None):
                                          tz=tz))
 
 
-def test_changeset(engine):
-    # instantiate one time serie handler object
-    tsh = TimeSerie()
-
+def test_changeset(engine, tsh):
     index = pd.date_range(start=datetime(2017, 1, 1), freq='D', periods=3)
     data = [1., 2., 3.]
 
@@ -111,8 +107,7 @@ def test_changeset(engine):
     } == info
 
 
-def test_tstamp_roundtrip(engine):
-    tsh = TimeSerie()
+def test_tstamp_roundtrip(engine, tsh):
     ts = genserie(datetime(2017, 10, 28, 23),
                   'H', 4, tz='UTC')
     ts.index = ts.index.tz_convert('Europe/Paris')
@@ -140,10 +135,7 @@ Freq: H
     assert (ts.index == back.index).all()
 
 
-def test_differential(engine):
-    # instantiate one time serie handler object
-    tsh = TimeSerie()
-
+def test_differential(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
     tsh.insert(engine, ts_begin, 'ts_test', 'test')
 
@@ -307,10 +299,7 @@ def test_differential(engine):
              revision_date=datetime.now()))
 
 
-def test_bad_import(engine):
-    # instantiate one time serie handler object
-    tsh = TimeSerie()
-
+def test_bad_import(engine, tsh):
     # the data were parsed as date by pd.read_json()
     df_result = pd.read_csv(DATADIR / 'test_data.csv')
     df_result['Gas Day'] = df_result['Gas Day'].apply(parser.parse, dayfirst=True, yearfirst=False)
@@ -354,10 +343,7 @@ def test_bad_import(engine):
     tsh.get(engine, 'inexisting_name', 'test')
 
 
-def test_revision_date(engine):
-    # instantiate one time serie handler object
-    tsh = TimeSerie()
-
+def test_revision_date(engine, tsh):
     idate1 = datetime(2015, 1, 1, 15, 43, 23)
     with tsh.newchangeset(engine, 'test', _insertion_date=idate1):
 
@@ -414,8 +400,7 @@ def test_revision_date(engine):
     assert ts is None
 
 
-def test_snapshots(engine):
-    tsh = TimeSerie()
+def test_snapshots(engine, tsh):
     tsh._snapshot_interval = 4
 
     with engine.connect() as cn:
@@ -475,9 +460,7 @@ def test_snapshots(engine):
     assert (ts == snap).all()
 
 
-def test_deletion(engine):
-    tsh = TimeSerie()
-
+def test_deletion(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 11)
     ts_begin.iloc[-1] = np.nan
     tsh.insert(engine, ts_begin, 'ts_del', 'test')
@@ -639,9 +622,7 @@ Freq: D
     tsh.insert(engine, ts_end, 'ts_full_del_str', 'test')
 
 
-def test_multi_index(engine):
-    tsh = TimeSerie()
-
+def test_multi_index(engine, tsh):
     appdate_0 = pd.DatetimeIndex(start=datetime(2015, 1, 1),
                                  end=datetime(2015, 1, 2),
                                  freq='D').values
@@ -778,9 +759,7 @@ a          b                   c
     # the result ts have now 3 values for each point in 'a'
 
 
-def test_get_history(engine):
-    tsh = TimeSerie()
-
+def test_get_history(engine, tsh):
     for numserie in (1, 2, 3):
         with engine.connect() as cn:
             with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.fr',
@@ -863,9 +842,7 @@ insertion_date  value_date
 """, tsc)
 
 
-def test_add_na(engine):
-    tsh = TimeSerie()
-
+def test_add_na(engine, tsh):
     # a serie of NaNs won't be insert in base
     # in case of first insertion
     ts_nan = genserie(datetime(2010, 1, 1), 'D', 5)
@@ -891,9 +868,7 @@ def test_add_na(engine):
     assert len(result) == 5
 
 
-def test_dtype_mismatch(engine):
-    tsh = TimeSerie()
-
+def test_dtype_mismatch(engine, tsh):
     tsh.insert(engine,
                genserie(datetime(2015, 1, 1), 'D', 11).astype('str'),
                'error1',
