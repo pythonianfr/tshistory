@@ -1,7 +1,9 @@
 # coding: utf-8
 from pathlib import Path
 from datetime import datetime
+from time import time
 from dateutil import parser
+import calendar
 
 import pandas as pd
 import numpy as np
@@ -10,39 +12,9 @@ from mock import patch
 
 from tshistory.tsio import BigdataTimeSerie
 
+from tshistory.testutil import assert_group_equals, genserie, assert_df
+
 DATADIR = Path(__file__).parent / 'data'
-
-
-def assert_group_equals(g1, g2):
-    for (n1, s1), (n2, s2) in zip(sorted(g1.items()),
-                                  sorted(g2.items())):
-        assert n1 == n2
-        assert s1.equals(s2)
-
-
-def remove_metadata(tsrepr):
-    if 'Freq' in tsrepr or 'Name' in tsrepr:
-        return tsrepr[:tsrepr.rindex('\n')]
-    return tsrepr
-
-
-def assert_df(expected, df):
-    exp = remove_metadata(expected.strip())
-    got = remove_metadata(df.to_string().strip())
-    assert exp == got
-
-
-def genserie(start, freq, repeat, initval=None, tz=None, name=None):
-    if initval is None:
-        values = range(repeat)
-    else:
-        values = initval * repeat
-    return pd.Series(values,
-                     name=name,
-                     index=pd.date_range(start=start,
-                                         freq=freq,
-                                         periods=repeat,
-                                         tz=tz))
 
 
 def test_changeset(engine, tsh):
@@ -85,7 +57,7 @@ def test_changeset(engine, tsh):
 2017-01-03    c
 """, tsh.get(engine, 'ts_othervalues'))
 
-    log = tsh.log(engine)
+    log = tsh.log(engine, names=['ts_values', 'ts_othervalues'])
     assert [
         {'author': 'babar',
          'rev': 1,
@@ -412,6 +384,7 @@ def test_revision_date(engine, tsh):
 
 
 def test_snapshots(engine, tsh):
+    baseinterval = tsh._snapshot_interval
     tsh._snapshot_interval = 4
 
     with engine.connect() as cn:
@@ -484,6 +457,7 @@ def test_snapshots(engine, tsh):
     snapid, snap = tsh._find_snapshot(engine, table, ())
     assert snapid == 10
     assert (ts == snap).all()
+    tsh._snapshot_interval = baseinterval
 
 
 def test_deletion(engine, tsh):
@@ -920,3 +894,72 @@ def test_dtype_mismatch(engine, tsh):
                    'test')
 
     assert 'Type error when inserting error2, new type is object, type in base is float64' == str(excinfo.value)
+
+
+def test_bigdata(engine, tsh):
+    def create_data():
+        for year in range(2015, 2020):
+            serie = genserie(datetime(year, 1, 1), '10Min', 6 * 24 * 365)
+            tsh.insert(engine, serie, 'big', 'aurelien.campeas@pythonian.fr')
+
+    t0 = time()
+    create_data()
+    print('T=', time() - t0, tsh.__class__.__name__)
+
+    df = pd.read_sql("select id, diff, snapshot from timeserie.big order by id", engine)
+    for attr in ('diff', 'snapshot'):
+        df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
+
+    if isinstance(tsh, BigdataTimeSerie):
+        assert_df("""
+id    diff  snapshot
+0   1       0    232684
+1   2  232639         0
+2   3  232681         0
+3   4  232651         0
+4   5  232688   1163489
+""", df)
+
+    else:
+        assert_df("""
+id     diff  snapshot
+0   1        0   1828491
+1   2  1828491         0
+2   3  1828491         0
+3   4  1828491         0
+4   5  1828491   9142451
+""", df)
+
+
+def test_lots_of_diffs(engine, tsh):
+    def create_data():
+        for month in range(1, 4):
+            days = calendar.monthrange(2017, month)[1]
+            for day in range(1, days+1):
+                serie = genserie(datetime(2017, month, day), '10Min', 6*24)
+                with engine.connect() as cn:
+                    tsh.insert(cn, serie, 'manydiffs', 'aurelien.campeas@pythonian.fr')
+
+    t0 = time()
+    create_data()
+
+    print('T=', time() - t0, tsh.__class__.__name__)
+
+    df = pd.read_sql("select id, diff, snapshot from timeserie.manydiffs order by id ",
+                     engine)
+    for attr in ('diff', 'snapshot'):
+        df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
+
+    if isinstance(tsh, BigdataTimeSerie):
+        assert_df("""
+id            4095
+diff         58710
+snapshot    176341
+""", df.sum())
+
+    else:
+        assert_df("""
+id             4095
+diff         413227
+snapshot    2093552
+""", df.sum())

@@ -1,3 +1,4 @@
+from time import time
 from pathlib import Path
 
 from sqlalchemy import create_engine
@@ -32,13 +33,17 @@ def engine(request):
                 scope='session')
 def tsh(request, engine):
     tsh = request.param()
+    t0 = time()
     yield tsh
+    print('Total run time', time() - t0, tsh.__class__.__name__)
 
     # build a ts using the logs from another
     log = tsh.log(engine, diff=True)
     allnames = set()
     for rev in log:
         for name, ts in rev['diff'].items():
+            if 'big' in name:
+                continue
             allnames.add(name)
             with tsh.newchangeset(engine, rev['author'],
                                   _insertion_date=rev['date']):

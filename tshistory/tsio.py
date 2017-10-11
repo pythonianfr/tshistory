@@ -14,14 +14,7 @@ from sqlalchemy.dialects.postgresql import JSONB, BYTEA
 from tshistory import schema
 
 
-def setuplogging():
-    logger = logging.getLogger('tshistory.tsio')
-    logger.addHandler(logging.StreamHandler())
-    logger.setLevel(logging.INFO)
-    return logger
-
-
-L = setuplogging()
+L = logging.getLogger('tshistory.tsio')
 
 
 def tojson(ts):
