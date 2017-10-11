@@ -12,8 +12,6 @@ from tshistory import schema, tsio
 DATADIR = Path(__file__).parent / 'test' / 'data'
 DBURI = 'postgresql://localhost:5433/postgres'
 
-tshclass = tsio.TimeSerie
-
 
 @pytest.fixture(scope='session')
 def engine(request):
@@ -28,8 +26,15 @@ def engine(request):
     e = create_engine(uri)
     yield e
 
+
+@pytest.fixture(params=[tsio.TimeSerie,
+                        tsio.BigdataTimeSerie],
+                scope='session')
+def tsh(request, engine):
+    tsh = request.param()
+    yield tsh
+
     # build a ts using the logs from another
-    tsh = tshclass()
     log = tsh.log(engine, diff=True)
     allnames = set()
     for rev in log:
@@ -46,7 +51,12 @@ def engine(request):
     for name in allnames:
         assert (tsh.get(engine, name) == tsh.get(engine, 'new_' + name)).all()
 
-
-@pytest.fixture()
-def tsh():
-    return tsio.TimeSerie()
+    schema.reset(engine)
+    meta = schema.MetaData()
+    # fix the schema module
+    r, c, cs = schema.make_schema(meta)
+    schema.registry = r
+    schema.changeset = c
+    schema.changeset_series = cs
+    schema.meta = meta
+    schema.init(engine)

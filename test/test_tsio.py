@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from mock import patch
 
+from tshistory.tsio import BigdataTimeSerie
 
 DATADIR = Path(__file__).parent / 'data'
 
@@ -19,8 +20,16 @@ def assert_group_equals(g1, g2):
         assert s1.equals(s2)
 
 
+def remove_metadata(tsrepr):
+    if 'Freq' in tsrepr or 'Name' in tsrepr:
+        return tsrepr[:tsrepr.rindex('\n')]
+    return tsrepr
+
+
 def assert_df(expected, df):
-    assert expected.strip() == df.to_string().strip()
+    exp = remove_metadata(expected.strip())
+    got = remove_metadata(df.to_string().strip())
+    assert exp == got
 
 
 def genserie(start, freq, repeat, initval=None, tz=None, name=None):
@@ -108,6 +117,8 @@ def test_changeset(engine, tsh):
 
 
 def test_tstamp_roundtrip(engine, tsh):
+    if isinstance(tsh, BigdataTimeSerie):
+        return
     ts = genserie(datetime(2017, 10, 28, 23),
                   'H', 4, tz='UTC')
     ts.index = ts.index.tz_convert('Europe/Paris')
@@ -440,7 +451,22 @@ def test_snapshots(engine, tsh):
     for attr in ('diff', 'snapshot'):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
-    assert_df("""
+    if isinstance(tsh, BigdataTimeSerie):
+        assert_df("""
+   id  diff  snapshot
+0   1     0        35
+1   2    36         0
+2   3    36         0
+3   4    36        47
+4   5    36         0
+5   6    36         0
+6   7    36         0
+7   8    36        59
+8   9    36         0
+9  10    36        67
+""", df)
+    else:
+        assert_df("""
    id  diff  snapshot
 0   1     0        32
 1   2    32         0

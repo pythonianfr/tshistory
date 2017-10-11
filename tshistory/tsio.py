@@ -1,13 +1,15 @@
 from datetime import datetime
 from contextlib import contextmanager
 import logging
+import pickle
+import zlib
 
 import pandas as pd
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.sql.expression import select, func, desc
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, BYTEA
 
 from tshistory import schema
 
@@ -125,7 +127,7 @@ class TimeSerie(object):
             csid = self._csid or self._newchangeset(cn, author)
             value = {
                 'csid': csid,
-                'snapshot': tojson(newts),
+                'snapshot': self._serialize(newts),
             }
             # callback for extenders
             self._complete_insertion_value(value, extra_scalars)
@@ -147,8 +149,8 @@ class TimeSerie(object):
         csid = self._csid or self._newchangeset(cn, author)
         value = {
             'csid': csid,
-            'diff': tojson(diff),
-            'snapshot': tojson(newsnapshot),
+            'diff': self._serialize(diff),
+            'snapshot': self._serialize(newsnapshot),
             'parent': tip_id,
         }
         # callback for extenders
@@ -285,6 +287,14 @@ class TimeSerie(object):
     # /API
     # Helpers
 
+    # ts serialisation
+
+    def _serialize(self, ts):
+        return tojson(ts)
+
+    def _deserialize(self, ts, name):
+        return fromjson(ts, name)
+
     # serie table handling
 
     def _ts_table_name(self, seriename):
@@ -416,7 +426,7 @@ class TimeSerie(object):
             snapid, snapdata = cn.execute(sql).fetchone()
         except TypeError:
             return None, None
-        return snapid, fromjson(snapdata, table.name)
+        return snapid, self._deserialize(snapdata, table.name)
 
     def _build_snapshot_upto(self, cn, table, qfilter=()):
         snapid, snapshot = self._find_snapshot(cn, table, qfilter)
@@ -444,7 +454,7 @@ class TimeSerie(object):
         # initial ts
         ts = snapshot
         for _, row in alldiffs.iterrows():
-            diff = fromjson(row['diff'], table.name)
+            diff = self._deserialize(row['diff'], table.name)
             ts = self._apply_diff(ts, diff)
         assert ts.index.dtype.name == 'datetime64[ns]' or len(ts) == 0
         return ts
@@ -468,7 +478,7 @@ class TimeSerie(object):
             sql = select([table.c.diff])
         sql = filtercset(sql)
 
-        return fromjson(cn.execute(sql).scalar(), name)
+        return self._deserialize(cn.execute(sql).scalar(), name)
 
     def _compute_diff(self, fromts, tots):
         """Compute the difference between fromts and tots
@@ -514,3 +524,32 @@ class TimeSerie(object):
         result_ts.sort_index(inplace=True)
         result_ts.name = base_ts.name
         return result_ts
+
+
+class BigdataTimeSerie(TimeSerie):
+
+    def _table_definition_for(self, seriename):
+        return Table(
+            seriename, schema.meta,
+            Column('id', Integer, primary_key=True),
+            Column('csid', Integer, ForeignKey('changeset.id'),
+                   index=True, nullable=False),
+            # constraint: there is either .diff or .snapshot
+            Column('diff', BYTEA),
+            Column('snapshot', BYTEA),
+            Column('parent',
+                   Integer,
+                   ForeignKey('timeserie.%s.id' % seriename,
+                              ondelete='cascade'),
+                   nullable=True,
+                   unique=True,
+                   index=True),
+            schema='timeserie',
+            extend_existing=True
+        )
+
+    def _serialize(self, ts):
+        return zlib.compress(tojson(ts).encode('utf-8'))
+
+    def _deserialize(self, ts, name):
+        return fromjson(zlib.decompress(ts).decode('utf-8'), name)
