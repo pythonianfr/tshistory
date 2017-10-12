@@ -239,7 +239,7 @@ def test_differential(engine, tsh):
 """, tsh.get(engine, 'ts_mixte'))
 
     with engine.connect() as cn:
-        cn.execute('set search_path to "tsh.timeserie", tsh, public')
+        cn.execute('set search_path to "{0}.timeserie", {0}, public'.format(tsh.namespace))
         hist = pd.read_sql('select id, parent from ts_test order by id',
                            cn)
         assert_df("""
@@ -264,9 +264,9 @@ def test_differential(engine, tsh):
 
         assert_df("""
 name              table_name
-0   ts_test   tsh.timeserie.ts_test
-1  ts_mixte  tsh.timeserie.ts_mixte
-""", allts)
+0   ts_test   {0}.timeserie.ts_test
+1  ts_mixte  {0}.timeserie.ts_mixte
+""".format(tsh.namespace), allts)
 
         assert_df("""
 2010-01-01    2.0
@@ -395,7 +395,7 @@ def test_snapshots(engine, tsh):
     assert diff is None
 
     with engine.connect() as cn:
-        cn.execute('set search_path to "tsh.timeserie", tsh, public')
+        cn.execute('set search_path to "{}.timeserie"'.format(tsh.namespace))
         df = pd.read_sql("select id from growing where snapshot is not null",
                          cn)
         assert_df("""
@@ -894,7 +894,7 @@ def test_bigdata(engine, tracker, tsh):
     tshclass = tsh.__class__.__name__
 
     with engine.connect() as cn:
-        cn.execute('set search_path to "tsh.timeserie"')
+        cn.execute('set search_path to "{}.timeserie"'.format(tsh.namespace))
         df = pd.read_sql('select id, diff, snapshot from big order by id', cn)
 
     for attr in ('diff', 'snapshot'):
@@ -924,7 +924,7 @@ def test_lots_of_diffs(engine, tracker, tsh):
     tshclass = tsh.__class__.__name__
 
     with engine.connect() as cn:
-        cn.execute('set search_path to "tsh.timeserie"')
+        cn.execute('set search_path to "{}.timeserie"'.format(tsh.namespace))
         df = pd.read_sql("select id, diff, snapshot from manydiffs order by id ",
                          cn)
     for attr in ('diff', 'snapshot'):

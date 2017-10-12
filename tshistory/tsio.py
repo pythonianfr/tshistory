@@ -11,7 +11,7 @@ from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.sql.expression import select, func, desc
 from sqlalchemy.dialects.postgresql import BYTEA
 
-from tshistory import schema
+from tshistory.schema import SCHEMAS
 
 
 L = logging.getLogger('tshistory.tsio')
@@ -62,9 +62,11 @@ class TimeSerie(object):
     _snapshot_interval = 10
     _precision = 1e-14
     namespace = 'tsh'
+    schema = None
 
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
+        self.schema = SCHEMAS[namespace]
 
     # API : changeset, insert, get, delete
     @contextmanager
@@ -215,7 +217,7 @@ class TimeSerie(object):
         return self._get_ts_table(cn, name) is not None
 
     def latest_insertion_date(self, cn, name):
-        cset = schema.changeset
+        cset = self.schema.changeset
         tstable = self._get_ts_table(cn, name)
         sql = select([func.max(cset.c.insertion_date)]
         ).where(tstable.c.csid == cset.c.id)
@@ -239,7 +241,11 @@ class TimeSerie(object):
         per changeset, in chronological order.
         """
         log = []
-        cset, cset_series, reg = schema.changeset, schema.changeset_series, schema.registry
+        cset, cset_series, reg = (
+            self.schema.changeset,
+            self.schema.changeset_series,
+            self.schema.registry
+        )
 
         sql = select([cset.c.id, cset.c.author, cset.c.insertion_date]
         ).distinct().order_by(desc(cset.c.id))
@@ -300,7 +306,7 @@ class TimeSerie(object):
 
     def _table_definition_for(self, seriename):
         return Table(
-            seriename, schema.meta,
+            seriename, self.schema.meta,
             Column('id', Integer, primary_key=True),
             Column('csid', Integer,
                    ForeignKey('{}.changeset.id'.format(self.namespace)),
@@ -324,14 +330,14 @@ class TimeSerie(object):
         tablename = self._ts_table_name(name)
         table = self._table_definition_for(name)
         table.create(cn)
-        sql = schema.registry.insert().values(
+        sql = self.schema.registry.insert().values(
             name=name,
             table_name=tablename)
         cn.execute(sql)
         return table
 
     def _get_ts_table(self, cn, name):
-        reg = schema.registry
+        reg = self.schema.registry
         tablename = self._ts_table_name(name)
         sql = reg.select().where(reg.c.table_name == tablename)
         tid = cn.execute(sql).scalar()
@@ -341,7 +347,7 @@ class TimeSerie(object):
     # changeset handling
 
     def _newchangeset(self, cn, author, _insertion_date=None):
-        table = schema.changeset
+        table = self.schema.changeset
         sql = table.insert().values(
             author=author,
             insertion_date=_insertion_date or datetime.now())
@@ -353,7 +359,7 @@ class TimeSerie(object):
         return cn.execute(sql).scalar()
 
     def _changeset_series(self, cn, csid):
-        cset_serie = schema.changeset_series
+        cset_serie = self.schema.changeset_series
         sql = select([cset_serie.c.serie]
         ).where(cset_serie.c.csid == csid)
 
@@ -369,7 +375,7 @@ class TimeSerie(object):
         pass
 
     def _finalize_insertion(self, cn, csid, name):
-        table = schema.changeset_series
+        table = self.schema.changeset_series
         sql = table.insert().values(
             csid=csid,
             serie=name
@@ -410,7 +416,7 @@ class TimeSerie(object):
         return diff, newsnapshot
 
     def _find_snapshot(self, cn, table, qfilter=(), column='snapshot'):
-        cset = schema.changeset
+        cset = self.schema.changeset
         sql = select([table.c.id, table.c[column]]
         ).order_by(desc(table.c.id)
         ).limit(1
@@ -432,7 +438,7 @@ class TimeSerie(object):
         if snapid is None:
             return None
 
-        cset = schema.changeset
+        cset = self.schema.changeset
         sql = select([table.c.id,
                       table.c.diff,
                       table.c.parent,
@@ -462,7 +468,7 @@ class TimeSerie(object):
 
     def _diff(self, cn, csetid, name):
         table = self._get_ts_table(cn, name)
-        cset = schema.changeset
+        cset = self.schema.changeset
 
         def filtercset(sql):
             return sql.where(table.c.csid == cset.c.id

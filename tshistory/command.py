@@ -180,7 +180,7 @@ def restore(out_path, db_uri):
 def init_db(db_uri):
     """initialize an new db."""
 
-    init_schema(create_engine(db_uri))
+    init_schema(create_engine(db_uri), meta)
 
 
 if __name__ == '__main__':
