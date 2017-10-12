@@ -896,6 +896,7 @@ def test_dtype_mismatch(engine, tsh):
     assert 'Type error when inserting error2, new type is object, type in base is float64' == str(excinfo.value)
 
 
+@pytest.mark.perf
 def test_bigdata(engine, tsh):
     def create_data():
         for year in range(2015, 2020):
@@ -904,33 +905,17 @@ def test_bigdata(engine, tsh):
 
     t0 = time()
     create_data()
-    print('T=', time() - t0, tsh.__class__.__name__)
+    tshclass = tsh.__class__.__name__
+    print('T=', time() - t0, tshclass)
 
     df = pd.read_sql("select id, diff, snapshot from timeserie.big order by id", engine)
     for attr in ('diff', 'snapshot'):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
-    if isinstance(tsh, BigdataTimeSerie):
-        assert_df("""
-id    diff  snapshot
-0   1       0    232684
-1   2  232639         0
-2   3  232681         0
-3   4  232651         0
-4   5  232688   1163489
-""", df)
-
-    else:
-        assert_df("""
-id     diff  snapshot
-0   1        0   1828491
-1   2  1828491         0
-2   3  1828491         0
-3   4  1828491         0
-4   5  1828491   9142451
-""", df)
+    print('V=', df[['diff', 'snapshot']].sum().to_dict(), tshclass)
 
 
+@pytest.mark.perf
 def test_lots_of_diffs(engine, tsh):
     def create_data():
         for month in range(1, 4):
@@ -943,23 +928,12 @@ def test_lots_of_diffs(engine, tsh):
     t0 = time()
     create_data()
 
-    print('T=', time() - t0, tsh.__class__.__name__)
+    tshclass = tsh.__class__.__name__
+    print('T=', time() - t0, tshclass)
 
     df = pd.read_sql("select id, diff, snapshot from timeserie.manydiffs order by id ",
                      engine)
     for attr in ('diff', 'snapshot'):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
-    if isinstance(tsh, BigdataTimeSerie):
-        assert_df("""
-id            4095
-diff         58710
-snapshot    176341
-""", df.sum())
-
-    else:
-        assert_df("""
-id             4095
-diff         413227
-snapshot    2093552
-""", df.sum())
+    print('V=', df[['diff', 'snapshot']].sum().to_dict(), tshclass)
