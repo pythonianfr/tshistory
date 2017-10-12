@@ -28,10 +28,10 @@ def engine(request):
     yield e
 
 
-@pytest.fixture(params=[tsio.TimeSerie],
+@pytest.fixture(params=['tsh'],
                 scope='session')
 def tsh(request, engine):
-    tsh = request.param()
+    tsh = tsio.TimeSerie(request.param)
     yield tsh
 
     # build a ts using the logs from another

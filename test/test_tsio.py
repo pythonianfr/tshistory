@@ -238,35 +238,37 @@ def test_differential(engine, tsh):
 2010-01-07    3.0
 """, tsh.get(engine, 'ts_mixte'))
 
-    hist = pd.read_sql('select id, parent from timeserie.ts_test order by id',
-                       engine)
-    assert_df("""
+    with engine.connect() as cn:
+        cn.execute('set search_path to "tsh.timeserie", tsh, public')
+        hist = pd.read_sql('select id, parent from ts_test order by id',
+                           cn)
+        assert_df("""
    id  parent
 0   1     NaN
 1   2     1.0
 2   3     2.0
 """, hist)
 
-    hist = pd.read_sql('select id, parent from timeserie.ts_mixte order by id',
-                       engine)
-    assert_df("""
+        hist = pd.read_sql('select id, parent from ts_mixte order by id',
+                           cn)
+        assert_df("""
    id  parent
 0   1     NaN
 1   2     1.0
 2   3     2.0
 """, hist)
 
-    allts = pd.read_sql("select name, table_name from registry "
-                        "where name in ('ts_test', 'ts_mixte')",
-                        engine)
+        allts = pd.read_sql("select name, table_name from registry "
+                            "where name in ('ts_test', 'ts_mixte')",
+                            cn)
 
-    assert_df("""
-       name          table_name
-0   ts_test   timeserie.ts_test
-1  ts_mixte  timeserie.ts_mixte
+        assert_df("""
+name              table_name
+0   ts_test   tsh.timeserie.ts_test
+1  ts_mixte  tsh.timeserie.ts_mixte
 """, allts)
 
-    assert_df("""
+        assert_df("""
 2010-01-01    2.0
 2010-01-02    2.0
 2010-01-03    2.0
@@ -274,7 +276,7 @@ def test_differential(engine, tsh):
 2010-01-05    2.0
 2010-01-06    2.0
 2010-01-07    3.0
-""", tsh.get(engine, 'ts_mixte',
+""", tsh.get(cn, 'ts_mixte',
              revision_date=datetime.now()))
 
 
@@ -392,9 +394,11 @@ def test_snapshots(engine, tsh):
     diff = tsh.insert(engine, ts, 'growing', 'babar')
     assert diff is None
 
-    df = pd.read_sql("select id from timeserie.growing where snapshot is not null",
-                     engine)
-    assert_df("""
+    with engine.connect() as cn:
+        cn.execute('set search_path to "tsh.timeserie", tsh, public')
+        df = pd.read_sql("select id from growing where snapshot is not null",
+                         cn)
+        assert_df("""
    id
 0   1
 1   4
@@ -402,8 +406,8 @@ def test_snapshots(engine, tsh):
 3  10
 """, df)
 
-    ts = tsh.get(engine, 'growing')
-    assert_df("""
+        ts = tsh.get(cn, 'growing')
+        assert_df("""
 2015-01-01    1.0
 2015-01-02    1.0
 2015-01-03    1.0
@@ -416,11 +420,11 @@ def test_snapshots(engine, tsh):
 2015-01-10    1.0
 """, ts)
 
-    df = pd.read_sql("select id, diff, snapshot from timeserie.growing order by id", engine)
-    for attr in ('diff', 'snapshot'):
-        df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
+        df = pd.read_sql("select id, diff, snapshot from growing order by id", cn)
+        for attr in ('diff', 'snapshot'):
+            df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
-    assert_df("""
+        assert_df("""
 id  diff  snapshot
 0   1     0        35
 1   2    36         0
@@ -889,7 +893,10 @@ def test_bigdata(engine, tracker, tsh):
     t1 = time() - t0
     tshclass = tsh.__class__.__name__
 
-    df = pd.read_sql("select id, diff, snapshot from timeserie.big order by id", engine)
+    with engine.connect() as cn:
+        cn.execute('set search_path to "tsh.timeserie"')
+        df = pd.read_sql('select id, diff, snapshot from big order by id', cn)
+
     for attr in ('diff', 'snapshot'):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
@@ -916,8 +923,10 @@ def test_lots_of_diffs(engine, tracker, tsh):
     t1 = time() - t0
     tshclass = tsh.__class__.__name__
 
-    df = pd.read_sql("select id, diff, snapshot from timeserie.manydiffs order by id ",
-                     engine)
+    with engine.connect() as cn:
+        cn.execute('set search_path to "tsh.timeserie"')
+        df = pd.read_sql("select id, diff, snapshot from manydiffs order by id ",
+                         cn)
     for attr in ('diff', 'snapshot'):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 

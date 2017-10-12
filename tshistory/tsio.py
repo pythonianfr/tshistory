@@ -61,6 +61,10 @@ class TimeSerie(object):
     _csid = None
     _snapshot_interval = 10
     _precision = 1e-14
+    namespace = 'tsh'
+
+    def __init__(self, namespace='tsh'):
+        self.namespace = namespace
 
     # API : changeset, insert, get, delete
     @contextmanager
@@ -220,11 +224,11 @@ class TimeSerie(object):
     def info(self, cn):
         """Gather global statistics on the current tshistory repository
         """
-        sql = 'select count(*) from registry'
+        sql = 'select count(*) from {}.registry'.format(self.namespace)
         stats = {'series count': cn.execute(sql).scalar()}
-        sql = 'select max(id) from changeset'
+        sql = 'select max(id) from {}.changeset'.format(self.namespace)
         stats['changeset count'] = cn.execute(sql).scalar()
-        sql = 'select distinct name from registry order by name'
+        sql = 'select distinct name from {}.registry order by name'.format(self.namespace)
         stats['serie names'] = [row for row, in cn.execute(sql).fetchall()]
         return stats
 
@@ -292,25 +296,27 @@ class TimeSerie(object):
 
     def _ts_table_name(self, seriename):
         # namespace.seriename
-        return 'timeserie.%s' % seriename
+        return '{}.timeserie.{}'.format(self.namespace, seriename)
 
     def _table_definition_for(self, seriename):
         return Table(
             seriename, schema.meta,
             Column('id', Integer, primary_key=True),
-            Column('csid', Integer, ForeignKey('changeset.id'),
+            Column('csid', Integer,
+                   ForeignKey('{}.changeset.id'.format(self.namespace)),
                    index=True, nullable=False),
             # constraint: there is either .diff or .snapshot
             Column('diff', BYTEA),
             Column('snapshot', BYTEA),
             Column('parent',
                    Integer,
-                   ForeignKey('timeserie.%s.id' % seriename,
+                   ForeignKey('{}.timeserie.{}.id'.format(self.namespace,
+                                                          seriename),
                               ondelete='cascade'),
                    nullable=True,
                    unique=True,
                    index=True),
-            schema='timeserie',
+            schema='{}.timeserie'.format(self.namespace),
             extend_existing=True
         )
 
