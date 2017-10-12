@@ -29,7 +29,10 @@ def engine(request):
 
 
 @pytest.fixture(params=[tsio.TimeSerie,
-                        tsio.BigdataTimeSerie],
+                        tsio.ZlibJsonTimeSerie,
+                        tsio.PlainJsonTimeSerie,
+                        tsio.ZlibPickleTimeSerie,
+                        tsio.PlainPickleTimeSerie],
                 scope='session')
 def tsh(request, engine):
     tsh = request.param()
@@ -65,3 +68,11 @@ def tsh(request, engine):
     schema.changeset_series = cs
     schema.meta = meta
     schema.init(engine)
+
+
+OUT = []
+@pytest.fixture
+def tracker(scope='session'):
+    import pandas as pd
+    yield OUT
+    print (pd.DataFrame(OUT))

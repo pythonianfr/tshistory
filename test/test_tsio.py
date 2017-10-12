@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from mock import patch
 
-from tshistory.tsio import BigdataTimeSerie
+from tshistory.tsio import TimeSerie
 
 from tshistory.testutil import assert_group_equals, genserie, assert_df
 
@@ -89,7 +89,7 @@ def test_changeset(engine, tsh):
 
 
 def test_tstamp_roundtrip(engine, tsh):
-    if isinstance(tsh, BigdataTimeSerie):
+    if tsh.__class__ is not TimeSerie:
         return
     ts = genserie(datetime(2017, 10, 28, 23),
                   'H', 4, tz='UTC')
@@ -424,21 +424,7 @@ def test_snapshots(engine, tsh):
     for attr in ('diff', 'snapshot'):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
-    if isinstance(tsh, BigdataTimeSerie):
-        assert_df("""
-   id  diff  snapshot
-0   1     0        35
-1   2    36         0
-2   3    36         0
-3   4    36        47
-4   5    36         0
-5   6    36         0
-6   7    36         0
-7   8    36        59
-8   9    36         0
-9  10    36        67
-""", df)
-    else:
+    if tsh.__class__ is TimeSerie:
         assert_df("""
    id  diff  snapshot
 0   1     0        32
@@ -897,7 +883,7 @@ def test_dtype_mismatch(engine, tsh):
 
 
 @pytest.mark.perf
-def test_bigdata(engine, tsh):
+def test_bigdata(engine, tracker, tsh):
     def create_data():
         for year in range(2015, 2020):
             serie = genserie(datetime(year, 1, 1), '10Min', 6 * 24 * 365)
@@ -905,18 +891,23 @@ def test_bigdata(engine, tsh):
 
     t0 = time()
     create_data()
+    t1 = time() - t0
     tshclass = tsh.__class__.__name__
-    print('T=', time() - t0, tshclass)
 
     df = pd.read_sql("select id, diff, snapshot from timeserie.big order by id", engine)
     for attr in ('diff', 'snapshot'):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
-    print('V=', df[['diff', 'snapshot']].sum().to_dict(), tshclass)
+    size = df[['diff', 'snapshot']].sum().to_dict()
+    tracker.append({'test': 'bigdata',
+                    'class': tshclass,
+                    'time': t1,
+                    'diffsize': size['diff'],
+                    'snapsize': size['snapshot']})
 
 
 @pytest.mark.perf
-def test_lots_of_diffs(engine, tsh):
+def test_lots_of_diffs(engine, tracker, tsh):
     def create_data():
         for month in range(1, 4):
             days = calendar.monthrange(2017, month)[1]
@@ -927,13 +918,17 @@ def test_lots_of_diffs(engine, tsh):
 
     t0 = time()
     create_data()
-
+    t1 = time() - t0
     tshclass = tsh.__class__.__name__
-    print('T=', time() - t0, tshclass)
 
     df = pd.read_sql("select id, diff, snapshot from timeserie.manydiffs order by id ",
                      engine)
     for attr in ('diff', 'snapshot'):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
-    print('V=', df[['diff', 'snapshot']].sum().to_dict(), tshclass)
+    size = df[['diff', 'snapshot']].sum().to_dict()
+    tracker.append({'test': 'lots_of_diffs',
+                    'class': tshclass,
+                    'time': t1,
+                    'diffsize': size['diff'],
+                    'snapsize': size['snapshot']})

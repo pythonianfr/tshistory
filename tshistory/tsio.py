@@ -519,7 +519,7 @@ class TimeSerie(object):
         return result_ts
 
 
-class BigdataTimeSerie(TimeSerie):
+class ZlibJsonTimeSerie(TimeSerie):
 
     def _table_definition_for(self, seriename):
         return Table(
@@ -546,3 +546,31 @@ class BigdataTimeSerie(TimeSerie):
 
     def _deserialize(self, ts, name):
         return fromjson(zlib.decompress(ts).decode('utf-8'), name)
+
+
+class PlainJsonTimeSerie(ZlibJsonTimeSerie):
+
+    def _serialize(self, ts):
+        return tojson(ts).encode('utf-8')
+
+    def _deserialize(self, ts, name):
+        return fromjson(ts.decode('utf-8'), name)
+
+
+from pickle import loads, dumps
+class ZlibPickleTimeSerie(ZlibJsonTimeSerie):
+
+    def _serialize(self, ts):
+        return zlib.compress(dumps(ts))
+
+    def _deserialize(self, ts, name):
+        return loads(zlib.decompress(ts))
+
+
+class PlainPickleTimeSerie(ZlibJsonTimeSerie):
+
+    def _serialize(self, ts):
+        return dumps(ts)
+
+    def _deserialize(self, ts, name):
+        return loads(ts)
