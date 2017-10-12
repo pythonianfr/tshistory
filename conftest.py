@@ -28,17 +28,11 @@ def engine(request):
     yield e
 
 
-@pytest.fixture(params=[tsio.TimeSerie,
-                        tsio.ZlibJsonTimeSerie,
-                        tsio.PlainJsonTimeSerie,
-                        tsio.ZlibPickleTimeSerie,
-                        tsio.PlainPickleTimeSerie],
+@pytest.fixture(params=[tsio.TimeSerie],
                 scope='session')
 def tsh(request, engine):
     tsh = request.param()
-    t0 = time()
     yield tsh
-    print('Total run time', time() - t0, tsh.__class__.__name__)
 
     # build a ts using the logs from another
     log = tsh.log(engine, diff=True)

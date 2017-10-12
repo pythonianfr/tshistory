@@ -9,7 +9,7 @@ import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.sql.expression import select, func, desc
-from sqlalchemy.dialects.postgresql import JSONB, BYTEA
+from sqlalchemy.dialects.postgresql import BYTEA
 
 from tshistory import schema
 
@@ -283,10 +283,10 @@ class TimeSerie(object):
     # ts serialisation
 
     def _serialize(self, ts):
-        return tojson(ts)
+        return zlib.compress(tojson(ts).encode('utf-8'))
 
     def _deserialize(self, ts, name):
-        return fromjson(ts, name)
+        return fromjson(zlib.decompress(ts).decode('utf-8'), name)
 
     # serie table handling
 
@@ -301,8 +301,8 @@ class TimeSerie(object):
             Column('csid', Integer, ForeignKey('changeset.id'),
                    index=True, nullable=False),
             # constraint: there is either .diff or .snapshot
-            Column('diff', JSONB(none_as_null=True)),
-            Column('snapshot', JSONB(none_as_null=True)),
+            Column('diff', BYTEA),
+            Column('snapshot', BYTEA),
             Column('parent',
                    Integer,
                    ForeignKey('timeserie.%s.id' % seriename,
@@ -517,60 +517,3 @@ class TimeSerie(object):
         result_ts.sort_index(inplace=True)
         result_ts.name = base_ts.name
         return result_ts
-
-
-class ZlibJsonTimeSerie(TimeSerie):
-
-    def _table_definition_for(self, seriename):
-        return Table(
-            seriename, schema.meta,
-            Column('id', Integer, primary_key=True),
-            Column('csid', Integer, ForeignKey('changeset.id'),
-                   index=True, nullable=False),
-            # constraint: there is either .diff or .snapshot
-            Column('diff', BYTEA),
-            Column('snapshot', BYTEA),
-            Column('parent',
-                   Integer,
-                   ForeignKey('timeserie.%s.id' % seriename,
-                              ondelete='cascade'),
-                   nullable=True,
-                   unique=True,
-                   index=True),
-            schema='timeserie',
-            extend_existing=True
-        )
-
-    def _serialize(self, ts):
-        return zlib.compress(tojson(ts).encode('utf-8'))
-
-    def _deserialize(self, ts, name):
-        return fromjson(zlib.decompress(ts).decode('utf-8'), name)
-
-
-class PlainJsonTimeSerie(ZlibJsonTimeSerie):
-
-    def _serialize(self, ts):
-        return tojson(ts).encode('utf-8')
-
-    def _deserialize(self, ts, name):
-        return fromjson(ts.decode('utf-8'), name)
-
-
-from pickle import loads, dumps
-class ZlibPickleTimeSerie(ZlibJsonTimeSerie):
-
-    def _serialize(self, ts):
-        return zlib.compress(dumps(ts))
-
-    def _deserialize(self, ts, name):
-        return loads(zlib.decompress(ts))
-
-
-class PlainPickleTimeSerie(ZlibJsonTimeSerie):
-
-    def _serialize(self, ts):
-        return dumps(ts)
-
-    def _deserialize(self, ts, name):
-        return loads(ts)
