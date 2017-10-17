@@ -18,9 +18,6 @@ L = logging.getLogger('tshistory.tsio')
 
 
 def tojson(ts):
-    if ts is None:
-        return None
-
     if not isinstance(ts.index, pd.MultiIndex):
         return ts.to_json(date_format='iso')
 
@@ -293,6 +290,8 @@ class TimeSerie(object):
     # ts serialisation
 
     def _serialize(self, ts):
+        if ts is None:
+            return None
         return zlib.compress(tojson(ts).encode('utf-8'))
 
     def _deserialize(self, ts, name):
