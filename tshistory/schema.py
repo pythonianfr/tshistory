@@ -12,6 +12,7 @@ meta = MetaData()
 # schemas registry
 SCHEMAS = {}
 
+
 class tsschema(object):
     namespace = 'tsh'
     meta = None

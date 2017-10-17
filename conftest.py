@@ -59,8 +59,9 @@ def tsh(request, engine):
 
 
 OUT = []
+
 @pytest.fixture
 def tracker(scope='session'):
     import pandas as pd
     yield OUT
-    print (pd.DataFrame(OUT))
+    print(pd.DataFrame(OUT))

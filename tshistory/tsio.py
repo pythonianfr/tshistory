@@ -1,7 +1,6 @@
 from datetime import datetime
 from contextlib import contextmanager
 import logging
-import pickle
 import zlib
 
 import pandas as pd
