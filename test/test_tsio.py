@@ -901,11 +901,20 @@ def test_bigdata(engine, tracker, tsh):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
     size = df[['diff', 'snapshot']].sum().to_dict()
-    tracker.append({'test': 'bigdata',
+    tracker.append({'test': 'bigdata_insert',
                     'class': tshclass,
                     'time': t1,
                     'diffsize': size['diff'],
                     'snapsize': size['snapshot']})
+
+    t0 = time()
+    tsh.get_history(engine, 'big')
+    t1 = time() - t0
+    tracker.append({'test': 'bigdata_gethistory',
+                    'class': tshclass,
+                    'time': t1,
+                    'diffsize': None,
+                    'snapsize': None})
 
 
 @pytest.mark.perf
@@ -931,8 +940,17 @@ def test_lots_of_diffs(engine, tracker, tsh):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
     size = df[['diff', 'snapshot']].sum().to_dict()
-    tracker.append({'test': 'lots_of_diffs',
+    tracker.append({'test': 'lots_of_diffs_insert',
                     'class': tshclass,
                     'time': t1,
                     'diffsize': size['diff'],
                     'snapsize': size['snapshot']})
+
+    t0 = time()
+    tsh.get_history(engine, 'manydiffs')
+    t1 = time() - t0
+    tracker.append({'test': 'lots_of_diffs_gethistory',
+                    'class': tshclass,
+                    'time': t1,
+                    'diffsize': None,
+                    'snapsize': None})
