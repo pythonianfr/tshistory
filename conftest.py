@@ -3,9 +3,9 @@ from pathlib import Path
 import logging
 
 from sqlalchemy import create_engine, MetaData
+import pandas as pd
 
 import pytest
-
 from pytest_sa_pg.fixture import db
 
 from tshistory import schema, tsio
@@ -58,10 +58,16 @@ def tsh(request, engine):
     schema.reset(engine, namespace)
 
 
+@pytest.fixture(scope='session')
+def ptsh(engine):
+    schema.reset(engine)
+    schema.init(engine, MetaData())
+    return tsio.TimeSerie()
+
+
 OUT = []
 
-@pytest.fixture
-def tracker(scope='session'):
-    import pandas as pd
+@pytest.fixture(scope='session')
+def tracker():
     yield OUT
     print(pd.DataFrame(OUT))

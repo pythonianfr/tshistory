@@ -197,6 +197,7 @@ class TimeSerie(object):
         if table is None:
             return
 
+        # compute diffs above the snapshot
         cset = self.schema.changeset
         diffsql = select([cset.c.id, cset.c.insertion_date, table.c.diff]
         ).order_by(cset.c.id
@@ -208,11 +209,18 @@ class TimeSerie(object):
             diffsql = diffsql.where(cset.c.insertion_date <= to_insertion_date)
 
         diffs = cn.execute(diffsql).fetchall()
-        series = [(diffs[0]['insertion_date'],
-                   self._build_snapshot_upto(cn, table,
-                                             [lambda cset, _: cset.c.id <= diffs[0]['id']]))
-        ]
-        for csid_, revdate, diff in cn.execute(diffsql).fetchall()[1:]:
+        if not diffs:
+            # it's fine to ask for an insertion date range
+            # where noting did happen, but you get nothing
+            return
+
+        csid, revdate, diff_ = diffs[0]
+        snapshot = self._build_snapshot_upto(cn, table, [
+            lambda cset, _: cset.c.id == csid
+        ])
+
+        series = [(revdate, snapshot)]
+        for csid_, revdate, diff in diffs[1:]:
             diff = self._deserialize(diff, table.name)
             serie = self._apply_diff(series[-1][1], diff)
             series.append((revdate, serie))
@@ -439,7 +447,7 @@ class TimeSerie(object):
         ).where(table.c[column] != None)
 
         if qfilter:
-            sql = sql.where(table.c.csid == cset.c.id)
+            sql = sql.where(table.c.csid <= cset.c.id)
             for filtercb in qfilter:
                 sql = sql.where(filtercb(cset, table))
 

@@ -1,6 +1,6 @@
 # coding: utf-8
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import time
 from dateutil import parser
 import calendar
@@ -827,6 +827,26 @@ insertion_date  value_date
                 2017-01-02    1.0
 """, tsc)
 
+    tsc = tsh.get_history(engine, 'smallserie',
+                          from_insertion_date=datetime(2017, 2, 4),
+                          to_insertion_date=datetime(2017, 2, 4))
+    assert tsc is None
+
+    tsc = tsh.get_history(engine, 'smallserie',
+                          from_insertion_date=datetime(2016, 2, 1),
+                          to_insertion_date=datetime(2017, 2, 2))
+    assert_df("""
+insertion_date  value_date
+2017-02-01      2017-01-01    0.0
+2017-02-02      2017-01-01    0.0
+                2017-01-02    1.0
+""", tsc)
+
+    tsc = tsh.get_history(engine, 'smallserie',
+                          from_insertion_date=datetime(2016, 2, 1),
+                          to_insertion_date=datetime(2016, 12, 31))
+    assert tsc is None
+
 
 def test_add_na(engine, tsh):
     # a serie of NaNs won't be insert in base
@@ -883,11 +903,15 @@ def test_dtype_mismatch(engine, tsh):
 
 
 @pytest.mark.perf
-def test_bigdata(engine, tracker, tsh):
+def test_bigdata(engine, tracker, ptsh):
+    tsh = ptsh
     def create_data():
         for year in range(2015, 2020):
-            serie = genserie(datetime(year, 1, 1), '10Min', 6 * 24 * 365)
-            tsh.insert(engine, serie, 'big', 'aurelien.campeas@pythonian.fr')
+            date = datetime(year, 1, 1)
+            serie = genserie(date, '10Min', 6 * 24 * 365)
+            with tsh.newchangeset(engine, 'aurelien.campeas@pythonian.fr',
+                                  _insertion_date=date):
+                tsh.insert(engine, serie, 'big')
 
     t0 = time()
     create_data()
@@ -911,7 +935,21 @@ def test_bigdata(engine, tracker, tsh):
     t0 = time()
     tsh.get_history(engine, 'big')
     t1 = time() - t0
-    tracker.append({'test': 'bigdata_gethistory',
+    tracker.append({'test': 'bigdata_gethistory_all',
+                    'class': tshclass,
+                    'time': t1,
+                    'diffsize': None,
+                    'snapsize': None})
+
+    t0 = time()
+    for year in (2015, 2017, 2019):
+        for month in (1, 5, 9, 12):
+            date = datetime(year, month, 1)
+            tsh.get_history(engine, 'big',
+                            from_insertion_date=date,
+                            to_insertion_date=date+timedelta(days=31))
+    t1 = time() - t0
+    tracker.append({'test': 'bigdata_get_history_chunks',
                     'class': tshclass,
                     'time': t1,
                     'diffsize': None,
@@ -919,14 +957,19 @@ def test_bigdata(engine, tracker, tsh):
 
 
 @pytest.mark.perf
-def test_lots_of_diffs(engine, tracker, tsh):
+def test_lots_of_diffs(engine, tracker, ptsh):
+    tsh = ptsh
     def create_data():
+        # one insert per day for 4 months
         for month in range(1, 4):
             days = calendar.monthrange(2017, month)[1]
             for day in range(1, days+1):
-                serie = genserie(datetime(2017, month, day), '10Min', 6*24)
+                date = datetime(2017, month, day)
+                serie = genserie(date, '10Min', 6*24)
                 with engine.connect() as cn:
-                    tsh.insert(cn, serie, 'manydiffs', 'aurelien.campeas@pythonian.fr')
+                    with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.fr',
+                                          _insertion_date=date.replace(year=2018)):
+                        tsh.insert(cn, serie, 'manydiffs')
 
     t0 = time()
     create_data()
@@ -950,7 +993,22 @@ def test_lots_of_diffs(engine, tracker, tsh):
     t0 = time()
     tsh.get_history(engine, 'manydiffs')
     t1 = time() - t0
-    tracker.append({'test': 'lots_of_diffs_gethistory',
+    tracker.append({'test': 'lots_of_diffs_gethistory_all',
+                    'class': tshclass,
+                    'time': t1,
+                    'diffsize': None,
+                    'snapsize': None})
+
+    t0 = time()
+    for month in range(1, 3):
+        for day in range(1, 5):
+            date = datetime(2018, month, day)
+            ts = tsh.get_history(engine, 'manydiffs',
+                                 from_insertion_date=date,
+                                 to_insertion_date=date+timedelta(days=31))
+            assert ts is not None
+    t1 = time() - t0
+    tracker.append({'test': 'lots_of_diffs_get_history_chunks',
                     'class': tshclass,
                     'time': t1,
                     'diffsize': None,
