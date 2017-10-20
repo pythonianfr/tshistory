@@ -968,7 +968,7 @@ def test_bigdata(engine, tracker, ptsh):
     t0 = time()
     tsh.get_history(engine, 'big')
     t1 = time() - t0
-    tracker.append({'test': 'bigdata_gethistory_all',
+    tracker.append({'test': 'bigdata_history_all',
                     'class': tshclass,
                     'time': t1,
                     'diffsize': None,
@@ -982,7 +982,7 @@ def test_bigdata(engine, tracker, ptsh):
                             from_insertion_date=date,
                             to_insertion_date=date+timedelta(days=31))
     t1 = time() - t0
-    tracker.append({'test': 'bigdata_get_history_chunks',
+    tracker.append({'test': 'bigdata_history_chunks',
                     'class': tshclass,
                     'time': t1,
                     'diffsize': None,
@@ -1017,7 +1017,7 @@ def test_lots_of_diffs(engine, tracker, ptsh):
         df[attr] = df[attr].apply(lambda x: 0 if x is None else len(x))
 
     size = df[['diff', 'snapshot']].sum().to_dict()
-    tracker.append({'test': 'lots_of_diffs_insert',
+    tracker.append({'test': 'manydiffs_insert',
                     'class': tshclass,
                     'time': t1,
                     'diffsize': size['diff'],
@@ -1026,7 +1026,7 @@ def test_lots_of_diffs(engine, tracker, ptsh):
     t0 = time()
     tsh.get_history(engine, 'manydiffs')
     t1 = time() - t0
-    tracker.append({'test': 'lots_of_diffs_gethistory_all',
+    tracker.append({'test': 'manydiffs_history_all',
                     'class': tshclass,
                     'time': t1,
                     'diffsize': None,
@@ -1041,7 +1041,7 @@ def test_lots_of_diffs(engine, tracker, ptsh):
                                  to_insertion_date=date+timedelta(days=31))
             assert ts is not None
     t1 = time() - t0
-    tracker.append({'test': 'lots_of_diffs_get_history_chunks',
+    tracker.append({'test': 'manydiffs_history_chunks',
                     'class': tshclass,
                     'time': t1,
                     'diffsize': None,
@@ -1059,7 +1059,7 @@ def test_lots_of_diffs(engine, tracker, ptsh):
                                  to_value_date=date+timedelta(days=20))
             assert ts is not None
     t1 = time() - t0
-    tracker.append({'test': 'lots_of_diffs_get_history_chunks_valuedate',
+    tracker.append({'test': 'manydiffs_history_chunks_valuedate',
                     'class': tshclass,
                     'time': t1,
                     'diffsize': None,
