@@ -481,10 +481,11 @@ class TimeSerie(object):
             return snapshot
 
         # initial ts
-        ts = snapshot
-        for _, row in alldiffs.iterrows():
-            diff = self._deserialize(row['diff'], table.name)
+        ts = self._deserialize(alldiffs.loc[0, 'diff'], table.name)
+        for _, row in alldiffs.loc[1:].itertuples():
+            diff = self._deserialize(row.diff, table.name)
             ts = self._apply_diff(ts, diff)
+        ts = self._apply_diff(snapshot, ts)
         assert ts.index.dtype.name == 'datetime64[ns]' or len(ts) == 0
         return ts
 
