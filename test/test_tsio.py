@@ -775,6 +775,7 @@ def test_get_history(engine, tsh):
     ] == [{k: v for k, v in log.items() if k != 'rev'}
           for log in logs]
     histts = tsh.get_history(engine, 'smallserie')
+    assert histts.name == 'smallserie'
 
     assert_df("""
 insertion_date  value_date

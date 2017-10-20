@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
-from sqlalchemy.sql.expression import select, func, desc
+from sqlalchemy.sql.expression import select, func, desc, and_
 from sqlalchemy.dialects.postgresql import BYTEA
 
 from tshistory.schema import SCHEMAS
@@ -197,17 +197,35 @@ class TimeSerie(object):
         if table is None:
             return
 
-        logs = self.log(cn, names=[name],
-                        fromdate=from_insertion_date,
-                        todate=to_insertion_date)
-        series = []
-        for log in logs:
-            serie = self.get(cn, name, revision_date=log['date'])
-            revdate = pd.Timestamp(log['date'])
+        cset = self.schema.changeset
+        diffsql = select([cset.c.id, cset.c.insertion_date, table.c.diff]
+        ).order_by(cset.c.id
+        ).where(table.c.csid == cset.c.id)
+
+        if from_insertion_date:
+            diffsql = diffsql.where(cset.c.insertion_date >= from_insertion_date)
+        if to_insertion_date:
+            diffsql = diffsql.where(cset.c.insertion_date <= to_insertion_date)
+
+        diffs = cn.execute(diffsql).fetchall()
+        series = [(diffs[0]['insertion_date'],
+                   self._build_snapshot_upto(cn, table,
+                                             [lambda cset, _: cset.c.id <= diffs[0]['id']]))
+        ]
+        for csid_, revdate, diff in cn.execute(diffsql).fetchall()[1:]:
+            diff = self._deserialize(diff, table.name)
+            serie = self._apply_diff(series[-1][1], diff)
+            series.append((revdate, serie))
+
+        for revdate, serie in series:
             mindex = [(revdate, valuestamp) for valuestamp in serie.index]
-            serie.index = pd.MultiIndex.from_tuples(mindex, names=['insertion_date', 'value_date'])
-            series.append(serie)
-        return pd.concat(series)
+            serie.index = pd.MultiIndex.from_tuples(mindex, names=[
+                'insertion_date', 'value_date']
+            )
+
+        serie = pd.concat([serie for revdate_, serie in series])
+        serie.name = name
+        return serie
 
     def exists(self, cn, name):
         return self._get_ts_table(cn, name) is not None
