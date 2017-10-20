@@ -192,7 +192,9 @@ class TimeSerie(object):
 
     def get_history(self, cn, name,
                     from_insertion_date=None,
-                    to_insertion_date=None):
+                    to_insertion_date=None,
+                    from_value_date=None,
+                    to_value_date=None):
         table = self._get_ts_table(cn, name)
         if table is None:
             return
@@ -233,6 +235,7 @@ class TimeSerie(object):
 
         serie = pd.concat([serie for revdate_, serie in series])
         serie.name = name
+        return serie.loc[:,from_value_date:to_value_date]
         return serie
 
     def exists(self, cn, name):

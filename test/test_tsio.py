@@ -847,6 +847,39 @@ insertion_date  value_date
                           to_insertion_date=datetime(2016, 12, 31))
     assert tsc is None
 
+    # restrictions on value dates
+    tsc = tsh.get_history(engine, 'smallserie',
+                          from_value_date=datetime(2017, 1, 1),
+                          to_value_date=datetime(2017, 1, 2))
+    assert_df("""
+insertion_date  value_date
+2017-02-01      2017-01-01    0.0
+2017-02-02      2017-01-01    0.0
+                2017-01-02    1.0
+2017-02-03      2017-01-01    0.0
+                2017-01-02    1.0
+""", tsc)
+
+    tsc = tsh.get_history(engine, 'smallserie',
+                          from_value_date=datetime(2017, 1, 2))
+    assert_df("""
+insertion_date  value_date
+2017-02-02      2017-01-02    1.0
+2017-02-03      2017-01-02    1.0
+                2017-01-03    2.0
+""", tsc)
+
+    tsc = tsh.get_history(engine, 'smallserie',
+                          to_value_date=datetime(2017, 1, 2))
+    assert_df("""
+insertion_date  value_date
+2017-02-01      2017-01-01    0.0
+2017-02-02      2017-01-01    0.0
+                2017-01-02    1.0
+2017-02-03      2017-01-01    0.0
+                2017-01-02    1.0
+""", tsc)
+
 
 def test_add_na(engine, tsh):
     # a serie of NaNs won't be insert in base
@@ -1009,6 +1042,24 @@ def test_lots_of_diffs(engine, tracker, ptsh):
             assert ts is not None
     t1 = time() - t0
     tracker.append({'test': 'lots_of_diffs_get_history_chunks',
+                    'class': tshclass,
+                    'time': t1,
+                    'diffsize': None,
+                    'snapsize': None})
+
+
+    t0 = time()
+    for month in range(1, 3):
+        for day in range(1, 5):
+            date = datetime(2018, month, day)
+            ts = tsh.get_history(engine, 'manydiffs',
+                                 from_insertion_date=date,
+                                 to_insertion_date=date+timedelta(days=31),
+                                 from_value_date=date+timedelta(days=10),
+                                 to_value_date=date+timedelta(days=20))
+            assert ts is not None
+    t1 = time() - t0
+    tracker.append({'test': 'lots_of_diffs_get_history_chunks_valuedate',
                     'class': tshclass,
                     'time': t1,
                     'diffsize': None,
