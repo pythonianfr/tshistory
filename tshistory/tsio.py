@@ -53,6 +53,12 @@ def _fromjson(jsonb, tsname):
     return num2float(result.iloc[:, 0])  # get a Series object
 
 
+def subset(ts, fromdate, todate):
+    if fromdate is None and todate is None:
+        return ts
+    return ts.loc[fromdate:todate]
+
+
 class TimeSerie(object):
     _csid = None
     _snapshot_interval = 10
@@ -221,9 +227,10 @@ class TimeSerie(object):
             lambda cset, _: cset.c.id == csid
         ])
 
-        series = [(revdate, snapshot)]
+        series = [(revdate, subset(snapshot, from_value_date, to_value_date))]
         for csid_, revdate, diff in diffs[1:]:
-            diff = self._deserialize(diff, table.name)
+            diff = subset(self._deserialize(diff, table.name),
+                          from_value_date, to_value_date)
             serie = self._apply_diff(series[-1][1], diff)
             series.append((revdate, serie))
 
@@ -235,7 +242,6 @@ class TimeSerie(object):
 
         serie = pd.concat([serie for revdate_, serie in series])
         serie.name = name
-        return serie.loc[:,from_value_date:to_value_date]
         return serie
 
     def exists(self, cn, name):
