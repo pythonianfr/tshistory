@@ -200,7 +200,8 @@ class TimeSerie(object):
                     from_insertion_date=None,
                     to_insertion_date=None,
                     from_value_date=None,
-                    to_value_date=None):
+                    to_value_date=None,
+                    diffmode=False):
         table = self._get_ts_table(cn, name)
         if table is None:
             return
@@ -222,6 +223,22 @@ class TimeSerie(object):
             # where noting did happen, but you get nothing
             return
 
+        if diffmode:
+            series = []
+            for csid, revdate, diff in diffs:
+                if diff is None:  # we must fetch the initial snapshot
+                    sql = select([table.c.snapshot]).where(table.c.csid == csid)
+                    diff = cn.execute(sql).scalar()
+                serie = subset(self._deserialize(diff, name), from_value_date, to_value_date)
+                mindex = [(revdate, valuestamp) for valuestamp in serie.index]
+                serie.index = pd.MultiIndex.from_tuples(mindex, names=[
+                    'insertion_date', 'value_date']
+                )
+                series.append(serie)
+            series = pd.concat(series)
+            series.name = name
+            return series
+
         csid, revdate, diff_ = diffs[0]
         snapshot = self._build_snapshot_upto(cn, table, [
             lambda cset, _: cset.c.id == csid
@@ -231,6 +248,7 @@ class TimeSerie(object):
         for csid_, revdate, diff in diffs[1:]:
             diff = subset(self._deserialize(diff, table.name),
                           from_value_date, to_value_date)
+
             serie = self._apply_diff(series[-1][1], diff)
             series.append((revdate, serie))
 

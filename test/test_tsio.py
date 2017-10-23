@@ -787,6 +787,14 @@ insertion_date  value_date
                 2017-01-03    2.0
 """, histts)
 
+    diffs = tsh.get_history(engine, 'smallserie', diffmode=True)
+    assert_df("""
+insertion_date  value_date
+2017-02-01      2017-01-01    0.0
+2017-02-02      2017-01-02    1.0
+2017-02-03      2017-01-03    2.0
+""", diffs)
+
     for idx, idate in enumerate(histts.groupby('insertion_date').groups):
         with engine.connect() as cn:
             with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.f',
@@ -859,6 +867,16 @@ insertion_date  value_date
 2017-02-03      2017-01-01    0.0
                 2017-01-02    1.0
 """, tsc)
+
+    diffs = tsh.get_history(engine, 'smallserie',
+                            diffmode=True,
+                            from_value_date=datetime(2017, 1, 1),
+                            to_value_date=datetime(2017, 1, 2))
+    assert_df("""
+insertion_date  value_date
+2017-02-01      2017-01-01    0.0
+2017-02-02      2017-01-02    1.0
+""", diffs)
 
     tsc = tsh.get_history(engine, 'smallserie',
                           from_value_date=datetime(2017, 1, 2))
