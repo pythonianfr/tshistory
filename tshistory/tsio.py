@@ -242,7 +242,7 @@ class TimeSerie(object):
         csid, revdate, diff_ = diffs[0]
         snapshot = self._build_snapshot_upto(cn, table, [
             lambda cset, _: cset.c.id == csid
-        ])
+        ], from_value_date, to_value_date)
 
         series = [(revdate, subset(snapshot, from_value_date, to_value_date))]
         for csid_, revdate, diff in diffs[1:]:
@@ -466,7 +466,8 @@ class TimeSerie(object):
         newsnapshot = self._apply_diff(snapshot, diff)
         return diff, newsnapshot
 
-    def _find_snapshot(self, cn, table, qfilter=(), column='snapshot'):
+    def _find_snapshot(self, cn, table, qfilter=(), column='snapshot',
+                       from_value_date=None, to_value_date=None):
         cset = self.schema.changeset
         sql = select([table.c.id, table.c[column]]
         ).order_by(desc(table.c.id)
@@ -480,11 +481,14 @@ class TimeSerie(object):
 
         try:
             snapid, snapdata = cn.execute(sql).fetchone()
+            snapdata = subset(self._deserialize(snapdata, table.name),
+                              from_value_date, to_value_date)
         except TypeError:
             return None, None
-        return snapid, self._deserialize(snapdata, table.name)
+        return snapid, snapdata
 
-    def _build_snapshot_upto(self, cn, table, qfilter=()):
+    def _build_snapshot_upto(self, cn, table, qfilter=(),
+                             from_value_date=None, to_value_date=None):
         snapid, snapshot = self._find_snapshot(cn, table, qfilter)
         if snapid is None:
             return None
@@ -510,7 +514,8 @@ class TimeSerie(object):
         # initial ts
         ts = self._deserialize(alldiffs.loc[0, 'diff'], table.name)
         for _, row in alldiffs.loc[1:].itertuples():
-            diff = self._deserialize(row.diff, table.name)
+            diff = subset(self._deserialize(row.diff, table.name),
+                          from_value_date, to_value_date)
             ts = self._apply_diff(ts, diff)
         ts = self._apply_diff(snapshot, ts)
         assert ts.index.dtype.name == 'datetime64[ns]' or len(ts) == 0
