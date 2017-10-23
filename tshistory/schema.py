@@ -20,10 +20,17 @@ class tsschema(object):
     changeset = None
     changeset_series = None
 
+    def __new__(cls, namespace='tsh'):
+        if namespace in SCHEMAS:
+            return SCHEMAS[namespace]
+        return super(tsschema, cls).__new__(cls)
+
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
 
-    def build(self, meta):
+    def define(self, meta):
+        if self.namespace in SCHEMAS:
+            return
         L.info('build schema %s', self.namespace)
         self.meta = meta
         registry = Table(
@@ -72,6 +79,9 @@ class tsschema(object):
 
     def create(self, engine):
         L.info('create schema %s %s', self.namespace, self.exists(engine))
+        if self.exists(engine):
+            L.warning('cannot create already existing namespace %s', self.namespace)
+            return
         engine.execute(CreateSchema(self.namespace))
         engine.execute(CreateSchema('{}.timeserie'.format(self.namespace)))
         self.registry.create(engine)
@@ -89,15 +99,12 @@ class tsschema(object):
 
 
 # create and register default db structure
-tsschema().build(meta)
+tsschema().define(meta)
 
 
 def init(engine, meta, namespace='tsh'):
     schem = tsschema(namespace)
-    if schem.exists(engine):
-        L.warning('cannot create already existing namespace %s', namespace)
-        return
-    schem.build(meta)
+    schem.define(meta)
     schem.create(engine)
 
 
