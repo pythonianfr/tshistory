@@ -795,7 +795,7 @@ insertion_date  value_date
 2017-02-03      2017-01-03    2.0
 """, diffs)
 
-    for idx, idate in enumerate(histts.groupby('insertion_date').groups):
+    for idate in histts.index.get_level_values('insertion_date').unique():
         with engine.connect() as cn:
             with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.f',
                                   _insertion_date=idate):
