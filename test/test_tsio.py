@@ -325,6 +325,13 @@ def test_bad_import(engine, tsh):
 
 
 def test_revision_date(engine, tsh):
+    idate0 = datetime(2015, 1, 1, 0, 0, 0)
+    with tsh.newchangeset(engine, 'test', _insertion_date=idate0):
+
+        ts = genserie(datetime(2010, 1, 4), 'D', 4, [0], name='truc')
+        tsh.insert(engine, ts, 'ts_through_time')
+        assert idate0 == tsh.latest_insertion_date(engine, 'ts_through_time')
+
     idate1 = datetime(2015, 1, 1, 15, 43, 23)
     with tsh.newchangeset(engine, 'test', _insertion_date=idate1):
 

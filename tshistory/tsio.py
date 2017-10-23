@@ -513,7 +513,7 @@ class TimeSerie(object):
 
         # initial ts
         ts = self._deserialize(alldiffs.loc[0, 'diff'], table.name)
-        for _, row in alldiffs.loc[1:].itertuples():
+        for row in alldiffs.loc[1:].itertuples():
             diff = subset(self._deserialize(row.diff, table.name),
                           from_value_date, to_value_date)
             ts = self._apply_diff(ts, diff)
