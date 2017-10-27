@@ -100,15 +100,19 @@ def get(db_uri, seriename, json):
 @click.option('--json', is_flag=True, default=False)
 @click.option('--from-insertion-date', type=temporal)
 @click.option('--to-insertion-date', type=temporal)
-@click.option('--diff', is_flag=True, default=True)
+@click.option('--from-value-date', type=temporal)
+@click.option('--to-value-date', type=temporal)
+@click.option('--diff/--no-diff', is_flag=True, default=True)
 def history(db_uri, seriename,
             from_insertion_date, to_insertion_date,
+            from_value_date, to_value_date,
             diff, json):
     """show a serie full history """
     engine = create_engine(db_uri)
 
     ts = TSH.get_history(engine, seriename,
                          from_insertion_date, to_insertion_date,
+                         from_value_date, to_value_date,
                          diffmode=diff)
     if json:
         print(ts.to_json())
