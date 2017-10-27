@@ -114,6 +114,10 @@ class TimeSerie(object):
         if not len(newts):
             return
 
+        assert ('<M8[ns]' == newts.index.dtype or
+                'datetime' in str(newts.index.dtype) or
+                isinstance(newts.index, pd.MultiIndex))
+
         newts.name = name
         table = self._get_ts_table(cn, name)
 
