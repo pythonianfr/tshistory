@@ -2,6 +2,7 @@ from datetime import datetime
 from contextlib import contextmanager
 import logging
 import zlib
+import math
 
 import pandas as pd
 import numpy as np
@@ -18,7 +19,8 @@ L = logging.getLogger('tshistory.tsio')
 
 def tojson(ts):
     if not isinstance(ts.index, pd.MultiIndex):
-        return ts.to_json(date_format='iso')
+        return ts.to_json(date_format='iso',
+                          double_precision=-int(math.log10(TimeSerie._precision)))
 
     # multi index case
     return ts.to_frame().reset_index().to_json(date_format='iso')

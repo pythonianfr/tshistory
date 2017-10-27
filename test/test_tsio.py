@@ -960,6 +960,22 @@ def test_dtype_mismatch(engine, tsh):
     assert 'Type error when inserting error2, new type is object, type in base is float64' == str(excinfo.value)
 
 
+def test_precision(engine, tsh):
+
+    floaty = 0.123456789123456789
+    ts = genserie(datetime(2015, 1, 1), 'D', 5, initval=[floaty])
+
+    tsh.insert(engine, ts, 'precision', 'test')
+    ts_round = tsh.get(engine, 'precision')
+    assert 0.12345678912346 == ts_round.iloc[0]
+
+    diff = tsh.insert(engine, ts_round, 'precision', 'test')
+    assert diff is None # the roundtriped series does not produce a diff when reinserted
+
+    diff = tsh.insert(engine, ts, 'precision', 'test') # neither does the original series
+    assert diff is None
+
+
 @pytest.mark.perf
 def test_bigdata(engine, tracker, ptsh):
     tsh = ptsh
