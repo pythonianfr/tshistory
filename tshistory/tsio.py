@@ -105,7 +105,8 @@ class TimeSerie(object):
         """
         assert self._csid or author, 'author is mandatory'
         if self._csid and author:
-            L.info('author will not be used when in a changeset')
+            L.info('author r{} will not be used when in a changeset'.format(author))
+            author = None
         assert isinstance(newts, pd.Series)
         assert not newts.index.duplicated().any()
 

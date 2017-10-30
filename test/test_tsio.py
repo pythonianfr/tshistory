@@ -23,8 +23,11 @@ def test_changeset(engine, tsh):
         mock_date.now.return_value = datetime(2020, 1, 1)
         with engine.connect() as cn:
             with tsh.newchangeset(cn, 'babar'):
-                tsh.insert(cn, pd.Series(data, index=index), 'ts_values')
+                tsh.insert(cn, pd.Series(data, index=index), 'ts_values', author='WONTBEUSED')
                 tsh.insert(cn, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
+
+        # bogus author won't show up
+        assert tsh.log(engine)[0]['author'] == 'babar'
 
         g = tsh.get_group(engine, 'ts_values')
         g2 = tsh.get_group(engine, 'ts_othervalues')
