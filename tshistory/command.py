@@ -1,4 +1,10 @@
+from __future__ import print_function
+
 from pkg_resources import iter_entry_points
+import logging
+
+from dateutil import parser
+import json
 
 import click
 from click_plugins import with_plugins
@@ -6,11 +12,21 @@ from sqlalchemy import create_engine
 from dateutil.parser import parse as temporal
 import pandas as pd
 
-from tshistory.tsio import TimeSerie
+from tshistory.tsio import TimeSerie, fromjson
+from tshistory.db import dump as dump_db, restore as restore_db
+from tshistory.schema import init as init_schema
+
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 
 
 TSH = TimeSerie()
 
+
+# Override points
+# * for the log command
 
 REVFMT = """
 revision: {rev}
@@ -31,6 +47,27 @@ def format_rev(rev):
         fmt += 'series:   {names}'
 
     return fmt.format(**rev)
+
+
+# * for the restore command
+
+def read_and_insert(cn, tsh, json_cset):
+    rev_data = json.loads(json_cset)
+    date = parser.parse(rev_data['date'])
+    author = rev_data['author']
+    with tsh.newchangeset(cn, author, _insertion_date=date):
+        for name in rev_data['names']:
+            ts = fromjson(rev_data['diff'][name], name)
+            ts.name = name
+            tsh.insert(cn, ts, name)
+
+
+def additional_dumping(dburi, dump_path):
+    return
+
+
+def additional_restoring(path_dump, dburi):
+    return
 
 
 @with_plugins(iter_entry_points('tshistory.subcommands'))
@@ -111,6 +148,39 @@ def info(db_uri):
     info = TSH.info(engine)
     info['serie names'] = ', '.join(info['serie names'])
     print(INFOFMT.format(**info))
+
+
+@tsh.command()
+@click.argument('db-uri')
+@click.argument('dump-path')
+def dump(db_uri, dump_path):
+    """dump all time series revisions in a zip file"""
+    dump_path = Path(dump_path)
+    out_path = dump_db(db_uri, dump_path, TSH, additional_dumping)
+    print('db dump avaible at %s' % out_path)
+
+
+def verbose_logs():
+    logger = logging.getLogger('tshistory.tsio')
+    logger.addHandler(logging.StreamHandler())
+    logger.setLevel(logging.INFO)
+
+
+@tsh.command()
+@click.argument('out-path')
+@click.argument('db-uri')
+def restore(out_path, db_uri):
+    """restore zip file in a freshly initialized database (see init_db command)"""
+    verbose_logs()
+    restore_db(out_path, db_uri, TSH, read_and_insert, additional_restoring)
+
+
+@tsh.command()
+@click.argument('db-uri')
+def init_db(db_uri):
+    """initialize an new db."""
+
+    init_schema(create_engine(db_uri))
 
 
 if __name__ == '__main__':

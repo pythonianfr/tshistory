@@ -9,7 +9,7 @@ setup(name='tshistory',
 
       packages=['tshistory'],
       install_requires=[
-          'pathlib',
+          'pathlib2',
           'pandas',
           'dateutils',
           'sqlalchemy',
