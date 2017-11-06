@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
-from sqlalchemy.sql.expression import select, func, desc, and_
+from sqlalchemy.sql.expression import select, func, desc
 from sqlalchemy.dialects.postgresql import BYTEA
 
 from tshistory.schema import SCHEMAS
