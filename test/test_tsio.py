@@ -63,9 +63,11 @@ def test_changeset(engine, tsh):
         {'author': 'babar',
          'rev': 1,
          'date': datetime(2020, 1, 1, 0, 0),
+         'meta': {},
          'names': ['ts_values', 'ts_othervalues']},
         {'author': 'celeste',
          'rev': 2,
+         'meta': {},
          'date': datetime(2020, 1, 1, 0, 0),
          'names': ['ts_values']}
     ] == log
@@ -87,6 +89,98 @@ def test_changeset(engine, tsh):
         'serie names': ['ts_othervalues', 'ts_values'],
         'series count': 2
     } == info
+
+
+def test_strip(engine, tsh):
+    for i in range(1, 5):
+        pubdate = datetime(2017, 1, i)
+        ts = genserie(datetime(2017, 1, 10), 'H', 1 + i)
+        with tsh.newchangeset(engine, 'babar', _insertion_date=pubdate):
+            tsh.insert(engine, ts, 'xserie')
+        # also insert something completely unrelated
+        tsh.insert(engine, genserie(datetime(2018, 1, 1), 'D', 1 + i), 'yserie', 'celeste')
+
+    csida = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3))
+    assert csida is not None
+    csidb = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3, 1), mode='before')
+    csidc = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3, 1), mode='after')
+    assert csidb < csida < csidc
+
+    log = tsh.log(engine, names=['xserie', 'yserie'])
+    assert [(idx, l['author']) for idx, l in enumerate(log, start=1)
+    ] == [
+        (1, 'babar'),
+        (2, 'celeste'),
+        (3, 'babar'),
+        (4, 'celeste'),
+        (5, 'babar'),
+        (6, 'celeste'),
+        (7, 'babar'),
+        (8, 'celeste')
+    ]
+
+    h = tsh.get_history(engine, 'xserie')
+    assert_df("""
+insertion_date  value_date         
+2017-01-01      2017-01-10 00:00:00    0.0
+                2017-01-10 01:00:00    1.0
+2017-01-02      2017-01-10 00:00:00    0.0
+                2017-01-10 01:00:00    1.0
+                2017-01-10 02:00:00    2.0
+2017-01-03      2017-01-10 00:00:00    0.0
+                2017-01-10 01:00:00    1.0
+                2017-01-10 02:00:00    2.0
+                2017-01-10 03:00:00    3.0
+2017-01-04      2017-01-10 00:00:00    0.0
+                2017-01-10 01:00:00    1.0
+                2017-01-10 02:00:00    2.0
+                2017-01-10 03:00:00    3.0
+                2017-01-10 04:00:00    4.0
+""", h)
+
+    csid = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3))
+    with engine.connect() as cn:
+        tsh.strip(cn, 'xserie', csid)
+
+    assert_df("""
+insertion_date  value_date         
+2017-01-01      2017-01-10 00:00:00    0.0
+                2017-01-10 01:00:00    1.0
+2017-01-02      2017-01-10 00:00:00    0.0
+                2017-01-10 01:00:00    1.0
+                2017-01-10 02:00:00    2.0
+""", tsh.get_history(engine, 'xserie'))
+
+    assert_df("""
+2017-01-10 00:00:00    0.0
+2017-01-10 01:00:00    1.0
+2017-01-10 02:00:00    2.0
+""", tsh.get(engine, 'xserie'))
+
+    # internal structure is ok
+    with engine.connect() as cn:
+        cn.execute('set search_path to "{}.timeserie"'.format(tsh.namespace))
+        df = pd.read_sql("select id, diff, snapshot from xserie order by id", cn)
+        for attr in ('diff', 'snapshot'):
+            df[attr] = df[attr].apply(lambda x: False if x is None else True)
+
+    assert_df("""
+id   diff  snapshot
+0   1  False      True
+1   2   True      True
+""", df)
+
+    log = tsh.log(engine, names=['xserie', 'yserie'])
+    # 5 and 7 have disappeared
+    assert [l['author'] for l in log
+    ] == ['babar', 'celeste', 'babar', 'celeste', 'celeste', 'celeste']
+
+    log = tsh.log(engine, stripped=True, names=['xserie', 'yserie'])
+    assert [list(l['meta'].values())[0][:-1] + 'X' for l in log if l['meta']
+    ] == [
+        'got stripped from X',
+        'got stripped from X'
+    ]
 
 
 def test_tstamp_roundtrip(engine, tsh):
@@ -771,14 +865,17 @@ def test_get_history(engine, tsh):
     logs = tsh.log(engine, names=['smallserie'])
     assert [
         {'author': 'aurelien.campeas@pythonian.fr',
+         'meta': {},
          'date': datetime(2017, 2, 1, 0, 0),
          'names': ['smallserie']
         },
         {'author': 'aurelien.campeas@pythonian.fr',
+         'meta': {},
          'date': datetime(2017, 2, 2, 0, 0),
          'names': ['smallserie']
         },
         {'author': 'aurelien.campeas@pythonian.fr',
+         'meta': {},
          'date': datetime(2017, 2, 3, 0, 0),
          'names': ['smallserie']
         }

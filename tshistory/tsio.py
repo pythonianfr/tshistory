@@ -279,6 +279,62 @@ class TimeSerie(object):
         ).where(tstable.c.csid == cset.c.id)
         return cn.execute(sql).scalar()
 
+    def changeset_at(self, cn, seriename, revdate, mode='strict'):
+        assert mode in ('strict', 'before', 'after')
+        cset = self.schema.changeset
+        table = self._table_definition_for(seriename)
+        sql = select([table.c.csid]).where(
+            table.c.csid == cset.c.id
+        )
+        if mode == 'strict':
+            sql = sql.where(cset.c.insertion_date == revdate)
+        elif mode == 'before':
+            sql = sql.where(cset.c.insertion_date <= revdate)
+        else:
+            sql = sql.where(cset.c.insertion_date >= revdate)
+        return cn.execute(sql).scalar()
+
+    def strip(self, cn, seriename, csid):
+        logs = self.log(cn, fromrev=csid, names=(seriename,))
+        assert logs
+
+        # put stripping info in the metadata
+        cset = self.schema.changeset
+        cset_serie = self.schema.changeset_series
+        for log in logs:
+            # update changeset.metadata
+            metadata = cn.execute(
+                select([cset.c.metadata]).where(cset.c.id == log['rev'])
+            ).scalar() or {}
+            metadata['tshistory.info'] = 'got stripped from {}'.format(csid)
+            sql = cset.update().where(cset.c.id == log['rev']
+            ).values(metadata=metadata)
+            cn.execute(sql)
+            # delete changset_serie item
+            sql = cset_serie.delete().where(
+                cset_serie.c.csid == log['rev']
+            ).where(
+                cset_serie.c.serie == seriename
+            )
+            cn.execute(sql)
+
+        # wipe the diffs
+        table = self._table_definition_for(seriename)
+        cn.execute(table.delete().where(table.c.csid == csid))
+        # rebuild the top-level snapshot
+        cstip = self._latest_csid_for(cn, seriename)
+        if cn.execute(select([table.c.snapshot]).where(table.c.csid == cstip)).scalar() is None:
+            snap = self._build_snapshot_upto(
+                cn, table,
+                qfilter=(lambda cset, _t: cset.c.id < csid,)
+            )
+            sql = table.update().where(
+                table.c.csid == cstip
+            ).values(
+                snapshot=self._serialize(snap)
+            )
+            cn.execute(sql)
+
     def info(self, cn):
         """Gather global statistics on the current tshistory repository
         """
@@ -291,6 +347,7 @@ class TimeSerie(object):
         return stats
 
     def log(self, cn, limit=0, diff=False, names=None, authors=None,
+            stripped=False,
             fromrev=None, torev=None,
             fromdate=None, todate=None):
         """Build a structure showing the history of all the series in the db,
@@ -303,7 +360,7 @@ class TimeSerie(object):
             self.schema.registry
         )
 
-        sql = select([cset.c.id, cset.c.author, cset.c.insertion_date]
+        sql = select([cset.c.id, cset.c.author, cset.c.insertion_date, cset.c.metadata]
         ).distinct().order_by(desc(cset.c.id))
 
         if limit:
@@ -327,12 +384,17 @@ class TimeSerie(object):
         if todate:
             sql = sql.where(cset.c.insertion_date <= todate)
 
-        sql = sql.where(cset.c.id == cset_series.c.csid
-        ).where(cset_series.c.serie == reg.c.name)
+        if stripped:
+            # outerjoin to show dead things
+            sql = sql.select_from(cset.outerjoin(cset_series))
+        else:
+            sql = sql.where(cset.c.id == cset_series.c.csid
+            ).where(cset_series.c.serie == reg.c.name)
 
         rset = cn.execute(sql)
-        for csetid, author, revdate in rset.fetchall():
+        for csetid, author, revdate, meta in rset.fetchall():
             log.append({'rev': csetid, 'author': author, 'date': revdate,
+                        'meta': meta or {},
                         'names': self._changeset_series(cn, csetid)})
 
         if diff:
@@ -426,6 +488,7 @@ class TimeSerie(object):
     # insertion handling
 
     def _get_tip_id(self, cn, table):
+        " get the *local* id "
         sql = select([func.max(table.c.id)])
         return cn.execute(sql).scalar()
 
@@ -501,6 +564,8 @@ class TimeSerie(object):
             return None
 
         cset = self.schema.changeset
+        # beware the potential cartesian product
+        # between table & cset if there is no qfilter
         sql = select([table.c.id,
                       table.c.diff,
                       table.c.parent,
