@@ -14,7 +14,7 @@ and `tshistory` provides two things:
 
 * a base python API which abstracts away the underlying storage
 
-* a postgres model, which uses JSONB fields to store the bulk of the
+* a postgres model, which uses BYTEA fields to store chunks of the
   series data.
 
 The core idea of tshistory is to handle successive versions of
@@ -23,7 +23,8 @@ series.
 
 Series state can be indexed by either a timestamp (which typically
 matches the moment a new insertion took place) or a `changeset id`
-which denotes the exact change leading to a given version.
+which is a nuumeric index denoting the exact change leading to a given
+version.
 
 
 # Basic usage
@@ -86,18 +87,22 @@ A command line tool is provided, called `tsh`. It provides its usage
 guidelines:
 
 ```shell
- $ tsh --help
+ $ tsh
  Usage: tsh [OPTIONS] COMMAND [ARGS]...
 
  Options:
    --help  Show this message and exit.
 
- Commands:
-   info
-   log
+Commands:
+  dump     dump all time series revisions in a zip file
+  get      show a serie in its current state
+  history  show a serie full history
+  info     show global statistics of the repository
+  init-db  initialize an new db.
+  log      show revision history of entire repository or...
+  restore  restore zip file in a freshly initialized...
+  view     visualize time series through the web
 ```
-
-It currently provides two basic operations `info` and `log`.
 
 `Info` provides an overview of the time series repository (number of
 committed changes, number and series and their names).
