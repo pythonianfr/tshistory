@@ -67,11 +67,9 @@ def additional_restoring(path_dump, dburi):
 
 
 @with_plugins(iter_entry_points('tshistory.subcommands'))
-@click.group(invoke_without_command=True)
-@click.pass_context
+@click.group()
 def tsh(ctx):
-    if ctx.invoked_subcommand is None:
-        click.echo(ctx.get_usage())
+    pass
 
 
 @tsh.command()
