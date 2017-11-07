@@ -1,10 +1,10 @@
 # coding: utf-8
-from pathlib import Path
 from datetime import datetime, timedelta
 from time import time
 from dateutil import parser
 import calendar
 
+from pathlib2 import Path
 import pandas as pd
 import numpy as np
 import pytest
@@ -379,7 +379,7 @@ name              table_name
 
 def test_bad_import(engine, tsh):
     # the data were parsed as date by pd.read_json()
-    df_result = pd.read_csv(DATADIR / 'test_data.csv')
+    df_result = pd.read_csv(str(DATADIR / 'test_data.csv'))
     df_result['Gas Day'] = df_result['Gas Day'].apply(parser.parse, dayfirst=True, yearfirst=False)
     df_result.set_index('Gas Day', inplace=True)
     ts = df_result['SC']

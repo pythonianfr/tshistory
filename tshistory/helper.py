@@ -2,10 +2,7 @@ import tempfile
 import shutil
 from contextlib import contextmanager
 
-try:
-    from pathlib import Path
-except:
-    from pathlib2 import Path
+from pathlib2 import Path
 
 
 @contextmanager

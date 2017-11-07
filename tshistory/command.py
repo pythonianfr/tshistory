@@ -5,6 +5,7 @@ import logging
 
 from dateutil import parser
 import json
+from pathlib2 import Path
 
 import click
 from click_plugins import with_plugins
@@ -15,11 +16,6 @@ import pandas as pd
 from tshistory.tsio import TimeSerie, fromjson
 from tshistory.db import dump as dump_db, restore as restore_db
 from tshistory.schema import init as init_schema
-
-try:
-    from pathlib import Path
-except ImportError:
-    from pathlib2 import Path
 
 
 TSH = TimeSerie()
