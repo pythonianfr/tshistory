@@ -68,7 +68,7 @@ def additional_restoring(path_dump, dburi):
 
 @with_plugins(iter_entry_points('tshistory.subcommands'))
 @click.group()
-def tsh(ctx):
+def tsh():
     pass
 
 
@@ -180,11 +180,10 @@ def restore(out_path, db_uri):
     restore_db(out_path, db_uri, TSH, read_and_insert, additional_restoring)
 
 
-@tsh.command()
+@tsh.command(name='init-db')
 @click.argument('db-uri')
 def init_db(db_uri):
     """initialize an new db."""
-
     init_schema(create_engine(db_uri), meta)
 
 
