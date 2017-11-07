@@ -15,7 +15,7 @@ import pandas as pd
 
 from tshistory.tsio import TimeSerie, fromjson
 from tshistory.db import dump as dump_db, restore as restore_db
-from tshistory.schema import init as init_schema
+from tshistory.schema import init as init_schema, meta
 
 
 TSH = TimeSerie()
