@@ -5,6 +5,7 @@ setup(name='tshistory',
       version='0.1.0',
       author='Pythonian',
       author_email='aurelien.campeas@pythonian.fr, arnaud.campeas@pythonian.fr',
+      url='https://bitbucket.org/pythonian/tshistory',
       description='Store timeseries histories into postgres',
 
       packages=['tshistory'],
