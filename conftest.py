@@ -1,12 +1,11 @@
-from time import time
 from pathlib import Path
 import logging
 
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import MetaData
 import pandas as pd
 
 import pytest
-from pytest_sa_pg.fixture import db
+from pytest_sa_pg.fixture import engine_fixture
 
 from tshistory import schema, tsio
 
@@ -18,13 +17,11 @@ schema.L.addHandler(logging.StreamHandler())
 tsio.L.addHandler(logging.StreamHandler())
 
 
-@pytest.fixture(scope='session')
-def engine(request):
-    port = 5433
-    db.setup_local_pg_cluster(request, DATADIR, port)
-    uri = 'postgresql://localhost:{}/postgres'.format(port)
-    e = create_engine(uri)
-    yield e
+engine = engine_fixture(schema.meta, DATADIR, 5433,
+                        # callback does nothing because we do the job
+                        # in the other fixtures
+                        lambda e, m: None
+)
 
 
 @pytest.fixture(params=['tsh', 'zzz'],
