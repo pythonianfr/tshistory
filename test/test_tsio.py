@@ -422,6 +422,17 @@ def test_bad_import(engine, tsh):
 
 
 def test_revision_date(engine, tsh):
+    # we prepare a good joke for the end of the test
+    ival = tsh._snapshot_interval
+    tsh._snapshot_interval = 3
+
+    for i in range(1, 5):
+        with engine.connect() as cn:
+            with tsh.newchangeset(cn, 'test',
+                                  _insertion_date=datetime(2016, 1, i)):
+                tsh.insert(cn, genserie(datetime(2017, 1, i), 'D', 3, [i]), 'revdate')
+
+    # end of prologue, now some real meat
     idate0 = datetime(2015, 1, 1, 0, 0, 0)
     with tsh.newchangeset(engine, 'test', _insertion_date=idate0):
 
@@ -483,6 +494,28 @@ def test_revision_date(engine, tsh):
                  revision_date=datetime(2014, 1, 1, 18, 43, 23))
 
     assert ts is None
+
+    # epilogue: back to the revdate issue
+    assert_df("""
+2017-01-01    1.0
+2017-01-02    2.0
+2017-01-03    3.0
+2017-01-04    4.0
+2017-01-05    4.0
+2017-01-06    4.0
+""", tsh.get(engine, 'revdate'))
+
+    bogus = tsh.get(engine, 'revdate', revision_date=datetime(2016, 1, 2))
+    assert_df("""
+2017-01-01    1.0
+2017-01-02    2.0
+2017-01-03    3.0
+2017-01-04    4.0
+2017-01-05    4.0
+2017-01-06    4.0
+""", bogus)  # oops, looks like we didn't pick the right data
+
+    tsh._snapshot_interval = ival
 
 
 def test_snapshots(engine, tsh):
