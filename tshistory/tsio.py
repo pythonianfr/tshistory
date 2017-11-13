@@ -248,7 +248,7 @@ class TimeSerie(object):
 
         csid, revdate, diff_ = diffs[0]
         snapshot = self._build_snapshot_upto(cn, table, [
-            lambda cset, _: cset.c.id == csid
+            lambda cset, _: cset.c.id <= csid
         ], from_value_date, to_value_date)
 
         series = [(revdate, subset(snapshot, from_value_date, to_value_date))]
