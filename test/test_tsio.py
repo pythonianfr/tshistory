@@ -1006,6 +1006,39 @@ insertion_date  value_date
 """, tsc)
 
 
+def test_nr_gethistory(engine, tsh):
+    s0 = pd.Series([-1, 0, 0, -1],
+                   index=pd.DatetimeIndex(start=datetime(2016, 12, 29),
+                                          end=datetime(2017, 1, 1),
+                                          freq='D'))
+    tsh.insert(engine, s0, 'foo', 'zogzog')
+
+    s1 = pd.Series([1, 0, 0, 1],
+                   index=pd.DatetimeIndex(start=datetime(2017, 1, 1),
+                                          end=datetime(2017, 1, 4),
+                                          freq='D'))
+    idate = datetime(2016, 1, 1)
+    for i in range(5):
+        with engine.connect() as cn:
+            with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.f',
+                                  _insertion_date=idate + timedelta(days=i)):
+                tsh.insert(cn, s1 * i, 'foo')
+
+    df = tsh.get_history(engine, 'foo',
+                         datetime(2016, 1, 3),
+                         datetime(2016, 1, 4),
+                         datetime(2017, 1, 1),
+                         datetime(2017, 1, 4))
+
+    assert_df("""
+insertion_date  value_date
+2016-01-03      2017-01-01    2.0
+                2017-01-04    2.0
+2016-01-04      2017-01-01    3.0
+                2017-01-04    3.0
+""", df)
+
+
 def test_add_na(engine, tsh):
     # a serie of NaNs won't be insert in base
     # in case of first insertion
