@@ -505,15 +505,13 @@ def test_revision_date(engine, tsh):
 2017-01-06    4.0
 """, tsh.get(engine, 'revdate'))
 
-    bogus = tsh.get(engine, 'revdate', revision_date=datetime(2016, 1, 2))
+    oldstate = tsh.get(engine, 'revdate', revision_date=datetime(2016, 1, 2))
     assert_df("""
 2017-01-01    1.0
 2017-01-02    2.0
-2017-01-03    3.0
-2017-01-04    4.0
-2017-01-05    4.0
-2017-01-06    4.0
-""", bogus)  # oops, looks like we didn't pick the right data
+2017-01-03    2.0
+2017-01-04    2.0
+""", oldstate)
 
     tsh._snapshot_interval = ival
 

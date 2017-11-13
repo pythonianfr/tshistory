@@ -542,7 +542,8 @@ class TimeSerie(object):
         sql = select([table.c.id, table.c[column]]
         ).order_by(desc(table.c.id)
         ).limit(1
-        ).where(table.c[column] != None)
+        ).where(table.c[column] != None
+        ).select_from(table.join(cset))
 
         if qfilter:
             sql = sql.where(table.c.csid <= cset.c.id)
