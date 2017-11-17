@@ -172,7 +172,8 @@ class TimeSerie(object):
                len(diff), name, author or self._author)
         return diff
 
-    def get(self, cn, name, revision_date=None):
+    def get(self, cn, name, revision_date=None,
+            from_value_date=None, to_value_date=None):
         """Compute and return the serie of a given name
 
         revision_date: datetime filter to get previous versions of the
@@ -186,7 +187,9 @@ class TimeSerie(object):
         qfilter = []
         if revision_date:
             qfilter.append(lambda cset, _: cset.c.insertion_date <= revision_date)
-        current = self._build_snapshot_upto(cn, table, qfilter)
+        current = self._build_snapshot_upto(cn, table, qfilter,
+                                            from_value_date=from_value_date,
+                                            to_value_date=to_value_date)
 
         if current is not None:
             current.name = name
@@ -560,7 +563,9 @@ class TimeSerie(object):
 
     def _build_snapshot_upto(self, cn, table, qfilter=(),
                              from_value_date=None, to_value_date=None):
-        snapid, snapshot = self._find_snapshot(cn, table, qfilter)
+        snapid, snapshot = self._find_snapshot(cn, table, qfilter,
+                                               from_value_date=from_value_date,
+                                               to_value_date=to_value_date)
         if snapid is None:
             return None
 

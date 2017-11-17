@@ -1129,7 +1129,6 @@ def test_dtype_mismatch(engine, tsh):
 
 
 def test_precision(engine, tsh):
-
     floaty = 0.123456789123456789
     ts = genserie(datetime(2015, 1, 1), 'D', 5, initval=[floaty])
 
@@ -1142,6 +1141,21 @@ def test_precision(engine, tsh):
 
     diff = tsh.insert(engine, ts, 'precision', 'test')  # neither does the original series
     assert diff is None
+
+
+def test_get_from_to(engine, tsh):
+    ts = genserie(datetime(2015, 1, 1), 'D', 365)
+    tsh.insert(engine, ts, 'quitelong', 'aurelien.campeas@pythonian.fr')
+
+    serie = tsh.get(engine, 'quitelong')
+    assert serie.index[0] == pd.Timestamp('2015-01-01 00:00:00')
+    assert serie.index[-1] == pd.Timestamp('2015-12-31 00:00:00')
+
+    serie = tsh.get(engine, 'quitelong',
+                    from_value_date=datetime(2015, 5, 1),
+                    to_value_date=datetime(2015, 6, 1))
+    assert serie.index[0] == pd.Timestamp('2015-05-01 00:00:00')
+    assert serie.index[-1] == pd.Timestamp('2015-06-01 00:00:00')
 
 
 @pytest.mark.perf
