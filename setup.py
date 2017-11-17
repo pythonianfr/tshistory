@@ -2,7 +2,7 @@ from setuptools import setup
 
 
 setup(name='tshistory',
-      version='0.1.0',
+      version='0.1.1',
       author='Pythonian',
       author_email='aurelien.campeas@pythonian.fr, arnaud.campeas@pythonian.fr',
       url='https://bitbucket.org/pythonian/tshistory',
