@@ -48,6 +48,14 @@ example:
  # db insertion
  tsh.insert(engine, serie, 'my_serie', 'babar@pythonian.fr')
 
+ # it looks like this:
+ assert """
+2017-01-01    1.0
+2017-01-02    2.0
+2017-01-03    3.0
+Freq: D, dtype: float64
+""".strip() == serie.to_string().strip()
+
  # db retrieval
  assert tsh.get(engine, 'my_serie') == serie
 ```
