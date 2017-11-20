@@ -120,6 +120,22 @@ insertion_date              value_date
 """.strip() == history.to_string().strip()
 ```
 
+Note how this shows the full serie state for each insertion date. It
+is possible to show the differences only:
+
+```python
+ diffs = tsh.get_history(engine, 'my_serie', diffmode=True)
+
+ assert """
+insertion_date              value_date
+2017-11-20 15:29:35.210535  2017-01-01    1.0
+                            2017-01-02    2.0
+                            2017-01-03    3.0
+2017-11-20 15:32:25.160935  2017-01-03    7.0
+                            2017-01-04    8.0
+                            2017-01-05    9.0
+""".strip() == diffs.to_string().strip()
+```
 
 # Command line
 
