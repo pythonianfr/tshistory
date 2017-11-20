@@ -47,8 +47,7 @@ From this you're ready to go !
 # Basic usage
 
 
-Complete usage is shown in the test suite. However here's a simple
-example:
+However here's a simple example:
 
 ```python
  from datetime import datetime
