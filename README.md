@@ -85,6 +85,24 @@ Freq: D
 It is important to note that the third value was replaced, and the two
 last values were just appended.
 
+We can access the whole history (or parts of it) in one call:
+
+```python
+ history = tsh.get_history(engine, 'my_serie')
+
+ assert """
+insertion_date              value_date
+2017-11-20 15:29:35.210535  2017-01-01    1.0
+                            2017-01-02    2.0
+                            2017-01-03    3.0
+2017-11-20 15:32:25.160935  2017-01-01    1.0
+                            2017-01-02    2.0
+                            2017-01-03    7.0
+                            2017-01-04    8.0
+                            2017-01-05    9.0
+""".strip() == history.to_string().strip()
+```
+
 
 # Command line
 
