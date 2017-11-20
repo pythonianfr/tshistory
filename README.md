@@ -23,7 +23,7 @@ series.
 
 Series state can be indexed by either a timestamp (which typically
 matches the moment a new insertion took place) or a `changeset id`
-which is a nuumeric index denoting the exact change leading to a given
+which is a numeric index denoting the exact change leading to a given
 version.
 
 
