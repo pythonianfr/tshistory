@@ -46,7 +46,7 @@ example:
                   pd.date_range(start=datetime(2017, 1, 1),
                                 freq='D', periods=3))
  # db insertion
- tsh.insert(engine, serie, 'my_serie', 'aurelien@campeas.fr')
+ tsh.insert(engine, serie, 'my_serie', 'babar@pythonian.fr')
 
  # db retrieval
  assert tsh.get(engine, 'my_serie') == serie
@@ -59,7 +59,7 @@ This is good. Now, let's add more:
                   pd.date_range(start=datetime(2017, 1, 3),
                                 freq='D', periods=3))
  # db insertion
- tsh.insert(engine, serie, 'my_serie', 'aurelien@campeas.fr')
+ tsh.insert(engine, serie, 'my_serie', 'babar@pythonian.fr')
 
  # db retrieval
  stored = tsh.get(engine, 'my_serie')
