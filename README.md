@@ -6,15 +6,16 @@ postgres database, tracking their successive versions.
 
 [TOC]
 
+# Introduction
 
-# Purpose
+## Purpose
 
 `tshistory` is targetted at applications where
 [backtesting][backtesting] is an essential feature of the time series
 long term handling and storage.
 
 
-# Principles
+## Principles
 
 There are many ways to represent timeseries in a relational database,
 and `tshistory` provides two things:
@@ -34,7 +35,9 @@ which is a numeric index denoting the exact change leading to a given
 version.
 
 
-# Starting with a fresh database
+# Basic usage
+
+## Starting with a fresh database
 
 You need a postgresql database. You can create one like this:
 
@@ -51,8 +54,7 @@ Then, initialize the `tshistory` tables, like this:
 From this you're ready to go !
 
 
-# Basic usage
-
+## Creating a series
 
 However here's a simple example:
 
@@ -83,6 +85,8 @@ Freq: D, dtype: float64
  assert tsh.get(engine, 'my_serie') == serie
 ```
 
+## Appending data
+
 This is good. Now, let's add more:
 
 ```python
@@ -107,6 +111,8 @@ Freq: D
 
 It is important to note that the third value was replaced, and the two
 last values were just appended.
+
+## Retrieving history
 
 We can access the whole history (or parts of it) in one call:
 
