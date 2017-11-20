@@ -27,6 +27,23 @@ which is a numeric index denoting the exact change leading to a given
 version.
 
 
+# Starting with a fresh database
+
+You need a postgresql database. You can create one like this:
+
+```shell
+ createdb mydb
+```
+
+Then, initialize the `tshistory` tables, like this:
+
+```python
+ tsh init-db postgresql://me:password@localhost/mydb
+```
+
+From this you're ready to go !
+
+
 # Basic usage
 
 
