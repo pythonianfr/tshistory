@@ -7,6 +7,13 @@ postgres database, tracking their successive versions.
 [TOC]
 
 
+# Purpose
+
+`tshistory` is targetted at applications where
+[backtesting][backtesting] is an essential feature of the time series
+long term handling and storage.
+
+
 # Principles
 
 There are many ways to represent timeseries in a relational database,
@@ -229,3 +236,4 @@ For instance, the [tsview][tsview] python package provides such a
 `view` subcommand for generic time series visualisation.
 
 [tsview]: https://bitbucket.org/pythonian/tsview
+[backtesting]: https://en.wikipedia.org/wiki/Backtesting
