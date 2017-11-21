@@ -10,9 +10,15 @@ postgres database, tracking their successive versions.
 
 ## Purpose
 
-`tshistory` is targetted at applications where
-[backtesting][backtesting] is an essential feature of the time series
-long term handling and storage.
+`tshistory` is targetted at applications using time series where
+[backtesting][backtesting] and [cross-validation][cross-validation]
+are an essential feature.
+
+It provides exhaustivity and efficiency of the storage, with a simple
+Python api.
+
+It can be used as a building block for machine learning, model
+optimization and validation, both for inputs and outputs.
 
 
 ## Principles
@@ -22,17 +28,12 @@ and `tshistory` provides two things:
 
 * a base python API which abstracts away the underlying storage
 
-* a postgres model, which uses BYTEA fields to store chunks of the
-  series data.
+* a postgres model, which emphasizes the compact storage of successive
+  states of series (not unlike modern version control system)
 
 The core idea of tshistory is to handle successive versions of
 timeseries as they grow in time, allowing to get older states of any
 series.
-
-Series state can be indexed by either a timestamp (which typically
-matches the moment a new insertion took place) or a `changeset id`
-which is a numeric index denoting the exact change leading to a given
-version.
 
 
 # Basic usage
@@ -243,3 +244,4 @@ For instance, the [tsview][tsview] python package provides such a
 
 [tsview]: https://bitbucket.org/pythonian/tsview
 [backtesting]: https://en.wikipedia.org/wiki/Backtesting
+[cross-validation]: https://en.wikipedia.org/wiki/Cross-validation_(statistics)
