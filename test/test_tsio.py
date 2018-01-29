@@ -201,14 +201,14 @@ Freq: H
 
     # though un localized we understand it's been normalized to utc
     assert_df("""
-2017-10-28 23:00:00    0.0
-2017-10-29 00:00:00    1.0
-2017-10-29 01:00:00    2.0
-2017-10-29 02:00:00    3.0
+2017-10-28 23:00:00+00:00    0.0
+2017-10-29 00:00:00+00:00    1.0
+2017-10-29 01:00:00+00:00    2.0
+2017-10-29 02:00:00+00:00    3.0
 """, back)
 
-    back.index = back.index.tz_localize('UTC')
     assert (ts.index == back.index).all()
+    assert str(back.index.dtype) == 'datetime64[ns, UTC]'
 
 
 def test_differential(engine, tsh):

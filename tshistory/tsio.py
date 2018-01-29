@@ -5,6 +5,7 @@ import zlib
 import math
 
 import pandas as pd
+from pandas.api.types import is_datetimetz
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
@@ -42,6 +43,7 @@ def _fromjson(jsonb, tsname):
         return pd.Series(name=tsname)
 
     result = pd.read_json(jsonb, typ='series', dtype=False)
+    result.name = tsname
     if isinstance(result.index, pd.DatetimeIndex):
         result = num2float(result)
         return result
@@ -71,6 +73,7 @@ class TimeSerie(object):
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
         self.schema = SCHEMAS[namespace]
+        self.metadatacache = {}
 
     # API : changeset, insert, get, delete
     @contextmanager
@@ -131,7 +134,8 @@ class TimeSerie(object):
             if newts.isnull().all():
                 return None
             newts = newts[~newts.isnull()]
-            table = self._make_ts_table(cn, name)
+            table = self._make_ts_table(cn, name,
+                                        tzaware=is_datetimetz(newts.index))
             csid = self._csid or self._newchangeset(cn, author)
             value = {
                 'csid': csid,
@@ -196,6 +200,18 @@ class TimeSerie(object):
             current = current[~current.isnull()]
         return current
 
+    def get_serie_metadata(self, cn, tsname):
+        """Return metadata dict of timeserie."""
+        if tsname in self.metadatacache:
+            return self.metadatacache[tsname]
+        reg = self.schema.registry
+        sql = select([reg.c.metadata]).where(
+            reg.c.name == tsname
+        )
+        meta = cn.execute(sql).scalar()
+        self.metadatacache[tsname] = meta
+        return meta
+
     def get_group(self, cn, name, revision_date=None):
         csid = self._latest_csid_for(cn, name)
 
@@ -240,6 +256,7 @@ class TimeSerie(object):
                     sql = select([table.c.snapshot]).where(table.c.csid == csid)
                     diff = cn.execute(sql).scalar()
                 serie = subset(self._deserialize(diff, name), from_value_date, to_value_date)
+                serie = self._ensure_tz_consistency(cn, serie)
                 mindex = [(revdate, valuestamp) for valuestamp in serie.index]
                 serie.index = pd.MultiIndex.from_tuples(mindex, names=[
                     'insertion_date', 'value_date']
@@ -258,6 +275,7 @@ class TimeSerie(object):
         for csid_, revdate, diff in diffs[1:]:
             diff = subset(self._deserialize(diff, table.name),
                           from_value_date, to_value_date)
+            diff = self._ensure_tz_consistency(cn, diff)
 
             serie = self._apply_diff(series[-1][1], diff)
             series.append((revdate, serie))
@@ -421,6 +439,17 @@ class TimeSerie(object):
     def _deserialize(self, ts, name):
         return fromjson(zlib.decompress(ts).decode('utf-8'), name)
 
+    def _ensure_tz_consistency(self, cn, ts):
+        """Return timeserie with tz aware index or not depending on metadata
+        tzaware.
+        """
+        assert ts.name is not None
+        metadata = self.get_serie_metadata(cn, ts.name)
+        if metadata and metadata.get('tzaware', False):
+            return ts.tz_localize('UTC')
+
+        return ts
+
     # serie table handling
 
     def _ts_table_name(self, seriename):
@@ -449,13 +478,15 @@ class TimeSerie(object):
             extend_existing=True
         )
 
-    def _make_ts_table(self, cn, name):
+    def _make_ts_table(self, cn, name, tzaware=False):
         tablename = self._ts_table_name(name)
         table = self._table_definition_for(name)
         table.create(cn)
         sql = self.schema.registry.insert().values(
             name=name,
-            table_name=tablename)
+            table_name=tablename,
+            metadata={'tzaware': tzaware},
+        )
         cn.execute(sql)
         return table
 
@@ -557,6 +588,7 @@ class TimeSerie(object):
             snapid, snapdata = cn.execute(sql).fetchone()
             snapdata = subset(self._deserialize(snapdata, table.name),
                               from_value_date, to_value_date)
+            snapdata = self._ensure_tz_consistency(cn, snapdata)
         except TypeError:
             return None, None
         return snapid, snapdata
@@ -591,9 +623,11 @@ class TimeSerie(object):
 
         # initial ts
         ts = self._deserialize(alldiffs.loc[0, 'diff'], table.name)
+        ts = self._ensure_tz_consistency(cn, ts)
         for row in alldiffs.loc[1:].itertuples():
             diff = subset(self._deserialize(row.diff, table.name),
                           from_value_date, to_value_date)
+            diff = self._ensure_tz_consistency(cn, diff)
             ts = self._apply_diff(ts, diff)
         ts = self._apply_diff(snapshot, ts)
         assert ts.index.dtype.name == 'datetime64[ns]' or len(ts) == 0
@@ -618,7 +652,8 @@ class TimeSerie(object):
             sql = select([table.c.diff])
         sql = filtercset(sql)
 
-        return self._deserialize(cn.execute(sql).scalar(), name)
+        ts = self._deserialize(cn.execute(sql).scalar(), name)
+        return self._ensure_tz_consistency(cn, ts)
 
     def _compute_diff(self, fromts, tots):
         """Compute the difference between fromts and tots
