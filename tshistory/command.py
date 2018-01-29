@@ -9,13 +9,14 @@ from pathlib2 import Path
 
 import click
 from click_plugins import with_plugins
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData
 from dateutil.parser import parse as temporal
 import pandas as pd
 
 from tshistory.tsio import TimeSerie, fromjson
 from tshistory.db import dump as dump_db, restore as restore_db
 from tshistory.schema import init as init_schema, meta
+import tshistory.schema
 
 
 TSH = TimeSerie()
@@ -182,9 +183,15 @@ def restore(out_path, db_uri):
 
 @tsh.command(name='init-db')
 @click.argument('db-uri')
-def init_db(db_uri):
+@click.option('--reset', is_flag=True, default=False)
+def init_db(db_uri, reset=False):
     """initialize an new db."""
-    init_schema(create_engine(db_uri), meta)
+    engine = create_engine(db_uri)
+    if reset:
+        tshistory.schema.reset(engine)
+        tshistory.schema.tsschema().define(MetaData())
+
+    init_schema(engine, meta)
 
 
 if __name__ == '__main__':
