@@ -76,11 +76,13 @@ def tsh():
 @click.argument('db-uri')
 @click.argument('seriename')
 @click.option('--json', is_flag=True, default=False)
-def get(db_uri, seriename, json):
+@click.option('--namespace', default='tsh')
+def get(db_uri, seriename, json, namespace='tsh'):
     """show a serie in its current state """
     engine = create_engine(db_uri)
+    tsh = TimeSerie(namespace)
 
-    ts = TSH.get(engine, seriename)
+    ts = tsh.get(engine, seriename)
     if json:
         print(ts.to_json())
     else:
@@ -97,14 +99,17 @@ def get(db_uri, seriename, json):
 @click.option('--from-value-date', type=temporal)
 @click.option('--to-value-date', type=temporal)
 @click.option('--diff/--no-diff', is_flag=True, default=True)
+@click.option('--namespace', default='tsh')
 def history(db_uri, seriename,
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date,
-            diff, json):
+            diff, json,
+            namespace='tsh'):
     """show a serie full history """
     engine = create_engine(db_uri)
 
-    ts = TSH.get_history(engine, seriename,
+    tsh = TimeSerie(namespace)
+    ts = tsh.get_history(engine, seriename,
                          from_insertion_date, to_insertion_date,
                          from_value_date, to_value_date,
                          diffmode=diff)
@@ -124,12 +129,15 @@ def history(db_uri, seriename,
 @click.option('--to-rev')
 @click.option('--from-insertion-date', type=temporal)
 @click.option('--to-insertion-date', type=temporal)
+@click.option('--namespace', default='tsh')
 def log(db_uri, limit, show_diff, serie, from_rev, to_rev,
-        from_insertion_date, to_insertion_date):
+        from_insertion_date, to_insertion_date,
+        namespace='tsh'):
     """show revision history of entire repository or series"""
     engine = create_engine(db_uri)
+    tsh = TimeSerie(namespace)
 
-    for rev in TSH.log(engine, limit=limit, diff=show_diff, names=serie,
+    for rev in tsh.log(engine, limit=limit, diff=show_diff, names=serie,
                        fromrev=from_rev, torev=to_rev,
                        fromdate=from_insertion_date, todate=to_insertion_date):
         rev['names'] = ','.join(rev['names'])
