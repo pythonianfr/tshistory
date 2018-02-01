@@ -12,7 +12,7 @@ from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.sql.expression import select, func, desc
 from sqlalchemy.dialects.postgresql import BYTEA
 
-from tshistory.schema import SCHEMAS
+from tshistory.schema import tsschema
 
 
 L = logging.getLogger('tshistory.tsio')
@@ -72,7 +72,8 @@ class TimeSerie(object):
 
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
-        self.schema = SCHEMAS[namespace]
+        self.schema = tsschema(namespace)
+        self.schema.define()
         self.metadatacache = {}
 
     # API : changeset, insert, get, delete

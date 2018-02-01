@@ -15,7 +15,6 @@ import pandas as pd
 
 from tshistory.tsio import TimeSerie, fromjson
 from tshistory.db import dump as dump_db, restore as restore_db
-from tshistory.schema import init as init_schema, meta
 import tshistory.schema
 
 
@@ -184,15 +183,21 @@ def restore(out_path, db_uri):
 @tsh.command(name='init-db')
 @click.argument('db-uri')
 @click.option('--reset', is_flag=True, default=False)
-def init_db(db_uri, reset=False):
+@click.option('--namespace', default='tsh')
+def init_db(db_uri, reset=False, namespace='tsh'):
     """initialize an new db."""
     engine = create_engine(db_uri)
+    schem = tshistory.schema.tsschema(namespace)
+    schem.define()
+
     if reset:
-        tshistory.schema.reset(engine)
-        tshistory.schema.tsschema().define(MetaData())
+        assert schem.exists(engine)
+        schem.destroy(engine)
 
-    init_schema(engine, meta)
+        # needed because of del self.meta & return in define() :
+        schem.meta = MetaData()
 
+    schem.create(engine)
 
 if __name__ == '__main__':
     tsh()

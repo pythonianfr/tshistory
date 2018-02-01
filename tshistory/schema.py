@@ -7,10 +7,10 @@ from sqlalchemy.schema import CreateSchema
 
 
 L = logging.getLogger('tshistory.schema')
-meta = MetaData()
 
 # schemas registry
 SCHEMAS = {}
+meta = MetaData()
 
 
 class tsschema(object):
@@ -28,7 +28,7 @@ class tsschema(object):
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
 
-    def define(self, meta):
+    def define(self, meta=MetaData()):
         if self.namespace in SCHEMAS:
             return
         L.info('build schema %s', self.namespace)
@@ -37,7 +37,8 @@ class tsschema(object):
             'registry', meta,
             Column('id', Integer, primary_key=True),
             Column('name', String, index=True, nullable=False, unique=True),
-            Column('table_name', String, index=True, nullable=False, unique=True),
+            Column('table_name', String, index=True,
+                   nullable=False, unique=True),
             Column('metadata', JSONB(none_as_null=True)),
             schema=self.namespace
         )
@@ -75,12 +76,13 @@ class tsschema(object):
                               'from information_schema.schemata '
                               'where schema_name = %(name)s)',
                               name=self.namespace
-        ).scalar()
+                              ).scalar()
 
     def create(self, engine):
         L.info('create schema %s %s', self.namespace, self.exists(engine))
         if self.exists(engine):
-            L.warning('cannot create already existing namespace %s', self.namespace)
+            L.warning('cannot create already existing namespace %s',
+                      self.namespace)
             return
         engine.execute(CreateSchema(self.namespace))
         engine.execute(CreateSchema('{}.timeserie'.format(self.namespace)))
@@ -90,8 +92,10 @@ class tsschema(object):
 
     def destroy(self, engine):
         L.info('destroy schema %s', self.namespace)
-        engine.execute('drop schema if exists "{}.timeserie" cascade'.format(self.namespace))
-        engine.execute('drop schema if exists {} cascade'.format(self.namespace))
+        engine.execute(
+            'drop schema if exists "{}.timeserie" cascade'.format(self.namespace))
+        engine.execute(
+            'drop schema if exists {} cascade'.format(self.namespace))
         del self.meta
         del self.registry
         del self.changeset
@@ -99,7 +103,7 @@ class tsschema(object):
 
 
 # create and register default db structure
-tsschema().define(meta)
+tsschema().define(MetaData())  # Populate SCHEMAS with default namespace='tsh'
 
 
 def init(engine, meta, namespace='tsh'):
