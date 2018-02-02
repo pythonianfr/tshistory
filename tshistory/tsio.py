@@ -38,6 +38,18 @@ def fromjson(jsonb, tsname):
     return _fromjson(jsonb, tsname).fillna(value=np.nan)
 
 
+def tzaware_serie(ts):
+    if isinstance(ts.index, pd.MultiIndex):
+        tzaware = [is_datetimetz(ts.index.get_level_values(idx_name))
+                   for idx_name in ts.index.names]
+        assert all(tzaware) or not any(tzaware), (
+            'all your indexes must be '
+            'either tzaware or none of them'
+        )
+        return all(tzaware)
+    return is_datetimetz(ts.index)
+
+
 def _fromjson(jsonb, tsname):
     if jsonb == '{}':
         return pd.Series(name=tsname)
@@ -135,8 +147,7 @@ class TimeSerie(object):
             if newts.isnull().all():
                 return None
             newts = newts[~newts.isnull()]
-            table = self._make_ts_table(cn, name,
-                                        tzaware=is_datetimetz(newts.index))
+            table = self._make_ts_table(cn, name, tzaware=tzaware_serie(newts))
             csid = self._csid or self._newchangeset(cn, author)
             value = {
                 'csid': csid,
@@ -447,8 +458,13 @@ class TimeSerie(object):
         assert ts.name is not None
         metadata = self.get_serie_metadata(cn, ts.name)
         if metadata and metadata.get('tzaware', False):
+            if isinstance(ts.index, pd.MultiIndex):
+                for i in range(len(ts.index.levels)):
+                    ts.index = ts.index.set_levels(
+                        ts.index.levels[i].tz_localize('UTC', ambiguous='infer'),
+                        level=i)
+                return ts
             return ts.tz_localize('UTC')
-
         return ts
 
     # serie table handling

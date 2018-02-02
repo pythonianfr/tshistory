@@ -25,9 +25,20 @@ def genserie(start, freq, repeat, initval=None, tz=None, name=None):
         values = range(repeat)
     else:
         values = initval * repeat
-    return pd.Series(values,
-                     name=name,
-                     index=pd.date_range(start=start,
-                                         freq=freq,
-                                         periods=repeat,
-                                         tz=tz))
+
+    if isinstance(freq, (list, tuple)):
+        idx = []
+        for i in range(len(freq)):
+            idx.append(pd.date_range(start=start,
+                                     freq=freq[i],
+                                     periods=repeat,
+                                     tz=tz))
+        return pd.Series(values, name=name, index=idx)
+
+    else:
+        return pd.Series(values,
+                         name=name,
+                         index=pd.date_range(start=start,
+                                             freq=freq,
+                                             periods=repeat,
+                                             tz=tz))

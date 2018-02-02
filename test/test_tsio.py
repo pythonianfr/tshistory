@@ -879,6 +879,36 @@ a          b                   c
     # the result ts have now 3 values for each point in 'a'
 
 
+def test_multi_index_aware(engine, tsh):
+    ts_multi_aware = genserie(
+        start=pd.Timestamp(2015, 1, 11, 12).tz_localize('UTC'),
+        freq=['15T', '30T', '60T'],
+        repeat=10,
+        tz='UTC',
+        name='ts_multi_aware',
+    )
+    ts_multi_aware.index.rename(['a', 'b', 'c'], inplace=True)
+
+    tsh.insert(engine, ts_multi_aware, 'ts_multi_aware', 'test')
+    ts_aware = tsh.get(engine, 'ts_multi_aware')
+
+    assert_df("""
+                                                                               ts_multi_aware
+a                         b                         c                                        
+2015-01-11 12:00:00+00:00 2015-01-11 12:00:00+00:00 2015-01-11 12:00:00+00:00             0.0
+2015-01-11 12:15:00+00:00 2015-01-11 12:30:00+00:00 2015-01-11 13:00:00+00:00             1.0
+2015-01-11 12:30:00+00:00 2015-01-11 13:00:00+00:00 2015-01-11 14:00:00+00:00             2.0
+2015-01-11 12:45:00+00:00 2015-01-11 13:30:00+00:00 2015-01-11 15:00:00+00:00             3.0
+2015-01-11 13:00:00+00:00 2015-01-11 14:00:00+00:00 2015-01-11 16:00:00+00:00             4.0
+2015-01-11 13:15:00+00:00 2015-01-11 14:30:00+00:00 2015-01-11 17:00:00+00:00             5.0
+2015-01-11 13:30:00+00:00 2015-01-11 15:00:00+00:00 2015-01-11 18:00:00+00:00             6.0
+2015-01-11 13:45:00+00:00 2015-01-11 15:30:00+00:00 2015-01-11 19:00:00+00:00             7.0
+2015-01-11 14:00:00+00:00 2015-01-11 16:00:00+00:00 2015-01-11 20:00:00+00:00             8.0
+2015-01-11 14:15:00+00:00 2015-01-11 16:30:00+00:00 2015-01-11 21:00:00+00:00             9.0
+    """, pd.DataFrame(ts_aware.sort_index()))
+    # Note: the columnns are returned according to the alphabetic order
+
+
 def test_get_history(engine, tsh):
     for numserie in (1, 2, 3):
         with engine.connect() as cn:
@@ -1156,6 +1186,7 @@ def test_get_from_to(engine, tsh):
                     to_value_date=datetime(2015, 6, 1))
     assert serie.index[0] == pd.Timestamp('2015-05-01 00:00:00')
     assert serie.index[-1] == pd.Timestamp('2015-06-01 00:00:00')
+
 
 
 @pytest.mark.perf
