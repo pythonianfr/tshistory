@@ -107,7 +107,7 @@ class TimeSerie(object):
         del self._csid
         del self._author
 
-    def insert(self, cn, newts, name, author=None,
+    def insert(self, cn, newts, name, author=None, _insertion_date=None,
                extra_scalars={}):
         """Create a new revision of a given time series
 
@@ -148,7 +148,7 @@ class TimeSerie(object):
                 return None
             newts = newts[~newts.isnull()]
             table = self._make_ts_table(cn, name, tzaware=tzaware_serie(newts))
-            csid = self._csid or self._newchangeset(cn, author)
+            csid = self._csid or self._newchangeset(cn, author, _insertion_date)
             value = {
                 'csid': csid,
                 'snapshot': self._serialize(newts),

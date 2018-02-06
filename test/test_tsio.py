@@ -879,6 +879,33 @@ a          b                   c
     # the result ts have now 3 values for each point in 'a'
 
 
+def test_multi_index_get_history(engine, tsh):
+    appdate = pd.DatetimeIndex(
+        start=datetime(2015, 1, 1),
+        end=datetime(2015, 1, 2),
+        freq='D'
+    ).values
+    forecast_date = [pd.Timestamp(2015, 1, 11, 12, 0, 0)] * 2
+    multi = [
+        appdate,
+        np.array(forecast_date),
+    ]
+
+    ts_multi = pd.Series(range(2), index=multi)
+    ts_multi.index.rename(['app_date', 'fc_date'], inplace=True)
+
+    tsh.insert(engine, ts_multi, 'ts_mi', 'Babar',
+               _insertion_date=pd.datetime(2015, 1, 11, 12, 30, 0))
+
+
+    ts = tsh.get_history(engine, 'ts_mi')
+    assert_df("""
+insertion_date       value_date                                
+2015-01-11 12:30:00  (2015-01-01 00:00:00, 2015-01-11 12:00:00)    0.0
+                     (2015-01-02 00:00:00, 2015-01-11 12:00:00)    1.0
+    """, ts)
+
+
 def test_multi_index_aware(engine, tsh):
     ts_multi_aware = genserie(
         start=pd.Timestamp(2015, 1, 11, 12).tz_localize('UTC'),
