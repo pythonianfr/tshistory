@@ -900,10 +900,56 @@ def test_multi_index_get_history(engine, tsh):
 
     ts = tsh.get_history(engine, 'ts_mi')
     assert_df("""
-insertion_date       value_date                                
-2015-01-11 12:30:00  (2015-01-01 00:00:00, 2015-01-11 12:00:00)    0.0
-                     (2015-01-02 00:00:00, 2015-01-11 12:00:00)    1.0
-    """, ts)
+insertion_date       app_date    fc_date            
+2015-01-11 12:30:00  2015-01-01  2015-01-11 12:00:00    0.0
+                     2015-01-02  2015-01-11 12:00:00    1.0
+""", ts)
+
+    ts = tsh.get_history(engine, 'ts_mi', diffmode=True)
+
+    assert_df("""
+insertion_date       app_date    fc_date            
+2015-01-11 12:30:00  2015-01-01  2015-01-11 12:00:00    0.0
+                     2015-01-02  2015-01-11 12:00:00    1.0
+""", ts)
+
+    # new forecast
+    appdate = pd.DatetimeIndex(
+        start=datetime(2015, 1, 1),
+        end=datetime(2015, 1, 2),
+        freq='D'
+    ).values
+    forecast_date = [pd.Timestamp(2015, 1, 11, 13, 0, 0)] * 2
+    multi = [
+        appdate,
+        np.array(forecast_date),
+    ]
+
+    ts_multi = pd.Series((x+.1 for x in range(2)), index=multi)
+    ts_multi.index.rename(['app_date', 'fc_date'], inplace=True)
+
+    tsh.insert(engine, ts_multi, 'ts_mi', 'Babar',
+               _insertion_date=pd.datetime(2015, 1, 11, 13, 30, 0))
+
+    ts = tsh.get_history(engine, 'ts_mi')
+    assert_df("""
+insertion_date       app_date    fc_date            
+2015-01-11 12:30:00  2015-01-01  2015-01-11 12:00:00    0.0
+                     2015-01-02  2015-01-11 12:00:00    1.0
+2015-01-11 13:30:00  2015-01-01  2015-01-11 12:00:00    0.0
+                                 2015-01-11 13:00:00    0.1
+                     2015-01-02  2015-01-11 12:00:00    1.0
+                                 2015-01-11 13:00:00    1.1
+""", ts)
+
+    ts = tsh.get_history(engine, 'ts_mi', diffmode=True)
+    assert_df("""
+insertion_date       app_date    fc_date            
+2015-01-11 12:30:00  2015-01-01  2015-01-11 12:00:00    0.0
+                     2015-01-02  2015-01-11 12:00:00    1.0
+2015-01-11 13:30:00  2015-01-01  2015-01-11 13:00:00    0.1
+                     2015-01-02  2015-01-11 13:00:00    1.1
+""", ts)
 
 
 def test_multi_index_aware(engine, tsh):

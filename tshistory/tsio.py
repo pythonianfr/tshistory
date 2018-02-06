@@ -75,6 +75,19 @@ def subset(ts, fromdate, todate):
     return ts.loc[fromdate:todate]
 
 
+def inject_in_index(serie, revdate):
+    if isinstance(serie.index, pd.MultiIndex):
+        mindex = [(revdate, *rest) for rest in serie.index]
+        serie.index = pd.MultiIndex.from_tuples(mindex, names=[
+            'insertion_date', *serie.index.names]
+        )
+        return
+    mindex = [(revdate, valuestamp) for valuestamp in serie.index]
+    serie.index = pd.MultiIndex.from_tuples(mindex, names=[
+        'insertion_date', 'value_date']
+    )
+
+
 class TimeSerie(object):
     _csid = None
     _snapshot_interval = 10
@@ -170,7 +183,7 @@ class TimeSerie(object):
             return
 
         tip_id = self._get_tip_id(cn, table)
-        csid = self._csid or self._newchangeset(cn, author)
+        csid = self._csid or self._newchangeset(cn, author, _insertion_date)
         value = {
             'csid': csid,
             'diff': self._serialize(diff),
@@ -269,10 +282,7 @@ class TimeSerie(object):
                     diff = cn.execute(sql).scalar()
                 serie = subset(self._deserialize(diff, name), from_value_date, to_value_date)
                 serie = self._ensure_tz_consistency(cn, serie)
-                mindex = [(revdate, valuestamp) for valuestamp in serie.index]
-                serie.index = pd.MultiIndex.from_tuples(mindex, names=[
-                    'insertion_date', 'value_date']
-                )
+                inject_in_index(serie, revdate)
                 series.append(serie)
             series = pd.concat(series)
             series.name = name
@@ -293,10 +303,7 @@ class TimeSerie(object):
             series.append((revdate, serie))
 
         for revdate, serie in series:
-            mindex = [(revdate, valuestamp) for valuestamp in serie.index]
-            serie.index = pd.MultiIndex.from_tuples(mindex, names=[
-                'insertion_date', 'value_date']
-            )
+            inject_in_index(serie, revdate)
 
         serie = pd.concat([serie for revdate_, serie in series])
         serie.name = name
