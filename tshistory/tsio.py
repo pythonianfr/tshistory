@@ -72,6 +72,13 @@ def tzaware_serie(ts):
 def subset(ts, fromdate, todate):
     if fromdate is None and todate is None:
         return ts
+    if isinstance(fromdate, tuple):
+        fromdate = fromdate[0]
+    if isinstance(todate, tuple):
+        todate = todate[0]
+    if isinstance(ts.index, pd.MultiIndex):
+        if not ts.index.lexsort_depth:
+            ts.sort_index(inplace=True)
     return ts.loc[fromdate:todate]
 
 
