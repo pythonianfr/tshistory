@@ -468,7 +468,7 @@ class TimeSerie(object):
             if isinstance(ts.index, pd.MultiIndex):
                 for i in range(len(ts.index.levels)):
                     ts.index = ts.index.set_levels(
-                        ts.index.levels[i].tz_localize('UTC', ambiguous='infer'),
+                        ts.index.levels[i].tz_localize('UTC'),
                         level=i)
                 return ts
             return ts.tz_localize('UTC')
