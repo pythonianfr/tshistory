@@ -1260,6 +1260,13 @@ def test_get_from_to(engine, tsh):
     assert serie.index[0] == pd.Timestamp('2015-05-01 00:00:00')
     assert serie.index[-1] == pd.Timestamp('2015-06-01 00:00:00')
 
+    serie = tsh.get(engine, 'quitelong',
+                    from_value_date=datetime(2016, 5, 1),
+                    to_value_date=datetime(2016, 6, 1))
+    assert serie.dtypes == np.dtype('float64')
+    assert len(serie) == 0
+    assert isinstance(serie.index, pd.DatetimeIndex)
+    assert serie.index.freq is None
 
 
 @pytest.mark.perf
