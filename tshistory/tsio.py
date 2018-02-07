@@ -160,7 +160,7 @@ class TimeSerie(object):
             if newts.isnull().all():
                 return None
             newts = newts[~newts.isnull()]
-            table = self._make_ts_table(cn, name, tzaware=tzaware_serie(newts))
+            table = self._make_ts_table(cn, name, newts)
             csid = self._csid or self._newchangeset(cn, author, _insertion_date)
             value = {
                 'csid': csid,
@@ -225,7 +225,7 @@ class TimeSerie(object):
             current = current[~current.isnull()]
         return current
 
-    def get_serie_metadata(self, cn, tsname):
+    def metadata(self, cn, tsname):
         """Return metadata dict of timeserie."""
         if tsname in self.metadatacache:
             return self.metadatacache[tsname]
@@ -463,7 +463,7 @@ class TimeSerie(object):
         tzaware.
         """
         assert ts.name is not None
-        metadata = self.get_serie_metadata(cn, ts.name)
+        metadata = self.metadata(cn, ts.name)
         if metadata and metadata.get('tzaware', False):
             if isinstance(ts.index, pd.MultiIndex):
                 for i in range(len(ts.index.levels)):
@@ -502,14 +502,21 @@ class TimeSerie(object):
             extend_existing=True
         )
 
-    def _make_ts_table(self, cn, name, tzaware=False):
+    def _make_ts_table(self, cn, name, ts):
         tablename = self._ts_table_name(name)
         table = self._table_definition_for(name)
         table.create(cn)
+        index = ts.index
+        inames = [name for name in index.names if name]
         sql = self.schema.registry.insert().values(
             name=name,
             table_name=tablename,
-            metadata={'tzaware': tzaware},
+            metadata={
+                'tzaware': tzaware_serie(ts),
+                'index_type': index.dtype.name,
+                'index_names': inames,
+                'value_type': ts.dtypes.name
+            },
         )
         cn.execute(sql)
         return table
@@ -570,28 +577,28 @@ class TimeSerie(object):
             ).values(snapshot=None)
         )
 
-    def _validate_type(self, oldts, newts, name):
-        if (oldts is None or
-            oldts.isnull().all() or
-            newts.isnull().all()):
+    def _validate(self, cn, name, ts):
+        if ts.isnull().all():
+            # ts erasure
             return
-        old_type = oldts.dtype
-        new_type = newts.dtype
-        if new_type != old_type:
+        meta = self.metadata(cn, name)
+        tstype = ts.dtype
+        if tstype != meta['value_type']:
             m = 'Type error when inserting {}, new type is {}, type in base is {}'.format(
-                name, new_type, old_type)
+                name, tstype, meta['value_type'])
             raise Exception(m)
-        if type(oldts.index) != type(newts.index):
+        if ts.index.dtype.name != meta['index_type']:
             raise Exception('Incompatible index types')
-        if isinstance(oldts.index, pd.MultiIndex):
-            if oldts.index.names != newts.index.names:
-                raise Exception('Incompatible multi indexes: {} vs {}'.format(
-                    oldts.index.names, newts.index.names)
-                )
+        inames = [name for name in ts.index.names if name]
+        if inames != meta['index_names']:
+            raise Exception('Incompatible multi indexes: {} vs {}'.format(
+                meta['index_names'], inames)
+            )
 
     def _compute_diff_and_newsnapshot(self, cn, table, newts, **extra_scalars):
+        self._validate(cn, table.name, newts)
         snapshot = self._build_snapshot_upto(cn, table)
-        self._validate_type(snapshot, newts, table.name)
+        assert snapshot is not None
         diff = self._compute_diff(snapshot, newts)
 
         if len(diff) == 0:
