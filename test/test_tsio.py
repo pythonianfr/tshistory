@@ -256,6 +256,18 @@ a                         b                         c
     """, pd.DataFrame(ts_aware.sort_index()))
     # Note: the columnns are returned according to the alphabetic order
 
+    ts = tsh.get(engine, 'ts_multi_aware',
+                 from_value_date=pd.Timestamp(2017, 10, 29, 0).tz_localize('UTC'),
+                 to_value_date=pd.Timestamp(2017, 10, 29, 1).tz_localize('UTC'))
+    assert_df("""
+a                          b                          c                        
+2017-10-29 00:00:00+00:00  2017-10-29 01:00:00+00:00  2017-10-29 03:00:00+00:00    4.0
+2017-10-29 00:15:00+00:00  2017-10-29 01:30:00+00:00  2017-10-29 04:00:00+00:00    5.0
+2017-10-29 00:30:00+00:00  2017-10-29 02:00:00+00:00  2017-10-29 05:00:00+00:00    6.0
+2017-10-29 00:45:00+00:00  2017-10-29 02:30:00+00:00  2017-10-29 06:00:00+00:00    7.0
+2017-10-29 01:00:00+00:00  2017-10-29 03:00:00+00:00  2017-10-29 07:00:00+00:00    8.0
+    """, ts)
+
 
 def test_differential(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
