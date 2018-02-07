@@ -268,6 +268,26 @@ a                          b                          c
 2017-10-29 01:00:00+00:00  2017-10-29 03:00:00+00:00  2017-10-29 07:00:00+00:00    8.0
     """, ts)
 
+    ts = genserie(datetime(2010, 1, 1), 'D', 10)
+    with pytest.raises(Exception) as err:
+        tsh.insert(engine, ts, 'ts_multi_aware', 'test')
+    assert err.value.args[0] == 'Incompatible index types'
+
+    ts = genserie(
+        start=pd.Timestamp(
+            2017, 10, 28, 23
+        ).tz_localize('UTC').tz_convert('Europe/Paris'),
+        freq=['15T', '30T'],
+        repeat=10,
+        tz='Europe/Paris',
+        name='ts_multi_aware',
+    )
+    ts.index.rename(['a', 'b'], inplace=True)
+
+    with pytest.raises(Exception) as err:
+        tsh.insert(engine, ts, 'ts_multi_aware', 'test')
+    assert err.value.args[0] == "Incompatible multi indexes: ['a', 'b', 'c'] vs ['a', 'b']"
+
 
 def test_differential(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)

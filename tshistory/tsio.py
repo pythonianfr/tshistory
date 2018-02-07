@@ -581,6 +581,13 @@ class TimeSerie(object):
             m = 'Type error when inserting {}, new type is {}, type in base is {}'.format(
                 name, new_type, old_type)
             raise Exception(m)
+        if type(oldts.index) != type(newts.index):
+            raise Exception('Incompatible index types')
+        if isinstance(oldts.index, pd.MultiIndex):
+            if oldts.index.names != newts.index.names:
+                raise Exception('Incompatible multi indexes: {} vs {}'.format(
+                    oldts.index.names, newts.index.names)
+                )
 
     def _compute_diff_and_newsnapshot(self, cn, table, newts, **extra_scalars):
         snapshot = self._build_snapshot_upto(cn, table)
