@@ -38,18 +38,6 @@ def fromjson(jsonb, tsname):
     return _fromjson(jsonb, tsname).fillna(value=np.nan)
 
 
-def tzaware_serie(ts):
-    if isinstance(ts.index, pd.MultiIndex):
-        tzaware = [is_datetimetz(ts.index.get_level_values(idx_name))
-                   for idx_name in ts.index.names]
-        assert all(tzaware) or not any(tzaware), (
-            'all your indexes must be '
-            'either tzaware or none of them'
-        )
-        return all(tzaware)
-    return is_datetimetz(ts.index)
-
-
 def _fromjson(jsonb, tsname):
     if jsonb == '{}':
         return pd.Series(name=tsname)
@@ -67,6 +55,18 @@ def _fromjson(jsonb, tsname):
                           convert_dates=columns)
     result.set_index(sorted(columns), inplace=True)
     return num2float(result.iloc[:, 0])  # get a Series object
+
+
+def tzaware_serie(ts):
+    if isinstance(ts.index, pd.MultiIndex):
+        tzaware = [is_datetimetz(ts.index.get_level_values(idx_name))
+                   for idx_name in ts.index.names]
+        assert all(tzaware) or not any(tzaware), (
+            'all your indexes must be '
+            'either tzaware or none of them'
+        )
+        return all(tzaware)
+    return is_datetimetz(ts.index)
 
 
 def subset(ts, fromdate, todate):
