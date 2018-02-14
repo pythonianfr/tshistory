@@ -54,14 +54,14 @@ class tsschema(object):
 
         changeset_series = Table(
             'changeset_series', meta,
-            Column('csid', Integer,
+            Column('cset', Integer,
                    ForeignKey('{}.changeset.id'.format(self.namespace)),
                    index=True, nullable=False),
             Column('serie', String,
                    ForeignKey('{}.registry.name'.format(self.namespace)),
                    index=True, nullable=False),
             PrimaryKeyConstraint(
-                'csid', 'serie',
+                'cset', 'serie',
                 name='{}_changeset_series_pk'.format(self.namespace)),
             schema=self.namespace
         )
@@ -86,6 +86,7 @@ class tsschema(object):
             return
         engine.execute(CreateSchema(self.namespace))
         engine.execute(CreateSchema('{}.timeserie'.format(self.namespace)))
+        engine.execute(CreateSchema('{}.snapshot'.format(self.namespace)))
         self.registry.create(engine)
         self.changeset.create(engine)
         self.changeset_series.create(engine)
@@ -94,6 +95,8 @@ class tsschema(object):
         L.info('destroy schema %s', self.namespace)
         engine.execute(
             'drop schema if exists "{}.timeserie" cascade'.format(self.namespace))
+        engine.execute(
+            'drop schema if exists "{}.snapshot" cascade'.format(self.namespace))
         engine.execute(
             'drop schema if exists {} cascade'.format(self.namespace))
         del self.meta

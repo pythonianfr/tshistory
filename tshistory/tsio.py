@@ -16,14 +16,13 @@ from tshistory.util import (
     SeriesServices,
     tzaware_serie
 )
-
+from tshistory.snapshot import Snapshot
 
 L = logging.getLogger('tshistory.tsio')
 
 
 class TimeSerie(SeriesServices):
     _csid = None
-    _snapshot_interval = 10
     namespace = 'tsh'
     schema = None
 
@@ -87,47 +86,45 @@ class TimeSerie(SeriesServices):
             # we impose an order to survive rountrips
             newts = newts.reorder_levels(sorted(newts.index.names))
 
+        snapshot = Snapshot(cn, self, name)
+
         if table is None:
             # initial insertion
             if newts.isnull().all():
                 return None
             newts = newts[~newts.isnull()]
-            table = self._make_ts_table(cn, name, newts)
             csid = self._csid or self._newchangeset(cn, author, _insertion_date)
+            snapshot.create(csid, newts)
             value = {
-                'csid': csid,
-                'snapshot': self._serialize(newts),
+                'cset': csid
             }
             # callback for extenders
             self._complete_insertion_value(value, extra_scalars)
+            table = self._make_ts_table(cn, name, newts)
             cn.execute(table.insert().values(value))
             self._finalize_insertion(cn, csid, name)
             L.info('first insertion of %s (size=%s) by %s',
                    name, len(newts), author or self._author)
             return newts
 
-        diff, newsnapshot = self._compute_diff_and_newsnapshot(
-            cn, table, newts, **extra_scalars
-        )
-        if diff is None:
+        self._validate(cn, newts, name)
+        diff = self.diff(snapshot.last, newts)
+        if not len(diff):
             L.info('no difference in %s by %s (for ts of size %s)',
                    name, author or self._author, len(newts))
             return
 
-        tip_id = self._get_tip_id(cn, table)
         csid = self._csid or self._newchangeset(cn, author, _insertion_date)
+        snapshot.update(csid, diff)
         value = {
-            'csid': csid,
+            'cset': csid,
             'diff': self._serialize(diff),
-            'snapshot': self._serialize(newsnapshot),
         }
         # callback for extenders
         self._complete_insertion_value(value, extra_scalars)
         cn.execute(table.insert().values(value))
         self._finalize_insertion(cn, csid, name)
 
-        if tip_id > 1 and tip_id % self._snapshot_interval:
-            self._purge_snapshot_at(cn, table, tip_id)
         L.info('inserted diff (size=%s) for ts %s by %s',
                len(diff), name, author or self._author)
         return diff
@@ -147,9 +144,10 @@ class TimeSerie(SeriesServices):
         qfilter = []
         if revision_date:
             qfilter.append(lambda cset, _: cset.c.insertion_date <= revision_date)
-        current = self._build_snapshot_upto(cn, table, qfilter,
-                                            from_value_date=from_value_date,
-                                            to_value_date=to_value_date)
+        snap = Snapshot(cn, self, name)
+        current = snap.build_upto(qfilter,
+                                  from_value_date=from_value_date,
+                                  to_value_date=to_value_date)
 
         if current is not None:
             current.name = name
@@ -192,7 +190,7 @@ class TimeSerie(SeriesServices):
         cset = self.schema.changeset
         diffsql = select([cset.c.id, cset.c.insertion_date, table.c.diff]
         ).order_by(cset.c.id
-        ).where(table.c.csid == cset.c.id)
+        ).where(table.c.cset == cset.c.id)
 
         if from_insertion_date:
             diffsql = diffsql.where(cset.c.insertion_date >= from_insertion_date)
@@ -206,13 +204,14 @@ class TimeSerie(SeriesServices):
             return
 
         if diffmode:
+            snapshot = Snapshot(cn, self, name)
             series = []
             for csid, revdate, diff in diffs:
                 if diff is None:  # we must fetch the initial snapshot
-                    sql = select([table.c.snapshot]).where(table.c.csid == csid)
-                    diff = cn.execute(sql).scalar()
-                serie = subset(self._deserialize(diff, name), from_value_date, to_value_date)
-                serie = self._ensure_tz_consistency(cn, serie)
+                    serie = subset(snapshot.first, from_value_date, to_value_date)
+                else:
+                    serie = subset(self._deserialize(diff, name), from_value_date, to_value_date)
+                    serie = self._ensure_tz_consistency(cn, serie)
                 inject_in_index(serie, revdate)
                 series.append(serie)
             series = pd.concat(series)
@@ -220,9 +219,9 @@ class TimeSerie(SeriesServices):
             return series
 
         csid, revdate, diff_ = diffs[0]
-        snapshot = self._build_snapshot_upto(cn, table, [
-            lambda cset, _: cset.c.id <= csid
-        ], from_value_date, to_value_date)
+        snap = Snapshot(cn, self, name)
+        snapshot = snap.build_upto([lambda cset, _: cset.c.id <= csid],
+                                   from_value_date, to_value_date)
 
         series = [(revdate, subset(snapshot, from_value_date, to_value_date))]
         for csid_, revdate, diff in diffs[1:]:
@@ -247,15 +246,15 @@ class TimeSerie(SeriesServices):
         cset = self.schema.changeset
         tstable = self._get_ts_table(cn, name)
         sql = select([func.max(cset.c.insertion_date)]
-        ).where(tstable.c.csid == cset.c.id)
+        ).where(tstable.c.cset == cset.c.id)
         return cn.execute(sql).scalar()
 
     def changeset_at(self, cn, seriename, revdate, mode='strict'):
         assert mode in ('strict', 'before', 'after')
         cset = self.schema.changeset
         table = self._table_definition_for(seriename)
-        sql = select([table.c.csid]).where(
-            table.c.csid == cset.c.id
+        sql = select([table.c.cset]).where(
+            table.c.cset == cset.c.id
         )
         if mode == 'strict':
             sql = sql.where(cset.c.insertion_date == revdate)
@@ -283,7 +282,7 @@ class TimeSerie(SeriesServices):
             cn.execute(sql)
             # delete changset_serie item
             sql = cset_serie.delete().where(
-                cset_serie.c.csid == log['rev']
+                cset_serie.c.cset == log['rev']
             ).where(
                 cset_serie.c.serie == seriename
             )
@@ -291,20 +290,10 @@ class TimeSerie(SeriesServices):
 
         # wipe the diffs
         table = self._table_definition_for(seriename)
-        cn.execute(table.delete().where(table.c.csid >= csid))
+        cn.execute(table.delete().where(table.c.cset >= csid))
         # rebuild the top-level snapshot
         cstip = self._latest_csid_for(cn, seriename)
-        if cn.execute(select([table.c.snapshot]).where(table.c.csid == cstip)).scalar() is None:
-            snap = self._build_snapshot_upto(
-                cn, table,
-                qfilter=(lambda cset, _t: cset.c.id < csid,)
-            )
-            sql = table.update().where(
-                table.c.csid == cstip
-            ).values(
-                snapshot=self._serialize(snap)
-            )
-            cn.execute(sql)
+        Snapshot(cn, self, seriename).strip_at(cstip)
 
     def info(self, cn):
         """Gather global statistics on the current tshistory repository
@@ -359,7 +348,7 @@ class TimeSerie(SeriesServices):
             # outerjoin to show dead things
             sql = sql.select_from(cset.outerjoin(cset_series))
         else:
-            sql = sql.where(cset.c.id == cset_series.c.csid
+            sql = sql.where(cset.c.id == cset_series.c.cset
             ).where(cset_series.c.serie == reg.c.name)
 
         rset = cn.execute(sql)
@@ -370,7 +359,7 @@ class TimeSerie(SeriesServices):
 
         if diff:
             for rev in log:
-                rev['diff'] = {name: self._diff(cn, rev['rev'], name)
+                rev['diff'] = {name: self.diff_at(cn, rev['rev'], name)
                                for name in rev['names']}
 
         log.sort(key=lambda rev: rev['rev'])
@@ -407,12 +396,11 @@ class TimeSerie(SeriesServices):
         return Table(
             seriename, self.schema.meta,
             Column('id', Integer, primary_key=True),
-            Column('csid', Integer,
+            Column('cset', Integer,
                    ForeignKey('{}.changeset.id'.format(self.namespace)),
                    index=True, nullable=False),
             # constraint: there is either .diff or .snapshot
             Column('diff', BYTEA),
-            Column('snapshot', BYTEA),
             schema='{}.timeserie'.format(self.namespace),
             extend_existing=True
         )
@@ -455,49 +443,24 @@ class TimeSerie(SeriesServices):
 
     def _latest_csid_for(self, cn, name):
         table = self._get_ts_table(cn, name)
-        sql = select([func.max(table.c.csid)])
+        sql = select([func.max(table.c.cset)])
         return cn.execute(sql).scalar()
 
     def _changeset_series(self, cn, csid):
         cset_serie = self.schema.changeset_series
         sql = select([cset_serie.c.serie]
-        ).where(cset_serie.c.csid == csid)
+        ).where(cset_serie.c.cset == csid)
 
         return [seriename for seriename, in cn.execute(sql).fetchall()]
 
     # insertion handling
 
-    def _get_tip_id(self, cn, table):
-        " get the *local* id "
-        sql = select([func.max(table.c.id)])
-        return cn.execute(sql).scalar()
-
-    def _complete_insertion_value(self, value, extra_scalars):
-        pass
-
-    def _finalize_insertion(self, cn, csid, name):
-        table = self.schema.changeset_series
-        sql = table.insert().values(
-            csid=csid,
-            serie=name
-        )
-        cn.execute(sql)
-
-    # snapshot handling
-
-    def _purge_snapshot_at(self, cn, table, diffid):
-        cn.execute(
-            table.update(
-            ).where(table.c.id == diffid
-            ).values(snapshot=None)
-        )
-
-    def _validate(self, cn, name, ts):
+    def _validate(self, cn, ts, name):
         if ts.isnull().all():
             # ts erasure
             return
-        meta = self.metadata(cn, name)
         tstype = ts.dtype
+        meta = self.metadata(cn, name)
         if tstype != meta['value_type']:
             m = 'Type error when inserting {}, new type is {}, type in base is {}'.format(
                 name, tstype, meta['value_type'])
@@ -510,99 +473,31 @@ class TimeSerie(SeriesServices):
                 meta['index_names'], inames)
             )
 
-    def _compute_diff_and_newsnapshot(self, cn, table, newts, **extra_scalars):
-        self._validate(cn, table.name, newts)
-        snapshot = self._build_snapshot_upto(cn, table)
-        assert snapshot is not None
-        diff = self.diff(snapshot, newts)
+    def _complete_insertion_value(self, value, extra_scalars):
+        pass
 
-        if len(diff) == 0:
-            return None, None
+    def _finalize_insertion(self, cn, csid, name):
+        table = self.schema.changeset_series
+        sql = table.insert().values(
+            cset=csid,
+            serie=name
+        )
+        cn.execute(sql)
 
-        # full state computation & insertion
-        newsnapshot = self.patch(snapshot, diff)
-        return diff, newsnapshot
-
-    def _find_snapshot(self, cn, table, qfilter=(), column='snapshot',
-                       from_value_date=None, to_value_date=None):
-        cset = self.schema.changeset
-        sql = select([table.c.id, table.c[column]]
-        ).order_by(desc(table.c.id)
-        ).limit(1
-        ).where(table.c[column] != None
-        ).select_from(table.join(cset))
-
-        if qfilter:
-            sql = sql.where(table.c.csid <= cset.c.id)
-            for filtercb in qfilter:
-                sql = sql.where(filtercb(cset, table))
-
-        try:
-            snapid, snapdata = cn.execute(sql).fetchone()
-            snapdata = subset(self._deserialize(snapdata, table.name),
-                              from_value_date, to_value_date)
-            snapdata = self._ensure_tz_consistency(cn, snapdata)
-        except TypeError:
-            return None, None
-        return snapid, snapdata
-
-    def _build_snapshot_upto(self, cn, table, qfilter=(),
-                             from_value_date=None, to_value_date=None):
-        snapid, snapshot = self._find_snapshot(cn, table, qfilter,
-                                               from_value_date=from_value_date,
-                                               to_value_date=to_value_date)
-        if snapid is None:
-            return None
-
-        cset = self.schema.changeset
-        # beware the potential cartesian product
-        # between table & cset if there is no qfilter
-        sql = select([table.c.id,
-                      table.c.diff,
-                      cset.c.insertion_date]
-        ).order_by(table.c.id
-        ).where(table.c.id > snapid)
-
-        if qfilter:
-            sql = sql.where(table.c.csid == cset.c.id)
-            for filtercb in qfilter:
-                sql = sql.where(filtercb(cset, table))
-
-        alldiffs = pd.read_sql(sql, cn)
-
-        if len(alldiffs) == 0:
-            return snapshot
-
-        # initial ts
-        ts = self._deserialize(alldiffs.loc[0, 'diff'], table.name)
-        ts = self._ensure_tz_consistency(cn, ts)
-        for row in alldiffs.loc[1:].itertuples():
-            diff = subset(self._deserialize(row.diff, table.name),
-                          from_value_date, to_value_date)
-            diff = self._ensure_tz_consistency(cn, diff)
-            ts = self.patch(ts, diff)
-        ts = self.patch(snapshot, ts)
-        assert ts.index.dtype.name == 'datetime64[ns]' or len(ts) == 0
-        return ts
-
-    # diff handling
-
-    def _diff(self, cn, csetid, name):
+    def diff_at(self, cn, csetid, name):
         table = self._get_ts_table(cn, name)
         cset = self.schema.changeset
 
         def filtercset(sql):
-            return sql.where(table.c.csid == cset.c.id
+            return sql.where(table.c.cset == cset.c.id
             ).where(cset.c.id == csetid)
 
         sql = filtercset(select([table.c.id]))
         tsid = cn.execute(sql).scalar()
 
         if tsid == 1:
-            sql = select([table.c.snapshot])
-        else:
-            sql = select([table.c.diff])
-        sql = filtercset(sql)
+            return Snapshot(cn, self, name).first
 
+        sql = filtercset(select([table.c.diff]))
         ts = self._deserialize(cn.execute(sql).scalar(), name)
         return self._ensure_tz_consistency(cn, ts)
