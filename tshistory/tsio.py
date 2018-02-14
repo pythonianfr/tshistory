@@ -5,7 +5,6 @@ import zlib
 import math
 
 import pandas as pd
-from pandas.api.types import is_datetimetz
 import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
@@ -13,6 +12,11 @@ from sqlalchemy.sql.expression import select, func, desc
 from sqlalchemy.dialects.postgresql import BYTEA
 
 from tshistory.schema import tsschema
+from tshistory.util import (
+    inject_in_index,
+    subset,
+    tzaware_serie
+)
 
 
 L = logging.getLogger('tshistory.tsio')
@@ -55,44 +59,6 @@ def _fromjson(jsonb, tsname):
                           convert_dates=columns)
     result.set_index(sorted(columns), inplace=True)
     return num2float(result.iloc[:, 0])  # get a Series object
-
-
-def tzaware_serie(ts):
-    if isinstance(ts.index, pd.MultiIndex):
-        tzaware = [is_datetimetz(ts.index.get_level_values(idx_name))
-                   for idx_name in ts.index.names]
-        assert all(tzaware) or not any(tzaware), (
-            'all your indexes must be '
-            'either tzaware or none of them'
-        )
-        return all(tzaware)
-    return is_datetimetz(ts.index)
-
-
-def subset(ts, fromdate, todate):
-    if fromdate is None and todate is None:
-        return ts
-    if isinstance(fromdate, tuple):
-        fromdate = fromdate[0]
-    if isinstance(todate, tuple):
-        todate = todate[0]
-    if isinstance(ts.index, pd.MultiIndex):
-        if not ts.index.lexsort_depth:
-            ts.sort_index(inplace=True)
-    return ts.loc[fromdate:todate]
-
-
-def inject_in_index(serie, revdate):
-    if isinstance(serie.index, pd.MultiIndex):
-        mindex = [(revdate, *rest) for rest in serie.index]
-        serie.index = pd.MultiIndex.from_tuples(mindex, names=[
-            'insertion_date', *serie.index.names]
-        )
-        return
-    mindex = [(revdate, valuestamp) for valuestamp in serie.index]
-    serie.index = pd.MultiIndex.from_tuples(mindex, names=[
-        'insertion_date', 'value_date']
-    )
 
 
 class TimeSerie(object):
