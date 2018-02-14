@@ -778,13 +778,13 @@ Freq: D
     assert diff is None
 
     # there is no difference
-    assert 0 == len(tsh._compute_diff(ts_repushed, ts_repushed))
+    assert 0 == len(tsh.diff(ts_repushed, ts_repushed))
 
     ts_add = genserie(datetime(2010, 1, 1), 'D', 15)
     ts_add.iloc[0] = np.nan
     ts_add.iloc[13:] = np.nan
     ts_add.iloc[8] = np.nan
-    diff = tsh._compute_diff(ts_repushed, ts_add)
+    diff = tsh.diff(ts_repushed, ts_add)
 
     assert_df("""
 2010-01-02     1.0
