@@ -415,24 +415,6 @@ def test_differential(engine, tsh):
 
     with engine.connect() as cn:
         cn.execute('set search_path to "{0}.timeserie", {0}, public'.format(tsh.namespace))
-        hist = pd.read_sql('select id, parent from ts_test order by id',
-                           cn)
-        assert_df("""
-   id  parent
-0   1     NaN
-1   2     1.0
-2   3     2.0
-""", hist)
-
-        hist = pd.read_sql('select id, parent from ts_mixte order by id',
-                           cn)
-        assert_df("""
-   id  parent
-0   1     NaN
-1   2     1.0
-2   3     2.0
-""", hist)
-
         allts = pd.read_sql("select name, table_name from registry "
                             "where name in ('ts_test', 'ts_mixte')",
                             cn)

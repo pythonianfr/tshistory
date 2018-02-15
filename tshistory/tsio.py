@@ -120,7 +120,6 @@ class TimeSerie(SeriesServices):
             'csid': csid,
             'diff': self._serialize(diff),
             'snapshot': self._serialize(newsnapshot),
-            'parent': tip_id,
         }
         # callback for extenders
         self._complete_insertion_value(value, extra_scalars)
@@ -292,7 +291,7 @@ class TimeSerie(SeriesServices):
 
         # wipe the diffs
         table = self._table_definition_for(seriename)
-        cn.execute(table.delete().where(table.c.csid == csid))
+        cn.execute(table.delete().where(table.c.csid >= csid))
         # rebuild the top-level snapshot
         cstip = self._latest_csid_for(cn, seriename)
         if cn.execute(select([table.c.snapshot]).where(table.c.csid == cstip)).scalar() is None:
@@ -414,14 +413,6 @@ class TimeSerie(SeriesServices):
             # constraint: there is either .diff or .snapshot
             Column('diff', BYTEA),
             Column('snapshot', BYTEA),
-            Column('parent',
-                   Integer,
-                   ForeignKey('{}.timeserie.{}.id'.format(self.namespace,
-                                                          seriename),
-                              ondelete='cascade'),
-                   nullable=True,
-                   unique=True,
-                   index=True),
             schema='{}.timeserie'.format(self.namespace),
             extend_existing=True
         )
@@ -568,7 +559,6 @@ class TimeSerie(SeriesServices):
         # between table & cset if there is no qfilter
         sql = select([table.c.id,
                       table.c.diff,
-                      table.c.parent,
                       cset.c.insertion_date]
         ).order_by(table.c.id
         ).where(table.c.id > snapid)
