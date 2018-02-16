@@ -353,7 +353,8 @@ class TimeSerie(SeriesServices):
 
         rset = cn.execute(sql)
         for csetid, author, revdate, meta in rset.fetchall():
-            log.append({'rev': csetid, 'author': author, 'date': revdate,
+            log.append({'rev': csetid, 'author': author,
+                        'date': pd.Timestamp(revdate, tz='utc'),
                         'meta': meta or {},
                         'names': self._changeset_series(cn, csetid)})
 
@@ -436,9 +437,12 @@ class TimeSerie(SeriesServices):
 
     def _newchangeset(self, cn, author, _insertion_date=None):
         table = self.schema.changeset
+        if _insertion_date is not None:
+            assert _insertion_date.tzinfo is not None
+        idate = pd.Timestamp(_insertion_date or datetime.utcnow(), tz='UTC')
         sql = table.insert().values(
             author=author,
-            insertion_date=_insertion_date or datetime.now())
+            insertion_date=idate)
         return cn.execute(sql).inserted_primary_key[0]
 
     def _latest_csid_for(self, cn, name):

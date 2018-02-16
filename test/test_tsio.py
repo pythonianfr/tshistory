@@ -1,14 +1,15 @@
 # coding: utf-8
-from datetime import datetime, timedelta
-from time import time
-from dateutil import parser
 import calendar
+from datetime import datetime, timedelta
+from pathlib import Path
+from time import time
+from functools import partial
+import pytz
 
-from pathlib2 import Path
-import pandas as pd
-import numpy as np
+from dateutil import parser
 import pytest
-from mock import patch
+import numpy as np
+import pandas as pd
 
 from tshistory.snapshot import Snapshot
 from tshistory.testutil import assert_group_equals, genserie, assert_df
@@ -16,16 +17,18 @@ from tshistory.testutil import assert_group_equals, genserie, assert_df
 DATADIR = Path(__file__).parent / 'data'
 
 
+def utcdt(*dt):
+    return pd.Timestamp(datetime(*dt), tz='UTC')
+
+
 def test_changeset(engine, tsh):
     index = pd.date_range(start=datetime(2017, 1, 1), freq='D', periods=3)
     data = [1., 2., 3.]
 
-    with patch('tshistory.tsio.datetime') as mock_date:
-        mock_date.now.return_value = datetime(2020, 1, 1)
-        with engine.connect() as cn:
-            with tsh.newchangeset(cn, 'babar'):
-                tsh.insert(cn, pd.Series(data, index=index), 'ts_values', author='WONTBEUSED')
-                tsh.insert(cn, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
+    with engine.connect() as cn:
+        with tsh.newchangeset(cn, 'babar', _insertion_date=utcdt(2020, 1, 1)):
+            tsh.insert(cn, pd.Series(data, index=index), 'ts_values', author='WONTBEUSED')
+            tsh.insert(cn, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
 
         # bogus author won't show up
         assert tsh.log(engine)[0]['author'] == 'babar'
@@ -39,7 +42,7 @@ def test_changeset(engine, tsh):
 
         with engine.connect() as cn:
             data.append(data.pop(0))
-            with tsh.newchangeset(cn, 'celeste'):
+            with tsh.newchangeset(cn, 'celeste', _insertion_date=utcdt(2020, 1, 1)):
                 tsh.insert(cn, pd.Series(data, index=index), 'ts_values')
                 # below should be a noop
                 tsh.insert(cn, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
@@ -63,13 +66,13 @@ def test_changeset(engine, tsh):
     assert [
         {'author': 'babar',
          'rev': 1,
-         'date': datetime(2020, 1, 1, 0, 0),
+         'date': pd.Timestamp('2020-01-01 00:00:00+0000', tz='UTC'),
          'meta': {},
          'names': ['ts_values', 'ts_othervalues']},
         {'author': 'celeste',
          'rev': 2,
          'meta': {},
-         'date': datetime(2020, 1, 1, 0, 0),
+         'date': pd.Timestamp('2020-01-01 00:00:00+0000', tz='UTC'),
          'names': ['ts_values']}
     ] == log
 
@@ -94,7 +97,7 @@ def test_changeset(engine, tsh):
 
 def test_strip(engine, tsh):
     for i in range(1, 5):
-        pubdate = datetime(2017, 1, i)
+        pubdate = utcdt(2017, 1, i)
         ts = genserie(datetime(2017, 1, 10), 'H', 1 + i)
         with tsh.newchangeset(engine, 'babar', _insertion_date=pubdate):
             tsh.insert(engine, ts, 'xserie')
@@ -122,21 +125,21 @@ def test_strip(engine, tsh):
 
     h = tsh.get_history(engine, 'xserie')
     assert_df("""
-insertion_date  value_date         
-2017-01-01      2017-01-10 00:00:00    0.0
-                2017-01-10 01:00:00    1.0
-2017-01-02      2017-01-10 00:00:00    0.0
-                2017-01-10 01:00:00    1.0
-                2017-01-10 02:00:00    2.0
-2017-01-03      2017-01-10 00:00:00    0.0
-                2017-01-10 01:00:00    1.0
-                2017-01-10 02:00:00    2.0
-                2017-01-10 03:00:00    3.0
-2017-01-04      2017-01-10 00:00:00    0.0
-                2017-01-10 01:00:00    1.0
-                2017-01-10 02:00:00    2.0
-                2017-01-10 03:00:00    3.0
-                2017-01-10 04:00:00    4.0
+insertion_date             value_date         
+2017-01-01 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+2017-01-02 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+                           2017-01-10 02:00:00    2.0
+2017-01-03 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+                           2017-01-10 02:00:00    2.0
+                           2017-01-10 03:00:00    3.0
+2017-01-04 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+                           2017-01-10 02:00:00    2.0
+                           2017-01-10 03:00:00    3.0
+                           2017-01-10 04:00:00    4.0
 """, h)
 
     csid = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3))
@@ -144,12 +147,12 @@ insertion_date  value_date
         tsh.strip(cn, 'xserie', csid)
 
     assert_df("""
-insertion_date  value_date         
-2017-01-01      2017-01-10 00:00:00    0.0
-                2017-01-10 01:00:00    1.0
-2017-01-02      2017-01-10 00:00:00    0.0
-                2017-01-10 01:00:00    1.0
-                2017-01-10 02:00:00    2.0
+insertion_date             value_date         
+2017-01-01 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+2017-01-02 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+                           2017-01-10 02:00:00    2.0
 """, tsh.get_history(engine, 'xserie'))
 
     assert_df("""
@@ -489,34 +492,30 @@ def test_revision_date(engine, tsh):
     for i in range(1, 5):
         with engine.connect() as cn:
             with tsh.newchangeset(cn, 'test',
-                                  _insertion_date=datetime(2016, 1, i)):
+                                  _insertion_date=utcdt(2016, 1, i)):
                 tsh.insert(cn, genserie(datetime(2017, 1, i), 'D', 3, [i]), 'revdate')
 
     # end of prologue, now some real meat
-    idate0 = datetime(2015, 1, 1, 0, 0, 0)
+    idate0 = pd.Timestamp('2015-1-1 00:00:00', tz='UTC')
     with tsh.newchangeset(engine, 'test', _insertion_date=idate0):
-
         ts = genserie(datetime(2010, 1, 4), 'D', 4, [0], name='truc')
         tsh.insert(engine, ts, 'ts_through_time')
         assert idate0 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
-    idate1 = datetime(2015, 1, 1, 15, 43, 23)
+    idate1 = pd.Timestamp('2015-1-1 15:45:23', tz='UTC')
     with tsh.newchangeset(engine, 'test', _insertion_date=idate1):
-
         ts = genserie(datetime(2010, 1, 4), 'D', 4, [1], name='truc')
         tsh.insert(engine, ts, 'ts_through_time')
         assert idate1 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
-    idate2 = datetime(2015, 1, 2, 15, 43, 23)
+    idate2 = pd.Timestamp('2015-1-2 15:43:23', tz='UTC')
     with tsh.newchangeset(engine, 'test', _insertion_date=idate2):
-
         ts = genserie(datetime(2010, 1, 4), 'D', 4, [2], name='truc')
         tsh.insert(engine, ts, 'ts_through_time')
         assert idate2 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
-    idate3 = datetime(2015, 1, 3, 15, 43, 23)
+    idate3 = pd.Timestamp('2015-1-3', tz='UTC')
     with tsh.newchangeset(engine, 'test', _insertion_date=idate3):
-
         ts = genserie(datetime(2010, 1, 4), 'D', 4, [3], name='truc')
         tsh.insert(engine, ts, 'ts_through_time')
         assert idate3 == tsh.latest_insertion_date(engine, 'ts_through_time')
@@ -947,22 +946,22 @@ def test_multi_index_get_history(engine, tsh):
     ts_multi.index.rename(['app_date', 'fc_date'], inplace=True)
 
     tsh.insert(engine, ts_multi, 'ts_mi', 'Babar',
-               _insertion_date=pd.datetime(2015, 1, 11, 12, 30, 0))
+               _insertion_date=utcdt(2015, 1, 11, 12, 30, 0))
 
 
     ts = tsh.get_history(engine, 'ts_mi')
     assert_df("""
-insertion_date       app_date    fc_date            
-2015-01-11 12:30:00  2015-01-01  2015-01-11 12:00:00    0.0
-                     2015-01-02  2015-01-11 12:00:00    1.0
+insertion_date             app_date    fc_date            
+2015-01-11 12:30:00+00:00  2015-01-01  2015-01-11 12:00:00    0.0
+                           2015-01-02  2015-01-11 12:00:00    1.0
 """, ts)
 
     ts = tsh.get_history(engine, 'ts_mi', diffmode=True)
 
     assert_df("""
-insertion_date       app_date    fc_date            
-2015-01-11 12:30:00  2015-01-01  2015-01-11 12:00:00    0.0
-                     2015-01-02  2015-01-11 12:00:00    1.0
+insertion_date             app_date    fc_date            
+2015-01-11 12:30:00+00:00  2015-01-01  2015-01-11 12:00:00    0.0
+                           2015-01-02  2015-01-11 12:00:00    1.0
 """, ts)
 
     # new forecast
@@ -981,26 +980,26 @@ insertion_date       app_date    fc_date
     ts_multi.index.rename(['app_date', 'fc_date'], inplace=True)
 
     tsh.insert(engine, ts_multi, 'ts_mi', 'Babar',
-               _insertion_date=pd.datetime(2015, 1, 11, 13, 30, 0))
+               _insertion_date=utcdt(2015, 1, 11, 13, 30, 0))
 
     ts = tsh.get_history(engine, 'ts_mi')
     assert_df("""
-insertion_date       app_date    fc_date            
-2015-01-11 12:30:00  2015-01-01  2015-01-11 12:00:00    0.0
-                     2015-01-02  2015-01-11 12:00:00    1.0
-2015-01-11 13:30:00  2015-01-01  2015-01-11 12:00:00    0.0
-                                 2015-01-11 13:00:00    0.1
-                     2015-01-02  2015-01-11 12:00:00    1.0
-                                 2015-01-11 13:00:00    1.1
+insertion_date             app_date    fc_date            
+2015-01-11 12:30:00+00:00  2015-01-01  2015-01-11 12:00:00    0.0
+                           2015-01-02  2015-01-11 12:00:00    1.0
+2015-01-11 13:30:00+00:00  2015-01-01  2015-01-11 12:00:00    0.0
+                                       2015-01-11 13:00:00    0.1
+                           2015-01-02  2015-01-11 12:00:00    1.0
+                                       2015-01-11 13:00:00    1.1
 """, ts)
 
     ts = tsh.get_history(engine, 'ts_mi', diffmode=True)
     assert_df("""
-insertion_date       app_date    fc_date            
-2015-01-11 12:30:00  2015-01-01  2015-01-11 12:00:00    0.0
-                     2015-01-02  2015-01-11 12:00:00    1.0
-2015-01-11 13:30:00  2015-01-01  2015-01-11 13:00:00    0.1
-                     2015-01-02  2015-01-11 13:00:00    1.1
+insertion_date             app_date    fc_date            
+2015-01-11 12:30:00+00:00  2015-01-01  2015-01-11 12:00:00    0.0
+                           2015-01-02  2015-01-11 12:00:00    1.0
+2015-01-11 13:30:00+00:00  2015-01-01  2015-01-11 13:00:00    0.1
+                           2015-01-02  2015-01-11 13:00:00    1.1
 """, ts)
 
 
@@ -1008,7 +1007,7 @@ def test_get_history(engine, tsh):
     for numserie in (1, 2, 3):
         with engine.connect() as cn:
             with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.fr',
-                                  _insertion_date=datetime(2017, 2, numserie)):
+                                  _insertion_date=utcdt(2017, 2, numserie)):
                 tsh.insert(cn, genserie(datetime(2017, 1, 1), 'D', numserie), 'smallserie')
 
     ts = tsh.get(engine, 'smallserie')
@@ -1022,17 +1021,17 @@ def test_get_history(engine, tsh):
     assert [
         {'author': 'aurelien.campeas@pythonian.fr',
          'meta': {},
-         'date': datetime(2017, 2, 1, 0, 0),
+         'date': pd.Timestamp('2017-02-01 00:00:00+0000', tz='UTC'),
          'names': ['smallserie']
         },
         {'author': 'aurelien.campeas@pythonian.fr',
          'meta': {},
-         'date': datetime(2017, 2, 2, 0, 0),
+         'date': pd.Timestamp('2017-02-02 00:00:00+0000', tz='UTC'),
          'names': ['smallserie']
         },
         {'author': 'aurelien.campeas@pythonian.fr',
          'meta': {},
-         'date': datetime(2017, 2, 3, 0, 0),
+         'date': pd.Timestamp('2017-02-03 00:00:00+0000', tz='UTC'),
          'names': ['smallserie']
         }
     ] == [{k: v for k, v in log.items() if k != 'rev'}
@@ -1041,25 +1040,26 @@ def test_get_history(engine, tsh):
     assert histts.name == 'smallserie'
 
     assert_df("""
-insertion_date  value_date
-2017-02-01      2017-01-01    0.0
-2017-02-02      2017-01-01    0.0
-                2017-01-02    1.0
-2017-02-03      2017-01-01    0.0
-                2017-01-02    1.0
-                2017-01-03    2.0
+insertion_date             value_date
+2017-02-01 00:00:00+00:00  2017-01-01    0.0
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+2017-02-03 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+                           2017-01-03    2.0
 """, histts)
 
     diffs = tsh.get_history(engine, 'smallserie', diffmode=True)
     assert_df("""
-insertion_date  value_date
-2017-02-01      2017-01-01    0.0
-2017-02-02      2017-01-02    1.0
-2017-02-03      2017-01-03    2.0
+insertion_date             value_date
+2017-02-01 00:00:00+00:00  2017-01-01    0.0
+2017-02-02 00:00:00+00:00  2017-01-02    1.0
+2017-02-03 00:00:00+00:00  2017-01-03    2.0
 """, diffs)
 
     for idate in histts.index.get_level_values('insertion_date').unique():
         with engine.connect() as cn:
+            idate = idate.replace(tzinfo=pytz.timezone('UTC'))
             with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.f',
                                   _insertion_date=idate):
                 tsh.insert(cn, histts[idate], 'smallserie2')
@@ -1072,30 +1072,30 @@ insertion_date  value_date
     tsa = tsh.get_history(engine, 'smallserie',
                           from_insertion_date=datetime(2017, 2, 2))
     assert_df("""
-insertion_date  value_date
-2017-02-02      2017-01-01    0.0
-                2017-01-02    1.0
-2017-02-03      2017-01-01    0.0
-                2017-01-02    1.0
-                2017-01-03    2.0
+insertion_date             value_date
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+2017-02-03 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+                           2017-01-03    2.0
 """, tsa)
 
     tsb = tsh.get_history(engine, 'smallserie',
                           to_insertion_date=datetime(2017, 2, 2))
     assert_df("""
-insertion_date  value_date
-2017-02-01      2017-01-01    0.0
-2017-02-02      2017-01-01    0.0
-                2017-01-02    1.0
+insertion_date             value_date
+2017-02-01 00:00:00+00:00  2017-01-01    0.0
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
 """, tsb)
 
     tsc = tsh.get_history(engine, 'smallserie',
                           from_insertion_date=datetime(2017, 2, 2),
                           to_insertion_date=datetime(2017, 2, 2))
     assert_df("""
-insertion_date  value_date
-2017-02-02      2017-01-01    0.0
-                2017-01-02    1.0
+insertion_date             value_date
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
 """, tsc)
 
     tsc = tsh.get_history(engine, 'smallserie',
@@ -1107,10 +1107,10 @@ insertion_date  value_date
                           from_insertion_date=datetime(2016, 2, 1),
                           to_insertion_date=datetime(2017, 2, 2))
     assert_df("""
-insertion_date  value_date
-2017-02-01      2017-01-01    0.0
-2017-02-02      2017-01-01    0.0
-                2017-01-02    1.0
+insertion_date             value_date
+2017-02-01 00:00:00+00:00  2017-01-01    0.0
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
 """, tsc)
 
     tsc = tsh.get_history(engine, 'smallserie',
@@ -1123,12 +1123,12 @@ insertion_date  value_date
                           from_value_date=datetime(2017, 1, 1),
                           to_value_date=datetime(2017, 1, 2))
     assert_df("""
-insertion_date  value_date
-2017-02-01      2017-01-01    0.0
-2017-02-02      2017-01-01    0.0
-                2017-01-02    1.0
-2017-02-03      2017-01-01    0.0
-                2017-01-02    1.0
+insertion_date             value_date
+2017-02-01 00:00:00+00:00  2017-01-01    0.0
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+2017-02-03 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
 """, tsc)
 
     diffs = tsh.get_history(engine, 'smallserie',
@@ -1136,29 +1136,29 @@ insertion_date  value_date
                             from_value_date=datetime(2017, 1, 1),
                             to_value_date=datetime(2017, 1, 2))
     assert_df("""
-insertion_date  value_date
-2017-02-01      2017-01-01    0.0
-2017-02-02      2017-01-02    1.0
+insertion_date             value_date
+2017-02-01 00:00:00+00:00  2017-01-01    0.0
+2017-02-02 00:00:00+00:00  2017-01-02    1.0
 """, diffs)
 
     tsc = tsh.get_history(engine, 'smallserie',
                           from_value_date=datetime(2017, 1, 2))
     assert_df("""
-insertion_date  value_date
-2017-02-02      2017-01-02    1.0
-2017-02-03      2017-01-02    1.0
-                2017-01-03    2.0
+insertion_date             value_date
+2017-02-02 00:00:00+00:00  2017-01-02    1.0
+2017-02-03 00:00:00+00:00  2017-01-02    1.0
+                           2017-01-03    2.0
 """, tsc)
 
     tsc = tsh.get_history(engine, 'smallserie',
                           to_value_date=datetime(2017, 1, 2))
     assert_df("""
-insertion_date  value_date
-2017-02-01      2017-01-01    0.0
-2017-02-02      2017-01-01    0.0
-                2017-01-02    1.0
-2017-02-03      2017-01-01    0.0
-                2017-01-02    1.0
+insertion_date             value_date
+2017-02-01 00:00:00+00:00  2017-01-01    0.0
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+2017-02-03 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
 """, tsc)
 
 
@@ -1173,7 +1173,7 @@ def test_nr_gethistory(engine, tsh):
                    index=pd.DatetimeIndex(start=datetime(2017, 1, 1),
                                           end=datetime(2017, 1, 4),
                                           freq='D'))
-    idate = datetime(2016, 1, 1)
+    idate = utcdt(2016, 1, 1)
     for i in range(5):
         with engine.connect() as cn:
             with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.f',
@@ -1187,15 +1187,15 @@ def test_nr_gethistory(engine, tsh):
                          datetime(2017, 1, 4))
 
     assert_df("""
-insertion_date  value_date
-2016-01-03      2017-01-01    2.0
-                2017-01-02    0.0
-                2017-01-03    0.0
-                2017-01-04    2.0
-2016-01-04      2017-01-01    3.0
-                2017-01-02    0.0
-                2017-01-03    0.0
-                2017-01-04    3.0
+insertion_date             value_date
+2016-01-03 00:00:00+00:00  2017-01-01    2.0
+                           2017-01-02    0.0
+                           2017-01-03    0.0
+                           2017-01-04    2.0
+2016-01-04 00:00:00+00:00  2017-01-01    3.0
+                           2017-01-02    0.0
+                           2017-01-03    0.0
+                           2017-01-04    3.0
 """, df)
 
 

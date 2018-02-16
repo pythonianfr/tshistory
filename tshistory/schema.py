@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import (Table, Column, Integer, String, MetaData, DateTime,
+from sqlalchemy import (Table, Column, Integer, String, MetaData, TIMESTAMP,
                         ForeignKey, PrimaryKeyConstraint)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.schema import CreateSchema
@@ -47,7 +47,7 @@ class tsschema(object):
             'changeset', meta,
             Column('id', Integer, primary_key=True),
             Column('author', String, index=True, nullable=False),
-            Column('insertion_date', DateTime, index=True, nullable=False),
+            Column('insertion_date', TIMESTAMP(timezone=True), index=True, nullable=False),
             Column('metadata', JSONB(none_as_null=True)),
             schema=self.namespace
         )
