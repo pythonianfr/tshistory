@@ -99,17 +99,15 @@ class Snapshot(SeriesServices):
             return
 
         cset = self.tsh.schema.changeset
-        # beware the potential cartesian product
-        # between table & cset if there is no qfilter
         table = self.tsh._get_ts_table(self.cn, self.name)
         sql = select([table.c.id,
                       table.c.diff,
                       cset.c.insertion_date]
         ).order_by(table.c.id
-        ).where(table.c.cset > csid)
+        ).where(table.c.cset > csid
+        ).where(table.c.cset == cset.c.id)
 
         if qfilter:
-            sql = sql.where(table.c.cset == cset.c.id)
             for filtercb in qfilter:
                 sql = sql.where(filtercb(cset, table))
 
