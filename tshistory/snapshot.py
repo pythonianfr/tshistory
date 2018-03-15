@@ -11,14 +11,13 @@ from tshistory.util import (
 
 
 class Snapshot(SeriesServices):
-    #__slots__ = ('cn', 'name', 'tsh', 'cache')
+    __slots__ = ('cn', 'name', 'tsh')
     _interval = 10
 
     def __init__(self, cn, tsh, seriename):
         self.cn = cn
         self.tsh = tsh
         self.name = seriename
-        self.cache = {}
 
     @property
     def table(self):
