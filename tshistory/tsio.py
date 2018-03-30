@@ -94,7 +94,8 @@ class TimeSerie(SeriesServices):
         return self._update(cn, table, newts, name, author, _insertion_date)
 
     def get(self, cn, name, revision_date=None,
-            from_value_date=None, to_value_date=None):
+            from_value_date=None, to_value_date=None,
+            _keep_nans=False):
         """Compute and return the serie of a given name
 
         revision_date: datetime filter to get previous versions of the
@@ -113,7 +114,7 @@ class TimeSerie(SeriesServices):
                                   from_value_date=from_value_date,
                                   to_value_date=to_value_date)
 
-        if current is not None:
+        if current is not None and not _keep_nans:
             current.name = name
             current = current[~current.isnull()]
         return current
