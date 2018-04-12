@@ -12,6 +12,14 @@ L = logging.getLogger('tshistory.schema')
 SCHEMAS = {}
 meta = MetaData()
 
+def delete_schema(engine, ns):
+    with engine.connect() as cn:
+        for subns in ('timeserie', 'snapshot'):
+            cn.execute(
+                'drop schema if exists "{}.{}" cascade'.format(ns, subns)
+            )
+        cn.execute('drop schema if exists {} cascade'.format(ns))
+
 
 class tsschema(object):
     namespace = 'tsh'
@@ -93,12 +101,7 @@ class tsschema(object):
 
     def destroy(self, engine):
         L.info('destroy schema %s', self.namespace)
-        engine.execute(
-            'drop schema if exists "{}.timeserie" cascade'.format(self.namespace))
-        engine.execute(
-            'drop schema if exists "{}.snapshot" cascade'.format(self.namespace))
-        engine.execute(
-            'drop schema if exists {} cascade'.format(self.namespace))
+        delete_schema(engine, self.namespace)
         del self.meta
         del self.registry
         del self.changeset

@@ -1,4 +1,11 @@
+from datetime import datetime
+from contextlib import contextmanager
+
 import pandas as pd
+
+
+def utcdt(*dt):
+    return pd.Timestamp(datetime(*dt), tz='UTC')
 
 
 def remove_metadata(tsrepr):
@@ -42,3 +49,10 @@ def genserie(start, freq, repeat, initval=None, tz=None, name=None):
                                              freq=freq,
                                              periods=repeat,
                                              tz=tz))
+
+@contextmanager
+def tempattr(obj, attr, value):
+    oldvalue = getattr(obj, attr)
+    setattr(obj, attr, value)
+    yield
+    setattr(obj, attr, oldvalue)

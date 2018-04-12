@@ -6,6 +6,18 @@ import pandas as pd
 from pandas.api.types import is_datetimetz
 
 
+def mindate(ts):
+    if isinstance(ts.index, pd.MultiIndex):
+        return ts.index.min()[0]
+    return ts.index.min()
+
+
+def maxdate(ts):
+    if isinstance(ts.index, pd.MultiIndex):
+        return ts.index.max()[0]
+    return ts.index.max()
+
+
 def tzaware_serie(ts):
     if isinstance(ts.index, pd.MultiIndex):
         tzaware = [is_datetimetz(ts.index.get_level_values(idx_name))

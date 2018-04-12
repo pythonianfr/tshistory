@@ -8,6 +8,7 @@ import pytest
 from pytest_sa_pg import db
 
 from tshistory import schema, tsio
+from tshistory.snapshot import Snapshot
 
 
 DATADIR = Path(__file__).parent / 'test' / 'data'
@@ -30,8 +31,11 @@ def engine(request):
                 scope='session')
 def tsh(request, engine):
     namespace = request.param
-    schema.reset(engine, namespace)
+    schema.delete_schema(engine, namespace)
     schema.init(engine, MetaData(), namespace)
+
+    if namespace == 'zzz':
+        Snapshot._bucket_size = 5
     tsh = tsio.TimeSerie(namespace)
     yield tsh
 

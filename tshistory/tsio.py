@@ -11,6 +11,8 @@ from sqlalchemy.dialects.postgresql import BYTEA
 from tshistory.schema import tsschema
 from tshistory.util import (
     inject_in_index,
+    mindate,
+    maxdate,
     num2float,
     subset,
     SeriesServices,
@@ -19,6 +21,7 @@ from tshistory.util import (
 from tshistory.snapshot import Snapshot
 
 L = logging.getLogger('tshistory.tsio')
+TABLES = {}
 
 
 class TimeSerie(SeriesServices):
@@ -51,8 +54,7 @@ class TimeSerie(SeriesServices):
         del self._csid
         del self._author
 
-    def insert(self, cn, newts, name, author=None, _insertion_date=None,
-               extra_scalars={}):
+    def insert(self, cn, newts, name, author=None, _insertion_date=None):
         """Create a new revision of a given time series
 
         newts: pandas.Series with date index
@@ -86,48 +88,10 @@ class TimeSerie(SeriesServices):
             # we impose an order to survive rountrips
             newts = newts.reorder_levels(sorted(newts.index.names))
 
-        snapshot = Snapshot(cn, self, name)
-
         if table is None:
-            # initial insertion
-            if newts.isnull().all():
-                return None
-            newts = newts[~newts.isnull()]
-            csid = self._csid or self._newchangeset(cn, author, _insertion_date)
-            snapshot.create(csid, newts)
-            value = {
-                'cset': csid
-            }
-            # callback for extenders
-            self._complete_insertion_value(value, extra_scalars)
-            table = self._make_ts_table(cn, name, newts)
-            cn.execute(table.insert().values(value))
-            self._finalize_insertion(cn, csid, name)
-            L.info('first insertion of %s (size=%s) by %s',
-                   name, len(newts), author or self._author)
-            return newts
+            return self._create(cn, newts, name, author, _insertion_date)
 
-        self._validate(cn, newts, name)
-        diff = self.diff(snapshot.last, newts)
-        if not len(diff):
-            L.info('no difference in %s by %s (for ts of size %s)',
-                   name, author or self._author, len(newts))
-            return
-
-        csid = self._csid or self._newchangeset(cn, author, _insertion_date)
-        snapshot.update(csid, diff)
-        value = {
-            'cset': csid,
-            'diff': self._serialize(diff),
-        }
-        # callback for extenders
-        self._complete_insertion_value(value, extra_scalars)
-        cn.execute(table.insert().values(value))
-        self._finalize_insertion(cn, csid, name)
-
-        L.info('inserted diff (size=%s) for ts %s by %s',
-               len(diff), name, author or self._author)
-        return diff
+        return self._update(cn, table, newts, name, author, _insertion_date)
 
     def get(self, cn, name, revision_date=None,
             from_value_date=None, to_value_date=None):
@@ -291,9 +255,6 @@ class TimeSerie(SeriesServices):
         # wipe the diffs
         table = self._table_definition_for(seriename)
         cn.execute(table.delete().where(table.c.cset >= csid))
-        # rebuild the top-level snapshot
-        cstip = self._latest_csid_for(cn, seriename)
-        Snapshot(cn, self, seriename).strip_at(cstip)
 
     def info(self, cn):
         """Gather global statistics on the current tshistory repository
@@ -369,6 +330,50 @@ class TimeSerie(SeriesServices):
     # /API
     # Helpers
 
+    # creation / update
+
+    def _create(self, cn, newts, name, author, insertion_date=None):
+        # initial insertion
+        newts = newts[~newts.isnull()]
+        if len(newts) == 0:
+            return None
+        snapshot = Snapshot(cn, self, name)
+        csid = self._csid or self._newchangeset(cn, author, insertion_date)
+        head = snapshot.create(newts)
+        value = {
+            'cset': csid,
+            'snapshot': head
+        }
+        table = self._make_ts_table(cn, name, newts)
+        cn.execute(table.insert().values(value))
+        self._finalize_insertion(cn, csid, name)
+        L.info('first insertion of %s (size=%s) by %s',
+               name, len(newts), author or self._author)
+        return newts
+
+    def _update(self, cn, table, newts, name, author, insertion_date=None):
+        self._validate(cn, newts, name)
+        snapshot = Snapshot(cn, self, name)
+        diff = self.diff(snapshot.last(mindate(newts), maxdate(newts)), newts)
+        if not len(diff):
+            L.info('no difference in %s by %s (for ts of size %s)',
+                   name, author or self._author, len(newts))
+            return
+
+        csid = self._csid or self._newchangeset(cn, author, insertion_date)
+        head = snapshot.update(diff)
+        value = {
+            'cset': csid,
+            'diff': self._serialize(diff),
+            'snapshot': head
+        }
+        cn.execute(table.insert().values(value))
+        self._finalize_insertion(cn, csid, name)
+
+        L.info('inserted diff (size=%s) for ts %s by %s',
+               len(diff), name, author or self._author)
+        return diff
+
     # ts serialisation
 
     def _ensure_tz_consistency(self, cn, ts):
@@ -394,17 +399,25 @@ class TimeSerie(SeriesServices):
         return '{}.timeserie.{}'.format(self.namespace, seriename)
 
     def _table_definition_for(self, seriename):
-        return Table(
-            seriename, self.schema.meta,
-            Column('id', Integer, primary_key=True),
-            Column('cset', Integer,
-                   ForeignKey('{}.changeset.id'.format(self.namespace)),
-                   index=True, nullable=False),
-            # constraint: there is either .diff or .snapshot
-            Column('diff', BYTEA),
-            schema='{}.timeserie'.format(self.namespace),
-            extend_existing=True
-        )
+        tablename = self._ts_table_name(seriename)
+        table = TABLES.get(tablename)
+        if table is None:
+            TABLES[tablename] = table = Table(
+                seriename, self.schema.meta,
+                Column('id', Integer, primary_key=True),
+                Column('cset', Integer,
+                       ForeignKey('{}.changeset.id'.format(self.namespace)),
+                       index=True, nullable=False),
+                Column('diff', BYTEA),
+                Column('snapshot', Integer,
+                       ForeignKey('{}.snapshot.{}.id'.format(
+                           self.namespace,
+                           seriename)),
+                       index=True),
+                schema='{}.timeserie'.format(self.namespace),
+                extend_existing=True
+            )
+        return table
 
     def _make_ts_table(self, cn, name, ts):
         tablename = self._ts_table_name(name)
@@ -476,9 +489,6 @@ class TimeSerie(SeriesServices):
             raise Exception('Incompatible multi indexes: {} vs {}'.format(
                 meta['index_names'], inames)
             )
-
-    def _complete_insertion_value(self, value, extra_scalars):
-        pass
 
     def _finalize_insertion(self, cn, csid, name):
         table = self.schema.changeset_series
