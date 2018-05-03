@@ -1,9 +1,7 @@
-from collections import deque
-
 import pandas as pd
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
-from sqlalchemy.sql.expression import select, desc, func
+from sqlalchemy.sql.expression import select, desc
 from sqlalchemy.dialects.postgresql import BYTEA, TIMESTAMP
 
 from tshistory.util import (
@@ -82,7 +80,6 @@ class Snapshot(SeriesServices):
 
     def update(self, diff):
         # get last chunkhead for cset
-        cset = self.tsh.schema.changeset
         tstable = self.tsh._get_ts_table(self.cn, self.name)
         headsql = select(
             [tstable.c.snapshot]
@@ -96,6 +93,7 @@ class Snapshot(SeriesServices):
             mindate(diff)
         )
         parent, _ = rawchunks[0]
+        # what if we only append ?
         newsnapshot = self.patch(
             pd.concat(row[1] for row in rawchunks),
             diff
