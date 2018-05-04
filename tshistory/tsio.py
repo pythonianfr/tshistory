@@ -50,15 +50,11 @@ class TimeSerie(SeriesServices):
             return
 
         assert ('<M8[ns]' == newts.index.dtype or
-                'datetime' in str(newts.index.dtype) or
+                'datetime' in str(newts.index.dtype) and not
                 isinstance(newts.index, pd.MultiIndex))
 
         newts.name = name
         table = self._get_ts_table(cn, name)
-
-        if isinstance(newts.index, pd.MultiIndex):
-            # we impose an order to survive rountrips
-            newts = newts.reorder_levels(sorted(newts.index.names))
 
         if table is None:
             return self._create(cn, newts, name, author, _insertion_date)
@@ -346,12 +342,6 @@ class TimeSerie(SeriesServices):
         assert ts.name is not None
         metadata = self.metadata(cn, ts.name)
         if metadata and metadata.get('tzaware', False):
-            if isinstance(ts.index, pd.MultiIndex):
-                for i in range(len(ts.index.levels)):
-                    ts.index = ts.index.set_levels(
-                        ts.index.levels[i].tz_localize('UTC'),
-                        level=i)
-                return ts
             return ts.tz_localize('UTC')
         return ts
 
@@ -442,11 +432,6 @@ class TimeSerie(SeriesServices):
             raise Exception(m)
         if ts.index.dtype.name != meta['index_type']:
             raise Exception('Incompatible index types')
-        inames = [name for name in ts.index.names if name]
-        if inames != meta['index_names']:
-            raise Exception('Incompatible multi indexes: {} vs {}'.format(
-                meta['index_names'], inames)
-            )
 
     def _finalize_insertion(self, cn, csid, name):
         table = self.schema.changeset_series
