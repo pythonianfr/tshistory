@@ -17,7 +17,7 @@ TABLES = {}
 
 class Snapshot(SeriesServices):
     __slots__ = ('cn', 'name', 'tsh')
-    _max_bucket_size = 100000
+    _max_bucket_size = 250
     _min_bucket_size = 10
 
     def __init__(self, cn, tsh, seriename):
