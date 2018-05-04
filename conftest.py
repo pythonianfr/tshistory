@@ -47,9 +47,8 @@ def tsh(request, engine):
             if 'big' in name:
                 continue
             allnames.add(name)
-            with tsh.newchangeset(engine, rev['author'],
-                                  _insertion_date=rev['date']):
-                tsh.insert(engine, ts, 'new_' + name)
+            tsh.insert(engine, ts, 'new_' + name,
+                       rev['author'], _insertion_date=rev['date'])
 
     # NOTE: the name set varies depending on the amount of tests
     # so we don't capture that exact set for regression purpposes

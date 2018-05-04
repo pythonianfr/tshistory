@@ -1,9 +1,5 @@
-# coding: utf-8
-import calendar
 from datetime import datetime, timedelta
 from pathlib import Path
-from time import time
-from functools import partial
 import pytz
 
 from dateutil import parser
@@ -26,86 +22,11 @@ def utcdt(*dt):
     return pd.Timestamp(datetime(*dt), tz='UTC')
 
 
-def test_changeset(engine, tsh):
-    index = pd.date_range(start=datetime(2017, 1, 1), freq='D', periods=3)
-    data = [1., 2., 3.]
-
-    with engine.connect() as cn:
-        with tsh.newchangeset(cn, 'babar', _insertion_date=utcdt(2020, 1, 1)):
-            tsh.insert(cn, pd.Series(data, index=index), 'ts_values', author='WONTBEUSED')
-            tsh.insert(cn, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
-
-        # bogus author won't show up
-        assert tsh.log(engine)[0]['author'] == 'babar'
-
-        g = tsh.get_group(engine, 'ts_values')
-        g2 = tsh.get_group(engine, 'ts_othervalues')
-        assert_group_equals(g, g2)
-
-        with pytest.raises(AssertionError):
-            tsh.insert(engine, pd.Series([2, 3, 4], index=index), 'ts_values')
-
-        with engine.connect() as cn:
-            data.append(data.pop(0))
-            with tsh.newchangeset(cn, 'celeste', _insertion_date=utcdt(2020, 1, 1)):
-                tsh.insert(cn, pd.Series(data, index=index), 'ts_values')
-                # below should be a noop
-                tsh.insert(cn, pd.Series(['a', 'b', 'c'], index=index), 'ts_othervalues')
-
-    g = tsh.get_group(engine, 'ts_values')
-    assert ['ts_values'] == list(g.keys())
-
-    assert_df("""
-2017-01-01    2.0
-2017-01-02    3.0
-2017-01-03    1.0
-""", tsh.get(engine, 'ts_values'))
-
-    assert_df("""
-2017-01-01    a
-2017-01-02    b
-2017-01-03    c
-""", tsh.get(engine, 'ts_othervalues'))
-
-    log = tsh.log(engine, names=['ts_values', 'ts_othervalues'])
-    assert [
-        {'author': 'babar',
-         'rev': 1,
-         'date': pd.Timestamp('2020-01-01 00:00:00+0000', tz='UTC'),
-         'meta': {},
-         'names': ['ts_values', 'ts_othervalues']},
-        {'author': 'celeste',
-         'rev': 2,
-         'meta': {},
-         'date': pd.Timestamp('2020-01-01 00:00:00+0000', tz='UTC'),
-         'names': ['ts_values']}
-    ] == log
-
-    log = tsh.log(engine, names=['ts_othervalues'])
-    assert len(log) == 1
-    assert log[0]['rev'] == 1
-    assert log[0]['names'] == ['ts_values', 'ts_othervalues']
-
-    log = tsh.log(engine, fromrev=2)
-    assert len(log) == 1
-
-    log = tsh.log(engine, torev=1)
-    assert len(log) == 1
-
-    info = tsh.info(engine)
-    assert {
-        'changeset count': 2,
-        'serie names': ['ts_othervalues', 'ts_values'],
-        'series count': 2
-    } == info
-
-
 def test_strip(engine, tsh):
     for i in range(1, 5):
         pubdate = utcdt(2017, 1, i)
         ts = genserie(datetime(2017, 1, 10), 'H', 1 + i)
-        with tsh.newchangeset(engine, 'babar', _insertion_date=pubdate):
-            tsh.insert(engine, ts, 'xserie')
+        tsh.insert(engine, ts, 'xserie', 'babar', _insertion_date=pubdate)
         # also insert something completely unrelated
         tsh.insert(engine, genserie(datetime(2018, 1, 1), 'D', 1 + i), 'yserie', 'celeste')
 
@@ -679,34 +600,33 @@ def test_revision_date(engine, tsh):
 
     for i in range(1, 5):
         with engine.connect() as cn:
-            with tsh.newchangeset(cn, 'test',
-                                  _insertion_date=utcdt(2016, 1, i)):
-                tsh.insert(cn, genserie(datetime(2017, 1, i), 'D', 3, [i]), 'revdate')
+            tsh.insert(cn, genserie(datetime(2017, 1, i), 'D', 3, [i]), 'revdate',
+                       'test', _insertion_date=utcdt(2016, 1, i))
 
     # end of prologue, now some real meat
     idate0 = pd.Timestamp('2015-1-1 00:00:00', tz='UTC')
-    with tsh.newchangeset(engine, 'test', _insertion_date=idate0):
-        ts = genserie(datetime(2010, 1, 4), 'D', 4, [0], name='truc')
-        tsh.insert(engine, ts, 'ts_through_time')
-        assert idate0 == tsh.latest_insertion_date(engine, 'ts_through_time')
+    ts = genserie(datetime(2010, 1, 4), 'D', 4, [0], name='truc')
+    tsh.insert(engine, ts, 'ts_through_time',
+               'test', _insertion_date=idate0)
+    assert idate0 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate1 = pd.Timestamp('2015-1-1 15:45:23', tz='UTC')
-    with tsh.newchangeset(engine, 'test', _insertion_date=idate1):
-        ts = genserie(datetime(2010, 1, 4), 'D', 4, [1], name='truc')
-        tsh.insert(engine, ts, 'ts_through_time')
-        assert idate1 == tsh.latest_insertion_date(engine, 'ts_through_time')
+    ts = genserie(datetime(2010, 1, 4), 'D', 4, [1], name='truc')
+    tsh.insert(engine, ts, 'ts_through_time',
+               'test', _insertion_date=idate1)
+    assert idate1 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate2 = pd.Timestamp('2015-1-2 15:43:23', tz='UTC')
-    with tsh.newchangeset(engine, 'test', _insertion_date=idate2):
-        ts = genserie(datetime(2010, 1, 4), 'D', 4, [2], name='truc')
-        tsh.insert(engine, ts, 'ts_through_time')
-        assert idate2 == tsh.latest_insertion_date(engine, 'ts_through_time')
+    ts = genserie(datetime(2010, 1, 4), 'D', 4, [2], name='truc')
+    tsh.insert(engine, ts, 'ts_through_time',
+               'test', _insertion_date=idate2)
+    assert idate2 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate3 = pd.Timestamp('2015-1-3', tz='UTC')
-    with tsh.newchangeset(engine, 'test', _insertion_date=idate3):
-        ts = genserie(datetime(2010, 1, 4), 'D', 4, [3], name='truc')
-        tsh.insert(engine, ts, 'ts_through_time')
-        assert idate3 == tsh.latest_insertion_date(engine, 'ts_through_time')
+    ts = genserie(datetime(2010, 1, 4), 'D', 4, [3], name='truc')
+    tsh.insert(engine, ts, 'ts_through_time',
+               'test', _insertion_date=idate3)
+    assert idate3 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     ts = tsh.get(engine, 'ts_through_time')
 
@@ -1194,9 +1114,9 @@ insertion_date             app_date    fc_date
 def test_get_history(engine, tsh):
     for numserie in (1, 2, 3):
         with engine.connect() as cn:
-            with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.fr',
-                                  _insertion_date=utcdt(2017, 2, numserie)):
-                tsh.insert(cn, genserie(datetime(2017, 1, 1), 'D', numserie), 'smallserie')
+            tsh.insert(cn, genserie(datetime(2017, 1, 1), 'D', numserie), 'smallserie',
+                       'aurelien.campeas@pythonian.fr',
+                       _insertion_date=utcdt(2017, 2, numserie))
 
     ts = tsh.get(engine, 'smallserie')
     assert_df("""
@@ -1248,9 +1168,8 @@ insertion_date             value_date
     for idate in histts.index.get_level_values('insertion_date').unique():
         with engine.connect() as cn:
             idate = idate.replace(tzinfo=pytz.timezone('UTC'))
-            with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.f',
-                                  _insertion_date=idate):
-                tsh.insert(cn, histts[idate], 'smallserie2')
+            tsh.insert(cn, histts[idate], 'smallserie2',
+                       'aurelien.campeas@pythonian.f', _insertion_date=idate)
 
     # this is perfectly round-tripable
     assert (tsh.get(engine, 'smallserie2') == ts).all()
@@ -1364,9 +1283,9 @@ def test_nr_gethistory(engine, tsh):
     idate = utcdt(2016, 1, 1)
     for i in range(5):
         with engine.connect() as cn:
-            with tsh.newchangeset(cn, 'aurelien.campeas@pythonian.f',
-                                  _insertion_date=idate + timedelta(days=i)):
-                tsh.insert(cn, s1 * i, 'foo')
+            tsh.insert(cn, s1 * i, 'foo',
+                       'aurelien.campeas@pythonian.f',
+                       _insertion_date=idate + timedelta(days=i))
 
     df = tsh.get_history(engine, 'foo',
                          datetime(2016, 1, 3),

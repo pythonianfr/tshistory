@@ -25,7 +25,6 @@ TABLES = {}
 
 
 class TimeSerie(SeriesServices):
-    _csid = None
     namespace = 'tsh'
     schema = None
 
@@ -35,40 +34,13 @@ class TimeSerie(SeriesServices):
         self.schema.define()
         self.metadatacache = {}
 
-    # API : changeset, insert, get, delete
-    @contextmanager
-    def newchangeset(self, cn, author, _insertion_date=None):
-        """A context manager to allow insertion of several series within the
-        same changeset identifier
-
-        This allows to group changes to several series, hence
-        producing a macro-change.
-
-        _insertion_date is *only* provided for migration purposes and
-        not part of the API.
-        """
-        assert self._csid is None
-        self._csid = self._newchangeset(cn, author, _insertion_date)
-        self._author = author
-        yield
-        del self._csid
-        del self._author
-
-    def insert(self, cn, newts, name, author=None, _insertion_date=None):
+    def insert(self, cn, newts, name, author, _insertion_date=None):
         """Create a new revision of a given time series
 
         newts: pandas.Series with date index
-
         name: str unique identifier of the serie
-
-        author: str free-form author name (mandatory, unless provided
-        to the newchangeset context manager).
-
+        author: str free-form author name
         """
-        assert self._csid or author, 'author is mandatory'
-        if self._csid and author:
-            L.info('author r{} will not be used when in a changeset'.format(author))
-            author = None
         assert isinstance(newts, pd.Series)
         assert not newts.index.duplicated().any()
 
@@ -130,16 +102,6 @@ class TimeSerie(SeriesServices):
         meta = cn.execute(sql).scalar()
         self.metadatacache[tsname] = meta
         return meta
-
-    def get_group(self, cn, name, revision_date=None):
-        csid = self._latest_csid_for(cn, name)
-
-        group = {}
-        for seriename in self._changeset_series(cn, csid):
-            serie = self.get(cn, seriename, revision_date)
-            if serie is not None:
-                group[seriename] = serie
-        return group
 
     def get_history(self, cn, name,
                     from_insertion_date=None,
@@ -339,7 +301,7 @@ class TimeSerie(SeriesServices):
         if len(newts) == 0:
             return None
         snapshot = Snapshot(cn, self, name)
-        csid = self._csid or self._newchangeset(cn, author, insertion_date)
+        csid = self._newchangeset(cn, author, insertion_date)
         head = snapshot.create(newts)
         value = {
             'cset': csid,
@@ -361,7 +323,7 @@ class TimeSerie(SeriesServices):
                    name, author or self._author, len(newts))
             return
 
-        csid = self._csid or self._newchangeset(cn, author, insertion_date)
+        csid = self._newchangeset(cn, author, insertion_date)
         head = snapshot.update(diff)
         value = {
             'cset': csid,
@@ -458,11 +420,6 @@ class TimeSerie(SeriesServices):
             author=author,
             insertion_date=idate)
         return cn.execute(sql).inserted_primary_key[0]
-
-    def _latest_csid_for(self, cn, name):
-        table = self._get_ts_table(cn, name)
-        sql = select([func.max(table.c.cset)])
-        return cn.execute(sql).scalar()
 
     def _changeset_series(self, cn, csid):
         cset_serie = self.schema.changeset_series
