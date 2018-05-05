@@ -109,24 +109,25 @@ class TimeSerie(SeriesServices):
         if table is None:
             return
 
-        # compute diffs above the snapshot
         cset = self.schema.changeset
-        diffsql = select([cset.c.id, cset.c.insertion_date, table.c.diff]
-        ).order_by(cset.c.id
-        ).where(table.c.cset == cset.c.id)
-
-        if from_insertion_date:
-            diffsql = diffsql.where(cset.c.insertion_date >= from_insertion_date)
-        if to_insertion_date:
-            diffsql = diffsql.where(cset.c.insertion_date <= to_insertion_date)
-
-        diffs = cn.execute(diffsql).fetchall()
-        if not diffs:
-            # it's fine to ask for an insertion date range
-            # where noting did happen, but you get nothing
-            return
 
         if diffmode:
+            # compute diffs above the snapshot
+            diffsql = select([cset.c.id, cset.c.insertion_date, table.c.diff]
+            ).order_by(cset.c.id
+            ).where(table.c.cset == cset.c.id)
+
+            if from_insertion_date:
+                diffsql = diffsql.where(cset.c.insertion_date >= from_insertion_date)
+            if to_insertion_date:
+                diffsql = diffsql.where(cset.c.insertion_date <= to_insertion_date)
+
+            diffs = cn.execute(diffsql).fetchall()
+            if not diffs:
+                # it's fine to ask for an insertion date range
+                # where noting did happen, but you get nothing
+                return
+
             snapshot = Snapshot(cn, self, name)
             series = []
             for csid, revdate, diff in diffs:
@@ -141,19 +142,32 @@ class TimeSerie(SeriesServices):
             series.name = name
             return series
 
-        csid, revdate, diff_ = diffs[0]
-        snap = Snapshot(cn, self, name)
-        _, snapshot = snap.find([lambda cset, _: cset.c.id <= csid],
-                                from_value_date, to_value_date)
+        revsql = select(
+            [cset.c.id, cset.c.insertion_date]
+        ).order_by(
+            cset.c.id
+        ).where(
+            table.c.cset == cset.c.id
+        )
 
-        series = [(revdate, subset(snapshot, from_value_date, to_value_date))]
-        for csid_, revdate, diff in diffs[1:]:
-            diff = subset(self._deserialize(diff, table.name),
-                          from_value_date, to_value_date)
-            diff = self._ensure_tz_consistency(cn, diff)
+        if from_insertion_date:
+            revsql = revsql.where(cset.c.insertion_date >= from_insertion_date)
+        if to_insertion_date:
+            revsql = revsql.where(cset.c.insertion_date <= to_insertion_date)
 
-            serie = self.patch(series[-1][1], diff)
-            series.append((revdate, serie))
+        revs = cn.execute(revsql).fetchall()
+        if not revs:
+            return
+
+        snapshot = Snapshot(cn, self, name)
+        series = []
+        for csid, idate in revs:
+            series.append((
+                idate,
+                snapshot.find([lambda cset, _: cset.c.id == csid],
+                               from_value_date=from_value_date,
+                               to_value_date=to_value_date)[1]
+            ))
 
         for revdate, serie in series:
             inject_in_index(serie, revdate)
