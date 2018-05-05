@@ -13,6 +13,15 @@ from tshistory.testutil import (
 )
 
 
+def chunksize(snap, head, from_value_date=None):
+    return {
+        parent: len(snap._chunks_to_ts([rawchunk]))
+        for _, parent, rawchunk in snap.rawchunks(
+                head, from_value_date=from_value_date
+        )
+    }
+
+
 def test_chunks(engine, tsh):
     with tempattr(Snapshot, '_max_bucket_size', 2):
         ts = genserie(datetime(2010, 1, 1), 'D', 5)
@@ -27,9 +36,10 @@ def test_chunks(engine, tsh):
         assert chunks[0].parent is None
         assert chunks[1].parent == 1
         assert chunks[2].parent == 2
-        ts0 = tsh._deserialize(chunks[0].chunk, 'name')
-        ts1 = tsh._deserialize(chunks[1].chunk, 'name')
-        ts2 = tsh._deserialize(chunks[2].chunk, 'name')
+        snap = Snapshot(engine, tsh, 'snapshot')
+        ts0 = snap._chunks_to_ts([chunks[0].chunk])
+        ts1 = snap._chunks_to_ts([chunks[1].chunk])
+        ts2 = snap._chunks_to_ts([chunks[2].chunk])
 
         assert_df("""
 2010-01-01    0.0
@@ -91,9 +101,10 @@ def test_chunks(engine, tsh):
             chunk.id: chunk.parent for chunk in chunks
         }
 
-        ts3 = tsh._deserialize(chunks[3].chunk, 'name')
-        ts4 = tsh._deserialize(chunks[4].chunk, 'name')
-        ts5 = tsh._deserialize(chunks[5].chunk, 'name')
+        snap = Snapshot(engine, tsh, 'chunks')
+        ts3 = snap._chunks_to_ts([chunks[3].chunk])
+        ts4 = snap._chunks_to_ts([chunks[4].chunk])
+        ts5 = snap._chunks_to_ts([chunks[5].chunk])
 
         assert_df("""
 2010-01-05    4.0
@@ -160,7 +171,7 @@ def test_chunks(engine, tsh):
 
         # 2nd commit chunks without filtering
         snap = Snapshot(engine, tsh, 'chunks')
-        chunks = {parent: len(ts) for _, parent, ts in snap.rawchunks(6)}
+        chunks = chunksize(snap, 6)
         assert chunks == {
             None: 2,
             1: 2,
@@ -169,14 +180,11 @@ def test_chunks(engine, tsh):
             5: 1
         }
         # 2nd commit chunks with filtering
-        chunks = {
-            parent: len(ts)
-            for _, parent, ts in snap.rawchunks(6, datetime(2010, 1, 5))
-        }
+        chunks = chunksize(snap, 6, datetime(2010, 1, 5))
         assert chunks == {2: 2, 4: 2, 5: 1}
 
         # 3rd commit chunks without filtering
-        chunks = {parent: len(ts) for _, parent, ts in snap.rawchunks(10)}
+        chunks = chunksize(snap, 10)
         assert chunks == {
             None: 2,
             1: 2,
@@ -185,10 +193,7 @@ def test_chunks(engine, tsh):
             9: 1
         }
         # 3rd commit chunks with filtering
-        chunks = {
-            parent: len(ts)
-            for _, parent, ts in snap.rawchunks(10, datetime(2010, 1, 5))
-        }
+        chunks = chunksize(snap, 10, datetime(2010, 1, 5))
         assert chunks == {
             7: 2,
             8: 2,
@@ -302,7 +307,8 @@ def test_get_from_to(engine, tsh):
         chunks.pop(1)
         assert all(k == v+1 for k, v in chunks.items())
 
-        chunks = {parent: len(ts) for _, parent, ts in snap.rawchunks(73)}
+        snap = Snapshot(engine, tsh, 'quitelong')
+        chunks = chunksize(snap, 73)
         assert chunks == {None: 5, 1: 5, 2: 5, 3: 5, 4: 5, 5: 5, 6: 5, 7: 5,
                           8: 5, 9: 5, 10: 5, 11: 5, 12: 5, 13: 5, 14: 5, 15: 5,
                           16: 5, 17: 5, 18: 5, 19: 5, 20: 5, 21: 5, 22: 5,
@@ -313,10 +319,7 @@ def test_get_from_to(engine, tsh):
                           53: 5, 54: 5, 55: 5, 56: 5, 57: 5, 58: 5, 59: 5, 60: 5,
                           61: 5, 62: 5, 63: 5, 64: 5, 65: 5, 66: 5, 67: 5, 68: 5,
                           69: 5, 70: 5, 71: 5, 72: 5}
-        chunks = {
-            parent: len(ts)
-            for _, parent, ts in snap.rawchunks(73, datetime(2015, 5, 1))
-        }
+        chunks = chunksize(snap, 73, datetime(2015, 5, 1))
         assert chunks == {24: 5, 25: 5, 26: 5, 27: 5, 28: 5, 29: 5, 30: 5, 31: 5,
                           32: 5, 33: 5, 34: 5, 35: 5, 36: 5, 37: 5, 38: 5, 39: 5,
                           40: 5, 41: 5, 42: 5, 43: 5, 44: 5, 45: 5, 46: 5, 47: 5,

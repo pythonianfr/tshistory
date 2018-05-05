@@ -47,7 +47,7 @@ def test_hourly_forecast(engine, tracker, ptsh):
                 if limit and idx > limit:
                     break
 
-    sizes = (250,)#(25, 50, 100, 200, 300)
+    sizes = (25,)#(25, 50, 100, 200, 300)
     for bsize in sizes:
         t0 = time()
         name = 'fcast_{}'.format(bsize)

@@ -1,14 +1,17 @@
 import pandas as pd
+import zlib
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.sql.expression import select, desc
 from sqlalchemy.dialects.postgresql import BYTEA, TIMESTAMP
 
 from tshistory.util import (
+    fromjson,
     mindate,
     maxdate,
     subset,
     SeriesServices,
+    tojson
 )
 
 
@@ -49,6 +52,25 @@ class Snapshot(SeriesServices):
                 extend_existing=True
             )
         return table
+
+    # optimized/asymmetric de/serialisation
+
+    def _serialize(self, ts):
+        if ts is None:
+            return None
+        return zlib.compress(tojson(ts, self._precision).encode('utf-8')[1:-1])
+
+    def _deserialize(self, bytestring):
+        return zlib.decompress(bytestring)
+
+    def _chunks_to_ts(self, chunks):
+        body = b'{' + b','.join(self._deserialize(chunk) for chunk in chunks) + b'}'
+        return self.tsh._ensure_tz_consistency(
+            self.cn,
+            fromjson(body.decode('utf-8'), self.name)
+        )
+
+    # /serialisation
 
     def split(self, ts):
         if len(ts) < self._max_bucket_size:
@@ -92,7 +114,7 @@ class Snapshot(SeriesServices):
         diffstart = mindate(diff)
         rawchunks = self.rawchunks(head, diffstart)
         cid, parent, _ = rawchunks[0]
-        oldsnapshot = pd.concat(row[2] for row in rawchunks)
+        oldsnapshot = self._chunks_to_ts(row[2] for row in rawchunks)
 
         if (len(oldsnapshot) >= self._min_bucket_size and
             diffstart > maxdate(oldsnapshot)):
@@ -132,16 +154,15 @@ class Snapshot(SeriesServices):
                    head=head,
                    where=where)
         res = self.cn.execute(sql, start=from_value_date)
-        chunks = [(cid, parent,
-                   self.tsh._ensure_tz_consistency(
-                       self.cn, self._deserialize(rawchunk, self.name)))
+        chunks = [(cid, parent, rawchunk)
                   for cid, parent, rawchunk in res.fetchall()]
         chunks.reverse()
         return chunks
 
     def chunk(self, head, from_value_date=None, to_value_date=None):
-        chunks = self.rawchunks(head, from_value_date)
-        snapdata = pd.concat(row[2] for row in chunks)
+        snapdata = self._chunks_to_ts(
+            raw[2] for raw in self.rawchunks(head, from_value_date)
+        )
         return subset(snapdata,
             from_value_date, to_value_date
         )
