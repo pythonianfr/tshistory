@@ -335,7 +335,7 @@ def test_deletion(engine, tsh):
     ts_begin.iloc[-1] = np.nan
     tsh.insert(engine, ts_begin, 'ts_del', 'test')
 
-    ts = Snapshot(engine, tsh, 'ts_del').build_upto()
+    _, ts = Snapshot(engine, tsh, 'ts_del').find()
     assert ts.iloc[-1] == 9.0
 
     ts_begin.iloc[0] = np.nan

@@ -78,9 +78,9 @@ class TimeSerie(SeriesServices):
         if revision_date:
             qfilter.append(lambda cset, _: cset.c.insertion_date <= revision_date)
         snap = Snapshot(cn, self, name)
-        current = snap.build_upto(qfilter,
-                                  from_value_date=from_value_date,
-                                  to_value_date=to_value_date)
+        _, current = snap.find(qfilter,
+                               from_value_date=from_value_date,
+                               to_value_date=to_value_date)
 
         if current is not None and not _keep_nans:
             current.name = name
@@ -143,8 +143,8 @@ class TimeSerie(SeriesServices):
 
         csid, revdate, diff_ = diffs[0]
         snap = Snapshot(cn, self, name)
-        snapshot = snap.build_upto([lambda cset, _: cset.c.id <= csid],
-                                   from_value_date, to_value_date)
+        _, snapshot = snap.find([lambda cset, _: cset.c.id <= csid],
+                                from_value_date, to_value_date)
 
         series = [(revdate, subset(snapshot, from_value_date, to_value_date))]
         for csid_, revdate, diff in diffs[1:]:
