@@ -218,7 +218,8 @@ def test_bad_import(engine, tsh):
     # all na
     ts = genserie(datetime(2010, 1, 10), 'D', 10, [np.nan], name='truc')
     tsh.insert(engine, ts, 'test_nan', 'test')
-    assert tsh.get(engine, 'test_nan') is None
+    assert len(tsh.get(engine, 'test_nan')) == 0
+    assert len(tsh.get(engine, 'test_nan', _keep_nans=True)) == 10
 
     # mixe na
     ts = pd.Series([np.nan] * 5 + [3] * 5,
@@ -238,8 +239,7 @@ def test_bad_import(engine, tsh):
 """, result)
 
     # get_ts with name not in database
-
-    tsh.get(engine, 'inexisting_name', 'test')
+    assert tsh.get(engine, 'inexisting_name', 'test') is None
 
 
 def test_revision_date(engine, tsh):
@@ -336,7 +336,7 @@ def test_deletion(engine, tsh):
     tsh.insert(engine, ts_begin, 'ts_del', 'test')
 
     _, ts = Snapshot(engine, tsh, 'ts_del').find()
-    assert ts.iloc[-1] == 9.0
+    assert ts.iloc[-2] == 9.0
 
     ts_begin.iloc[0] = np.nan
     ts_begin.iloc[3] = np.nan
@@ -424,7 +424,7 @@ def test_deletion(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10, [np.nan])
     tsh.insert(engine, ts_begin, 'ts_null', 'test')
 
-    assert tsh.get(engine, 'ts_null') is None
+    assert len(tsh.get(engine, 'ts_null')) == 0
 
     # exhibit issue with nans handling
     ts_repushed = genserie(datetime(2010, 1, 1), 'D', 11)
@@ -694,9 +694,18 @@ def test_add_na(engine, tsh):
     ts_nan[[True] * len(ts_nan)] = np.nan
 
     diff = tsh.insert(engine, ts_nan, 'ts_add_na', 'test')
-    assert diff is None
+    assert len(diff) == 5
     result = tsh.get(engine, 'ts_add_na')
-    assert result is None
+    assert len(result) == 0
+
+    result = tsh.get(engine, 'ts_add_na', _keep_nans=True)
+    assert_df("""
+2010-01-01   NaN
+2010-01-02   NaN
+2010-01-03   NaN
+2010-01-04   NaN
+2010-01-05   NaN
+""", result)
 
     # in case of insertion in existing data
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 5)

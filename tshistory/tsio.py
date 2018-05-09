@@ -293,7 +293,6 @@ class TimeSerie(SeriesServices):
 
     def _create(self, cn, newts, name, author, insertion_date=None):
         # initial insertion
-        newts = newts[~newts.isnull()]
         if len(newts) == 0:
             return None
         snapshot = Snapshot(cn, self, name)
