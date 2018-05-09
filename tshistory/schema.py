@@ -18,7 +18,7 @@ def delete_schema(engine, ns):
             cn.execute(
                 'drop schema if exists "{}.{}" cascade'.format(ns, subns)
             )
-        cn.execute('drop schema if exists {} cascade'.format(ns))
+        cn.execute('drop schema if exists "{}" cascade'.format(ns))
 
 
 class tsschema(object):
