@@ -650,6 +650,37 @@ insertion_date             value_date
 """, tsc)
 
 
+def test_history_delta(engine, tsh):
+    for d in range(1, 3):
+        idate = utcdt(2018, 1, d)
+        serie = genserie(idate - timedelta(hours=1), 'H', 6, initval=[d])
+        tsh.insert(engine, serie, 'hd', 'aurelien.campeas@pythonian.fr',
+                   _insertion_date=idate)
+
+    assert_df("""
+insertion_date             value_date               
+2018-01-01 00:00:00+00:00  2018-01-01 00:00:00+00:00    1.0
+                           2018-01-01 01:00:00+00:00    1.0
+                           2018-01-01 02:00:00+00:00    1.0
+2018-01-02 00:00:00+00:00  2018-01-02 00:00:00+00:00    2.0
+                           2018-01-02 01:00:00+00:00    2.0
+                           2018-01-02 02:00:00+00:00    2.0
+""",  tsh.get_history(engine, 'hd', deltaafter=timedelta(hours=2)))
+
+
+    assert_df("""
+insertion_date             value_date               
+2018-01-01 00:00:00+00:00  2017-12-31 23:00:00+00:00    1.0
+                           2018-01-01 00:00:00+00:00    1.0
+                           2018-01-01 01:00:00+00:00    1.0
+2018-01-02 00:00:00+00:00  2018-01-01 23:00:00+00:00    2.0
+                           2018-01-02 00:00:00+00:00    2.0
+                           2018-01-02 01:00:00+00:00    2.0
+""",  tsh.get_history(engine, 'hd',
+                      deltabefore=timedelta(hours=1),
+                      deltaafter=timedelta(hours=1)))
+
+
 def test_nr_gethistory(engine, tsh):
     s0 = pd.Series([-1, 0, 0, -1],
                    index=pd.DatetimeIndex(start=datetime(2016, 12, 29),

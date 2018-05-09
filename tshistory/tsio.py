@@ -104,10 +104,17 @@ class TimeSerie(SeriesServices):
                     to_insertion_date=None,
                     from_value_date=None,
                     to_value_date=None,
+                    deltabefore=None,
+                    deltaafter=None,
                     diffmode=False):
         table = self._get_ts_table(cn, name)
         if table is None:
             return
+
+        if deltabefore is not None or deltaafter is not None:
+            assert diffmode is False
+            assert from_value_date is None
+            assert to_value_date is None
 
         cset = self.schema.changeset
 
@@ -162,6 +169,13 @@ class TimeSerie(SeriesServices):
         snapshot = Snapshot(cn, self, name)
         series = []
         for csid, idate in revs:
+            if deltabefore or deltaafter:
+                from_value_date = idate
+                to_value_date = idate
+                if deltabefore:
+                    from_value_date = idate - deltabefore
+                if deltaafter:
+                    to_value_date = idate + deltaafter
             series.append((
                 idate,
                 snapshot.find([lambda cset, _: cset.c.id == csid],
