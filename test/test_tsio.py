@@ -844,3 +844,15 @@ id   diff
         'got stripped from X',
         'got stripped from X'
     ]
+
+
+def test_prepend(engine, tsh):
+    serie = genserie(datetime(2010, 1, 1), 'D', 40)
+
+    assert 40 == len(serie)
+    ts_insert = serie[2:]
+    tsh.insert(engine, ts_insert, 'prepend', 'test')
+    assert 38 == len(tsh.get(engine, 'prepend'))
+
+    tsh.insert(engine, serie, 'prepend', 'test')
+    assert 40 == len(tsh.get(engine, 'prepend'))

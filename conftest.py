@@ -35,7 +35,7 @@ def tsh(request, engine):
     schema.init(engine, MetaData(), namespace)
 
     if namespace == 'zzz':
-        Snapshot._bucket_size = 5
+        Snapshot._max_bucket_size = 5
     tsh = tsio.TimeSerie(namespace)
     yield tsh
 

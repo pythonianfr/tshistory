@@ -35,7 +35,7 @@ def test_hourly_forecast(engine, tracker, ptsh):
                      for _ in range(5000)]
 
     def create(name, bsize, limit=None):
-        with tempattr(Snapshot, '_bucket_size', bsize):
+        with tempattr(Snapshot, '_max_bucket_size', bsize):
             for idx, idate in enumerate(forecasts):
                 dr = pd.date_range(start=idate, freq='H', periods=48)
                 perturbation = perturbations[idx]
@@ -60,7 +60,7 @@ def test_hourly_forecast(engine, tracker, ptsh):
         out = engine.execute(sql).fetchall()
         ssize = sum([len(c) for _, c in out])
         noparentcount = len([x for x, _ in out if x is None])
-        print('bucket_size, snap_size, noparent, time : ',
+        print('max_bucket_size, snap_size, noparent, time : ',
               bsize, ssize, noparentcount, t1)
 
     engine.execute('drop table if exists fcast_sql')

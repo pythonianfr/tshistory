@@ -17,7 +17,8 @@ TABLES = {}
 
 class Snapshot(SeriesServices):
     __slots__ = ('cn', 'name', 'tsh')
-    _bucket_size = 100000
+    _max_bucket_size = 100000
+    _min_bucket_size = 10
 
     def __init__(self, cn, tsh, seriename):
         self.cn = cn
@@ -50,13 +51,13 @@ class Snapshot(SeriesServices):
         return table
 
     def split(self, ts):
-        if len(ts) < self._bucket_size:
+        if len(ts) < self._max_bucket_size:
             return [ts]
 
         buckets = []
         for start in range(0, len(ts),
-                           self._bucket_size):
-            buckets.append(ts[start:start + self._bucket_size])
+                           self._max_bucket_size):
+            buckets.append(ts[start:start + self._max_bucket_size])
         return buckets
 
     def insert_buckets(self, parent, buckets):
@@ -88,16 +89,19 @@ class Snapshot(SeriesServices):
         head = self.cn.execute(headsql).scalar()
 
         # get raw chunks matching the limits
-        rawchunks = self.rawchunks(
-            head,
-            mindate(diff)
-        )
-        parent, _ = rawchunks[0]
-        # what if we only append ?
-        newsnapshot = self.patch(
-            pd.concat(row[1] for row in rawchunks),
-            diff
-        )
+        diffstart = mindate(diff)
+        rawchunks = self.rawchunks(head, diffstart)
+        cid, parent, _ = rawchunks[0]
+        oldsnapshot = pd.concat(row[2] for row in rawchunks)
+
+        if (len(oldsnapshot) >= self._min_bucket_size and
+            diffstart > maxdate(oldsnapshot)):
+            # append: let't not rewrite anything
+            newsnapshot = diff
+            parent = cid
+        else:
+            # we got a point override, need to patch
+            newsnapshot = self.patch(oldsnapshot, diff)
         buckets = self.split(newsnapshot)
 
         return self.insert_buckets(parent, buckets)
@@ -109,33 +113,35 @@ class Snapshot(SeriesServices):
 
         sql = """
         with recursive allchunks as (
-            select chunks.parent as parent,
+            select chunks.id as cid,
+                   chunks.parent as parent,
                    chunks.chunk as chunk
             from "{namespace}"."{table}" as chunks
             where chunks.id = {head}
           union
-            select chunks.parent as parent,
+            select chunks.id as cid,
+                   chunks.parent as parent,
                    chunks.chunk as chunk
             from "{namespace}"."{table}" as chunks
             join allchunks on chunks.id = allchunks.parent
             {where}
         )
-        select parent, chunk from allchunks
+        select cid, parent, chunk from allchunks
         """.format(namespace=self.namespace,
                    table=self.name,
                    head=head,
                    where=where)
         res = self.cn.execute(sql, start=from_value_date)
-        chunks = [(parent,
+        chunks = [(cid, parent,
                    self.tsh._ensure_tz_consistency(
                        self.cn, self._deserialize(rawchunk, self.name)))
-                  for parent, rawchunk in res.fetchall()]
+                  for cid, parent, rawchunk in res.fetchall()]
         chunks.reverse()
         return chunks
 
     def chunk(self, head, from_value_date=None, to_value_date=None):
         chunks = self.rawchunks(head, from_value_date)
-        snapdata = pd.concat(row[1] for row in chunks)
+        snapdata = pd.concat(row[2] for row in chunks)
         return subset(snapdata,
             from_value_date, to_value_date
         )
