@@ -11,8 +11,6 @@ from sqlalchemy.dialects.postgresql import BYTEA
 from tshistory.schema import tsschema
 from tshistory.util import (
     inject_in_index,
-    mindate,
-    maxdate,
     num2float,
     subset,
     SeriesServices,
@@ -340,7 +338,9 @@ class TimeSerie(SeriesServices):
     def _update(self, cn, table, newts, name, author, insertion_date=None):
         self._validate(cn, newts, name)
         snapshot = Snapshot(cn, self, name)
-        diff = self.diff(snapshot.last(mindate(newts), maxdate(newts)), newts)
+        diff = self.diff(snapshot.last(newts.index.min(),
+                                       newts.index.max()),
+                         newts)
         if not len(diff):
             L.info('no difference in %s by %s (for ts of size %s)',
                    name, author or self._author, len(newts))

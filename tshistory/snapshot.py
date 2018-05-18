@@ -7,8 +7,6 @@ from sqlalchemy.dialects.postgresql import BYTEA, TIMESTAMP
 
 from tshistory.util import (
     fromjson,
-    mindate,
-    maxdate,
     subset,
     SeriesServices,
     tojson
@@ -84,8 +82,8 @@ class Snapshot(SeriesServices):
 
     def insert_buckets(self, parent, buckets):
         for bucket in buckets:
-            start = mindate(bucket)
-            end = maxdate(bucket)
+            start = bucket.index.min()
+            end = bucket.index.max()
             sql = self.table.insert().values(
                 start=start,
                 end=end,
@@ -111,13 +109,13 @@ class Snapshot(SeriesServices):
         head = self.cn.execute(headsql).scalar()
 
         # get raw chunks matching the limits
-        diffstart = mindate(diff)
+        diffstart = diff.index.min()
         rawchunks = self.rawchunks(head, diffstart)
         cid, parent, _ = rawchunks[0]
         oldsnapshot = self._chunks_to_ts(row[2] for row in rawchunks)
 
         if (len(oldsnapshot) >= self._min_bucket_size and
-            diffstart > maxdate(oldsnapshot)):
+            diffstart > oldsnapshot.index.max()):
             # append: let't not rewrite anything
             newsnapshot = diff
             parent = cid
