@@ -5,7 +5,7 @@ from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine
 
-from tshistory.tsio import tojson
+from tshistory.util import tojson
 from tshistory.helper import tempdir
 
 

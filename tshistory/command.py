@@ -13,7 +13,8 @@ from sqlalchemy import create_engine, MetaData
 from dateutil.parser import parse as temporal
 import pandas as pd
 
-from tshistory.tsio import TimeSerie, fromjson
+from tshistory.tsio import TimeSerie
+from tshistory.util import fromjson
 from tshistory.db import dump as dump_db, restore as restore_db
 import tshistory.schema
 
