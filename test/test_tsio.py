@@ -198,6 +198,16 @@ name              table_name
              revision_date=datetime.now()))
 
 
+def test_changeset_metadata(engine, tsh):
+    serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
+    tsh.insert(engine, serie, 'ts-metadata', 'babar',
+               {'foo': 'A', 'bar': 42})
+
+    log = tsh.log(engine, names=['ts-metadata'])
+    meta = tsh.changeset_metadata(engine, log[0]['rev'])
+    assert meta == {'foo': 'A', 'bar': 42}
+
+
 def test_bad_import(engine, tsh):
     # the data were parsed as date by pd.read_json()
     df_result = pd.read_csv(str(DATADIR / 'test_data.csv'))
@@ -879,11 +889,12 @@ id   diff
     ] == ['babar', 'celeste', 'babar', 'celeste', 'celeste', 'celeste']
 
     log = tsh.log(engine, stripped=True, names=['xserie', 'yserie'])
-    assert [list(l['meta'].values())[0][:18] + 'X' for l in log if l['meta']
-    ] == [
-        'got stripped from X',
-        'got stripped from X'
-    ]
+    for l in log:
+        if l['meta']:
+            meta = l['meta']
+            stripinfo = meta.get('tshistory.info')
+            if stripinfo:
+                assert stripinfo.startswith('got stripped from')
 
 
 def test_prepend(engine, tsh):

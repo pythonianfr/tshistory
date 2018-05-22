@@ -32,16 +32,20 @@ class TimeSerie(SeriesServices):
         self.schema.define()
         self.metadatacache = {}
 
-    def insert(self, cn, newts, name, author, _insertion_date=None):
+    def insert(self, cn, newts, name, author,
+               metadata=None,
+               _insertion_date=None):
         """Create a new revision of a given time series
 
         newts: pandas.Series with date index
         name: str unique identifier of the serie
         author: str free-form author name
+        metadata: optional dict for changeset metadata
         """
         assert isinstance(newts, pd.Series)
         assert isinstance(name, str)
         assert isinstance(author, str)
+        assert metadata is None or isinstance(metadata, dict)
         assert _insertion_date is None or isinstance(_insertion_date, datetime)
         assert not newts.index.duplicated().any()
 
@@ -58,9 +62,11 @@ class TimeSerie(SeriesServices):
         table = self._get_ts_table(cn, name)
 
         if table is None:
-            return self._create(cn, newts, name, author, _insertion_date)
+            return self._create(cn, newts, name, author,
+                                metadata, _insertion_date)
 
-        return self._update(cn, table, newts, name, author, _insertion_date)
+        return self._update(cn, table, newts, name, author,
+                            metadata, _insertion_date)
 
     def get(self, cn, name, revision_date=None,
             from_value_date=None, to_value_date=None,
@@ -99,6 +105,14 @@ class TimeSerie(SeriesServices):
         meta = cn.execute(sql).scalar()
         self.metadatacache[tsname] = meta
         return meta
+
+    def changeset_metadata(self, cn, csid):
+        cset = self.schema.changeset
+        sql = 'select metadata from "{ns}".changeset where id = {id}'.format(
+            ns=self.namespace,
+            id=csid
+        )
+        return cn.execute(sql).scalar()
 
     def get_history(self, cn, name,
                     from_insertion_date=None,
@@ -225,9 +239,7 @@ class TimeSerie(SeriesServices):
         cset_serie = self.schema.changeset_series
         for log in logs:
             # update changeset.metadata
-            metadata = cn.execute(
-                select([cset.c.metadata]).where(cset.c.id == log['rev'])
-            ).scalar() or {}
+            metadata = self.changeset_metadata(cn, log['rev']) or {}
             metadata['tshistory.info'] = 'got stripped from {}'.format(csid)
             sql = cset.update().where(cset.c.id == log['rev']
             ).values(metadata=metadata)
@@ -313,12 +325,13 @@ class TimeSerie(SeriesServices):
 
     # creation / update
 
-    def _create(self, cn, newts, name, author, insertion_date=None):
+    def _create(self, cn, newts, name, author,
+                metadata=None, insertion_date=None):
         # initial insertion
         if len(newts) == 0:
             return None
         snapshot = Snapshot(cn, self, name)
-        csid = self._newchangeset(cn, author, insertion_date)
+        csid = self._newchangeset(cn, author, insertion_date, metadata)
         head = snapshot.create(newts)
         value = {
             'cset': csid,
@@ -331,7 +344,8 @@ class TimeSerie(SeriesServices):
                name, len(newts), author or self._author)
         return newts
 
-    def _update(self, cn, table, newts, name, author, insertion_date=None):
+    def _update(self, cn, table, newts, name, author,
+                metadata=None, insertion_date=None):
         self._validate(cn, newts, name)
         snapshot = Snapshot(cn, self, name)
         diff = self.diff(snapshot.last(newts.index.min(),
@@ -342,7 +356,7 @@ class TimeSerie(SeriesServices):
                    name, author or self._author, len(newts))
             return
 
-        csid = self._newchangeset(cn, author, insertion_date)
+        csid = self._newchangeset(cn, author, insertion_date, metadata)
         head = snapshot.update(diff)
         value = {
             'cset': csid,
@@ -424,13 +438,14 @@ class TimeSerie(SeriesServices):
 
     # changeset handling
 
-    def _newchangeset(self, cn, author, _insertion_date=None):
+    def _newchangeset(self, cn, author, insertion_date=None, metadata=None):
         table = self.schema.changeset
-        if _insertion_date is not None:
-            assert _insertion_date.tzinfo is not None
-        idate = pd.Timestamp(_insertion_date or datetime.utcnow(), tz='UTC')
+        if insertion_date is not None:
+            assert insertion_date.tzinfo is not None
+        idate = pd.Timestamp(insertion_date or datetime.utcnow(), tz='UTC')
         sql = table.insert().values(
             author=author,
+            metadata=metadata,
             insertion_date=idate)
         return cn.execute(sql).inserted_primary_key[0]
 
