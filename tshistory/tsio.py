@@ -271,25 +271,18 @@ class TimeSerie(SeriesServices):
 
         if limit:
             sql = sql.limit(limit)
-
         if names:
             sql = sql.where(reg.c.name.in_(names))
-
         if authors:
             sql = sql.where(cset.c.author.in_(authors))
-
         if fromrev:
             sql = sql.where(cset.c.id >= fromrev)
-
         if torev:
             sql = sql.where(cset.c.id <= torev)
-
         if fromdate:
             sql = sql.where(cset.c.insertion_date >= fromdate)
-
         if todate:
             sql = sql.where(cset.c.insertion_date <= todate)
-
         if stripped:
             # outerjoin to show dead things
             sql = sql.select_from(cset.outerjoin(cset_series))
