@@ -314,7 +314,7 @@ class TimeSerie(SeriesServices):
         cn.execute(table.insert().values(value))
         self._finalize_insertion(cn, csid, name)
         L.info('first insertion of %s (size=%s) by %s',
-               name, len(newts), author or self._author)
+               name, len(newts), author)
         return newts
 
     def _update(self, cn, table, newts, name, author,
@@ -326,7 +326,7 @@ class TimeSerie(SeriesServices):
                          newts)
         if not len(diff):
             L.info('no difference in %s by %s (for ts of size %s)',
-                   name, author or self._author, len(newts))
+                   name, author, len(newts))
             return
 
         csid = self._newchangeset(cn, author, insertion_date, metadata)
@@ -339,7 +339,7 @@ class TimeSerie(SeriesServices):
         self._finalize_insertion(cn, csid, name)
 
         L.info('inserted diff (size=%s) for ts %s by %s',
-               len(diff), name, author or self._author)
+               len(diff), name, author)
         return diff
 
     # ts serialisation
