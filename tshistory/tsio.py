@@ -245,7 +245,7 @@ class TimeSerie(SeriesServices):
         stats['serie names'] = [row for row, in cn.execute(sql).fetchall()]
         return stats
 
-    def log(self, cn, limit=0, diff=False, names=None, authors=None,
+    def log(self, cn, limit=0, names=None, authors=None,
             stripped=False,
             fromrev=None, torev=None,
             fromdate=None, todate=None):
@@ -290,11 +290,6 @@ class TimeSerie(SeriesServices):
                         'meta': meta or {},
                         'names': self._changeset_series(cn, csetid)})
 
-        if diff:
-            for rev in log:
-                rev['diff'] = {name: self.diff_at(cn, rev['rev'], name)
-                               for name in rev['names']}
-
         log.sort(key=lambda rev: rev['rev'])
         return log
 
@@ -338,7 +333,6 @@ class TimeSerie(SeriesServices):
         head = snapshot.update(diff)
         value = {
             'cset': csid,
-            'diff': self._serialize(diff),
             'snapshot': head
         }
         cn.execute(table.insert().values(value))
@@ -376,7 +370,6 @@ class TimeSerie(SeriesServices):
                 Column('cset', Integer,
                        ForeignKey('{}.changeset.id'.format(self.namespace)),
                        index=True, nullable=False),
-                Column('diff', BYTEA),
                 Column('snapshot', Integer,
                        ForeignKey('{}.snapshot.{}.id'.format(
                            self.namespace,
@@ -456,21 +449,3 @@ class TimeSerie(SeriesServices):
             serie=name
         )
         cn.execute(sql)
-
-    def diff_at(self, cn, csetid, name):
-        table = self._get_ts_table(cn, name)
-        cset = self.schema.changeset
-
-        def filtercset(sql):
-            return sql.where(table.c.cset == cset.c.id
-            ).where(cset.c.id == csetid)
-
-        sql = filtercset(select([table.c.id]))
-        tsid = cn.execute(sql).scalar()
-
-        if tsid == 1:
-            return Snapshot(cn, self, name).first
-
-        sql = filtercset(select([table.c.diff]))
-        ts = self._deserialize(cn.execute(sql).scalar(), name)
-        return self._ensure_tz_consistency(cn, ts)

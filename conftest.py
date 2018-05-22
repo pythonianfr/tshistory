@@ -39,26 +39,6 @@ def tsh(request, engine):
     tsh = tsio.TimeSerie(namespace)
     yield tsh
 
-    # build a ts using the logs from another
-    log = tsh.log(engine, diff=True)
-    allnames = set()
-    for rev in log:
-        for name, ts in rev['diff'].items():
-            if 'big' in name:
-                continue
-            allnames.add(name)
-            tsh.insert(engine, ts, 'new_' + name,
-                       rev['author'], _insertion_date=rev['date'])
-
-    # NOTE: the name set varies depending on the amount of tests
-    # so we don't capture that exact set for regression purpposes
-    # We only want to prove the manipulated series can be reconstructed
-    # using the logger.
-    for name in allnames:
-        assert (tsh.get(engine, name) == tsh.get(engine, 'new_' + name)).all()
-
-    schema.reset(engine, namespace)
-
 
 @pytest.fixture(scope='session')
 def ptsh(engine):

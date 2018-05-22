@@ -885,18 +885,6 @@ insertion_date             value_date
 2017-01-10 02:00:00    2.0
 """, tsh.get(engine, 'xserie'))
 
-    # internal structure is ok
-    with engine.connect() as cn:
-        cn.execute('set search_path to "{}.timeserie"'.format(tsh.namespace))
-        df = pd.read_sql("select id, diff from xserie order by id", cn)
-        df['diff'] = df['diff'].apply(lambda x: False if x is None else True)
-
-    assert_df("""
-id   diff
-0   1  False
-1   2   True
-""", df)
-
     log = tsh.log(engine, names=['xserie', 'yserie'])
     # 5 and 7 have disappeared
     assert [l['author'] for l in log

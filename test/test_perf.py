@@ -125,25 +125,16 @@ def test_bigdata(engine, tracker, ptsh):
     t1 = time() - t0
     tshclass = tsh.__class__.__name__
 
-    with engine.connect() as cn:
-        cn.execute('set search_path to "{}.timeserie"'.format(tsh.namespace))
-        df = pd.read_sql('select id, diff from big order by id', cn)
-
-    df['diff'] = df['diff'].apply(lambda x: 0 if x is None else len(x))
-
-    size = df['diff'].sum()
     tracker.append({'test': 'bigdata_insert',
                     'class': tshclass,
-                    'time': t1,
-                    'diffsize': size})
+                    'time': t1})
 
     t0 = time()
     tsh.get_history(engine, 'big')
     t1 = time() - t0
     tracker.append({'test': 'bigdata_history_all',
                     'class': tshclass,
-                    'time': t1,
-                    'diffsize': None})
+                    'time': t1})
 
     t0 = time()
     for year in (2015, 2017, 2019):
@@ -155,8 +146,7 @@ def test_bigdata(engine, tracker, ptsh):
     t1 = time() - t0
     tracker.append({'test': 'bigdata_history_chunks',
                     'class': tshclass,
-                    'time': t1,
-                    'diffsize': None})
+                    'time': t1})
 
 
 @pytest.mark.perf
@@ -181,25 +171,16 @@ def test_lots_of_diffs(engine, tracker, ptsh):
     t1 = time() - t0
     tshclass = tsh.__class__.__name__
 
-    with engine.connect() as cn:
-        cn.execute('set search_path to "{}.timeserie"'.format(tsh.namespace))
-        df = pd.read_sql("select id, diff from manydiffs order by id ",
-                         cn)
-    df['diff'] = df['diff'].apply(lambda x: 0 if x is None else len(x))
-
-    size = df['diff'].sum()
     tracker.append({'test': 'manydiffs_insert',
                     'class': tshclass,
-                    'time': t1,
-                    'diffsize': size})
+                    'time': t1})
 
     t0 = time()
     tsh.get_history(engine, 'manydiffs')
     t1 = time() - t0
     tracker.append({'test': 'manydiffs_history_all',
                     'class': tshclass,
-                    'time': t1,
-                    'diffsize': None})
+                    'time': t1})
 
     t0 = time()
     for month in range(1, 3):
@@ -212,8 +193,7 @@ def test_lots_of_diffs(engine, tracker, ptsh):
     t1 = time() - t0
     tracker.append({'test': 'manydiffs_history_chunks',
                     'class': tshclass,
-                    'time': t1,
-                    'diffsize': None})
+                    'time': t1})
 
     t0 = time()
     for month in range(1, 3):
@@ -228,5 +208,4 @@ def test_lots_of_diffs(engine, tracker, ptsh):
     t1 = time() - t0
     tracker.append({'test': 'manydiffs_history_chunks_valuedate',
                     'class': tshclass,
-                    'time': t1,
-                    'diffsize': None})
+                    'time': t1})
