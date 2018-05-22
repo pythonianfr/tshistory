@@ -40,6 +40,9 @@ class TimeSerie(SeriesServices):
         author: str free-form author name
         """
         assert isinstance(newts, pd.Series)
+        assert isinstance(name, str)
+        assert isinstance(author, str)
+        assert _insertion_date is None or isinstance(_insertion_date, datetime)
         assert not newts.index.duplicated().any()
 
         newts = num2float(newts)
