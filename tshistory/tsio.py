@@ -132,50 +132,16 @@ class TimeSerie(SeriesServices):
                     from_value_date=None,
                     to_value_date=None,
                     deltabefore=None,
-                    deltaafter=None,
-                    diffmode=False):
+                    deltaafter=None):
         table = self._get_ts_table(cn, name)
         if table is None:
             return
 
         if deltabefore is not None or deltaafter is not None:
-            assert diffmode is False
             assert from_value_date is None
             assert to_value_date is None
 
         cset = self.schema.changeset
-
-        if diffmode:
-            # compute diffs above the snapshot
-            diffsql = select([cset.c.id, cset.c.insertion_date, table.c.diff]
-            ).order_by(cset.c.id
-            ).where(table.c.cset == cset.c.id)
-
-            if from_insertion_date:
-                diffsql = diffsql.where(cset.c.insertion_date >= from_insertion_date)
-            if to_insertion_date:
-                diffsql = diffsql.where(cset.c.insertion_date <= to_insertion_date)
-
-            diffs = cn.execute(diffsql).fetchall()
-            if not diffs:
-                # it's fine to ask for an insertion date range
-                # where noting did happen, but you get nothing
-                return
-
-            snapshot = Snapshot(cn, self, name)
-            series = []
-            for csid, revdate, diff in diffs:
-                if diff is None:  # we must fetch the initial snapshot
-                    serie = subset(snapshot.first, from_value_date, to_value_date)
-                else:
-                    serie = subset(self._deserialize(diff, name), from_value_date, to_value_date)
-                    serie = self._ensure_tz_consistency(cn, serie)
-                inject_in_index(serie, revdate)
-                series.append(serie)
-            series = pd.concat(series)
-            series.name = name
-            return series
-
         revsql = select(
             [cset.c.id, cset.c.insertion_date]
         ).order_by(
