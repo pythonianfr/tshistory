@@ -198,12 +198,44 @@ name              table_name
              revision_date=datetime.now()))
 
 
+def test_serie_metadata(engine, tsh):
+    serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
+    tsh.insert(engine, serie, 'ts-metadata', 'babar')
+
+    initialmeta = tsh.metadata(engine, 'ts-metadata')
+    assert initialmeta == {
+        'tzaware': False,
+        'index_type': 'datetime64[ns]',
+        'value_type': 'float64',
+        'index_names': []
+    }
+
+    tsh.update_metadata(engine, 'ts-metadata',
+                        {'topic': 'banana spot price'}
+    )
+    assert tsh.metadata(engine, 'ts-metadata')['topic'] == 'banana spot price'
+
+    with pytest.raises(AssertionError):
+        tsh.update_metadata(engine, 'ts-metadata', {'tzaware': True})
+
+    tsh.update_metadata(engine, 'ts-metadata', {'tzaware': True}, internal=True)
+    assert tsh.metadata(engine, 'ts-metadata') == {
+        'tzaware': True,
+        'index_type': 'datetime64[ns]',
+        'value_type': 'float64',
+        'index_names': [],
+        'topic': 'banana spot price'
+    }
+    # unbreak the serie for the second test pass :o
+    tsh.update_metadata(engine, 'ts-metadata', initialmeta, internal=True)
+
+
 def test_changeset_metadata(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
-    tsh.insert(engine, serie, 'ts-metadata', 'babar',
+    tsh.insert(engine, serie, 'ts-cs-metadata', 'babar',
                {'foo': 'A', 'bar': 42})
 
-    log = tsh.log(engine, names=['ts-metadata'])
+    log = tsh.log(engine, names=['ts-cs-metadata'])
     meta = tsh.changeset_metadata(engine, log[0]['rev'])
     assert meta == {'foo': 'A', 'bar': 42}
 

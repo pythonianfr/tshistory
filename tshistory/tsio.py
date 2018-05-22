@@ -106,6 +106,18 @@ class TimeSerie(SeriesServices):
         self.metadatacache[tsname] = meta
         return meta
 
+    def update_metadata(self, cn, tsname, metadata, internal=False):
+        assert isinstance(metadata, dict)
+        meta = self.metadata(cn, tsname)
+        if not internal:
+            assert set(meta.keys()).intersection(metadata.keys()) == set()
+        meta.update(metadata)
+        reg = self.schema.registry
+        sql = reg.update().where(
+            reg.c.name == tsname
+        ).values(metadata=metadata)
+        cn.execute(sql)
+
     def changeset_metadata(self, cn, csid):
         cset = self.schema.changeset
         sql = 'select metadata from "{ns}".changeset where id = {id}'.format(
