@@ -184,6 +184,39 @@ class TimeSerie(SeriesServices):
         serie.name = name
         return serie
 
+    def get_delta(self, cn, name, delta):
+        histo = self.get_history(
+            cn, name, deltabefore=-delta
+        )
+
+        df = histo.reset_index()
+        # df_date is a dataframe with two columns: value_date and insertion_date
+        df_date = df.loc[:, ['insertion_date', 'value_date']]
+
+        # now in selected_dates each value_date has only one occurence
+        # which is the last inserted
+        selected_dates = df_date.groupby('value_date').max().reset_index()
+
+        ts = df[name]
+        # ts is built from the df returned from get_history
+        # ts index is now a simple index of tuples (insert_date, value_date)
+        ts.index = ((row.insertion_date, row.value_date)
+                    for row in df.itertuples())
+        # in ts, there ie still all the couple value_date * insertion_date
+        # We now used the selected_dates to select in ts only
+        # the couple (value_date, insertion_date)
+        # which corresponds to the last insertion_date
+        ts_select = ts[[(row[2], row[1])
+                        for row in selected_dates.itertuples()]]
+
+        # ts_select has still a simple index of tuples (value_date, insertion_date)
+        new_index = (elt[1] for elt in ts_select.index)
+
+        # we only keep the value_date information from the index
+        ts_select.index = new_index
+        return ts_select
+
+
     def exists(self, cn, name):
         return self._get_ts_table(cn, name) is not None
 
