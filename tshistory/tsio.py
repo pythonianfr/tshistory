@@ -163,12 +163,12 @@ class TimeSerie(SeriesServices):
         snapshot = Snapshot(cn, self, name)
         series = []
         for csid, idate in revs:
-            if deltabefore or deltaafter:
-                from_value_date = idate
-                to_value_date = idate
-                if deltabefore:
+            if (deltabefore, deltaafter) != (None, None):
+                from_value_date = None
+                to_value_date = None
+                if deltabefore is not None:
                     from_value_date = idate - deltabefore
-                if deltaafter:
+                if deltaafter is not None:
                     to_value_date = idate + deltaafter
             series.append((
                 idate,
