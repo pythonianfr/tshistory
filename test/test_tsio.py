@@ -914,6 +914,6 @@ def test_prepend(engine, tsh):
 def test_long_name(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'D', 40)
 
-    import sqlalchemy
-    with pytest.raises(sqlalchemy.exc.IdentifierError):
-        tsh.insert(engine, serie, 'a' * 64, 'babar')
+    name = 'a' * 64
+    tsh.insert(engine, serie, name, 'babar')
+    assert tsh.get(engine, name) is not None

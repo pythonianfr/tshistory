@@ -1,5 +1,6 @@
 import math
 import zlib
+import hashlib
 
 import numpy as np
 import pandas as pd
@@ -104,6 +105,12 @@ class SeriesServices(object):
 
 
     # serialization
+
+    def _tablename(self, name):
+        # postgresql table names are limited to 63 chars.
+        if len(name) > 63:
+            return hashlib.sha1(name.encode('utf-8')).hexdigest()
+        return name
 
     def _serialize(self, ts):
         if ts is None:

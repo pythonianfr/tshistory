@@ -1,6 +1,7 @@
 from datetime import datetime
 from contextlib import contextmanager
 import logging
+import hashlib
 
 import pandas as pd
 
@@ -357,11 +358,12 @@ class TimeSerie(SeriesServices):
     # serie table handling
 
     def _ts_table_name(self, seriename):
-        # namespace.seriename
+        seriename = self._tablename(seriename)
         return '{}.timeserie.{}'.format(self.namespace, seriename)
 
     def _table_definition_for(self, seriename):
         tablename = self._ts_table_name(seriename)
+        seriename = self._tablename(seriename)
         table = TABLES.get(tablename)
         if table is None:
             TABLES[tablename] = table = Table(

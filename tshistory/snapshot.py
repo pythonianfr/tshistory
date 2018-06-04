@@ -24,7 +24,8 @@ class Snapshot(SeriesServices):
     def __init__(self, cn, tsh, seriename):
         self.cn = cn
         self.tsh = tsh
-        self.name = seriename
+        self.seriename = seriename
+        self.name = self._tablename(seriename)
 
     @property
     def namespace(self):
@@ -65,7 +66,7 @@ class Snapshot(SeriesServices):
         body = b'{' + b','.join(self._deserialize(chunk) for chunk in chunks) + b'}'
         return self.tsh._ensure_tz_consistency(
             self.cn,
-            fromjson(body.decode('utf-8'), self.name)
+            fromjson(body.decode('utf-8'), self.seriename)
         )
 
     # /serialisation
@@ -101,7 +102,7 @@ class Snapshot(SeriesServices):
 
     def update(self, diff):
         # get last chunkhead for cset
-        tstable = self.tsh._get_ts_table(self.cn, self.name)
+        tstable = self.tsh._get_ts_table(self.cn, self.seriename)
         headsql = select(
             [tstable.c.snapshot]
         ).order_by(desc(tstable.c.id)
@@ -176,7 +177,7 @@ class Snapshot(SeriesServices):
     def find(self, qfilter=(),
              from_value_date=None, to_value_date=None):
         cset = self.tsh.schema.changeset
-        table = self.tsh._get_ts_table(self.cn, self.name)
+        table = self.tsh._get_ts_table(self.cn, self.seriename)
         sql = select([table.c.cset, table.c.snapshot]
         ).order_by(desc(table.c.id)
         ).limit(1
