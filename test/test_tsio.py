@@ -909,3 +909,11 @@ def test_prepend(engine, tsh):
 
     tsh.insert(engine, serie, 'prepend', 'test')
     assert 40 == len(tsh.get(engine, 'prepend'))
+
+
+def test_long_name(engine, tsh):
+    serie = genserie(datetime(2010, 1, 1), 'D', 40)
+
+    import sqlalchemy
+    with pytest.raises(sqlalchemy.exc.IdentifierError):
+        tsh.insert(engine, serie, 'a' * 64, 'babar')
