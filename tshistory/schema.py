@@ -119,8 +119,5 @@ def init(engine, meta, namespace='tsh'):
 
 
 def reset(engine, namespace='tsh'):
-    if namespace not in SCHEMAS:
-        L.warning('unknown ns %s cannot be reset', namespace)
-        return
-    schem = SCHEMAS.pop(namespace)
-    schem.destroy(engine)
+    SCHEMAS.pop(namespace, None)
+    delete_schema(engine, namespace)
