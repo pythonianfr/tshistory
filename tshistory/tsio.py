@@ -82,11 +82,11 @@ class TimeSerie(SeriesServices):
         if table is None:
             return
 
-        qfilter = []
+        csetfilter = []
         if revision_date:
-            qfilter.append(lambda cset, _: cset.c.insertion_date <= revision_date)
+            csetfilter.append(lambda cset: cset.c.insertion_date <= revision_date)
         snap = Snapshot(cn, self, name)
-        _, current = snap.find(qfilter,
+        _, current = snap.find(csetfilter=csetfilter,
                                from_value_date=from_value_date,
                                to_value_date=to_value_date)
 
@@ -172,9 +172,9 @@ class TimeSerie(SeriesServices):
                     to_value_date = idate + deltaafter
             series.append((
                 idate,
-                snapshot.find([lambda cset, _: cset.c.id == csid],
-                               from_value_date=from_value_date,
-                               to_value_date=to_value_date)[1]
+                snapshot.find(csetfilter=[lambda cset: cset.c.id == csid],
+                              from_value_date=from_value_date,
+                              to_value_date=to_value_date)[1]
             ))
 
         for revdate, serie in series:

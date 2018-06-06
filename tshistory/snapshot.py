@@ -168,25 +168,27 @@ class Snapshot(SeriesServices):
 
     @property
     def first(self):
-        return self.find(qfilter=[lambda _, table: table.c.id == 1])[1]
+        return self.find(seriefilter=[lambda serie: serie.c.id == 1])[1]
 
     def last(self, from_value_date=None, to_value_date=None):
         return self.find(from_value_date=from_value_date,
                          to_value_date=to_value_date)[1]
 
-    def find(self, qfilter=(),
+    def find(self, csetfilter=(), seriefilter=(),
              from_value_date=None, to_value_date=None):
         cset = self.tsh.schema.changeset
-        table = self.tsh._get_ts_table(self.cn, self.seriename)
-        sql = select([table.c.cset, table.c.snapshot]
-        ).order_by(desc(table.c.id)
+        serie = self.tsh._get_ts_table(self.cn, self.seriename)
+        sql = select([serie.c.cset, serie.c.snapshot]
+        ).order_by(desc(serie.c.id)
         ).limit(1
-        ).select_from(table.join(cset))
+        ).select_from(serie.join(cset))
 
-        if qfilter:
-            sql = sql.where(table.c.cset <= cset.c.id)
-            for filtercb in qfilter:
-                sql = sql.where(filtercb(cset, table))
+        if csetfilter:
+            sql = sql.where(serie.c.cset <= cset.c.id)
+            for filtercb in csetfilter:
+                sql = sql.where(filtercb(cset))
+        for tablecb in seriefilter:
+            sql = sql.where(tablefilter(serie))
 
         try:
             csid, cid = self.cn.execute(sql).fetchone()
