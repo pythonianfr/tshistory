@@ -89,8 +89,9 @@ class tsschema(object):
     def create(self, engine):
         L.info('create schema %s %s', self.namespace, self.exists(engine))
         if self.exists(engine):
-            L.warning('cannot create already existing namespace %s',
-                      self.namespace)
+            if self.namespace != 'tsh':
+                L.warning('cannot create already existing namespace %s',
+                          self.namespace)
             return
         engine.execute(CreateSchema(self.namespace))
         engine.execute(CreateSchema('{}.timeserie'.format(self.namespace)))
