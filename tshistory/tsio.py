@@ -27,12 +27,14 @@ class TimeSerie(SeriesServices):
     namespace = 'tsh'
     schema = None
     metadatacache = None
+    registry_map = None
 
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
         self.schema = tsschema(namespace)
         self.schema.define()
         self.metadatacache = {}
+        self.registry_map = {}
 
     def insert(self, cn, newts, name, author,
                metadata=None,
@@ -261,7 +263,7 @@ class TimeSerie(SeriesServices):
             sql = cset_serie.delete().where(
                 cset_serie.c.cset == log['rev']
             ).where(
-                cset_serie.c.serie == seriename
+                cset_serie.c.serie == self._name_to_regid(cn, seriename)
             )
             cn.execute(sql)
 
@@ -316,7 +318,7 @@ class TimeSerie(SeriesServices):
             sql = sql.select_from(cset.outerjoin(cset_series))
         else:
             sql = sql.where(cset.c.id == cset_series.c.cset
-            ).where(cset_series.c.serie == reg.c.name)
+            ).where(cset_series.c.serie == reg.c.id)
 
         rset = cn.execute(sql)
         for csetid, author, revdate, meta in rset.fetchall():
@@ -458,10 +460,16 @@ class TimeSerie(SeriesServices):
 
     def _changeset_series(self, cn, csid):
         cset_serie = self.schema.changeset_series
-        sql = select([cset_serie.c.serie]
-        ).where(cset_serie.c.cset == csid)
+        reg = self.schema.registry
+        sql = select(
+            [reg.c.name]
+        ).where(cset_serie.c.cset == csid
+        ).where(cset_serie.c.serie == reg.c.id)
 
-        return [seriename for seriename, in cn.execute(sql).fetchall()]
+        return [
+            row.name
+            for row in cn.execute(sql).fetchall()
+        ]
 
     # insertion handling
 
@@ -478,10 +486,20 @@ class TimeSerie(SeriesServices):
         if ts.index.dtype.name != meta['index_type']:
             raise Exception('Incompatible index types')
 
+    def _name_to_regid(self, cn, name):
+        regid = self.registry_map.get(name)
+        if regid is not None:
+            return regid
+
+        registry = self.schema.registry
+        sql = select([registry.c.id]).where(registry.c.name == name)
+        regid = self.registry_map[name] = cn.execute(sql).scalar()
+        return regid
+
     def _finalize_insertion(self, cn, csid, name):
         table = self.schema.changeset_series
         sql = table.insert().values(
             cset=csid,
-            serie=name
+            serie=self._name_to_regid(cn, name)
         )
         cn.execute(sql)

@@ -65,8 +65,8 @@ class tsschema(object):
             Column('cset', Integer,
                    ForeignKey('{}.changeset.id'.format(self.namespace)),
                    index=True, nullable=False),
-            Column('serie', String,
-                   ForeignKey('{}.registry.name'.format(self.namespace)),
+            Column('serie', Integer,
+                   ForeignKey('{}.registry.id'.format(self.namespace)),
                    index=True, nullable=False),
             PrimaryKeyConstraint(
                 'cset', 'serie',
