@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from tshistory.snapshot import Snapshot
+from tshistory.util import rename_series
 from tshistory.testutil import (
     assert_df,
     assert_group_equals,
@@ -176,14 +177,14 @@ def test_differential(engine, tsh):
 
     with engine.connect() as cn:
         cn.execute('set search_path to "{0}.timeserie", {0}, public'.format(tsh.namespace))
-        allts = pd.read_sql("select name, table_name from registry "
-                            "where name in ('ts_test', 'ts_mixte')",
+        allts = pd.read_sql("select seriename, table_name from registry "
+                            "where seriename in ('ts_test', 'ts_mixte')",
                             cn)
 
         assert_df("""
-name              table_name
-0   ts_test   {0}.timeserie.ts_test
-1  ts_mixte  {0}.timeserie.ts_mixte
+seriename table_name
+0   ts_test    ts_test
+1  ts_mixte   ts_mixte
 """.format(tsh.namespace), allts)
 
         assert_df("""
@@ -1087,3 +1088,27 @@ insertion_date             value_date
                            2015-01-04 05:00:00+00:00    5.0
                            2015-01-04 06:00:00+00:00    6.0
 """, hist)
+
+
+def test_rename(engine, tsh):
+    if tsh.namespace == 'zzz':
+        return  # this test can only run once
+
+    serie = genserie(datetime(2020, 1, 1), 'D', 3)
+
+    tsh.insert(engine, serie, 'foo', 'Babar')
+    tsh.insert(engine, serie, 'bar', 'Babar')
+    tsh.insert(engine, serie, 'quux', 'Babar')
+
+    rename_series(engine, {
+        'foo': 'new-foo',
+        'bar': 'new-bar'
+    })
+
+    tsh.resetcaches()
+
+    assert tsh.get(engine, 'foo') is None
+    assert tsh.get(engine, 'bar') is None
+
+    for name in ('quux', 'new-foo', 'new-bar'):
+        assert tsh.get(engine, name) is not None

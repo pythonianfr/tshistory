@@ -44,7 +44,7 @@ class tsschema(object):
         registry = Table(
             'registry', meta,
             Column('id', Integer, primary_key=True),
-            Column('name', String, index=True, nullable=False, unique=True),
+            Column('seriename', String, index=True, nullable=False, unique=True),
             Column('table_name', String, index=True,
                    nullable=False, unique=True),
             Column('metadata', JSONB(none_as_null=True)),

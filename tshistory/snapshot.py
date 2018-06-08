@@ -25,7 +25,7 @@ class Snapshot(SeriesServices):
         self.cn = cn
         self.tsh = tsh
         self.seriename = seriename
-        self.name = self._tablename(seriename)
+        self.name = self.tsh._serie_to_tablename(cn, seriename)
 
     @property
     def namespace(self):

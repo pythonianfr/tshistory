@@ -28,6 +28,7 @@ class TimeSerie(SeriesServices):
     schema = None
     metadatacache = None
     registry_map = None
+    serie_tablename = None
 
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
@@ -35,6 +36,7 @@ class TimeSerie(SeriesServices):
         self.schema.define()
         self.metadatacache = {}
         self.registry_map = {}
+        self.serie_tablename = {}
 
     def insert(self, cn, newts, seriename, author,
                metadata=None,
@@ -104,7 +106,7 @@ class TimeSerie(SeriesServices):
             return self.metadatacache[seriename]
         reg = self.schema.registry
         sql = select([reg.c.metadata]).where(
-            reg.c.name == seriename
+            reg.c.seriename == seriename
         )
         meta = cn.execute(sql).scalar()
         self.metadatacache[seriename] = meta
@@ -118,7 +120,7 @@ class TimeSerie(SeriesServices):
         meta.update(metadata)
         reg = self.schema.registry
         sql = reg.update().where(
-            reg.c.name == seriename
+            reg.c.seriename == seriename
         ).values(metadata=metadata)
         cn.execute(sql)
 
@@ -233,7 +235,7 @@ class TimeSerie(SeriesServices):
     def changeset_at(self, cn, seriename, revdate, mode='strict'):
         assert mode in ('strict', 'before', 'after')
         cset = self.schema.changeset
-        table = self._table_definition_for(seriename)
+        table = self._table_definition_for(cn, seriename)
         sql = select([table.c.cset]).where(
             table.c.cset == cset.c.id
         )
@@ -268,7 +270,7 @@ class TimeSerie(SeriesServices):
             cn.execute(sql)
 
         # wipe the diffs
-        table = self._table_definition_for(seriename)
+        table = self._table_definition_for(cn, seriename)
         cn.execute(table.delete().where(table.c.cset >= csid))
 
     def info(self, cn):
@@ -302,7 +304,7 @@ class TimeSerie(SeriesServices):
         if limit:
             sql = sql.limit(limit)
         if names:
-            sql = sql.where(reg.c.name.in_(names))
+            sql = sql.where(reg.c.seriename.in_(names))
         if authors:
             sql = sql.where(cset.c.author.in_(authors))
         if fromrev:
@@ -340,6 +342,7 @@ class TimeSerie(SeriesServices):
         # initial insertion
         if len(newts) == 0:
             return None
+        self._register_serie(cn, seriename, newts)
         snapshot = Snapshot(cn, self, seriename)
         csid = self._newchangeset(cn, author, insertion_date, metadata)
         head = snapshot.create(newts)
@@ -393,17 +396,30 @@ class TimeSerie(SeriesServices):
 
     # serie table handling
 
-    def _ts_table_name(self, seriename):
-        seriename = self._tablename(seriename)
-        return '{}.timeserie.{}'.format(self.namespace, seriename)
+    def _serie_to_tablename(self, cn, seriename):
+        tablename = self.serie_tablename.get(seriename)
+        if tablename is not None:
+            return tablename
 
-    def _table_definition_for(self, seriename):
-        tablename = self._ts_table_name(seriename)
-        seriename = self._tablename(seriename)
-        table = TABLES.get(tablename)
+        reg = self.schema.registry
+        sql = select([reg.c.table_name]).where(reg.c.seriename == seriename)
+        tablename = cn.execute(sql).scalar()
+        if tablename is None:
+            # creation time
+            return
+        self.serie_tablename[seriename] = tablename
+        return tablename
+
+    def _table_definition_for(self, cn, seriename):
+        tablename = self._serie_to_tablename(cn, seriename)
+        if tablename is None:
+            # creation time
+            tablename = self._make_tablename(seriename)
+        fq_tablename = '{}.timeserie.{}'.format(self.namespace, tablename)
+        table = TABLES.get(fq_tablename)
         if table is None:
-            TABLES[tablename] = table = Table(
-                seriename, self.schema.meta,
+            TABLES[fq_tablename] = table = Table(
+                tablename, self.schema.meta,
                 Column('id', Integer, primary_key=True),
                 Column('cset', Integer,
                        ForeignKey('{}.changeset.id'.format(self.namespace)),
@@ -411,7 +427,7 @@ class TimeSerie(SeriesServices):
                 Column('snapshot', Integer,
                        ForeignKey('{}.snapshot.{}.id'.format(
                            self.namespace,
-                           seriename)),
+                           tablename)),
                        index=True),
                 schema='{}.timeserie'.format(self.namespace),
                 extend_existing=True
@@ -419,14 +435,16 @@ class TimeSerie(SeriesServices):
         return table
 
     def _make_ts_table(self, cn, seriename, ts):
-        tablename = self._ts_table_name(seriename)
-        table = self._table_definition_for(seriename)
+        table = self._table_definition_for(cn, seriename)
         table.create(cn)
+        return table
+
+    def _register_serie(self, cn, seriename, ts):
         index = ts.index
         inames = [name for name in index.names if name]
         sql = self.schema.registry.insert().values(
-            name=seriename,
-            table_name=tablename,
+            seriename=seriename,
+            table_name=self._make_tablename(seriename),
             metadata={
                 'tzaware': tzaware_serie(ts),
                 'index_type': index.dtype.name,
@@ -434,16 +452,13 @@ class TimeSerie(SeriesServices):
                 'value_type': ts.dtypes.name
             },
         )
-        cn.execute(sql)
-        return table
+        regid = cn.execute(sql).inserted_primary_key[0]
+        self.registry_map[seriename] = regid
 
     def _get_ts_table(self, cn, seriename):
-        reg = self.schema.registry
-        tablename = self._ts_table_name(seriename)
-        sql = reg.select().where(reg.c.table_name == tablename)
-        tid = cn.execute(sql).scalar()
-        if tid:
-            return self._table_definition_for(seriename)
+        tablename = self._serie_to_tablename(cn, seriename)
+        if tablename:
+            return self._table_definition_for(cn, tablename)
 
     # changeset handling
 
@@ -462,12 +477,12 @@ class TimeSerie(SeriesServices):
         cset_serie = self.schema.changeset_series
         reg = self.schema.registry
         sql = select(
-            [reg.c.name]
+            [reg.c.seriename]
         ).where(cset_serie.c.cset == csid
         ).where(cset_serie.c.serie == reg.c.id)
 
         return [
-            row.name
+            row.seriename
             for row in cn.execute(sql).fetchall()
         ]
 
@@ -492,7 +507,7 @@ class TimeSerie(SeriesServices):
             return regid
 
         registry = self.schema.registry
-        sql = select([registry.c.id]).where(registry.c.name == seriename)
+        sql = select([registry.c.id]).where(registry.c.seriename == seriename)
         regid = self.registry_map[seriename] = cn.execute(sql).scalar()
         return regid
 
@@ -503,3 +518,10 @@ class TimeSerie(SeriesServices):
             serie=self._name_to_regid(cn, seriename)
         )
         cn.execute(sql)
+
+    # don't use this
+
+    def resetcaches(self):
+        self.metadatacache.clear()
+        self.registry_map.clear()
+        self.serie_tablename.clear()

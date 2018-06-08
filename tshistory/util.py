@@ -106,11 +106,14 @@ class SeriesServices(object):
 
     # serialization
 
-    def _tablename(self, name):
+    def _make_tablename(self, seriename):
+        """ compute the unqualified (no namespace) table name
+        from a serie name, to allow arbitrary serie names
+        """
         # postgresql table names are limited to 63 chars.
-        if len(name) > 63:
-            return hashlib.sha1(name.encode('utf-8')).hexdigest()
-        return name
+        if len(seriename) > 63:
+            return hashlib.sha1(seriename.encode('utf-8')).hexdigest()
+        return seriename
 
     def _serialize(self, ts):
         if ts is None:
@@ -119,3 +122,20 @@ class SeriesServices(object):
 
     def _deserialize(self, ts, name):
         return fromjson(zlib.decompress(ts).decode('utf-8'), name)
+
+
+def rename_series(engine, serie_map, namespace='tsh'):
+    from tshistory.schema import tsschema
+    schema = tsschema(namespace)
+
+    reg = schema.registry
+    with engine.connect() as cn:
+        for old, new in serie_map.items():
+            print('{} -> {}'.format(old, new))
+            sql = reg.update().where(
+                reg.c.seriename == old
+            ).values(
+                seriename=new
+            )
+            cn.execute(sql)
+
