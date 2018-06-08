@@ -26,6 +26,7 @@ TABLES = {}
 class TimeSerie(SeriesServices):
     namespace = 'tsh'
     schema = None
+    metadatacache = None
 
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
