@@ -174,6 +174,10 @@ class Snapshot(SeriesServices):
         return self.find(from_value_date=from_value_date,
                          to_value_date=to_value_date)[1]
 
+    def last_id(self, from_value_date=None, to_value_date=None):
+        return self.find(from_value_date=from_value_date,
+                         to_value_date=to_value_date)[0]
+
     def find(self, csetfilter=(), seriefilter=(),
              from_value_date=None, to_value_date=None):
         cset = self.tsh.schema.changeset

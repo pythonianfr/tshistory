@@ -55,6 +55,8 @@ def test_differential(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
     tsh.insert(engine, ts_begin, 'ts_test', 'test')
 
+    id1 = tsh.last_id(engine, 'ts_test')
+
     assert tsh.exists(engine, 'ts_test')
     assert not tsh.exists(engine, 'this_does_not_exist')
 
@@ -91,6 +93,7 @@ def test_differential(engine, tsh):
     ts_slight_variation.iloc[3] = 0
     ts_slight_variation.iloc[6] = 0
     tsh.insert(engine, ts_slight_variation, 'ts_test', 'celeste')
+    id2 = tsh.last_id(engine, 'ts_test')
 
     assert_df("""
 2010-01-01    0.0
@@ -111,6 +114,9 @@ def test_differential(engine, tsh):
     ts_longer.iloc[5] = ts_begin.iloc[7]
 
     tsh.insert(engine, ts_longer, 'ts_test', 'test')
+    id3 = tsh.last_id(engine, 'ts_test')
+
+    assert id1 < id2 < id3
 
     assert_df("""
 2010-01-01     0.00

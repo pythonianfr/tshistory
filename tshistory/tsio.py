@@ -232,6 +232,10 @@ class TimeSerie(SeriesServices):
         ).where(tstable.c.cset == cset.c.id)
         return cn.execute(sql).scalar()
 
+    def last_id(self, cn, seriename):
+        snapshot = Snapshot(cn, self, seriename)
+        return snapshot.last_id()
+
     def changeset_at(self, cn, seriename, revdate, mode='strict'):
         assert mode in ('strict', 'before', 'after')
         cset = self.schema.changeset
