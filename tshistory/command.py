@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from pkg_resources import iter_entry_points
 import logging
 
