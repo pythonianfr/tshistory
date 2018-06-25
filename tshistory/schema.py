@@ -1,4 +1,5 @@
 import logging
+from threading import Lock
 
 from sqlalchemy import (Table, Column, Integer, String, MetaData, TIMESTAMP,
                         ForeignKey, PrimaryKeyConstraint)
@@ -9,6 +10,8 @@ from sqlalchemy.schema import CreateSchema
 L = logging.getLogger('tshistory.schema')
 
 # schemas registry
+
+SCHLOCK = Lock()
 SCHEMAS = {}
 meta = MetaData()
 
@@ -29,16 +32,18 @@ class tsschema(object):
     changeset_series = None
 
     def __new__(cls, namespace='tsh'):
-        if namespace in SCHEMAS:
-            return SCHEMAS[namespace]
+        with SCHLOCK:
+            if namespace in SCHEMAS:
+                return SCHEMAS[namespace]
         return super(tsschema, cls).__new__(cls)
 
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
 
     def define(self, meta=MetaData()):
-        if self.namespace in SCHEMAS:
-            return
+        with SCHLOCK:
+            if self.namespace in SCHEMAS:
+                return
         L.info('build schema %s', self.namespace)
         self.meta = meta
         registry = Table(
@@ -77,7 +82,8 @@ class tsschema(object):
         self.registry = registry
         self.changeset = changeset
         self.changeset_series = changeset_series
-        SCHEMAS[self.namespace] = self
+        with SCHLOCK:
+            SCHEMAS[self.namespace] = self
 
     def exists(self, engine):
         return engine.execute('select exists(select schema_name '
