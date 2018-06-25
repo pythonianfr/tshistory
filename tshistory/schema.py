@@ -109,10 +109,6 @@ class tsschema(object):
         del self.changeset_series
 
 
-# create and register default db structure
-tsschema().define(MetaData())  # Populate SCHEMAS with default namespace='tsh'
-
-
 def init(engine, meta, namespace='tsh'):
     schem = tsschema(namespace)
     schem.define(meta)
