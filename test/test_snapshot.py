@@ -27,6 +27,14 @@ def test_chunks(engine, tsh):
         ts = genserie(datetime(2010, 1, 1), 'D', 5)
         tsh.insert(engine, ts, 'chunks', 'test')
 
+        assert_df("""
+2010-01-01    0.0
+2010-01-02    1.0
+2010-01-03    2.0
+2010-01-04    3.0
+2010-01-05    4.0
+""", tsh.get(engine, 'chunks'))
+
         # we expect 3 chunks
         sql = 'select parent, chunk from "{}.snapshot".chunks order by id'.format(
             tsh.namespace
@@ -55,14 +63,6 @@ def test_chunks(engine, tsh):
 2010-01-05    4.0
 """, ts2)
 
-        assert_df("""
-2010-01-01    0.0
-2010-01-02    1.0
-2010-01-03    2.0
-2010-01-04    3.0
-2010-01-05    4.0
-""", tsh.get(engine, 'chunks'))
-
         ts = pd.Series([4, 5, 6, 7, 8],
                        index=pd.date_range(start=datetime(2010, 1, 5),
                                            end=datetime(2010, 1, 9),
@@ -82,43 +82,53 @@ def test_chunks(engine, tsh):
 2010-01-09    8.0
 """, whole)
 
-        # we expect 6 chunks
+        # we expect 5 chunks
         sql = 'select id, parent, chunk from "{}.snapshot".chunks order by id'.format(
             tsh.namespace
         )
         chunks = engine.execute(sql).fetchall()
-        assert len(chunks) == 6
+        assert len(chunks) == 5
         assert chunks[4].parent == 4
-        assert chunks[5].parent == 5
         assert {
             1: None,
             2: 1,
-            3: 2, # head of first commit
-            4: 2,
-            5: 4,
-            6: 5  # head of last commit
+            3: 2,
+            4: 3,
+            5: 4
         } == {
             chunk.id: chunk.parent for chunk in chunks
         }
 
         snap = Snapshot(engine, tsh, 'chunks')
+        ts0 = snap._chunks_to_ts([chunks[0].chunk])
+        ts1 = snap._chunks_to_ts([chunks[1].chunk])
+        ts2 = snap._chunks_to_ts([chunks[2].chunk])
         ts3 = snap._chunks_to_ts([chunks[3].chunk])
         ts4 = snap._chunks_to_ts([chunks[4].chunk])
-        ts5 = snap._chunks_to_ts([chunks[5].chunk])
+
+        assert_df("""
+2010-01-01    0.0
+2010-01-02    1.0
+""", ts0)
+
+        assert_df("""
+2010-01-03    2.0
+2010-01-04    3.0
+""", ts1)
 
         assert_df("""
 2010-01-05    4.0
+""", ts2)
+
+        assert_df("""
 2010-01-06    5.0
+2010-01-07    6.0
 """, ts3)
 
         assert_df("""
-2010-01-07    6.0
 2010-01-08    7.0
-""", ts4)
-
-        assert_df("""
 2010-01-09    8.0
-""", ts5)
+""", ts4)
 
         # non-append edit
         whole[2] = 0
@@ -146,58 +156,59 @@ def test_chunks(engine, tsh):
 2010-01-09    8.0
 """, tsh.get(engine, 'chunks', from_value_date=datetime(2010, 1, 5)))
 
-        # we expect 10 chunks
+        # we expect 9 chunks
         # because we edit from the second chunk
-        # and 4 new chunks have to be made
+        # and 3 new chunks have to be made
         sql = 'select id, parent, chunk from "{}.snapshot".chunks order by id'.format(
             tsh.namespace
         )
         chunks = engine.execute(sql).fetchall()
-        assert len(chunks) == 10
+        assert len(chunks) == 9
         assert {
             1: None,
             2: 1,
-            3: 2, # head of first commit
-            4: 2,
+            3: 2,
+            4: 3,
             5: 4,
-            6: 5, # head of second commit
-            7: 1, # base of third commit (we lost many shared chunks)
+            6: 1, # base of third commit (loss of shared chunks)
+            7: 6,
             8: 7,
-            9: 8,
-            10: 9 # head of last commit
+            9: 8
         } == {
             chunk.id: chunk.parent for chunk in chunks
         }
 
         # 2nd commit chunks without filtering
         snap = Snapshot(engine, tsh, 'chunks')
-        chunks = chunksize(snap, 6)
+        chunks = chunksize(snap, 5)
         assert chunks == {
             None: 2,
             1: 2,
-            2: 2,
-            4: 2,
-            5: 1
+            2: 1,
+            3: 2,
+            4: 2
         }
+
         # 2nd commit chunks with filtering
         chunks = chunksize(snap, 6, datetime(2010, 1, 5))
-        assert chunks == {2: 2, 4: 2, 5: 1}
+        assert chunks == {1: 2}
 
         # 3rd commit chunks without filtering
-        chunks = chunksize(snap, 10)
+        chunks = chunksize(snap, 9)
         assert chunks == {
             None: 2,
             1: 2,
+            6: 2,
             7: 2,
-            8: 2,
-            9: 1
+            8: 1
         }
+
         # 3rd commit chunks with filtering
-        chunks = chunksize(snap, 10, datetime(2010, 1, 5))
+        chunks = chunksize(snap, 9, datetime(2010, 1, 5))
         assert chunks == {
+            6: 2,
             7: 2,
-            8: 2,
-            9: 1
+            8: 1
         }
 
 
@@ -205,12 +216,11 @@ def test_append(engine, tsh):
     if tsh.namespace == 'zzz':
         return
 
-    with tempattr(Snapshot, '_min_bucket_size', 1):
-        for x, dt in enumerate(pd.date_range(start=utcdt(2018, 1, 1),
-                                             freq='D', periods=10)):
-            ts = genserie(dt, 'D', 1, [x], name='daily')
-            tsh.insert(engine, ts, 'append', 'aurelien.campeas@pythonian.fr',
-                       _insertion_date=dt)
+    for x, dt in enumerate(pd.date_range(start=utcdt(2018, 1, 1),
+                                         freq='D', periods=10)):
+        ts = genserie(dt, 'D', 1, [x], name='daily')
+        tsh.insert(engine, ts, 'append', 'aurelien.campeas@pythonian.fr',
+                   _insertion_date=dt)
 
     sql = 'select id, parent, chunk from "{}.snapshot".append order by id'.format(
         tsh.namespace
@@ -238,59 +248,6 @@ insertion_date             value_date
 2018-01-09 00:00:00+00:00  2018-01-09 00:00:00+00:00    8.0
 2018-01-10 00:00:00+00:00  2018-01-10 00:00:00+00:00    9.0
 """, hist)
-
-    with tempattr(Snapshot, '_min_bucket_size', 2):
-        for x, dt in enumerate(pd.date_range(start=utcdt(2018, 1, 11),
-                                             freq='D', periods=10)):
-            ts = genserie(dt, 'D', 1, [x + 10], name='daily')
-            tsh.insert(engine, ts, 'append', 'aurelien.campeas@pythonian.fr',
-                       _insertion_date=dt)
-
-    sql = ('select id, parent, chunk from "{}.snapshot".append '
-           'where id > 10 order by id').format(
-        tsh.namespace
-    )
-    chunks = engine.execute(sql).fetchall()
-    c = {
-        chunk.id: chunk.parent for chunk in chunks
-    }
-    # nice linked list
-    assert c == {
-        11: 9,
-        12: 11,
-        13: 11,
-        14: 13,
-        15: 13,
-        16: 15,
-        17: 15,
-        18: 17,
-        19: 17,
-        20: 19
-    }
-
-    assert_df("""
-insertion_date             value_date               
-2018-01-01 00:00:00+00:00  2018-01-01 00:00:00+00:00     0.0
-2018-01-02 00:00:00+00:00  2018-01-02 00:00:00+00:00     1.0
-2018-01-03 00:00:00+00:00  2018-01-03 00:00:00+00:00     2.0
-2018-01-04 00:00:00+00:00  2018-01-04 00:00:00+00:00     3.0
-2018-01-05 00:00:00+00:00  2018-01-05 00:00:00+00:00     4.0
-2018-01-06 00:00:00+00:00  2018-01-06 00:00:00+00:00     5.0
-2018-01-07 00:00:00+00:00  2018-01-07 00:00:00+00:00     6.0
-2018-01-08 00:00:00+00:00  2018-01-08 00:00:00+00:00     7.0
-2018-01-09 00:00:00+00:00  2018-01-09 00:00:00+00:00     8.0
-2018-01-10 00:00:00+00:00  2018-01-10 00:00:00+00:00     9.0
-2018-01-11 00:00:00+00:00  2018-01-11 00:00:00+00:00    10.0
-2018-01-12 00:00:00+00:00  2018-01-12 00:00:00+00:00    11.0
-2018-01-13 00:00:00+00:00  2018-01-13 00:00:00+00:00    12.0
-2018-01-14 00:00:00+00:00  2018-01-14 00:00:00+00:00    13.0
-2018-01-15 00:00:00+00:00  2018-01-15 00:00:00+00:00    14.0
-2018-01-16 00:00:00+00:00  2018-01-16 00:00:00+00:00    15.0
-2018-01-17 00:00:00+00:00  2018-01-17 00:00:00+00:00    16.0
-2018-01-18 00:00:00+00:00  2018-01-18 00:00:00+00:00    17.0
-2018-01-19 00:00:00+00:00  2018-01-19 00:00:00+00:00    18.0
-2018-01-20 00:00:00+00:00  2018-01-20 00:00:00+00:00    19.0
-""", tsh.get_history(engine, 'append', deltabefore=pd.Timedelta(hours=1)))
 
 
 def test_get_from_to(engine, tsh):

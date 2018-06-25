@@ -19,7 +19,6 @@ TABLES = {}
 class Snapshot(SeriesServices):
     __slots__ = ('cn', 'name', 'tsh')
     _max_bucket_size = 250
-    _min_bucket_size = 10
 
     def __init__(self, cn, tsh, seriename):
         self.cn = cn
@@ -115,8 +114,7 @@ class Snapshot(SeriesServices):
         cid, parent, _ = rawchunks[0]
         oldsnapshot = self._chunks_to_ts(row[2] for row in rawchunks)
 
-        if (len(oldsnapshot) >= self._min_bucket_size and
-            diffstart > oldsnapshot.index.max()):
+        if diffstart > oldsnapshot.index.max():
             # append: let't not rewrite anything
             newsnapshot = diff
             parent = cid
