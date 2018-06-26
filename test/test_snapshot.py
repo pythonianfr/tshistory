@@ -250,6 +250,32 @@ insertion_date             value_date
 """, hist)
 
 
+def test_prepend(engine, tsh):
+    if tsh.namespace == 'zzz':
+        return
+
+    serie = genserie(datetime(2010, 1, 1), 'D', 40)
+
+    assert 40 == len(serie)
+    ts_insert = serie[2:]
+    tsh.insert(engine, ts_insert, 'prepend', 'test')
+    assert 38 == len(tsh.get(engine, 'prepend'))
+
+    tsh.insert(engine, serie, 'prepend', 'test')
+    assert 40 == len(tsh.get(engine, 'prepend'))
+
+    sql = 'select id, parent, chunk from "{}.snapshot".prepend order by id'.format(
+        tsh.namespace
+    )
+    chunks = engine.execute(sql).fetchall()
+    c = {
+        chunk.id: chunk.parent for chunk in chunks
+    }
+
+    # ugly un-linked list
+    assert c == {1: None, 2: None}
+
+
 def test_get_from_to(engine, tsh):
     ts = genserie(datetime(2015, 1, 1), 'D', 365)
     tsh.insert(engine, ts, 'quitelong', 'aurelien.campeas@pythonian.fr')
