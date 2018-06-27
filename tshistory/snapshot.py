@@ -109,7 +109,7 @@ class Snapshot(SeriesServices):
 
     # /serialisation
 
-    def split(self, ts):
+    def buckets(self, ts):
         if len(ts) < self._max_bucket_size:
             return [ts]
 
@@ -119,8 +119,8 @@ class Snapshot(SeriesServices):
             buckets.append(ts[start:start + self._max_bucket_size])
         return buckets
 
-    def insert_buckets(self, parent, buckets):
-        for bucket in buckets:
+    def insert_buckets(self, parent, ts):
+        for bucket in self.buckets(ts):
             start = bucket.index.min()
             end = bucket.index.max()
             sql = self.table.insert().values(
@@ -135,8 +135,7 @@ class Snapshot(SeriesServices):
 
     def create(self, initial_ts):
         self.table.create(self.cn)
-        buckets = self.split(initial_ts)
-        return self.insert_buckets(None, buckets)
+        return self.insert_buckets(None, initial_ts)
 
     def update(self, diff):
         # get last chunkhead for cset
@@ -160,9 +159,8 @@ class Snapshot(SeriesServices):
         else:
             # we got a point override, need to patch
             newsnapshot = self.patch(oldsnapshot, diff)
-        buckets = self.split(newsnapshot)
 
-        return self.insert_buckets(parent, buckets)
+        return self.insert_buckets(parent, newsnapshot)
 
     def rawchunks(self, head, from_value_date=None):
         where = ''
