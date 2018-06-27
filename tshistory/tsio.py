@@ -386,18 +386,6 @@ class TimeSerie(SeriesServices):
                len(diff), seriename, author)
         return diff
 
-    # ts serialisation
-
-    def _ensure_tz_consistency(self, cn, ts):
-        """Return timeserie with tz aware index or not depending on metadata
-        tzaware.
-        """
-        assert ts.name is not None
-        metadata = self.metadata(cn, ts.name)
-        if metadata and metadata.get('tzaware', False):
-            return ts.tz_localize('UTC')
-        return ts
-
     # serie table handling
 
     def _serie_to_tablename(self, cn, seriename):

@@ -100,10 +100,19 @@ class Snapshot(SeriesServices):
     def _deserialize(self, bytestring):
         return zlib.decompress(bytestring)
 
+    def _ensure_tz_consistency(self, ts):
+        """Return timeserie with tz aware index or not depending on metadata
+        tzaware.
+        """
+        assert ts.name is not None
+        metadata = self.tsh.metadata(self.cn, ts.name)
+        if metadata and metadata.get('tzaware', False):
+            return ts.tz_localize('UTC')
+        return ts
+
     def _chunks_to_ts(self, chunks):
         body = b'{' + b','.join(self._deserialize(chunk) for chunk in chunks) + b'}'
-        return self.tsh._ensure_tz_consistency(
-            self.cn,
+        return self._ensure_tz_consistency(
             fromjson(body.decode('utf-8'), self.seriename)
         )
 
