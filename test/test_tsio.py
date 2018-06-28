@@ -1060,6 +1060,16 @@ insertion_date             value_date
 2015-01-04 06:00:00+00:00    6.0
 """, deltas)
 
+    deltas = tsh.get_delta(engine, 'repu2', delta=timedelta(hours=3),
+                           from_value_date=datetime(2015,1,2),
+                           to_value_date=datetime(2015, 1,3))
+    assert_df("""
+2015-01-02 03:00:00+00:00    3.0
+2015-01-02 04:00:00+00:00    4.0
+2015-01-02 05:00:00+00:00    5.0
+2015-01-02 06:00:00+00:00    6.0
+""", deltas)
+
     # which is basically the same as below
     hist = tsh.get_history(engine, 'repu2',
                            deltabefore=-timedelta(hours=3))

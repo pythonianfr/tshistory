@@ -189,12 +189,16 @@ class TimeSerie(SeriesServices):
         serie.name = seriename
         return serie
 
-    def get_delta(self, cn, seriename, delta):
+    def get_delta(self, cn, seriename, delta,
+                  from_value_date=None,
+                  to_value_date=None):
+
         histo = self.get_history(
             cn, seriename, deltabefore=-delta
         )
 
         df = histo.reset_index()
+
         # df_date is a dataframe with two columns: value_date and insertion_date
         df_date = df.loc[:, ['insertion_date', 'value_date']]
 
@@ -219,7 +223,7 @@ class TimeSerie(SeriesServices):
 
         # we only keep the value_date information from the index
         ts_select.index = new_index
-        return ts_select
+        return subset(ts_select, from_value_date, to_value_date)
 
 
     def exists(self, cn, seriename):
