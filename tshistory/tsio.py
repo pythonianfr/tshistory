@@ -189,6 +189,13 @@ class TimeSerie(SeriesServices):
         serie.name = seriename
         return serie
 
+    def _previous_cset(self, cn, seriename, csid):
+        tablename = self._serie_to_tablename(cn, seriename)
+        sql = ('select cset from "{}.timeserie"."{}" '
+               'where cset < %(csid)s '
+               'order by cset desc limit 1').format(self.namespace, tablename)
+        return cn.execute(sql, csid=csid).scalar()
+
     def get_delta(self, cn, seriename, delta,
                   from_value_date=None,
                   to_value_date=None):
