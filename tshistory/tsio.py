@@ -138,7 +138,8 @@ class TimeSerie(SeriesServices):
                     from_value_date=None,
                     to_value_date=None,
                     deltabefore=None,
-                    deltaafter=None):
+                    deltaafter=None,
+                    diffmode=False):
         table = self._get_ts_table(cn, seriename)
         if table is None:
             return
@@ -165,6 +166,12 @@ class TimeSerie(SeriesServices):
         if not revs:
             return
 
+        if diffmode:
+            # compute the previous serie value
+            first_csid = revs[0][0]
+            previous_csid = self._previous_cset(cn, seriename, first_csid)
+            revs.insert(0, (previous_csid, None))
+
         snapshot = Snapshot(cn, self, seriename)
         series = []
         for csid, idate in revs:
@@ -181,6 +188,17 @@ class TimeSerie(SeriesServices):
                               from_value_date=from_value_date,
                               to_value_date=to_value_date)[1]
             ))
+
+        if diffmode:
+            diffs = []
+            for (revdate_a, serie_a), (revdate_b, serie_b) in zip(series, series[1:]):
+                if serie_a is None:
+                    # when we scan the entirety of the history: there exists no "previous" serie
+                    # we therefore consider the first serie as a diff to the "null" serie
+                    diffs.append((revdate_b, serie_b))
+                else:
+                    diffs.append((revdate_b, self.diff(serie_a, serie_b)))
+            series = diffs
 
         for revdate, serie in series:
             inject_in_index(serie, revdate)
