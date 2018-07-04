@@ -222,21 +222,28 @@ class Snapshot(SeriesServices):
         return self.find(from_value_date=from_value_date,
                          to_value_date=to_value_date)[0]
 
-    def find(self, csetfilter=(), seriefilter=(),
-             from_value_date=None, to_value_date=None):
+    def cset_heads_query(self, csetfilter=(), seriefilter=(), order=desc):
         cset = self.tsh.schema.changeset
         serie = self.tsh._get_ts_table(self.cn, self.seriename)
         sql = select([serie.c.cset, serie.c.snapshot]
-        ).order_by(desc(serie.c.id)
-        ).limit(1
+        ).order_by(order(serie.c.id)
         ).select_from(serie.join(cset))
 
         if csetfilter:
             sql = sql.where(serie.c.cset <= cset.c.id)
             for filtercb in csetfilter:
                 sql = sql.where(filtercb(cset))
+
         for tablecb in seriefilter:
             sql = sql.where(tablefilter(serie))
+
+        return sql
+
+    def find(self, csetfilter=(), seriefilter=(),
+             from_value_date=None, to_value_date=None):
+
+        sql = self.cset_heads_query(csetfilter, seriefilter)
+        sql = sql.limit(1)
 
         try:
             csid, cid = self.cn.execute(sql).fetchone()
@@ -280,13 +287,10 @@ class Snapshot(SeriesServices):
     def findall(self, revs, from_value_date, to_value_date):
         csets = [rev for rev, _ in revs if rev is not None]
         # csid -> heads
-        cset = self.tsh.schema.changeset
-        serie = self.tsh._get_ts_table(self.cn, self.seriename)
-        sql = select([serie.c.cset, serie.c.snapshot]
-        ).order_by(asc(serie.c.id)
-        ).select_from(serie.join(cset)
-        ).where(cset.c.id >= min(csets)
-        ).where(cset.c.id <= max(csets))
+
+        sql = self.cset_heads_query((lambda cset: cset.c.id >= min(csets),
+                                     lambda cset: cset.c.id <= max(csets)),
+                                     order=asc)
 
         cset_snap_map = {
             row.cset: row.snapshot
