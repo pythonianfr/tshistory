@@ -174,20 +174,25 @@ class TimeSerie(SeriesServices):
 
         snapshot = Snapshot(cn, self, seriename)
         series = []
-        for csid, idate in revs:
-            if (deltabefore, deltaafter) != (None, None):
+        if (deltabefore, deltaafter) != (None, None):
+            for csid, idate in revs:
                 from_value_date = None
                 to_value_date = None
                 if deltabefore is not None:
                     from_value_date = idate - deltabefore
                 if deltaafter is not None:
                     to_value_date = idate + deltaafter
-            series.append((
-                idate,
-                snapshot.find(csetfilter=[lambda cset: cset.c.id == csid],
-                              from_value_date=from_value_date,
-                              to_value_date=to_value_date)[1]
-            ))
+                series.append((
+                    idate,
+                    snapshot.find(csetfilter=[lambda cset: cset.c.id == csid],
+                                  from_value_date=from_value_date,
+                                  to_value_date=to_value_date)[1]
+                ))
+        else:
+            series = snapshot.findall(revs,
+                                      from_value_date,
+                                      to_value_date
+            )
 
         if diffmode:
             diffs = []

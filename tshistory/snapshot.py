@@ -2,7 +2,7 @@ import pandas as pd
 import zlib
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
-from sqlalchemy.sql.expression import select, desc
+from sqlalchemy.sql.expression import select, asc, desc
 from sqlalchemy.dialects.postgresql import BYTEA, TIMESTAMP
 
 from tshistory.util import (
@@ -246,3 +246,74 @@ class Snapshot(SeriesServices):
 
         chunk = self.chunk(cid, from_value_date, to_value_date)
         return csid, chunk
+
+    def allchunks(self, heads, from_value_date=None):
+        where = ''
+        if from_value_date:
+            where = 'where chunks.end >= %(start)s '
+
+        sql = """
+        with recursive allchunks as (
+            select chunks.id as cid,
+                   chunks.parent as parent,
+                   chunks.chunk as chunk
+            from "{namespace}"."{table}" as chunks
+            where chunks.id in ({heads})
+          union
+            select chunks.id as cid,
+                   chunks.parent as parent,
+                   chunks.chunk as chunk
+            from "{namespace}"."{table}" as chunks
+            join allchunks on chunks.id = allchunks.parent
+            {where}
+        )
+        select cid, parent, chunk from allchunks
+        """.format(namespace=self.namespace,
+                   table=self.name,
+                   heads=','.join(str(head) for head in heads),
+                   where=where)
+        res = self.cn.execute(sql, start=from_value_date)
+        chunks = {cid: (parent, rawchunk)
+                  for cid, parent, rawchunk in res.fetchall()}
+        return chunks
+
+    def findall(self, revs, from_value_date, to_value_date):
+        csets = [rev for rev, _ in revs if rev is not None]
+        # csid -> heads
+        cset = self.tsh.schema.changeset
+        serie = self.tsh._get_ts_table(self.cn, self.seriename)
+        sql = select([serie.c.cset, serie.c.snapshot]
+        ).order_by(asc(serie.c.id)
+        ).select_from(serie.join(cset)
+        ).where(cset.c.id >= min(csets)
+        ).where(cset.c.id <= max(csets))
+
+        cset_snap_map = {
+            row.cset: row.snapshot
+            for row in self.cn.execute(sql).fetchall()
+        }
+        rawchunks = self.allchunks(
+            sorted(cset_snap_map.values()),
+            from_value_date
+        )
+
+        series = []
+        for cset, idate in revs:
+            if cset is None:
+                series.append((idate, None))
+                continue
+            chunks = []
+            head = cset_snap_map[cset]
+            while True:
+                parent, chunk = rawchunks.get(head, (None, None))
+                if chunk is None:
+                    break
+                chunks.append(chunk)
+                head = parent
+            series.append(
+                (idate, subset(self._chunks_to_ts(chunks),
+                               from_value_date,
+                               to_value_date)
+                )
+            )
+        return series
