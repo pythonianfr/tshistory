@@ -3,6 +3,8 @@ from contextlib import contextmanager
 
 import pandas as pd
 
+from tshistory.util import inject_in_index
+
 
 def utcdt(*dt):
     return pd.Timestamp(datetime(*dt), tz='UTC')
@@ -18,6 +20,22 @@ def assert_df(expected, df):
     exp = remove_metadata(expected.strip())
     got = remove_metadata(df.to_string().strip())
     assert exp == got
+
+
+def assert_hist(expected, dfdict):
+    # copy to avoid side effects
+    series = [(key, serie.copy()) for key, serie in dfdict.items()]
+    for revdate, serie in series:
+        inject_in_index(serie, revdate)
+
+    series = pd.concat([serie for _, serie in series])
+    return series
+
+
+def assert_hist_equals(h1, h2):
+    assert h1.keys() == h2.keys()
+    for k in h1:
+        assert (h1[k] == h2[k]).all()
 
 
 def assert_group_equals(g1, g2):

@@ -6,6 +6,7 @@ import numpy as np
 from tshistory.snapshot import Snapshot
 from tshistory.testutil import (
     assert_df,
+    assert_hist,
     assert_group_equals,
     genserie,
     tempattr,
@@ -235,7 +236,7 @@ def test_append(engine, tsh):
     }
 
     hist = tsh.get_history(engine, 'append', deltabefore=pd.Timedelta(hours=1))
-    assert_df("""
+    assert_hist("""
 insertion_date             value_date               
 2018-01-01 00:00:00+00:00  2018-01-01 00:00:00+00:00    0.0
 2018-01-02 00:00:00+00:00  2018-01-02 00:00:00+00:00    1.0

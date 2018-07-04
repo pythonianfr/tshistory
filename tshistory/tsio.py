@@ -205,12 +205,10 @@ class TimeSerie(SeriesServices):
                     diffs.append((revdate_b, self.diff(serie_a, serie_b)))
             series = diffs
 
-        for revdate, serie in series:
-            inject_in_index(serie, revdate)
-
-        serie = pd.concat([serie for revdate_, serie in series])
-        serie.name = seriename
-        return serie
+        return {
+            idate: serie
+            for idate, serie in series
+        }
 
     def _previous_cset(self, cn, seriename, csid):
         tablename = self._serie_to_tablename(cn, seriename)
@@ -226,6 +224,9 @@ class TimeSerie(SeriesServices):
         histo = self.get_history(
             cn, seriename, deltabefore=-delta
         )
+        for revdate, serie in histo.items():
+            inject_in_index(serie, revdate)
+        histo = pd.concat([serie for serie in histo.values()])
 
         df = histo.reset_index()
 
