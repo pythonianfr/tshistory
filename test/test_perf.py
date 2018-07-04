@@ -104,8 +104,11 @@ def test_hourly_forecast(engine, tracker, ptsh):
     sqlts = pd.read_sql(query, engine).set_index('value_date').squeeze()
     print('SQL GET', time() - t0)
     t0 = time()
-    tshts = tsh.get(engine, 'fcast_100')
+    tshts = tsh.get(engine, 'fcast_25')
     print('TSH GET', time() - t0)
+    t0 = time()
+    hist = tsh.get_history(engine, 'fcast_25')
+    print('TSH HIST', time() - t0)
 
 
 @pytest.mark.perf
