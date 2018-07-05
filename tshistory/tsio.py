@@ -210,13 +210,6 @@ class TimeSerie(SeriesServices):
             for idate, serie in series
         }
 
-    def _previous_cset(self, cn, seriename, csid):
-        tablename = self._serie_to_tablename(cn, seriename)
-        sql = ('select cset from "{}.timeserie"."{}" '
-               'where cset < %(csid)s '
-               'order by cset desc limit 1').format(self.namespace, tablename)
-        return cn.execute(sql, csid=csid).scalar()
-
     def get_delta(self, cn, seriename, delta,
                   from_value_date=None,
                   to_value_date=None):
@@ -512,6 +505,13 @@ class TimeSerie(SeriesServices):
             row.seriename
             for row in cn.execute(sql).fetchall()
         ]
+
+    def _previous_cset(self, cn, seriename, csid):
+        tablename = self._serie_to_tablename(cn, seriename)
+        sql = ('select cset from "{}.timeserie"."{}" '
+               'where cset < %(csid)s '
+               'order by cset desc limit 1').format(self.namespace, tablename)
+        return cn.execute(sql, csid=csid).scalar()
 
     # insertion handling
 
