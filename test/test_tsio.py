@@ -383,7 +383,7 @@ def test_revision_date(engine, tsh):
 """, oldstate)
 
 
-def test_deletion(engine, tsh):
+def test_point_deletion(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 11)
     ts_begin.iloc[-1] = np.nan
     tsh.insert(engine, ts_begin, 'ts_del', 'test')
@@ -865,6 +865,52 @@ def test_precision(engine, tsh):
     assert diff is None
 
 
+def test_serie_deletion(engine, tsh):
+    ts = genserie(datetime(2018, 1, 10), 'H', 10)
+    tsh.insert(engine, ts, 'keepme', 'Babar')
+    tsh.insert(engine, ts, 'deleteme', 'Celeste')
+    ts = genserie(datetime(2018, 1, 12), 'H', 10)
+    tsh.insert(engine, ts, 'keepme', 'Babar')
+    tsh.insert(engine, ts, 'deleteme', 'Celeste')
+
+    seriecount = engine.execute(
+        'select count(*) from {}.registry'.format(tsh.namespace)
+    ).scalar()
+    csetcount = engine.execute(
+        'select count(*) from {}.changeset'.format(tsh.namespace)
+    ).scalar()
+    csetcount2 = engine.execute(
+        'select count(*) from {}.changeset_series'.format(tsh.namespace)
+    ).scalar()
+    assert csetcount == csetcount2
+
+    with engine.connect() as cn:
+        tsh.delete(cn, 'deleteme')
+
+    assert not tsh.exists(engine, 'deleteme')
+    log = [entry['author']
+           for entry in tsh.log(engine, names=('keepme', 'deleteme'))]
+    assert log == ['Babar', 'Babar']
+
+    csetcount3 = engine.execute(
+        'select count(*) from {}.changeset'.format(tsh.namespace)
+    ).scalar()
+    csetcount4 = engine.execute(
+        'select count(*) from {}.changeset_series'.format(tsh.namespace)
+    ).scalar()
+    seriecount2 = engine.execute(
+        'select count (*) from {}.registry'.format(tsh.namespace)
+    ).scalar()
+
+    assert csetcount - csetcount3  == 2
+    assert csetcount2 - csetcount4 == 2
+    assert seriecount - seriecount2 == 1
+
+    with pytest.raises(AssertionError) as werr:
+        tsh.delete(engine, 'keepme')
+    assert werr.value.args[0] == 'use a transaction object'
+
+
 def test_strip(engine, tsh):
     for i in range(1, 5):
         pubdate = utcdt(2017, 1, i)
@@ -1120,7 +1166,7 @@ def test_rename(engine, tsh):
         'bar': 'new-bar'
     })
 
-    tsh.resetcaches()
+    tsh._resetcaches()
 
     assert tsh.get(engine, 'foo') is None
     assert tsh.get(engine, 'bar') is None

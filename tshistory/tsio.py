@@ -6,6 +6,7 @@ import hashlib
 import pandas as pd
 
 from sqlalchemy import Table, Column, Integer, ForeignKey
+from sqlalchemy.engine.base import Engine
 from sqlalchemy.sql.expression import select, func, desc
 from sqlalchemy.dialects.postgresql import BYTEA
 
@@ -17,7 +18,7 @@ from tshistory.util import (
     SeriesServices,
     tzaware_serie
 )
-from tshistory.snapshot import Snapshot
+from tshistory.snapshot import Snapshot, TABLES as SNAPTABLES
 
 L = logging.getLogger('tshistory.tsio')
 TABLES = {}
@@ -278,6 +279,40 @@ class TimeSerie(SeriesServices):
         else:
             sql = sql.where(cset.c.insertion_date >= revdate)
         return cn.execute(sql).scalar()
+
+    def delete(self, cn, seriename):
+        assert not isinstance(cn, Engine), 'use a transaction object'
+        assert self.exists(cn, seriename)
+        # changeset will keep ghost entries
+        # we cleanup changeset series, then registry
+        # then we drop the two remaining tables
+        # cn *must* be a transaction scope
+        rid, tablename = cn.execute(
+            'select id, table_name from "{}".registry '
+            'where seriename = %(seriename)s'.format(self.namespace),
+            seriename=seriename
+        ).fetchone()
+        # drop series tables
+        cn.execute(
+            'drop table "{}.timeserie"."{}" cascade'.format(self.namespace, tablename)
+        )
+        cn.execute(
+            'drop table "{}.snapshot"."{}" cascade'.format(self.namespace, tablename)
+        )
+        # cleanup changesets table
+        cn.execute('with csets as ('
+                   ' select cset from "{ns}".changeset_series '
+                   ' where serie = %(rid)s'
+                   ') '
+                   'delete from "{ns}".changeset as cset using csets '
+                   'where cset.id = csets.cset'.format(ns=self.namespace),
+                   rid=rid
+        )
+        cn.execute('delete from "{}".registry '
+                   'where id = %(rid)s'.format(self.namespace),
+                   rid=rid)
+        # -> this will transitively cleanup state changeset_series entries
+        self._resetcaches()
 
     def strip(self, cn, seriename, csid):
         logs = self.log(cn, fromrev=csid, names=(seriename,))
@@ -546,9 +581,9 @@ class TimeSerie(SeriesServices):
         )
         cn.execute(sql)
 
-    # don't use this
-
-    def resetcaches(self):
+    def _resetcaches(self):
+        TABLES.clear()
+        SNAPTABLES.clear()
         self.metadatacache.clear()
         self.registry_map.clear()
         self.serie_tablename.clear()

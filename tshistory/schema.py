@@ -2,7 +2,7 @@ import logging
 from threading import Lock
 
 from sqlalchemy import (Table, Column, Integer, String, MetaData, TIMESTAMP,
-                        ForeignKey, PrimaryKeyConstraint)
+                        ForeignKey, UniqueConstraint)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.schema import CreateSchema
 
@@ -68,14 +68,14 @@ class tsschema(object):
         changeset_series = Table(
             'changeset_series', meta,
             Column('cset', Integer,
-                   ForeignKey('{}.changeset.id'.format(self.namespace)),
-                   index=True, nullable=False),
+                   ForeignKey('{}.changeset.id'.format(self.namespace), ondelete='set null'),
+                   index=True, nullable=True),
             Column('serie', Integer,
-                   ForeignKey('{}.registry.id'.format(self.namespace)),
+                   ForeignKey('{}.registry.id'.format(self.namespace), ondelete='cascade'),
                    index=True, nullable=False),
-            PrimaryKeyConstraint(
+            UniqueConstraint(
                 'cset', 'serie',
-                name='{}_changeset_series_pk'.format(self.namespace)),
+                name='{}_changeset_series_unique'.format(self.namespace)),
             schema=self.namespace
         )
 
