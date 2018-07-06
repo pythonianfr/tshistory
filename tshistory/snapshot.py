@@ -86,7 +86,7 @@ class Snapshot(SeriesServices):
                            self.name)),
                        index=True),
                 schema=self.namespace,
-                extend_existing=True
+                keep_existing=True
             )
         return table
 

@@ -485,7 +485,7 @@ class TimeSerie(SeriesServices):
                            tablename)),
                        index=True),
                 schema='{}.timeserie'.format(self.namespace),
-                extend_existing=True
+                keep_existing=True
             )
         return table
 
