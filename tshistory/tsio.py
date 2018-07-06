@@ -5,7 +5,8 @@ import hashlib
 
 import pandas as pd
 
-from sqlalchemy import Table, Column, Integer, ForeignKey
+from sqlalchemy import Table, Column, Integer, ForeignKey, Index
+from sqlalchemy.sql.elements import NONE_NAME
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.sql.expression import select, func, desc
 from sqlalchemy.dialects.postgresql import BYTEA
@@ -478,12 +479,13 @@ class TimeSerie(SeriesServices):
                 Column('id', Integer, primary_key=True),
                 Column('cset', Integer,
                        ForeignKey('{}.changeset.id'.format(self.namespace)),
-                       index=True, nullable=False),
+                       nullable=False),
                 Column('snapshot', Integer,
                        ForeignKey('{}.snapshot.{}.id'.format(
                            self.namespace,
-                           tablename)),
-                       index=True),
+                           tablename))),
+                Index(NONE_NAME, 'cset'),
+                Index(NONE_NAME, 'snapshot'),
                 schema='{}.timeserie'.format(self.namespace),
                 keep_existing=True
             )

@@ -1,7 +1,8 @@
 import pandas as pd
 import zlib
 
-from sqlalchemy import Table, Column, Integer, ForeignKey
+from sqlalchemy import Table, Column, Integer, ForeignKey, Index
+from sqlalchemy.sql.elements import NONE_NAME
 from sqlalchemy.sql.expression import select, asc, desc
 from sqlalchemy.dialects.postgresql import BYTEA, TIMESTAMP
 
@@ -11,46 +12,6 @@ from tshistory.util import (
     SeriesServices,
     tojson
 )
-
-
-def patch_sqlalchemy():
-    # PATCH for sqlalchemy https://bitbucket.org/zzzeek/sqlalchemy/issues/4289/automatic-index-name-hash-collision
-    from sqlalchemy.sql import compiler
-    elements = compiler.elements
-    util = compiler.util
-
-    def _prepared_index_name(self, index, include_schema=False):
-        if index.table is not None:
-            effective_schema = self.preparer.schema_for_object(index.table)
-        else:
-            effective_schema = None
-        if include_schema and effective_schema:
-            schema_name = self.preparer.quote_schema(effective_schema)
-        else:
-            schema_name = None
-
-        ident = index.name
-        if isinstance(ident, elements._truncated_label):
-            max_ = self.dialect.max_index_name_length or \
-                self.dialect.max_identifier_length
-            if len(ident) > max_:
-                # PATCH
-                idhash = util.md5_hex(ident)
-                ident = ident[0:max_ - len(idhash)] + "_" + idhash
-                # /PATCH
-        else:
-            self.dialect.validate_identifier(ident)
-
-        index_name = self.preparer.quote(ident)
-
-        if schema_name:
-            index_name = schema_name + "." + index_name
-        return index_name
-
-    compiler.DDLCompiler._prepared_index_name = _prepared_index_name
-
-patch_sqlalchemy()
-# /patch
 
 TABLES = {}
 
@@ -77,14 +38,16 @@ class Snapshot(SeriesServices):
             TABLES[tablename] = table = Table(
                 self.name, self.tsh.schema.meta,
                 Column('id', Integer, primary_key=True),
-                Column('start', TIMESTAMP(timezone=True), index=True),
-                Column('end', TIMESTAMP(timezone=True), index=True),
+                Column('start', TIMESTAMP(timezone=True)),
+                Column('end', TIMESTAMP(timezone=True)),
                 Column('chunk', BYTEA),
                 Column('parent', Integer,
                        ForeignKey('{}.{}.id'.format(
                            self.namespace,
-                           self.name)),
-                       index=True),
+                           self.name))),
+                Index(NONE_NAME, 'start'),
+                Index(NONE_NAME, 'end'),
+                Index(NONE_NAME, 'parent'),
                 schema=self.namespace,
                 keep_existing=True
             )
