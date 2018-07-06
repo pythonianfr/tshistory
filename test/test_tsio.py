@@ -910,6 +910,9 @@ def test_serie_deletion(engine, tsh):
         tsh.delete(engine, 'keepme')
     assert werr.value.args[0] == 'use a transaction object'
 
+    with pytest.raises(Exception):
+        tsh.insert(engine, ts, 'deleteme', 'Celeste')
+
 
 def test_strip(engine, tsh):
     for i in range(1, 5):
