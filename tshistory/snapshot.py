@@ -134,18 +134,13 @@ class Snapshot(SeriesServices):
 
         return self.insert_buckets(parent, newsnapshot)
 
-    def rawchunks(self, head, from_value_date=None):
-        where = ''
-        if from_value_date:
-            where = 'where chunks.end >= %(start)s '
-
-        sql = """
+    rawsql = """
         with recursive allchunks as (
             select chunks.id as cid,
                    chunks.parent as parent,
                    chunks.chunk as chunk
             from "{namespace}"."{table}" as chunks
-            where chunks.id = {head}
+            where chunks.id in ({heads})
           union
             select chunks.id as cid,
                    chunks.parent as parent,
@@ -155,10 +150,19 @@ class Snapshot(SeriesServices):
             {where}
         )
         select cid, parent, chunk from allchunks
-        """.format(namespace=self.namespace,
-                   table=self.name,
-                   head=head,
-                   where=where)
+    """
+
+    def rawchunks(self, head, from_value_date=None):
+        where = ''
+        if from_value_date:
+            where = 'where chunks.end >= %(start)s '
+
+        sql = self.rawsql.format(
+            namespace=self.namespace,
+            table=self.name,
+            heads=','.join([str(head)]),
+            where=where
+        )
         res = self.cn.execute(sql, start=from_value_date)
         chunks = [(cid, parent, rawchunk)
                   for cid, parent, rawchunk in res.fetchall()]
@@ -222,26 +226,12 @@ class Snapshot(SeriesServices):
         if from_value_date:
             where = 'where chunks.end >= %(start)s '
 
-        sql = """
-        with recursive allchunks as (
-            select chunks.id as cid,
-                   chunks.parent as parent,
-                   chunks.chunk as chunk
-            from "{namespace}"."{table}" as chunks
-            where chunks.id in ({heads})
-          union
-            select chunks.id as cid,
-                   chunks.parent as parent,
-                   chunks.chunk as chunk
-            from "{namespace}"."{table}" as chunks
-            join allchunks on chunks.id = allchunks.parent
-            {where}
+        sql = self.rawsql.format(
+            namespace=self.namespace,
+            table=self.name,
+            heads=','.join(str(head) for head in heads),
+            where=where
         )
-        select cid, parent, chunk from allchunks
-        """.format(namespace=self.namespace,
-                   table=self.name,
-                   heads=','.join(str(head) for head in heads),
-                   where=where)
         res = self.cn.execute(sql, start=from_value_date)
         chunks = {cid: (parent, rawchunk)
                   for cid, parent, rawchunk in res.fetchall()}
