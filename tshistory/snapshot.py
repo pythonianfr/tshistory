@@ -278,7 +278,7 @@ class Snapshot(SeriesServices):
                 chunks.append(chunk)
                 head = parent
             series.append(
-                (idate, subset(self._chunks_to_ts(chunks),
+                (idate, subset(self._chunks_to_ts(reversed(chunks)),
                                from_value_date,
                                to_value_date)
                 )
