@@ -103,12 +103,26 @@ def test_hourly_forecast(engine, tracker, ptsh):
     t0 = time()
     sqlts = pd.read_sql(query, engine).set_index('value_date').squeeze()
     print('SQL GET', time() - t0)
+    assert len(sqlts) == 549
     t0 = time()
     tshts = tsh.get(engine, 'fcast_25')
     print('TSH GET', time() - t0)
+    assert len(tshts) == 549
     t0 = time()
     hist = tsh.get_history(engine, 'fcast_25')
+    assert len(hist) == 502
     print('TSH HIST', time() - t0)
+    t0 = time()
+    d1 = tsh.get_delta(engine, 'fcast_25', timedelta(days=1))
+    print('DELTA all value dates', time() - t0)
+    assert len(d1) == 525
+    t0 = time()
+    d2 = tsh.get_delta(engine, 'fcast_25', timedelta(days=1),
+                       from_value_date=utcdt(2013, 1, 22),
+                       to_value_date=utcdt(2013, 1, 23))
+    print('DELTA 1 day ', time() - t0)
+    assert d2.index.min() == pd.Timestamp('2013-01-22 00:00:00+0000', tz='UTC')
+    assert d2.index.max() == pd.Timestamp('2013-01-23 00:00:00+0000', tz='UTC')
 
 
 @pytest.mark.perf
