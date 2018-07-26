@@ -296,10 +296,6 @@ def test_bad_import(engine, tsh):
 
 
 def test_revision_date(engine, tsh):
-    # we prepare a good joke for the end of the test
-    # ival = Snapshot._interval
-    # Snapshot._interval = 3
-
     for i in range(1, 5):
         with engine.connect() as cn:
             tsh.insert(cn, genserie(datetime(2017, 1, i), 'D', 3, [i]), 'revdate',
