@@ -29,7 +29,7 @@ def assert_hist(expected, dfdict):
         inject_in_index(serie, revdate)
 
     series = pd.concat([serie for _, serie in series])
-    return series
+    assert_df(expected, series)
 
 
 def assert_hist_equals(h1, h2):
