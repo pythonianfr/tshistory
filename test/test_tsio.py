@@ -38,7 +38,8 @@ def test_tstamp_roundtrip(engine, tsh):
 Freq: H
     """, ts)
 
-    tsh.insert(engine, ts, 'tztest', 'Babar')
+    tsh.insert(engine, ts, 'tztest', 'Babar',
+               _insertion_date=utcdt(2018, 1, 1))
     back = tsh.get(engine, 'tztest')
 
     # though un localized we understand it's been normalized to utc
@@ -51,6 +52,49 @@ Freq: H
 
     assert (ts.index == back.index).all()
     assert str(back.index.dtype) == 'datetime64[ns, UTC]'
+
+    ts = genserie(datetime(2017, 10, 29, 1),
+                  'H', 4, tz='UTC')
+    ts.index = ts.index.tz_convert('Europe/Paris')
+    tsh.insert(engine, ts, 'tztest', 'Celeste',
+                   _insertion_date=utcdt(2018, 1, 3))
+
+    ts = tsh.get(engine, 'tztest')
+    assert_df("""
+2017-10-28 23:00:00+00:00    0.0
+2017-10-29 00:00:00+00:00    1.0
+2017-10-29 01:00:00+00:00    0.0
+2017-10-29 02:00:00+00:00    1.0
+2017-10-29 03:00:00+00:00    2.0
+2017-10-29 04:00:00+00:00    3.0
+""", ts)
+
+    hist = tsh.get_history(engine, 'tztest')
+    assert_hist("""
+insertion_date             value_date               
+2018-01-01 00:00:00+00:00  2017-10-28 23:00:00+00:00    0.0
+                           2017-10-29 00:00:00+00:00    1.0
+                           2017-10-29 01:00:00+00:00    2.0
+                           2017-10-29 02:00:00+00:00    3.0
+2018-01-03 00:00:00+00:00  2017-10-28 23:00:00+00:00    0.0
+                           2017-10-29 00:00:00+00:00    1.0
+                           2017-10-29 01:00:00+00:00    0.0
+                           2017-10-29 02:00:00+00:00    1.0
+                           2017-10-29 03:00:00+00:00    2.0
+                           2017-10-29 04:00:00+00:00    3.0
+""", hist)
+
+    hist = tsh.get_history(engine, 'tztest',
+                           from_value_date=utcdt(2017, 10, 29, 1),
+                           to_value_date=utcdt(2017, 10, 29, 3))
+    assert_hist("""
+insertion_date             value_date               
+2018-01-01 00:00:00+00:00  2017-10-29 01:00:00+00:00    2.0
+                           2017-10-29 02:00:00+00:00    3.0
+2018-01-03 00:00:00+00:00  2017-10-29 01:00:00+00:00    0.0
+                           2017-10-29 02:00:00+00:00    1.0
+                           2017-10-29 03:00:00+00:00    2.0
+""", hist)
 
 
 def test_differential(engine, tsh):
