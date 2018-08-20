@@ -14,6 +14,7 @@ from tshistory.testutil import (
     assert_hist,
     assert_hist_equals,
     assert_group_equals,
+    assert_structures,
     genserie,
     tempattr
 )
@@ -26,6 +27,7 @@ def utcdt(*dt):
 
 
 def test_tstamp_roundtrip(engine, tsh):
+    assert_structures(engine, tsh)
     ts = genserie(datetime(2017, 10, 28, 23),
                   'H', 4, tz='UTC')
     ts.index = ts.index.tz_convert('Europe/Paris')
@@ -103,9 +105,11 @@ insertion_date             value_date
     ival = tsh.interval(engine, 'tztest')
     assert ival.left == pd.Timestamp('2017-10-28 23:00:00+0000', tz='UTC')
     assert ival.right == pd.Timestamp('2017-10-29 04:00:00+0000', tz='UTC')
+    assert_structures(engine, tsh)
 
 
 def test_differential(engine, tsh):
+    assert_structures(engine, tsh)
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
     tsh.insert(engine, ts_begin, 'ts_test', 'test')
 
@@ -273,6 +277,8 @@ seriename table_name
 2010-01-07    3.0
 """, tsh.get(cn, 'ts_mixte',
              revision_date=datetime.now()))
+
+    assert_structures(engine, tsh)
 
 
 def test_serie_metadata(engine, tsh):
@@ -935,16 +941,7 @@ def test_serie_deletion(engine, tsh):
     tsh.insert(engine, ts, 'keepme', 'Babar')
     tsh.insert(engine, ts, 'deleteme', 'Celeste')
 
-    seriecount = engine.execute(
-        'select count(*) from {}.registry'.format(tsh.namespace)
-    ).scalar()
-    csetcount = engine.execute(
-        'select count(*) from {}.changeset'.format(tsh.namespace)
-    ).scalar()
-    csetcount2 = engine.execute(
-        'select count(*) from {}.changeset_series'.format(tsh.namespace)
-    ).scalar()
-    assert csetcount == csetcount2
+    seriecount, csetcount, csetseriecount = assert_structures(engine, tsh)
 
     with engine.connect() as cn:
         tsh.delete(cn, 'deleteme')
@@ -954,18 +951,10 @@ def test_serie_deletion(engine, tsh):
            for entry in tsh.log(engine, names=('keepme', 'deleteme'))]
     assert log == ['Babar', 'Babar']
 
-    csetcount3 = engine.execute(
-        'select count(*) from {}.changeset'.format(tsh.namespace)
-    ).scalar()
-    csetcount4 = engine.execute(
-        'select count(*) from {}.changeset_series'.format(tsh.namespace)
-    ).scalar()
-    seriecount2 = engine.execute(
-        'select count (*) from {}.registry'.format(tsh.namespace)
-    ).scalar()
+    seriecount2, csetcount2, csetseriecount2 = assert_structures(engine, tsh)
 
-    assert csetcount - csetcount3  == 2
-    assert csetcount2 - csetcount4 == 2
+    assert csetcount - csetcount2  == 2
+    assert csetseriecount - csetseriecount2 == 2
     assert seriecount - seriecount2 == 1
 
     with pytest.raises(AssertionError) as werr:
