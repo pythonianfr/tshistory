@@ -45,7 +45,7 @@ def test_chunks(engine, tsh):
         assert chunks[0].parent is None
         assert chunks[1].parent == 1
         assert chunks[2].parent == 2
-        snap = Snapshot(engine, tsh, 'snapshot')
+        snap = Snapshot(engine, tsh, 'chunks')
         ts0 = snap._chunks_to_ts([chunks[0].chunk])
         ts1 = snap._chunks_to_ts([chunks[1].chunk])
         ts2 = snap._chunks_to_ts([chunks[2].chunk])
