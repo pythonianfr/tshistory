@@ -179,17 +179,17 @@ class TimeSerie(SeriesServices):
         series = []
         if (deltabefore, deltaafter) != (None, None):
             for csid, idate in revs:
-                from_value_date = None
-                to_value_date = None
+                from_date = None
+                to_date = None
                 if deltabefore is not None:
-                    from_value_date = idate - deltabefore
+                    from_date = idate - deltabefore
                 if deltaafter is not None:
-                    to_value_date = idate + deltaafter
+                    to_date = idate + deltaafter
                 series.append((
                     idate,
                     snapshot.find(csetfilter=[lambda cset: cset.c.id == csid],
-                                  from_value_date=from_value_date,
-                                  to_value_date=to_value_date)[1]
+                                  from_value_date=from_date,
+                                  to_value_date=to_date)[1]
                 ))
         else:
             series = snapshot.findall(revs,
