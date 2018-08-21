@@ -5,10 +5,31 @@ import hashlib
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetimetz
+from sqlalchemy.sql.expression import text
 
 
 def tzaware_serie(ts):
     return is_datetimetz(ts.index)
+
+
+def start_end(ts):
+    start = ts.index.min()
+    end = ts.index.max()
+    if start.tzinfo is not None:
+        assert end.tzinfo is not None
+        start = start.tz_convert('UTC').replace(tzinfo=None)
+        end = end.tz_convert('UTC').replace(tzinfo=None)
+    return start, end
+
+
+def closed_overlaps(fromdate, todate):
+    fromdate = "'-infinity'" if fromdate is None else ':fromdate'
+    todate = "'infinity'" if todate is None else ':todate'
+    return text(
+        '({}, {}) overlaps (start, "end" + interval \'1 microsecond\')'.format(
+            fromdate, todate
+        )
+    )
 
 
 def subset(ts, fromdate, todate):

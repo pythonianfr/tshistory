@@ -53,6 +53,10 @@ Freq: H
     assert (ts.index == back.index).all()
     assert str(back.index.dtype) == 'datetime64[ns, UTC]'
 
+    ival = tsh.interval(engine, 'tztest')
+    assert ival.left == pd.Timestamp('2017-10-28 23:00:00+0000', tz='UTC')
+    assert ival.right == pd.Timestamp('2017-10-29 02:00:00+0000', tz='UTC')
+
     ts = genserie(datetime(2017, 10, 29, 1),
                   'H', 4, tz='UTC')
     ts.index = ts.index.tz_convert('Europe/Paris')
@@ -96,6 +100,10 @@ insertion_date             value_date
                            2017-10-29 03:00:00+00:00    2.0
 """, hist)
 
+    ival = tsh.interval(engine, 'tztest')
+    assert ival.left == pd.Timestamp('2017-10-28 23:00:00+0000', tz='UTC')
+    assert ival.right == pd.Timestamp('2017-10-29 04:00:00+0000', tz='UTC')
+
 
 def test_differential(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
@@ -106,6 +114,14 @@ def test_differential(engine, tsh):
 
     assert tsh.exists(engine, 'ts_test')
     assert not tsh.exists(engine, 'this_does_not_exist')
+
+    assert tsh.interval(engine, 'ts_test') == pd.Interval(
+        datetime(2010, 1, 1, 0, 0), datetime(2010, 1, 10, 0, 0),
+        closed='both'
+    )
+
+    with pytest.raises(ValueError):
+        assert tsh.interval(engine, 'nosuchts')
 
     assert_df("""
 2010-01-01    0.0
@@ -161,7 +177,8 @@ def test_differential(engine, tsh):
     ts_longer.iloc[3] = 3.14
     ts_longer.iloc[5] = ts_begin.iloc[7]
 
-    tsh.insert(engine, ts_longer, 'ts_test', 'test')
+    with engine.connect() as cn:
+        tsh.insert(cn, ts_longer, 'ts_test', 'test')
     id3 = tsh.last_id(engine, 'ts_test')
 
     assert id1 < id2 < id3
@@ -185,6 +202,11 @@ def test_differential(engine, tsh):
 2010-01-16    13.00
 2010-01-17    14.00
 """, tsh.get(engine, 'ts_test'))
+
+    assert tsh.interval(engine, 'ts_test') == pd.Interval(
+        datetime(2010, 1, 1, 0, 0), datetime(2010, 1, 17, 0, 0),
+        closed='both'
+    )
 
     # start testing manual overrides
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 5, initval=[2])

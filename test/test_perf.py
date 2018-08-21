@@ -211,18 +211,3 @@ def test_lots_of_diffs(engine, tracker, ptsh):
     tracker.append({'test': 'manydiffs_history_chunks',
                     'class': tshclass,
                     'time': t1})
-
-    t0 = time()
-    for month in range(1, 3):
-        for day in range(1, 5):
-            date = utcdt(2018, month, day)
-            ts = tsh.get_history(engine, 'manydiffs',
-                                 from_insertion_date=date,
-                                 to_insertion_date=date + timedelta(days=31),
-                                 from_value_date=date + timedelta(days=10),
-                                 to_value_date=date + timedelta(days=20))
-            assert ts is not None
-    t1 = time() - t0
-    tracker.append({'test': 'manydiffs_history_chunks_valuedate',
-                    'class': tshclass,
-                    'time': t1})

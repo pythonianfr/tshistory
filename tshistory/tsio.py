@@ -9,14 +9,16 @@ from sqlalchemy import Table, Column, Integer, ForeignKey, Index
 from sqlalchemy.sql.elements import NONE_NAME
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.sql.expression import select, func, desc
-from sqlalchemy.dialects.postgresql import BYTEA
+from sqlalchemy.dialects.postgresql import BYTEA, TIMESTAMP
 
 from tshistory.schema import tsschema
 from tshistory.util import (
+    closed_overlaps,
     inject_in_index,
     num2float,
     subset,
     SeriesServices,
+    start_end,
     tzaware_serie
 )
 from tshistory.snapshot import Snapshot, TABLES as SNAPTABLES
@@ -147,10 +149,6 @@ class TimeSerie(SeriesServices):
         if table is None:
             return
 
-        if deltabefore is not None or deltaafter is not None:
-            assert from_value_date is None
-            assert to_value_date is None
-
         cset = self.schema.changeset
         revsql = select(
             [cset.c.id, cset.c.insertion_date]
@@ -165,7 +163,15 @@ class TimeSerie(SeriesServices):
         if to_insertion_date:
             revsql = revsql.where(cset.c.insertion_date <= to_insertion_date)
 
-        revs = cn.execute(revsql).fetchall()
+        if from_value_date or to_value_date:
+            revsql = revsql.where(
+                closed_overlaps(from_value_date, to_value_date)
+            )
+
+        revs = cn.execute(
+            revsql,
+            {'fromdate': from_value_date, 'todate': to_value_date}
+        ).fetchall()
         if not revs:
             return
 
@@ -218,7 +224,9 @@ class TimeSerie(SeriesServices):
                   to_value_date=None):
 
         histo = self.get_history(
-            cn, seriename, deltabefore=-delta
+            cn, seriename, deltabefore=-delta,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date
         )
         for revdate, serie in histo.items():
             inject_in_index(serie, revdate)
@@ -401,6 +409,19 @@ class TimeSerie(SeriesServices):
         log.sort(key=lambda rev: rev['rev'])
         return log
 
+    def interval(self, cn, seriename):
+        tablename = self._serie_to_tablename(cn, seriename)
+        if tablename is None:
+            raise ValueError(f'no such serie: {seriename}')
+        sql = (f'select start, "end" '
+               f'from "{self.namespace}.timeserie"."{tablename}" '
+               f'order by cset desc limit 1')
+        res = cn.execute(sql).fetchone()
+        start, end = res.start, res.end
+        if self.metadata(cn, seriename).get('tzaware'):
+            start, end = pd.Timestamp(start, tz='UTC'), pd.Timestamp(end, tz='UTC')
+        return pd.Interval(left=start, right=end, closed='both')
+
     # /API
     # Helpers
 
@@ -415,9 +436,12 @@ class TimeSerie(SeriesServices):
         snapshot = Snapshot(cn, self, seriename)
         csid = self._newchangeset(cn, author, insertion_date, metadata)
         head = snapshot.create(newts)
+        start, end = start_end(newts)
         value = {
             'cset': csid,
-            'snapshot': head
+            'snapshot': head,
+            'start': start,
+            'end': end
         }
         table = self._make_ts_table(cn, seriename, newts)
         cn.execute(table.insert().values(value))
@@ -439,10 +463,16 @@ class TimeSerie(SeriesServices):
             return
 
         csid = self._newchangeset(cn, author, insertion_date, metadata)
+        tsstart, tsend = start_end(newts)
+        ival = self.interval(cn, seriename)
+        start = min(tsstart, ival.left.replace(tzinfo=None))
+        end = max(tsend, ival.right.replace(tzinfo=None))
         head = snapshot.update(diff)
         value = {
             'cset': csid,
-            'snapshot': head
+            'snapshot': head,
+            'start': start,
+            'end': end
         }
         cn.execute(table.insert().values(value))
         self._finalize_insertion(cn, csid, seriename)
@@ -481,12 +511,16 @@ class TimeSerie(SeriesServices):
                 Column('cset', Integer,
                        ForeignKey('{}.changeset.id'.format(self.namespace)),
                        nullable=False),
+                Column('start', TIMESTAMP, nullable=False),
+                Column('end', TIMESTAMP, nullable=False),
                 Column('snapshot', Integer,
                        ForeignKey('{}.snapshot.{}.id'.format(
                            self.namespace,
                            tablename))),
                 Index(NONE_NAME, 'cset'),
                 Index(NONE_NAME, 'snapshot'),
+                Index(NONE_NAME, 'start'),
+                Index(NONE_NAME, 'end'),
                 schema='{}.timeserie'.format(self.namespace),
                 keep_existing=True
             )
