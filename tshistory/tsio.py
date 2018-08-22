@@ -335,11 +335,13 @@ class TimeSerie(SeriesServices):
     def info(self, cn):
         """Gather global statistics on the current tshistory repository
         """
-        sql = 'select count(*) from {}.registry'.format(self.namespace)
+        sql = 'select count(*) from "{}".registry'.format(self.namespace)
         stats = {'series count': cn.execute(sql).scalar()}
-        sql = 'select max(id) from {}.changeset'.format(self.namespace)
+        sql = 'select max(id) from "{}".changeset'.format(self.namespace)
         stats['changeset count'] = cn.execute(sql).scalar()
-        sql = 'select distinct name from {}.registry order by name'.format(self.namespace)
+        sql = 'select distinct seriename from "{}".registry order by seriename'.format(
+            self.namespace
+        )
         stats['serie names'] = [row for row, in cn.execute(sql).fetchall()]
         return stats
 

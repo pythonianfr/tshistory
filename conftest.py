@@ -6,8 +6,9 @@ import pandas as pd
 
 import pytest
 from pytest_sa_pg import db
+from click.testing import CliRunner
 
-from tshistory import schema, tsio
+from tshistory import schema, tsio, command
 from tshistory.snapshot import Snapshot
 
 
@@ -53,3 +54,10 @@ OUT = []
 def tracker():
     yield OUT
     print(pd.DataFrame(OUT))
+
+
+@pytest.fixture
+def cli():
+    def runner(*args):
+        return CliRunner().invoke(command.tsh, [str(a) for a in args])
+    return runner
