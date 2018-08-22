@@ -1,7 +1,5 @@
 from datetime import datetime
-from contextlib import contextmanager
 import logging
-import hashlib
 
 import pandas as pd
 
@@ -9,12 +7,11 @@ from sqlalchemy import Table, Column, Integer, ForeignKey, Index
 from sqlalchemy.sql.elements import NONE_NAME
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.sql.expression import select, func, desc
-from sqlalchemy.dialects.postgresql import BYTEA, TIMESTAMP
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 from tshistory.schema import tsschema
 from tshistory.util import (
     closed_overlaps,
-    inject_in_index,
     num2float,
     subset,
     SeriesServices,
@@ -130,7 +127,6 @@ class TimeSerie(SeriesServices):
         cn.execute(sql)
 
     def changeset_metadata(self, cn, csid):
-        cset = self.schema.changeset
         sql = 'select metadata from "{ns}".changeset where id = {id}'.format(
             ns=self.namespace,
             id=csid
@@ -205,7 +201,7 @@ class TimeSerie(SeriesServices):
 
         if diffmode:
             diffs = []
-            for (revdate_a, serie_a), (revdate_b, serie_b) in zip(series, series[1:]):
+            for (_revdate_a, serie_a), (revdate_b, serie_b) in zip(series, series[1:]):
                 if serie_a is None:
                     # when we scan the entirety of the history: there exists no "previous" serie
                     # we therefore consider the first serie as a diff to the "null" serie
@@ -427,7 +423,7 @@ class TimeSerie(SeriesServices):
             'start': start,
             'end': end
         }
-        table = self._make_ts_table(cn, seriename, newts)
+        table = self._make_ts_table(cn, seriename)
         cn.execute(table.insert().values(value))
         self._finalize_insertion(cn, csid, seriename)
         L.info('first insertion of %s (size=%s) by %s',
@@ -510,7 +506,7 @@ class TimeSerie(SeriesServices):
             )
         return table
 
-    def _make_ts_table(self, cn, seriename, ts):
+    def _make_ts_table(self, cn, seriename):
         table = self._table_definition_for(cn, seriename)
         table.create(cn)
         return table
