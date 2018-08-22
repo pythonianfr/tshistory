@@ -223,10 +223,6 @@ class Snapshot(SeriesServices):
             from_value_date, to_value_date
         )
 
-    @property
-    def first(self):
-        return self.find(seriefilter=[lambda serie: serie.c.id == 1])[1]
-
     def last(self, from_value_date=None, to_value_date=None):
         return self.find(from_value_date=from_value_date,
                          to_value_date=to_value_date)[1]
@@ -235,7 +231,7 @@ class Snapshot(SeriesServices):
         return self.find(from_value_date=from_value_date,
                          to_value_date=to_value_date)[0]
 
-    def cset_heads_query(self, csetfilter=(), seriefilter=(), order=desc):
+    def cset_heads_query(self, csetfilter=(), order=desc):
         cset = self.tsh.schema.changeset
         serie = self.tsh._get_ts_table(self.cn, self.seriename)
         sql = select([serie.c.cset, serie.c.snapshot]
@@ -247,15 +243,12 @@ class Snapshot(SeriesServices):
             for filtercb in csetfilter:
                 sql = sql.where(filtercb(cset))
 
-        for tablecb in seriefilter:
-            sql = sql.where(tablefilter(serie))
-
         return sql
 
-    def find(self, csetfilter=(), seriefilter=(),
+    def find(self, csetfilter=(),
              from_value_date=None, to_value_date=None):
 
-        sql = self.cset_heads_query(csetfilter, seriefilter)
+        sql = self.cset_heads_query(csetfilter)
         sql = sql.limit(1)
 
         try:
