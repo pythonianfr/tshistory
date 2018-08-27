@@ -56,6 +56,7 @@ class TimeSerie(SeriesServices):
         assert metadata is None or isinstance(metadata, dict)
         assert _insertion_date is None or isinstance(_insertion_date, datetime)
         assert not newts.index.duplicated().any()
+        assert newts.index.is_monotonic_increasing
 
         newts = num2float(newts)
 

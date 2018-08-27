@@ -1175,3 +1175,11 @@ def test_rename(engine, tsh):
 
     for name in ('quux', 'new-foo', 'new-bar'):
         assert tsh.get(engine, name) is not None
+
+
+def test_index_order(engine, tsh):
+    ts = genserie(datetime(2020, 1, 1), 'D', 3)
+
+    with pytest.raises(AssertionError):
+        tsh.insert(engine, ts.sort_index(ascending=False),
+                   'test_order', 'babar')
