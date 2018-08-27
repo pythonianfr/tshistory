@@ -123,7 +123,8 @@ class TimeSerie(SeriesServices):
         reg = self.schema.registry
         sql = reg.update().where(
             reg.c.seriename == seriename
-        ).values(metadata=metadata)
+        ).values(metadata=meta)
+        self.metadatacache.pop(seriename)
         cn.execute(sql)
 
     def changeset_metadata(self, cn, csid):
