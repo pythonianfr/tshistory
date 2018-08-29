@@ -49,13 +49,13 @@ class TimeSerie(SeriesServices):
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
-        assert isinstance(newts, pd.Series)
-        assert isinstance(seriename, str)
-        assert isinstance(author, str)
-        assert metadata is None or isinstance(metadata, dict)
-        assert _insertion_date is None or isinstance(_insertion_date, datetime)
-        assert not newts.index.duplicated().any()
-        assert newts.index.is_monotonic_increasing
+        assert isinstance(newts, pd.Series), 'Not a pd.Series'
+        assert isinstance(seriename, str), 'Name not a string'
+        assert isinstance(author, str), 'Author not a string'
+        assert metadata is None or isinstance(metadata, dict), 'Bad format for metadata'
+        assert _insertion_date is None or isinstance(_insertion_date, datetime), 'Bad format for insertion date'
+        assert not newts.index.duplicated().any(), 'There are some duplicates in the index'
+        assert newts.index.is_monotonic_increasing, 'The index is not monotonic'
 
         newts = num2float(newts)
 
