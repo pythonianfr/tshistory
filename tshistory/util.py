@@ -135,7 +135,6 @@ def rename_series(engine, serie_map, namespace='tsh'):
     reg = schema.registry
     with engine.connect() as cn:
         for old, new in serie_map.items():
-            print('{} -> {}'.format(old, new))
             sql = reg.update().where(
                 reg.c.seriename == old
             ).values(

@@ -28,6 +28,11 @@ def engine(request):
     return create_engine(DBURI)
 
 
+@pytest.fixture(scope='session')
+def datadir():
+    return DATADIR
+
+
 @pytest.fixture(params=['tsh', 'zzz'],
                 scope='session')
 def tsh(request, engine):

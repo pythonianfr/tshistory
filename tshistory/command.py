@@ -15,7 +15,7 @@ from dateutil.parser import parse as temporal
 import pandas as pd
 
 from tshistory.tsio import TimeSerie
-from tshistory.util import fromjson
+from tshistory.util import fromjson, rename_series
 from tshistory.db import dump as dump_db, restore as restore_db
 import tshistory.schema
 
@@ -165,6 +165,27 @@ def info(db_uri):
     print(INFOFMT.format(**info))
 
 
+# series maintenance
+
+@tsh.command()
+@click.argument('db-uri')
+@click.argument('mapfile', type=click.Path(exists=True))
+@click.option('--namespace', default='tsh')
+def rename(db_uri, mapfile, namespace='tsh'):
+    """rename series by providing a map file (csv format)
+
+    map file header must be `old,new`
+    """
+    seriesmap = {
+        p.old: p.new
+        for p in pd.read_csv(mapfile).itertuples()
+    }
+    engine = create_engine(db_uri)
+    rename_series(engine, seriesmap, namespace)
+
+
+# db maintenance
+
 @tsh.command()
 @click.argument('db-uri')
 @click.argument('dump-path')
@@ -234,6 +255,8 @@ def check(db_uri, namespace='tsh'):
         assert ival.right == end
         print(idx, s, 'inserts={}, read-time={}'.format(len(hist), time() - t0))
 
+
+# migration
 
 @tsh.command(name='migrate-0.3-to-0.4')
 @click.argument('db-uri')
