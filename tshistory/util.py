@@ -71,17 +71,8 @@ def _fromjson(jsonb, tsname):
 
     result = pd.read_json(jsonb, typ='series', dtype=False)
     result.name = tsname
-    if isinstance(result.index, pd.DatetimeIndex):
-        result = num2float(result)
-        return result
-
-    # multi index case
-    columns = result.index.values.tolist()
-    columns.remove(tsname)
-    result = pd.read_json(jsonb, typ='frame',
-                          convert_dates=columns)
-    result.set_index(sorted(columns), inplace=True)
-    return num2float(result.iloc[:, 0])  # get a Series object
+    result = num2float(result)
+    return result
 
 
 class SeriesServices(object):
