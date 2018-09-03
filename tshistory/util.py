@@ -136,14 +136,6 @@ class SeriesServices(object):
             return hashlib.sha1(seriename.encode('utf-8')).hexdigest()
         return seriename
 
-    def _serialize(self, ts):
-        if ts is None:
-            return None
-        return zlib.compress(tojson(ts, self._precision).encode('utf-8'))
-
-    def _deserialize(self, ts, name):
-        return fromjson(zlib.decompress(ts).decode('utf-8'), name)
-
 
 def rename_series(engine, serie_map, namespace='tsh'):
     from tshistory.schema import tsschema

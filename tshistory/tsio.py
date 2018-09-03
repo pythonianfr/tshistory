@@ -523,8 +523,10 @@ class TimeSerie(SeriesServices):
                 'tzaware': tzaware_serie(ts),
                 'index_type': index.dtype.name,
                 'index_names': inames,
+                'index_dtype': index.dtype.str,
+                'value_dtype': ts.dtypes.str,
                 'value_type': ts.dtypes.name
-            },
+            }
         )
         regid = cn.execute(sql).inserted_primary_key[0]
         self.registry_map[seriename] = regid

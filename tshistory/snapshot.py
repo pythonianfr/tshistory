@@ -1,5 +1,9 @@
-import pandas as pd
 import zlib
+from array import array
+import struct
+
+import pandas as pd
+import numpy as np
 
 from sqlalchemy import Table, Column, Integer, ForeignKey, Index
 from sqlalchemy.sql.elements import NONE_NAME
@@ -7,10 +11,8 @@ from sqlalchemy.sql.expression import select, asc, desc
 from sqlalchemy.dialects.postgresql import BYTEA, TIMESTAMP
 
 from tshistory.util import (
-    fromjson,
     subset,
-    SeriesServices,
-    tojson
+    SeriesServices
 )
 
 TABLES = {}
@@ -55,13 +57,29 @@ class Snapshot(SeriesServices):
 
     # optimized/asymmetric de/serialisation
 
+    @property
+    def isstr(self):
+        return self.tsh.metadata(self.cn, self.seriename)['value_type'] == 'object'
+
     def _serialize(self, ts):
         if ts is None:
             return None
-        return zlib.compress(tojson(ts, self._precision).encode('utf-8')[1:-1])
+        # use `view` as a workarround for "cannot include dtype 'M' in a buffer"
+        indexes = ts.index.view(np.uint8).data.tobytes()
+        indexes_size = struct.pack('!L', len(indexes))
 
-    def _deserialize(self, bytestring):
-        return zlib.decompress(bytestring)
+        if self.isstr:
+            # string separatd by 0 and nones/nans represented as 3 (ETX)
+            END, ETX = b'\0'.decode(), b'\3'.decode()
+            # first, safety belt
+            for s in ts.values:
+                if not pd.isnull(s):
+                    assert END not in s and ETX not in s
+            values = b'\0'.join(b'\3' if pd.isnull(v) else v.encode('utf-8')
+                                for v in ts.values)
+        else:
+            values = ts.values.data.tobytes()
+        return zlib.compress(indexes_size + indexes + values)
 
     def _ensure_tz_consistency(self, ts):
         """Return timeserie with tz aware index or not depending on metadata
@@ -73,11 +91,39 @@ class Snapshot(SeriesServices):
             return ts.tz_localize('UTC')
         return ts
 
+    def _decodechunk(self, bytestring):
+        bytestring = zlib.decompress(bytestring)
+        [indexes_size] = struct.unpack('!L', bytestring[:4])
+        values_offset = indexes_size + 4
+        return bytestring[4:values_offset], bytestring[values_offset:]
+
     def _chunks_to_ts(self, chunks):
-        body = b'{' + b','.join(self._deserialize(chunk) for chunk in chunks) + b'}'
-        return self._ensure_tz_consistency(
-            fromjson(body.decode('utf-8'), self.seriename)
+        chunks = (self._decodechunk(chunk) for chunk in chunks)
+        indexchunks, valueschunks = list(zip(*chunks))
+        metadata = self.tsh.metadata(self.cn, self.seriename)
+
+        # array is a workaround for an obscure bug with pandas.isin
+        index = np.frombuffer(
+            array('d', b''.join(indexchunks)),
+            metadata['index_dtype']
         )
+
+        if self.isstr:
+            values = [v.decode('utf-8') if v != b'\3' else None
+                      for bvalues in valueschunks
+                      for v in bvalues.split(b'\0')]
+        else:
+            values = np.frombuffer(
+                b''.join(valueschunks),
+                metadata['value_dtype']
+            )
+
+        assert len(values) == len(index)
+        serie = pd.Series(values, index=index)
+        assert serie.index.is_monotonic_increasing
+        serie.name = self.seriename
+
+        return self._ensure_tz_consistency(serie)
 
     # /serialisation
 

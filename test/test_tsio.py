@@ -287,10 +287,12 @@ def test_serie_metadata(engine, tsh):
 
     initialmeta = tsh.metadata(engine, 'ts-metadata')
     assert initialmeta == {
-        'tzaware': False,
+        'index_dtype': '<M8[ns]',
+        'index_names': [],
         'index_type': 'datetime64[ns]',
-        'value_type': 'float64',
-        'index_names': []
+        'tzaware': False,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
     }
 
     tsh.update_metadata(engine, 'ts-metadata',
@@ -303,12 +305,15 @@ def test_serie_metadata(engine, tsh):
 
     tsh.update_metadata(engine, 'ts-metadata', {'tzaware': True}, internal=True)
     assert tsh.metadata(engine, 'ts-metadata') == {
-        'tzaware': True,
-        'index_type': 'datetime64[ns]',
-        'value_type': 'float64',
+        'index_dtype': '<M8[ns]',
         'index_names': [],
-        'topic': 'banana spot price'
+        'index_type': 'datetime64[ns]',
+        'topic': 'banana spot price',
+        'tzaware': True,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
     }
+
     # unbreak the serie for the second test pass :o
     tsh.update_metadata(engine, 'ts-metadata', initialmeta, internal=True)
 
@@ -547,7 +552,6 @@ def test_point_deletion(engine, tsh):
 
     assert len(tsh.get(engine, 'ts_null')) == 0
 
-    # exhibit issue with nans handling
     ts_repushed = genserie(datetime(2010, 1, 1), 'D', 11)
     ts_repushed[0:3] = np.nan
 
@@ -606,7 +610,8 @@ Freq: D
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 4, ['text'])
     tsh.insert(engine, ts_begin, 'ts_full_del_str', 'test')
 
-    ts_begin.iloc[:] = np.nan
+    ts_begin = pd.Series([np.nan] * 4, name='ts_full_del_str',
+                         index=ts_begin.index)
     tsh.insert(engine, ts_begin, 'ts_full_del_str', 'test')
 
     ts_end = genserie(datetime(2010, 1, 1), 'D', 4, ['text'])
@@ -924,7 +929,7 @@ def test_precision(engine, tsh):
 
     tsh.insert(engine, ts, 'precision', 'test')
     ts_round = tsh.get(engine, 'precision')
-    assert 0.12345678912346 == ts_round.iloc[0]
+    assert 0.12345678912345678 == ts_round.iloc[0]
 
     diff = tsh.insert(engine, ts_round, 'precision', 'test')
     assert diff is None  # the roundtriped series does not produce a diff when reinserted
