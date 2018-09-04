@@ -9,7 +9,6 @@ import json
 from pathlib2 import Path
 
 import click
-from click_plugins import with_plugins
 from sqlalchemy import create_engine, MetaData
 from dateutil.parser import parse as temporal
 import pandas as pd
@@ -68,7 +67,6 @@ def additional_restoring(path_dump, dburi):
     return
 
 
-@with_plugins(iter_entry_points('tshistory.subcommands'))
 @click.group()
 def tsh():
     pass
@@ -336,6 +334,10 @@ def migrate_zerodotthree_to_zerodotfour(db_uri, namespace='tsh', processes=1, tr
         for pid in pids:
             print('kill', pid)
             os.kill(pid, signal.SIGINT)
+
+
+for ep in iter_entry_points('tshistory.subcommands'):
+    tsh.add_command(ep.load())
 
 
 if __name__ == '__main__':
