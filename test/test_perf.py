@@ -177,7 +177,7 @@ def test_lots_of_diffs(engine, tracker, ptsh):
             for day in range(1, days + 1):
                 date = utcdt(2017, month, day)
                 serie = genserie(date, '10Min', 6 * 24)
-                with engine.connect() as cn:
+                with engine.begin() as cn:
                     tsh.insert(cn, serie, 'manydiffs',
                                'aurelien.campeas@pythonian.fr',
                                _insertion_date=date.replace(year=2018)

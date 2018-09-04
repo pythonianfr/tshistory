@@ -12,7 +12,7 @@ from tshistory.helper import tempdir
 def dump(dburi, dump_path, tsh, additional_dumping):
     engine = create_engine(dburi)
 
-    with engine.connect() as cn:
+    with engine.begin() as cn:
         logs = tsh.log(cn)
 
     with tempdir() as temp_dir:
@@ -23,7 +23,7 @@ def dump(dburi, dump_path, tsh, additional_dumping):
         pd.DataFrame(logs).to_csv(str(temp_dir / 'registry.csv'))
         for cset in logs:
             csid = cset['rev']
-            with engine.connect() as cn:
+            with engine.begin() as cn:
                 cset_diff = tsh.log(cn, diff=True, fromrev=csid, torev=csid)[0]
 
             for name in cset['names']:
@@ -57,7 +57,7 @@ def restore(out_path, dburi, tsh, read_and_insert, additional_restoring):
             with myzip.open(str(csid)) as cset_file:
                 cset_json = cset_file.read().decode('utf-8')
 
-            with engine.connect() as cn:
+            with engine.begin() as cn:
                 read_and_insert(cn, tsh, cset_json)
 
             print(str(csid) + ' / ' + str(maxrevs))

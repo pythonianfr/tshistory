@@ -16,7 +16,7 @@ SCHEMAS = {}
 meta = MetaData()
 
 def delete_schema(engine, ns):
-    with engine.connect() as cn:
+    with engine.begin() as cn:
         for subns in ('timeserie', 'snapshot'):
             cn.execute(
                 'drop schema if exists "{}.{}" cascade'.format(ns, subns)

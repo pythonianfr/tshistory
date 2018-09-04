@@ -133,7 +133,7 @@ def rename_series(engine, serie_map, namespace='tsh'):
     schema = tsschema(namespace)
 
     reg = schema.registry
-    with engine.connect() as cn:
+    with engine.begin() as cn:
         for old, new in serie_map.items():
             sql = reg.update().where(
                 reg.c.seriename == old

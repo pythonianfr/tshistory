@@ -181,7 +181,7 @@ def test_differential(engine, tsh):
     ts_longer.iloc[3] = 3.14
     ts_longer.iloc[5] = ts_begin.iloc[7]
 
-    with engine.connect() as cn:
+    with engine.begin() as cn:
         tsh.insert(cn, ts_longer, 'ts_test', 'test')
     id3 = tsh.last_id(engine, 'ts_test')
 
@@ -255,7 +255,7 @@ def test_differential(engine, tsh):
 2010-01-07    3.0
 """, tsh.get(engine, 'ts_mixte'))
 
-    with engine.connect() as cn:
+    with engine.begin() as cn:
         cn.execute('set search_path to "{0}.timeserie", {0}, public'.format(tsh.namespace))
         allts = pd.read_sql("select seriename, table_name from registry "
                             "where seriename in ('ts_test', 'ts_mixte')",
@@ -374,7 +374,7 @@ def test_bad_import(engine, tsh):
 
 def test_revision_date(engine, tsh):
     for i in range(1, 5):
-        with engine.connect() as cn:
+        with engine.begin() as cn:
             tsh.insert(cn, genserie(datetime(2017, 1, i), 'D', 3, [i]), 'revdate',
                        'test', _insertion_date=utcdt(2016, 1, i))
 
@@ -620,7 +620,7 @@ Freq: D
 
 def test_get_history(engine, tsh):
     for numserie in (1, 2, 3):
-        with engine.connect() as cn:
+        with engine.begin() as cn:
             tsh.insert(cn, genserie(datetime(2017, 1, 1), 'D', numserie), 'smallserie',
                        'aurelien.campeas@pythonian.fr',
                        _insertion_date=utcdt(2017, 2, numserie))
@@ -672,7 +672,7 @@ insertion_date             value_date
 """, diffs)
 
     for idate in histts:
-        with engine.connect() as cn:
+        with engine.begin() as cn:
             idate = idate.replace(tzinfo=pytz.timezone('UTC'))
             tsh.insert(cn, histts[idate], 'smallserie2',
                        'aurelien.campeas@pythonian.f', _insertion_date=idate)
@@ -836,7 +836,7 @@ def test_nr_gethistory(engine, tsh):
                                           freq='D'))
     idate = utcdt(2016, 1, 1)
     for i in range(5):
-        with engine.connect() as cn:
+        with engine.begin() as cn:
             tsh.insert(cn, s1 * i, 'foo',
                        'aurelien.campeas@pythonian.f',
                        _insertion_date=idate + timedelta(days=i))
@@ -948,7 +948,7 @@ def test_serie_deletion(engine, tsh):
 
     seriecount, csetcount, csetseriecount = assert_structures(engine, tsh)
 
-    with engine.connect() as cn:
+    with engine.begin() as cn:
         tsh.delete(cn, 'deleteme')
 
     assert not tsh.exists(engine, 'deleteme')
@@ -1016,7 +1016,7 @@ insertion_date             value_date
 """, h)
 
     csid = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3))
-    with engine.connect() as cn:
+    with engine.begin() as cn:
         tsh.strip(cn, 'xserie', csid)
 
     assert_hist("""
