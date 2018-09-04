@@ -238,7 +238,9 @@ class TimeSerie(SeriesServices):
                     vimap[vdate] = idate
                     vvmap[vdate] = value
 
-        return subset(pd.Series(vvmap), from_value_date, to_value_date)
+        ts = subset(pd.Series(vvmap), from_value_date, to_value_date)
+        ts.name = seriename
+        return ts
 
     def exists(self, cn, seriename):
         return self._get_ts_table(cn, seriename) is not None

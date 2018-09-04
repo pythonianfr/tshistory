@@ -127,6 +127,7 @@ def test_differential(engine, tsh):
     with pytest.raises(ValueError):
         assert tsh.interval(engine, 'nosuchts')
 
+    fetched = tsh.get(engine, 'ts_test')
     assert_df("""
 2010-01-01    0.0
 2010-01-02    1.0
@@ -138,7 +139,8 @@ def test_differential(engine, tsh):
 2010-01-08    7.0
 2010-01-09    8.0
 2010-01-10    9.0
-""", tsh.get(engine, 'ts_test'))
+""", fetched)
+    assert fetched.name == 'ts_test'
 
     # we should detect the emission of a message
     tsh.insert(engine, ts_begin, 'ts_test', 'babar')
@@ -1104,6 +1106,7 @@ insertion_date             value_date
 """, hist)
 
     deltas = tsh.get_delta(engine,  'republication', delta=timedelta(hours=3))
+    assert deltas.name == 'republication'
 
     assert_df("""
 2015-01-01 03:00:00+00:00    3.0
