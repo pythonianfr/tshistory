@@ -1,5 +1,8 @@
+import os, signal
 from pkg_resources import iter_entry_points
 import logging
+from time import time
+import random
 
 from dateutil import parser
 import json
@@ -205,6 +208,112 @@ def init_db(db_uri, reset=False, namespace='tsh'):
         schem.meta = MetaData()
 
     schem.create(engine)
+
+
+@tsh.command(name='check')
+@click.argument('db-uri')
+@click.option('--namespace', default='tsh')
+def check(db_uri, namespace='tsh'):
+    "coherence checks of the db"
+    e = create_engine(db_uri)
+    sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
+    series = [row.seriename for row in e.execute(sql)]
+
+    tsh = TimeSerie()
+    for idx, s in enumerate(series):
+        t0 = time()
+        hist = tsh.get_history(e, s)
+        start, end = None, None
+        for ts in hist.values():
+            cmin = ts.index.min()
+            cmax = ts.index.max()
+            start = min(start or cmin, cmin)
+            end = max(end or cmax, cmax)
+        ival = tsh.interval(e, s)
+        assert ival.left == start
+        assert ival.right == end
+        print(idx, s, 'inserts={}, read-time={}'.format(len(hist), time() - t0))
+
+
+@tsh.command(name='migrate-0.3-to-0.4')
+@click.argument('db-uri')
+@click.option('--namespace', default='tsh')
+@click.option('--processes', default=1)
+@click.option('--tryserie', default=None)
+def migrate_zerodotthree_to_zerodotfour(db_uri, namespace='tsh', processes=1, tryserie=None):
+    """ in-place migration for going from 0.3 to 0.4
+
+    Will populate the start/end fields on series tables and
+    update the chunk representation on snapshots tables.
+    """
+    from tshistory.migration import SnapshotMigrator
+    if tryserie:
+        series = [tryserie]
+    else:
+        engine = create_engine(db_uri)
+        sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
+        series = [row.seriename for row in engine.execute(sql)]
+        engine.dispose()
+
+    def _migrate(seriename):
+        e = create_engine(db_uri, pool_size=1)
+        tsh = TimeSerie(namespace)
+        with e.begin() as cn:
+            m = SnapshotMigrator(cn, tsh, seriename)
+            m.migratechunks()
+        with e.begin() as cn:
+            m = SnapshotMigrator(cn, tsh, seriename)
+            m.migrateseries()
+        e.dispose()
+
+    def migrate(seriename):
+        try:
+            _migrate(seriename)
+        except Exception:
+            import traceback as tb
+            tb.print_exc()
+            print(seriename, 'FAIL')
+
+    def run(proc, series):
+        seriescount = len(series)
+        pid = os.getpid()
+        for idx, ts in enumerate(series, 1):
+            print('migrate {} proc: {} [{}/{}]'.format(ts, proc, idx, seriescount))
+            migrate(ts)
+
+    if processes == 1:
+        run(series)
+        return
+
+    def chunks(l, n):
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+
+    # try to distribute the payload randomly as in practice it is definitely
+    # *not* evenly dsitributed along the lexical order ...
+    random.shuffle(series)
+    chunks = list(chunks(series, len(series) // processes))
+    print('running with {} processes'.format(len(chunks)))
+
+    pids = []
+    for idx, chunk in enumerate(chunks):
+        pid = os.fork()
+        if not pid:
+            # please the eyes
+            chunk.sort()
+            run(idx, chunk)
+            return
+        pids.append(pid)
+
+    try:
+        for pid in pids:
+            print('waiting for', pid)
+            os.waitpid(pid, 0)
+    except KeyboardInterrupt:
+        for pid in pids:
+            print('kill', pid)
+            os.kill(pid, signal.SIGINT)
+
 
 if __name__ == '__main__':
     tsh()
