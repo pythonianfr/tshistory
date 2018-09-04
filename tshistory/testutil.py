@@ -47,13 +47,13 @@ def assert_group_equals(g1, g2):
 
 def assert_structures(engine, tsh):
     seriecount = engine.execute(
-        'select count(*) from {}.registry'.format(tsh.namespace)
+        'select count(*) from "{}".registry'.format(tsh.namespace)
     ).scalar()
     csetcount = engine.execute(
-        'select count(*) from {}.changeset'.format(tsh.namespace)
+        'select count(*) from "{}".changeset'.format(tsh.namespace)
     ).scalar()
     csetseriecount = engine.execute(
-        'select count(*) from {}.changeset_series'.format(tsh.namespace)
+        'select count(*) from "{}".changeset_series'.format(tsh.namespace)
     ).scalar()
     assert csetcount == csetseriecount
     return seriecount, csetcount, csetseriecount
