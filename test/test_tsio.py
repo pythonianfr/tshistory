@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 
 from tshistory.snapshot import Snapshot
-from tshistory.util import rename_series
+from tshistory.util import rename_series, threadpool
+from tshistory.tsio import TimeSerie
 from tshistory.testutil import (
     assert_df,
     assert_hist,
@@ -1242,3 +1243,29 @@ def test_index_order(engine, tsh):
     with pytest.raises(AssertionError):
         tsh.insert(engine, ts.sort_index(ascending=False),
                    'test_order', 'babar')
+
+
+def test_parallel(engine, tsh):
+    ts = genserie(datetime(2010, 1, 1), 'D', 10)
+
+    pool = threadpool(4)
+
+    args = [
+        (ts, 'a', 'aurelien'),
+        (ts, 'b', 'arnaud'),
+        (ts, 'c', 'alain'),
+        (ts, 'd', 'andre')
+    ]
+
+    errors = []
+    def insert(ts, name, author):
+        tsh = TimeSerie()
+        with engine.begin() as cn:
+            try:
+                tsh.insert(cn, ts, name, author)
+            except Exception as e:
+                errors.append(e)
+
+    pool(insert, args)
+    # we got a deadlock
+    assert len(errors)
