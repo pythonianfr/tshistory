@@ -1258,8 +1258,9 @@ def test_parallel(engine, tsh):
     ]
 
     errors = []
+    ns = tsh.namespace
     def insert(ts, name, author):
-        tsh = TimeSerie()
+        tsh = TimeSerie(namespace=ns)
         with engine.begin() as cn:
             try:
                 tsh.insert(cn, ts, name, author)
@@ -1267,5 +1268,7 @@ def test_parallel(engine, tsh):
                 errors.append(e)
 
     pool(insert, args)
-    # we got a deadlock
-    assert len(errors)
+    assert not len(errors)
+
+    for name in 'abcd':
+        assert len(tsh.get(engine, name))

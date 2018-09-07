@@ -30,6 +30,7 @@ class TimeSerie(SeriesServices):
     metadatacache = None
     registry_map = None
     serie_tablename = None
+    create_lock_id = None
 
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
@@ -38,6 +39,7 @@ class TimeSerie(SeriesServices):
         self.metadatacache = {}
         self.registry_map = {}
         self.serie_tablename = {}
+        self.create_lock_id = sum(ord(c) for c in namespace)
 
     def insert(self, cn, newts, seriename, author,
                metadata=None,
@@ -415,6 +417,11 @@ class TimeSerie(SeriesServices):
         # initial insertion
         if len(newts) == 0:
             return None
+        # at creation time we take an exclusive lock to avoid
+        # a deadlock on created tables against the changeset-series fk
+        cn.execute(
+            'select pg_advisory_xact_lock({})'.format(self.create_lock_id)
+        )
         self._register_serie(cn, seriename, newts)
         snapshot = Snapshot(cn, self, seriename)
         csid = self._newchangeset(cn, author, insertion_date, metadata)
