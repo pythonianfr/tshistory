@@ -135,6 +135,7 @@ def rename_series(engine, serie_map, namespace='tsh'):
     reg = schema.registry
     with engine.begin() as cn:
         for old, new in serie_map.items():
+            print('rename', old, '->', new)
             sql = reg.update().where(
                 reg.c.seriename == old
             ).values(
@@ -142,3 +143,15 @@ def rename_series(engine, serie_map, namespace='tsh'):
             )
             cn.execute(sql)
 
+
+def delete_series(engine, series, namespace='tsh'):
+    from tshistory.tsio import TimeSerie
+    tsh = TimeSerie(namespace=namespace)
+
+    for name in series:
+        with engine.begin() as cn:
+            if not tsh.exists(cn, name):
+                print('skipping unknown', name)
+                continue
+            print('delete', name)
+            tsh.delete(cn, name)

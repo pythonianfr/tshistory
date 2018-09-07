@@ -30,3 +30,19 @@ def test_rename(engine, cli, datadir):
 
     for name in ('aquux', 'anew-foo', 'anew-bar'):
         assert tsh.get(engine, name) is not None
+
+
+def test_delete(engine, cli, datadir):
+    serie = genserie(datetime(2020, 1, 1), 'D', 3)
+
+    tsh = TimeSerie()
+    tsh.insert(engine, serie, 'bfoo', 'Babar')
+    tsh.insert(engine, serie, 'bbar', 'Babar')
+    tsh.insert(engine, serie, 'bquux', 'Babar')
+
+    r = cli('delete', engine.url, datadir / 'delete.csv')
+
+    tsh = TimeSerie()
+    assert tsh.get(engine, 'bfoo') is None
+    assert tsh.get(engine, 'bbar') is None
+    assert tsh.get(engine, 'bquux') is not None
