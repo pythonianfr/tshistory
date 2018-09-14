@@ -1272,3 +1272,19 @@ def test_parallel(engine, tsh):
 
     for name in 'abcd':
         assert len(tsh.get(engine, name))
+
+
+def test_chunky_array(engine, tsh):
+    ts = pd.Series(
+        [3, 2, 1],
+        index=[utcdt(2018, 1, i) for i in reversed(range(1, 4))]
+    )
+
+    assert ts.index.flags['C_CONTIGUOUS']
+    ts = ts.sort_index()
+    assert not ts.index.flags['C_CONTIGUOUS']
+
+    with engine.begin() as cn:
+        with pytest.raises(ValueError) as v:
+            tsh.insert(cn, ts, 'chunky', 'Babar')
+        assert v.value.args[0] == 'To change to a dtype of a different size, the array must be C-contiguous'
