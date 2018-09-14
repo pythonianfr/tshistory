@@ -63,8 +63,11 @@ def tojson(ts, precision=1e-14):
                       double_precision=-int(math.log10(precision)))
 
 
-def fromjson(jsonb, tsname):
-    return _fromjson(jsonb, tsname).fillna(value=np.nan)
+def fromjson(jsonb, tsname, tzaware=False):
+    series = _fromjson(jsonb, tsname).fillna(value=np.nan)
+    if tzaware:
+        series.index = series.index.tz_localize('utc')
+    return series
 
 
 def _fromjson(jsonb, tsname):
