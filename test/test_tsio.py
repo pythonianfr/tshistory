@@ -1285,6 +1285,12 @@ def test_chunky_array(engine, tsh):
     assert not ts.index.flags['C_CONTIGUOUS']
 
     with engine.begin() as cn:
-        with pytest.raises(ValueError) as v:
-            tsh.insert(cn, ts, 'chunky', 'Babar')
-        assert v.value.args[0] == 'To change to a dtype of a different size, the array must be C-contiguous'
+        tsh.insert(cn, ts, 'chunky', 'Babar')
+
+    # we're ok now
+    ts_out = tsh.get(engine, 'chunky')
+    assert_df("""
+2018-01-01 00:00:00+00:00    1.0
+2018-01-02 00:00:00+00:00    2.0
+2018-01-03 00:00:00+00:00    3.0
+""", ts_out)
