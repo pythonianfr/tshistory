@@ -342,11 +342,6 @@ def test_bad_import(engine, tsh):
     result = tsh.get(engine, 'SND_SC')
     assert result.dtype == 'float64'
 
-    # insertion of empty ts
-    ts = pd.Series(name='truc', dtype='object')
-    tsh.insert(engine, ts, 'empty_ts', 'test')
-    assert tsh.get(engine, 'empty_ts') is None
-
     # nan in ts
     # all na
     ts = genserie(datetime(2010, 1, 10), 'D', 10, [np.nan], name='truc')
@@ -1294,3 +1289,9 @@ def test_chunky_array(engine, tsh):
 2018-01-02 00:00:00+00:00    2.0
 2018-01-03 00:00:00+00:00    3.0
 """, ts_out)
+
+
+def test_null_serie(engine, tsh):
+    ts = pd.Series()
+
+    tsh.insert(engine, ts, 'null', 'Babar')
