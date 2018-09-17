@@ -342,9 +342,6 @@ def test_bad_import(engine, tsh):
     result = tsh.get(engine, 'SND_SC')
     assert result.dtype == 'float64'
 
-    # get_ts with name not in database
-    assert tsh.get(engine, 'inexisting_name', 'test') is None
-
 
 def test_revision_date(engine, tsh):
     for i in range(1, 5):
@@ -1293,3 +1290,7 @@ def test_na(engine, tsh):
 2010-01-18    3.0
 2010-01-19    3.0
 """, result)
+
+
+def test_no_series(engine, tsh):
+    assert tsh.get(engine, 'inexisting_name') is None
