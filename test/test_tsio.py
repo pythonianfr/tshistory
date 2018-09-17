@@ -342,30 +342,6 @@ def test_bad_import(engine, tsh):
     result = tsh.get(engine, 'SND_SC')
     assert result.dtype == 'float64'
 
-    # nan in ts
-    # all na
-    ts = genserie(datetime(2010, 1, 10), 'D', 10, [np.nan], name='truc')
-    tsh.insert(engine, ts, 'test_nan', 'test')
-    assert len(tsh.get(engine, 'test_nan')) == 0
-    assert len(tsh.get(engine, 'test_nan', _keep_nans=True)) == 10
-
-    # mixe na
-    ts = pd.Series([np.nan] * 5 + [3] * 5,
-                   index=pd.date_range(start=datetime(2010, 1, 10),
-                                       freq='D', periods=10), name='truc')
-    tsh.insert(engine, ts, 'test_nan', 'test')
-    result = tsh.get(engine, 'test_nan')
-
-    tsh.insert(engine, ts, 'test_nan', 'test')
-    result = tsh.get(engine, 'test_nan')
-    assert_df("""
-2010-01-15    3.0
-2010-01-16    3.0
-2010-01-17    3.0
-2010-01-18    3.0
-2010-01-19    3.0
-""", result)
-
     # get_ts with name not in database
     assert tsh.get(engine, 'inexisting_name', 'test') is None
 
@@ -1295,3 +1271,25 @@ def test_null_serie(engine, tsh):
     ts = pd.Series()
 
     tsh.insert(engine, ts, 'null', 'Babar')
+
+
+def test_na(engine, tsh):
+    # all na
+    ts = genserie(datetime(2010, 1, 10), 'D', 10, [np.nan], name='truc')
+    tsh.insert(engine, ts, 'test_nan', 'test')
+    assert len(tsh.get(engine, 'test_nan')) == 0
+    assert len(tsh.get(engine, 'test_nan', _keep_nans=True)) == 10
+
+    # mix na
+    ts = pd.Series([np.nan] * 5 + [3] * 5,
+                   index=pd.date_range(start=datetime(2010, 1, 10),
+                                       freq='D', periods=10), name='truc')
+    tsh.insert(engine, ts, 'test_nan', 'test')
+    result = tsh.get(engine, 'test_nan')
+    assert_df("""
+2010-01-15    3.0
+2010-01-16    3.0
+2010-01-17    3.0
+2010-01-18    3.0
+2010-01-19    3.0
+""", result)
