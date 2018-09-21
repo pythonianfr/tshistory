@@ -260,15 +260,20 @@ def check(db_uri, namespace='tsh'):
         t0 = time()
         hist = tsh.get_history(e, s)
         start, end = None, None
+        mon = True
         for ts in hist.values():
             cmin = ts.index.min()
             cmax = ts.index.max()
             start = min(start or cmin, cmin)
             end = max(end or cmax, cmax)
+            mon = ts.index.is_monotonic_increasing
         ival = tsh.interval(e, s)
         assert ival.left == start
         assert ival.right == end
-        print(idx, s, 'inserts={}, read-time={}'.format(len(hist), time() - t0))
+        monmsg = '' if mon else 'non-monotonic'
+        print(idx, s, 'inserts={}, read-time={} {}'.format(
+            len(hist), time() - t0, monmsg)
+        )
 
 
 # migration
