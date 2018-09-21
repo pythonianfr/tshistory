@@ -172,7 +172,7 @@ class TimeSerie(SeriesServices):
             {'fromdate': from_value_date, 'todate': to_value_date}
         ).fetchall()
         if not revs:
-            return
+            return {}
 
         if diffmode:
             # compute the previous serie value

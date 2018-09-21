@@ -685,7 +685,7 @@ insertion_date             value_date
     tsc = tsh.get_history(engine, 'smallserie',
                           from_insertion_date=datetime(2017, 2, 4),
                           to_insertion_date=datetime(2017, 2, 4))
-    assert tsc is None
+    assert tsc == {}
 
     tsc = tsh.get_history(engine, 'smallserie',
                           from_insertion_date=datetime(2016, 2, 1),
@@ -700,7 +700,7 @@ insertion_date             value_date
     tsc = tsh.get_history(engine, 'smallserie',
                           from_insertion_date=datetime(2016, 2, 1),
                           to_insertion_date=datetime(2016, 12, 31))
-    assert tsc is None
+    assert tsc == {}
 
     # restrictions on value dates
     tsc = tsh.get_history(engine, 'smallserie',
@@ -734,6 +734,9 @@ insertion_date             value_date
 2017-02-03 00:00:00+00:00  2017-01-01    0.0
                            2017-01-02    1.0
 """, tsc)
+
+    tsc = tsh.get_history(engine, 'no-such-series')
+    assert tsc is None
 
 
 def test_history_delta(engine, tsh):
@@ -1195,12 +1198,13 @@ insertion_date             value_date
 2015-01-03 04:00:00+00:00    4.0
 """, deltas)
 
-    # exhibit issue with out-of-bounds from/to constraint
-    with pytest.raises(AttributeError):
-        deltas = tsh.get_delta(engine, 'repu2',
-                               delta=timedelta(hours=3),
-                               from_value_date=utcdt(2014, 1, 1, 6),
-                               to_value_date=utcdt(2014, 1, 3, 4))
+    # out-of-bounds from/to constraint
+    deltas = tsh.get_delta(engine, 'repu2',
+                           delta=timedelta(hours=3),
+                           from_value_date=utcdt(2014, 1, 1, 6),
+                           to_value_date=utcdt(2014, 1, 3, 4))
+    assert len(deltas) == 0
+    assert isinstance(deltas, pd.Series)
 
 
 def test_rename(engine, tsh):
