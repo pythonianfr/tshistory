@@ -1180,6 +1180,20 @@ insertion_date             value_date
                            2015-01-04 06:00:00+00:00    6.0
 """, hist)
 
+    # constrain the boundaries
+    deltas = tsh.get_delta(engine, 'repu2',
+                           delta=timedelta(hours=3),
+                           from_value_date=utcdt(2015, 1, 1, 6),
+                           to_value_date=utcdt(2015, 1, 3, 4))
+    assert_df("""
+2015-01-01 06:00:00+00:00    6.0
+2015-01-02 03:00:00+00:00    3.0
+2015-01-02 04:00:00+00:00    4.0
+2015-01-02 05:00:00+00:00    5.0
+2015-01-02 06:00:00+00:00    6.0
+2015-01-03 03:00:00+00:00    3.0
+2015-01-03 04:00:00+00:00    4.0
+""", deltas)
 
 def test_rename(engine, tsh):
     if tsh.namespace == 'zzz':
