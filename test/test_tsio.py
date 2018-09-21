@@ -1195,6 +1195,14 @@ insertion_date             value_date
 2015-01-03 04:00:00+00:00    4.0
 """, deltas)
 
+    # exhibit issue with out-of-bounds from/to constraint
+    with pytest.raises(AttributeError):
+        deltas = tsh.get_delta(engine, 'repu2',
+                               delta=timedelta(hours=3),
+                               from_value_date=utcdt(2014, 1, 1, 6),
+                               to_value_date=utcdt(2014, 1, 3, 4))
+
+
 def test_rename(engine, tsh):
     if tsh.namespace == 'zzz':
         return  # this test can only run once
