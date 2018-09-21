@@ -1031,6 +1031,9 @@ def test_long_name(engine, tsh):
 
 
 def test_get_delta(engine, tsh):
+    assert tsh.get_delta(engine, 'no-such-series',
+                         delta=pd.Timedelta(days=2)) is None
+
     for idate in pd.DatetimeIndex(start=utcdt(2015, 1, 1),
                                   end=utcdt(2015, 1, 1, 3),
                                   freq='H'):

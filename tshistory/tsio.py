@@ -231,6 +231,8 @@ class TimeSerie(SeriesServices):
             from_value_date=from_value_date,
             to_value_date=to_value_date
         )
+        if histo is None:
+            return None
 
         vimap = {}
         vvmap = {}
