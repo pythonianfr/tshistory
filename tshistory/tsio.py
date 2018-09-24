@@ -242,7 +242,7 @@ class TimeSerie(SeriesServices):
                     vimap[vdate] = idate
                     vvmap[vdate] = value
 
-        ts = subset(pd.Series(vvmap), from_value_date, to_value_date)
+        ts = subset(pd.Series(vvmap).sort_index(), from_value_date, to_value_date)
         ts.name = seriename
         return ts
 
