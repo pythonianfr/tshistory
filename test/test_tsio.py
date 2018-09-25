@@ -1323,9 +1323,9 @@ def test_rename(engine, tsh):
 def test_index_order(engine, tsh):
     ts = genserie(datetime(2020, 1, 1), 'D', 3)
 
-    with pytest.raises(AssertionError):
-        tsh.insert(engine, ts.sort_index(ascending=False),
-                   'test_order', 'babar')
+    # will be sorted for us as needed
+    tsh.insert(engine, ts.sort_index(ascending=False),
+               'test_order', 'babar')
 
 
 def test_parallel(engine, tsh):

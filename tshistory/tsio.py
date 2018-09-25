@@ -57,7 +57,9 @@ class TimeSerie(SeriesServices):
         assert metadata is None or isinstance(metadata, dict), 'Bad format for metadata'
         assert _insertion_date is None or isinstance(_insertion_date, datetime), 'Bad format for insertion date'
         assert not newts.index.duplicated().any(), 'There are some duplicates in the index'
-        assert newts.index.is_monotonic_increasing, 'The index is not monotonic'
+
+        if not newts.index.is_monotonic_increasing:
+            newts = newts.sort_index()
 
         newts = num2float(newts)
 
