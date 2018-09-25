@@ -136,6 +136,7 @@ class SeriesServices(object):
 def rename_series(engine, serie_map, namespace='tsh'):
     from tshistory.schema import tsschema
     schema = tsschema(namespace)
+    schema.define()
 
     reg = schema.registry
     with engine.begin() as cn:
