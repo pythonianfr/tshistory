@@ -15,7 +15,6 @@ import pandas as pd
 
 from tshistory.tsio import TimeSerie
 from tshistory.util import fromjson, rename_series, delete_series
-from tshistory.db import dump as dump_db, restore as restore_db
 import tshistory.schema
 
 
@@ -41,27 +40,6 @@ def format_rev(rev):
         fmt += 'series:   {names}'
 
     return fmt.format(**rev)
-
-
-# * for the restore command
-
-def read_and_insert(cn, tsh, json_cset):
-    rev_data = json.loads(json_cset)
-    date = parser.parse(rev_data['date'])
-    author = rev_data['author']
-    with tsh.newchangeset(cn, author, _insertion_date=date):
-        for name in rev_data['names']:
-            ts = fromjson(rev_data['diff'][name], name)
-            ts.name = name
-            tsh.insert(cn, ts, name)
-
-
-def additional_dumping(dburi, dump_path):
-    return
-
-
-def additional_restoring(path_dump, dburi):
-    return
 
 
 @click.group()
@@ -198,31 +176,6 @@ def delete(db_uri, deletefile, namespace='tsh'):
 
 
 # db maintenance
-
-@tsh.command()
-@click.argument('db-uri')
-@click.argument('dump-path')
-def dump(db_uri, dump_path):
-    """dump all time series revisions in a zip file"""
-    dump_path = Path(dump_path)
-    out_path = dump_db(db_uri, dump_path, TSH, additional_dumping)
-    print('db dump avaible at %s' % out_path)
-
-
-def verbose_logs():
-    logger = logging.getLogger('tshistory.tsio')
-    logger.addHandler(logging.StreamHandler())
-    logger.setLevel(logging.INFO)
-
-
-@tsh.command()
-@click.argument('out-path')
-@click.argument('db-uri')
-def restore(out_path, db_uri):
-    """restore zip file in a freshly initialized database (see init_db command)"""
-    verbose_logs()
-    restore_db(out_path, db_uri, TSH, read_and_insert, additional_restoring)
-
 
 @tsh.command(name='init-db')
 @click.argument('db-uri')
