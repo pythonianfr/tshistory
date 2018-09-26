@@ -10,7 +10,7 @@ setup(name='tshistory',
 
       packages=['tshistory'],
       install_requires=[
-          'pandas', # up to 0.23
+          'pandas ~= 0.23.4',
           'dateutils',
           'sqlalchemy',
           'click',
