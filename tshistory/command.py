@@ -3,10 +3,10 @@ from pkg_resources import iter_entry_points
 import logging
 from time import time
 import random
+from pathlib import Path
 
 from dateutil import parser
 import json
-from pathlib2 import Path
 
 import click
 from sqlalchemy import create_engine, MetaData

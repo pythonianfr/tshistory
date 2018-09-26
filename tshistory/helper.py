@@ -1,8 +1,7 @@
 import tempfile
 import shutil
 from contextlib import contextmanager
-
-from pathlib2 import Path
+from pathlib import Path
 
 
 @contextmanager
