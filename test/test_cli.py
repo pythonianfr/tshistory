@@ -8,7 +8,8 @@ def test_info(engine, cli, tsh):
     serie = genserie(datetime(2020, 1, 1), 'D', 3)
     tsh.insert(engine, serie, 'someseries', 'Babar')
 
-    r = cli('info', engine.url)
+    r = cli('info', engine.url,
+            namespace=tsh.namespace)
     out = r.output.strip().split('\n')
 
     assert len(out) == 3

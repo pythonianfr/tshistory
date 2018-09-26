@@ -19,9 +19,6 @@ from tshistory.db import dump as dump_db, restore as restore_db
 import tshistory.schema
 
 
-TSH = TimeSerie()
-
-
 # Override points
 # * for the log command
 
@@ -154,11 +151,12 @@ series names:    {serie names}
 
 @tsh.command()
 @click.argument('db-uri')
-def info(db_uri):
+@click.option('--namespace', default='tsh')
+def info(db_uri, namespace='tsh'):
     """show global statistics of the repository"""
     engine = create_engine(db_uri)
 
-    info = TSH.info(engine)
+    info = TimeSerie(namespace).info(engine)
     info['serie names'] = ', '.join(info['serie names'])
     print(INFOFMT.format(**info))
 
