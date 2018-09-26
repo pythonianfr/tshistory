@@ -29,7 +29,7 @@ and `tshistory` provides two things:
 * a base python API which abstracts away the underlying storage
 
 * a postgres model, which emphasizes the compact storage of successive
-  states of series (not unlike modern version control system)
+  states of series
 
 The core idea of tshistory is to handle successive versions of
 timeseries as they grow in time, allowing to get older states of any
@@ -60,98 +60,131 @@ From this you're ready to go !
 However here's a simple example:
 
 ```python
- from datetime import datetime
- from sqlalchemy import create_engine
- import pandas as pd
- from tshistory.tsio import TimeSerie
-
- engine = create_engine('postgres://me:password@localhost/mydb')
- tsh = TimeSerie()
-
- serie = pd.Series([1, 2, 3],
-                  pd.date_range(start=datetime(2017, 1, 1),
-                                freq='D', periods=3))
+ >>> from sqlalchemy import create_engine
+ >>> import pandas as pd
+ >>> from tshistory.tsio import TimeSerie
+ >>>
+ >>> engine = create_engine('postgres://me:password@localhost/mydb')
+ >>> tsh = TimeSerie()
+ >>>
+ >>> series = pd.Series([1, 2, 3],
+ ...                    pd.date_range(start=pd.Timestamp(2017, 1, 1),
+ ...                                  freq='D', periods=3))
  # db insertion
- tsh.insert(engine, serie, 'my_serie', 'babar@pythonian.fr')
+ >>> tsh.insert(engine, series, 'my_series', 'babar@pythonian.fr')
+ 2017-01-01    1.0
+ 2017-01-02    2.0
+ 2017-01-03    3.0
+ Freq: D, Name: my_series, dtype: float64
 
- # it looks like this:
- assert """
-2017-01-01    1.0
-2017-01-02    2.0
-2017-01-03    3.0
-Freq: D, dtype: float64
-""".strip() == serie.to_string().strip()
+ # note how our integers got turned into floats
+ # (there are no provisions to handle integer series as of today)
 
- # db retrieval
- assert tsh.get(engine, 'my_serie') == serie
+ # retrieval
+ >>> tsh.get(engine, 'my_series')
+ 2017-01-01    1.0
+ 2017-01-02    2.0
+ 2017-01-03    3.0
+ Name: my_series, dtype: float64
 ```
 
-## Appending data
+## Updating a series
 
-This is good. Now, let's add more:
+This is good. Now, let's insert more:
 
 ```python
- serie = pd.Series([7, 8, 9],
-                  pd.date_range(start=datetime(2017, 1, 3),
-                                freq='D', periods=3))
+ >>> series = pd.Series([2, 7, 8, 9],
+ ...                    pd.date_range(start=pd.Timestamp(2017, 1, 2),
+ ...                                  freq='D', periods=4))
  # db insertion
- tsh.insert(engine, serie, 'my_serie', 'babar@pythonian.fr')
+ >>> tsh.insert(engine, series, 'my_series', 'babar@pythonian.fr')
+ 2017-01-03    7.0
+ 2017-01-04    8.0
+ 2017-01-05    9.0
+ Name: my_series, dtype: float64
+
+ # you get back the *new information* you put inside
+ # and this is why the `2` doesn't appear (it was already put
+ # there in the first step)
 
  # db retrieval
- stored = tsh.get(engine, 'my_serie')
-
- assert """
-2017-01-01    1
-2017-01-02    2
-2017-01-03    7
-2017-01-04    8
-2017-01-04    9
-Freq: D
-""".strip() == stored.to_string().strip()
+ >>> tsh.get(engine, 'my_series')
+2017-01-01    1.0
+2017-01-02    2.0
+2017-01-03    7.0
+2017-01-04    8.0
+2017-01-05    9.0
+Name: my_series, dtype: float64
 ```
 
-It is important to note that the third value was replaced, and the two
-last values were just appended.
+It is important to note that the third value was *replaced*, and the two
+last values were just *appended*.
+
+As noted the point at `2017-1-2` wasn't a new information so it was
+just ignored.
+
 
 ## Retrieving history
 
 We can access the whole history (or parts of it) in one call:
 
 ```python
- history = tsh.get_history(engine, 'my_serie')
-
- assert """
-insertion_date              value_date
-2017-11-20 15:29:35.210535  2017-01-01    1.0
-                            2017-01-02    2.0
-                            2017-01-03    3.0
-2017-11-20 15:32:25.160935  2017-01-01    1.0
-                            2017-01-02    2.0
-                            2017-01-03    7.0
-                            2017-01-04    8.0
-                            2017-01-05    9.0
-""".strip() == history.to_string().strip()
+ >>> history = tsh.get_history(engine, 'my_series')
+ >>>
+ >>> for idate, series in history.items(): # it's a dict
+ ...     print('insertion date:', idate)
+ ...     print(series)
+ ...
+ insertion date: 2018-09-26 17:10:36.988920+02:00
+ 2017-01-01    1.0
+ 2017-01-02    2.0
+ 2017-01-03    3.0
+ Name: my_series, dtype: float64
+ insertion date: 2018-09-26 17:12:54.508252+02:00
+ 2017-01-01    1.0
+ 2017-01-02    2.0
+ 2017-01-03    7.0
+ 2017-01-04    8.0
+ 2017-01-05    9.0
+ Name: my_series, dtype: float64
 ```
 
-Note how this shows the full serie state for each insertion date. It
-is possible to show the differences only:
+Note how this shows the full serie state for each insertion date.
+Also the insertion date is timzeone aware.
+
+It is possible to show the differences only:
 
 ```python
- diffs = tsh.get_history(engine, 'my_serie', diffmode=True)
-
- assert """
-insertion_date              value_date
-2017-11-20 15:29:35.210535  2017-01-01    1.0
-                            2017-01-02    2.0
-                            2017-01-03    3.0
-2017-11-20 15:32:25.160935  2017-01-03    7.0
-                            2017-01-04    8.0
-                            2017-01-05    9.0
-""".strip() == diffs.to_string().strip()
+ >>>diffs = tsh.get_history(engine, 'my_series', diffmode=True)
+ >>> for idate, series in tsh.get_history(engine, 'ts', diffmode=True).items():
+ ...   print('insertion date:', idate)
+ ...   print(series)
+ ...
+ insertion date: 2018-09-26 17:10:36.988920+02:00
+ 2017-01-01    1.0
+ 2017-01-02    2.0
+ 2017-01-03    3.0
+ Name: my_series, dtype: float64
+ insertion date: 2018-09-26 17:12:54.508252+02:00
+ 2017-01-03    7.0
+ 2017-01-04    8.0
+ 2017-01-05    9.0
+ Name: my_series, dtype: float64
 ```
 
-# Command line
+You can see a series metadata:
 
+```python
+ >>> tsh.metadata(engine, 'my_series')
+ {'tzaware': False, 'index_type': 'datetime64[ns]', 'value_type': 'float64',
+ 'index_dtype': '<M8[ns]', 'index_names': [], 'value_dtype': '<f8'}
+```
+
+We built a series with naive time stamps, but timezone-aware
+timestamps work well (and it is advised to use them !).
+
+
+# Command line
 
 ## Basic operations
 
@@ -166,13 +199,12 @@ guidelines:
    --help  Show this message and exit.
 
 Commands:
-  dump     dump all time series revisions in a zip file
+  check    coherence checks of the db
   get      show a serie in its current state
   history  show a serie full history
   info     show global statistics of the repository
   init-db  initialize an new db.
   log      show revision history of entire repository or...
-  restore  restore zip file in a freshly initialized...
   view     visualize time series through the web
 ```
 
