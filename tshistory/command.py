@@ -255,7 +255,7 @@ def check(db_uri, namespace='tsh'):
     sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
     series = [row.seriename for row in e.execute(sql)]
 
-    tsh = TimeSerie()
+    tsh = TimeSerie(namespace)
     for idx, s in enumerate(series):
         t0 = time()
         hist = tsh.get_history(e, s)

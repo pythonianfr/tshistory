@@ -17,6 +17,17 @@ def test_info(engine, cli, tsh):
     assert out[2].startswith('series names:')
 
 
+def test_check(engine, cli, tsh):
+    serie = genserie(datetime(2020, 1, 1), 'D', 3)
+    tsh.insert(engine, serie, 'things', 'Babar')
+    tsh.insert(engine, serie, 'other_things', 'Babar')
+
+    r = cli('check', engine.url,
+            namespace=tsh.namespace)
+    assert 'things inserts=1, read-time=' in r.output
+    assert 'other_things inserts=1, read-time=' in r.output
+
+
 def test_rename(engine, cli, datadir, tsh):
     serie = genserie(datetime(2020, 1, 1), 'D', 3)
 
