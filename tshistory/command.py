@@ -199,12 +199,16 @@ def init_db(db_uri, reset=False, namespace='tsh'):
 
 @tsh.command(name='check')
 @click.argument('db-uri')
+@click.option('--series', default=None, help='series name to check')
 @click.option('--namespace', default='tsh')
-def check(db_uri, namespace='tsh'):
+def check(db_uri, series=None, namespace='tsh'):
     "coherence checks of the db"
     e = create_engine(db_uri)
-    sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
-    series = [row.seriename for row in e.execute(sql)]
+    if series is None:
+        sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
+        series = [row.seriename for row in e.execute(sql)]
+    else:
+        series = [series]
 
     tsh = TimeSerie(namespace)
     for idx, s in enumerate(series):
