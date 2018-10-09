@@ -219,8 +219,10 @@ def check(db_uri, namespace='tsh'):
             end = max(end or cmax, cmax)
             mon = ts.index.is_monotonic_increasing
         ival = tsh.interval(e, s)
-        assert ival.left == start
-        assert ival.right == end
+        if ival.left != start:
+            print('  start:', s, f'{ival.left} != {start}')
+        if ival.right != end:
+            print('  end:', s, f'{ival.right} != {end}')
         monmsg = '' if mon else 'non-monotonic'
         print(idx, s, 'inserts={}, read-time={} {}'.format(
             len(hist), time() - t0, monmsg)
