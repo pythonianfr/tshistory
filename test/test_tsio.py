@@ -589,6 +589,26 @@ Freq: D
     tsh.insert(engine, ts_end, 'ts_full_del_str', 'test')
 
 
+def test_deletion_over_horizon(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(datetime(2018, 1, 1), freq='D', periods=3)
+    )
+
+    name = 'delete_over_hz'
+    tsh.insert(engine, ts, name, 'Babar')
+
+    ts = pd.Series(
+        [np.nan, np.nan, np.nan],
+        index=pd.date_range(datetime(2018, 1, 3), freq='D', periods=3)
+    )
+
+    tsh.insert(engine, ts, name, 'Celeste')
+    ival = tsh.interval(engine, name)
+    assert ival.left == datetime(2018, 1, 1)
+    assert ival.right == datetime(2018, 1, 5)
+
+
 def test_get_history(engine, tsh):
     for numserie in (1, 2, 3):
         with engine.begin() as cn:
