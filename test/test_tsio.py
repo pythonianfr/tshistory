@@ -433,7 +433,7 @@ def test_point_deletion(engine, tsh):
     tsh.insert(engine, ts_begin, 'ts_del', 'test')
 
     _, ts = Snapshot(engine, tsh, 'ts_del').find()
-    assert ts.iloc[-2] == 9.0
+    assert ts.iloc[-2] == 8.0
 
     ts_begin.iloc[0] = np.nan
     ts_begin.iloc[3] = np.nan
@@ -1421,21 +1421,14 @@ def test_na(engine, tsh):
 
     result = tsh.get(engine, 'test_nan', _keep_nans=True)
     assert_df("""
-2010-01-10    NaN
-2010-01-11    NaN
-2010-01-12    NaN
 2010-01-13    3.0
 2010-01-14    3.0
 2010-01-15    3.0
 2010-01-16    3.0
 2010-01-17    3.0
-2010-01-18    NaN
-2010-01-19    NaN
 """, result)
-    # the nans above are pretty useless
 
     ival = tsh.interval(engine, 'test_nan')
-    # the interval boundaries are however right
     assert ival.left == datetime(2010, 1, 13)
     assert ival.right == datetime(2010, 1, 17)
 

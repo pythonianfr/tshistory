@@ -14,13 +14,13 @@ def tzaware_serie(ts):
     return is_datetimetz(ts.index)
 
 
-def start_end(ts):
+def start_end(ts, notz=True):
     ts = ts.dropna()
     if not len(ts):
         return None, None
     start = ts.index.min()
     end = ts.index.max()
-    if start.tzinfo is not None:
+    if start.tzinfo is not None and notz:
         assert end.tzinfo is not None
         start = start.tz_convert('UTC').replace(tzinfo=None)
         end = end.tz_convert('UTC').replace(tzinfo=None)

@@ -419,14 +419,16 @@ class TimeSerie(SeriesServices):
 
     def _create(self, cn, newts, seriename, author,
                 metadata=None, insertion_date=None):
-        # initial insertion
-        if len(newts) == 0:
-            return None
-        start, end = start_end(newts)
+        start, end = start_end(newts, notz=False)
         if start is None:
             assert end is None
             # this is just full of nans
             return None
+        # chop off unwanted nans
+        newts = newts.loc[start:end]
+        if len(newts) == 0:
+            return None
+
         # at creation time we take an exclusive lock to avoid
         # a deadlock on created tables against the changeset-series fk
         cn.execute(
