@@ -55,7 +55,8 @@ class TimeSerie(SeriesServices):
         assert isinstance(seriename, str), 'Name not a string'
         assert isinstance(author, str), 'Author not a string'
         assert metadata is None or isinstance(metadata, dict), 'Bad format for metadata'
-        assert _insertion_date is None or isinstance(_insertion_date, datetime), 'Bad format for insertion date'
+        assert (_insertion_date is None or
+                isinstance(_insertion_date, datetime)), 'Bad format for insertion date'
         assert not newts.index.duplicated().any(), 'There are some duplicates in the index'
 
         if not newts.index.is_monotonic_increasing:

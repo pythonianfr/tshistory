@@ -1409,3 +1409,24 @@ def test_na(engine, tsh):
 
 def test_no_series(engine, tsh):
     assert tsh.get(engine, 'inexisting_name') is None
+
+
+def test_insert_errors(engine, tsh):
+    ts = pd.Series([1, 2, 3],
+                   index=pd.date_range(start=utcdt(2018, 1, 1),
+                                       freq='D', periods=3))
+
+    with pytest.raises(AssertionError):
+        tsh.insert(engine, 42, 'error', 'Babar')
+
+    with pytest.raises(AssertionError):
+        tsh.insert(engine, ts, 42, 'Babar')
+
+    with pytest.raises(AssertionError):
+        tsh.insert(engine, ts, 'error', 42)
+
+    with pytest.raises(AssertionError):
+        tsh.insert(engine, ts, 'error', 'Babar', _insertion_date='2010-1-1')
+
+    with pytest.raises(AssertionError):
+        tsh.insert(engine, ts, 'error', 'Babar', metadata=42)
