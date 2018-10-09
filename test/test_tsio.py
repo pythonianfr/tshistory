@@ -1404,11 +1404,10 @@ def test_null_serie(engine, tsh):
     tsh.insert(engine, ts, 'null', 'Babar')
 
 
-def test_na(engine, tsh):
-    # mix na
+def test_na_at_boundaries(engine, tsh):
     ts = pd.Series([np.nan] * 3 + [3] * 5 + [np.nan] * 2,
                    index=pd.date_range(start=datetime(2010, 1, 10),
-                                       freq='D', periods=10), name='truc')
+                                       freq='D', periods=10))
     tsh.insert(engine, ts, 'test_nan', 'test')
     result = tsh.get(engine, 'test_nan')
     assert_df("""
@@ -1431,6 +1430,26 @@ def test_na(engine, tsh):
     ival = tsh.interval(engine, 'test_nan')
     assert ival.left == datetime(2010, 1, 13)
     assert ival.right == datetime(2010, 1, 17)
+
+    # now, let's update with useless nans
+    ts = pd.Series([np.nan] * 3 + [4] * 5 + [np.nan] * 2,
+                   index=pd.date_range(start=datetime(2010, 1, 10),
+                                       freq='D', periods=10))
+    tsh.insert(engine, ts, 'test_nan', 'test')
+    result = tsh.get(engine, 'test_nan', _keep_nans=True)
+    # they don't show up
+    assert_df("""
+2010-01-13    4.0
+2010-01-14    4.0
+2010-01-15    4.0
+2010-01-16    4.0
+2010-01-17    4.0
+""", result)
+
+    ival = tsh.interval(engine, 'test_nan')
+    assert ival.left == datetime(2010, 1, 13)
+    assert ival.right == datetime(2010, 1, 17)
+
 
 def test_no_series(engine, tsh):
     assert tsh.get(engine, 'inexisting_name') is None
