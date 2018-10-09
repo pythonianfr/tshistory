@@ -516,13 +516,14 @@ def test_point_deletion(engine, tsh):
     erased = tsh.get(engine, 'ts_string_del')
     assert len(erased) == 0
 
+
+def test_nan_first(engine, tsh):
     # first insertion with only nan
-
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10, [np.nan])
-    tsh.insert(engine, ts_begin, 'ts_null', 'test')
+    assert tsh.insert(engine, ts_begin, 'ts_null', 'test') is None
 
-    assert len(tsh.get(engine, 'ts_null')) == 0
 
+def test_more_point_deletion(engine, tsh):
     ts_repushed = genserie(datetime(2010, 1, 1), 'D', 11)
     ts_repushed[0:3] = np.nan
 
@@ -606,7 +607,16 @@ def test_deletion_over_horizon(engine, tsh):
     tsh.insert(engine, ts, name, 'Celeste')
     ival = tsh.interval(engine, name)
     assert ival.left == datetime(2018, 1, 1)
-    assert ival.right == datetime(2018, 1, 5)
+    assert ival.right == datetime(2018, 1, 3)
+
+    ts = pd.Series(
+        [np.nan, np.nan, np.nan],
+        index=pd.date_range(datetime(2017, 12, 30), freq='D', periods=3)
+    )
+    tsh.insert(engine, ts, name, 'Arthur')
+    ival = tsh.interval(engine, name)
+    assert ival.left == datetime(2018, 1, 1)
+    assert ival.right == datetime(2018, 1, 3)
 
 
 def test_get_history(engine, tsh):
@@ -861,18 +871,7 @@ def test_add_na(engine, tsh):
     ts_nan[[True] * len(ts_nan)] = np.nan
 
     diff = tsh.insert(engine, ts_nan, 'ts_add_na', 'test')
-    assert len(diff) == 5
-    result = tsh.get(engine, 'ts_add_na')
-    assert len(result) == 0
-
-    result = tsh.get(engine, 'ts_add_na', _keep_nans=True)
-    assert_df("""
-2010-01-01   NaN
-2010-01-02   NaN
-2010-01-03   NaN
-2010-01-04   NaN
-2010-01-05   NaN
-""", result)
+    assert diff is None
 
     # in case of insertion in existing data
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 5)
@@ -1408,9 +1407,7 @@ def test_null_serie(engine, tsh):
 def test_na(engine, tsh):
     # all na
     ts = genserie(datetime(2010, 1, 10), 'D', 10, [np.nan], name='truc')
-    tsh.insert(engine, ts, 'test_nan', 'test')
-    assert len(tsh.get(engine, 'test_nan')) == 0
-    assert len(tsh.get(engine, 'test_nan', _keep_nans=True)) == 10
+    assert tsh.insert(engine, ts, 'test_nan', 'test') is None
 
     # mix na
     ts = pd.Series([np.nan] * 5 + [3] * 5,

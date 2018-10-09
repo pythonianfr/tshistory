@@ -399,7 +399,7 @@ class TimeSerie(SeriesServices):
         log.sort(key=lambda rev: rev['rev'])
         return log
 
-    def interval(self, cn, seriename):
+    def interval(self, cn, seriename, notz=False):
         tablename = self._serie_to_tablename(cn, seriename)
         if tablename is None:
             raise ValueError(f'no such serie: {seriename}')
@@ -408,7 +408,7 @@ class TimeSerie(SeriesServices):
                f'order by cset desc limit 1')
         res = cn.execute(sql).fetchone()
         start, end = res.start, res.end
-        if self.metadata(cn, seriename).get('tzaware'):
+        if self.metadata(cn, seriename).get('tzaware') and not notz:
             start, end = pd.Timestamp(start, tz='UTC'), pd.Timestamp(end, tz='UTC')
         return pd.Interval(left=start, right=end, closed='both')
 
@@ -421,6 +421,11 @@ class TimeSerie(SeriesServices):
                 metadata=None, insertion_date=None):
         # initial insertion
         if len(newts) == 0:
+            return None
+        start, end = start_end(newts)
+        if start is None:
+            assert end is None
+            # this is just full of nans
             return None
         # at creation time we take an exclusive lock to avoid
         # a deadlock on created tables against the changeset-series fk
@@ -459,9 +464,9 @@ class TimeSerie(SeriesServices):
 
         csid = self._newchangeset(cn, author, insertion_date, metadata)
         tsstart, tsend = start_end(newts)
-        ival = self.interval(cn, seriename)
-        start = min(tsstart, ival.left.replace(tzinfo=None))
-        end = max(tsend, ival.right.replace(tzinfo=None))
+        ival = self.interval(cn, seriename, notz=True)
+        start = min(tsstart or ival.left, ival.left)
+        end = max(tsend or ival.right, ival.right)
         head = snapshot.update(diff)
         value = {
             'cset': csid,

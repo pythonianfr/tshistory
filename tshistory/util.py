@@ -15,6 +15,9 @@ def tzaware_serie(ts):
 
 
 def start_end(ts):
+    ts = ts.dropna()
+    if not len(ts):
+        return None, None
     start = ts.index.min()
     end = ts.index.max()
     if start.tzinfo is not None:
