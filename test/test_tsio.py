@@ -1405,24 +1405,39 @@ def test_null_serie(engine, tsh):
 
 
 def test_na(engine, tsh):
-    # all na
-    ts = genserie(datetime(2010, 1, 10), 'D', 10, [np.nan], name='truc')
-    assert tsh.insert(engine, ts, 'test_nan', 'test') is None
-
     # mix na
-    ts = pd.Series([np.nan] * 5 + [3] * 5,
+    ts = pd.Series([np.nan] * 3 + [3] * 5 + [np.nan] * 2,
                    index=pd.date_range(start=datetime(2010, 1, 10),
                                        freq='D', periods=10), name='truc')
     tsh.insert(engine, ts, 'test_nan', 'test')
     result = tsh.get(engine, 'test_nan')
     assert_df("""
+2010-01-13    3.0
+2010-01-14    3.0
 2010-01-15    3.0
 2010-01-16    3.0
 2010-01-17    3.0
-2010-01-18    3.0
-2010-01-19    3.0
 """, result)
 
+    result = tsh.get(engine, 'test_nan', _keep_nans=True)
+    assert_df("""
+2010-01-10    NaN
+2010-01-11    NaN
+2010-01-12    NaN
+2010-01-13    3.0
+2010-01-14    3.0
+2010-01-15    3.0
+2010-01-16    3.0
+2010-01-17    3.0
+2010-01-18    NaN
+2010-01-19    NaN
+""", result)
+    # the nans above are pretty useless
+
+    ival = tsh.interval(engine, 'test_nan')
+    # the interval boundaries are however right
+    assert ival.left == datetime(2010, 1, 13)
+    assert ival.right == datetime(2010, 1, 17)
 
 def test_no_series(engine, tsh):
     assert tsh.get(engine, 'inexisting_name') is None
