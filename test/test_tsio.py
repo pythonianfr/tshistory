@@ -1450,6 +1450,27 @@ def test_na_at_boundaries(engine, tsh):
     assert ival.left == datetime(2010, 1, 13)
     assert ival.right == datetime(2010, 1, 17)
 
+    # let's really shorten the series
+    ts = pd.Series([np.nan] * 4 + [5] * 3 + [np.nan] * 3,
+                   index=pd.date_range(start=datetime(2010, 1, 10),
+                                       freq='D', periods=10))
+    tsh.insert(engine, ts, 'test_nan', 'test')
+    result = tsh.get(engine, 'test_nan', _keep_nans=True)
+    assert_df("""
+2010-01-13    NaN
+2010-01-14    5.0
+2010-01-15    5.0
+2010-01-16    5.0
+2010-01-17    NaN
+""", result)
+
+    ival = tsh.interval(engine, 'test_nan')
+    # now this is really debatable
+    # as intervals should not cover
+    # non-existant values
+    assert ival.left == datetime(2010, 1, 13)
+    assert ival.right == datetime(2010, 1, 17)
+
 
 def test_no_series(engine, tsh):
     assert tsh.get(engine, 'inexisting_name') is None
