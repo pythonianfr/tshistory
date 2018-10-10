@@ -225,3 +225,28 @@ class SnapshotMigrator:
             for cset, start, end in fromto
         ])
         print('versions for serie {}: {}'.format(self.seriename, len(fromto)))
+
+
+    def fix_start_end(self):
+        sql = 'select id, cset from "{ns}.timeserie"."{name}"'.format(
+            ns=self.tsh.namespace,
+            name=self.name
+        )
+        revs = [row for row in self.cn.execute(sql)]
+        fromto = self.findall_startend([row.cset for row in revs])
+        cset_id_map = {
+            row.cset: row.id
+            for row in revs
+        }
+        table = self.tsh._get_ts_table(self.cn, self.seriename)
+        sql = table.update().where(
+            table.c.id == bindparam('id_')
+        ).values({
+            'start': bindparam('start'),
+            'end': bindparam('end')
+        })
+        self.cn.execute(sql, [
+            {'id_': cset_id_map[cset], 'start': start, 'end': end}
+            for cset, start, end in fromto
+        ])
+        print('versions for serie {}: {}'.format(self.seriename, len(fromto)))

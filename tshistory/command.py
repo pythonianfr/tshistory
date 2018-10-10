@@ -1,6 +1,5 @@
 import os, signal
 from pkg_resources import iter_entry_points
-import logging
 from time import time
 import random
 from pathlib import Path
@@ -243,6 +242,79 @@ def shell(db_uri, namespace='tsh'):
     tsh = TimeSerie(namespace)
     import pdb; pdb.set_trace()
 
+
+# repair
+
+@tsh.command(name='repair-start-end')
+@click.argument('db-uri')
+@click.option('--namespace', default='tsh')
+@click.option('--processes', default=1)
+@click.option('--series', default=None)
+def repair_start_end(db_uri, namespace='tsh', processes=1, series=None):
+    from tshistory.migration import SnapshotMigrator
+    if series:
+        series = [series]
+    else:
+        engine = create_engine(db_uri)
+        sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
+        series = [row.seriename for row in engine.execute(sql)]
+        engine.dispose()
+
+    def _migrate(seriename):
+        e = create_engine(db_uri, pool_size=1)
+        tsh = TimeSerie(namespace)
+        with e.begin() as cn:
+            m = SnapshotMigrator(cn, tsh, seriename)
+            m.fix_start_end()
+        e.dispose()
+
+    def migrate(seriename):
+        try:
+            _migrate(seriename)
+        except Exception:
+            import traceback as tb
+            tb.print_exc()
+            print(seriename, 'FAIL')
+
+    def run(proc, series):
+        seriescount = len(series)
+        pid = os.getpid()
+        for idx, ts in enumerate(series, 1):
+            print('migrate {} proc: {} [{}/{}]'.format(ts, proc, idx, seriescount))
+            migrate(ts)
+
+    if processes == 1:
+        run(0, series)
+        return
+
+    def chunks(l, n):
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+
+    # try to distribute the payload randomly as in practice it is definitely
+    # *not* evenly dsitributed along the lexical order ...
+    random.shuffle(series)
+    chunks = list(chunks(series, len(series) // processes))
+    print('running with {} processes'.format(len(chunks)))
+
+    pids = []
+    for idx, chunk in enumerate(chunks):
+        pid = os.fork()
+        if not pid:
+            # please the eyes
+            chunk.sort()
+            run(idx, chunk)
+            return
+        pids.append(pid)
+
+    try:
+        for pid in pids:
+            print('waiting for', pid)
+            os.waitpid(pid, 0)
+    except KeyboardInterrupt:
+        for pid in pids:
+            print('kill', pid)
+            os.kill(pid, signal.SIGINT)
 
 # migration
 
