@@ -464,11 +464,25 @@ class TimeSerie(SeriesServices):
                    seriename, author, len(newts))
             return
 
-        csid = self._newchangeset(cn, author, insertion_date, metadata)
+        # compute series start/end stamps
         tsstart, tsend = start_end(newts)
         ival = self.interval(cn, seriename, notz=True)
         start = min(tsstart or ival.left, ival.left)
         end = max(tsend or ival.right, ival.right)
+
+        if pd.isnull(diff[0]) or pd.isnull(diff[-1]):
+            # we *might* be shrinking, let's look at the full series
+            # and yes, shrinkers have a slow path
+            last = snapshot.last()
+            patched = self.patch(last, diff).dropna()
+            if not len(patched):
+                raise ValueError('complete erasure of a series is forbidden')
+            if pd.isnull(diff[0]):
+                start = patched.index[0]
+            if pd.isnull(diff[-1]):
+                end = patched.index[-1]
+
+        csid = self._newchangeset(cn, author, insertion_date, metadata)
         head = snapshot.update(diff)
         value = {
             'cset': csid,

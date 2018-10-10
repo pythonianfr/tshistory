@@ -511,10 +511,8 @@ def test_point_deletion(engine, tsh):
 """, tsh.get(engine, 'ts_string_del'))
 
     ts_string[ts_string.index] = np.nan
-    tsh.insert(engine, ts_string, 'ts_string_del', 'test')
-
-    erased = tsh.get(engine, 'ts_string_del')
-    assert len(erased) == 0
+    with pytest.raises(ValueError):
+        tsh.insert(engine, ts_string, 'ts_string_del', 'test')
 
 
 def test_nan_first(engine, tsh):
@@ -572,7 +570,8 @@ Freq: D
     tsh.insert(engine, ts_begin, 'ts_full_del', 'test')
 
     ts_begin.iloc[:] = np.nan
-    tsh.insert(engine, ts_begin, 'ts_full_del', 'test')
+    with pytest.raises(ValueError):
+        tsh.insert(engine, ts_begin, 'ts_full_del', 'test')
 
     ts_end = genserie(datetime(2010, 1, 1), 'D', 4)
     tsh.insert(engine, ts_end, 'ts_full_del', 'test')
@@ -584,7 +583,9 @@ Freq: D
 
     ts_begin = pd.Series([np.nan] * 4, name='ts_full_del_str',
                          index=ts_begin.index)
-    tsh.insert(engine, ts_begin, 'ts_full_del_str', 'test')
+
+    with pytest.raises(ValueError):
+        tsh.insert(engine, ts_begin, 'ts_full_del_str', 'test')
 
     ts_end = genserie(datetime(2010, 1, 1), 'D', 4, ['text'])
     tsh.insert(engine, ts_end, 'ts_full_del_str', 'test')
@@ -607,7 +608,7 @@ def test_deletion_over_horizon(engine, tsh):
     tsh.insert(engine, ts, name, 'Celeste')
     ival = tsh.interval(engine, name)
     assert ival.left == datetime(2018, 1, 1)
-    assert ival.right == datetime(2018, 1, 3)
+    assert ival.right == datetime(2018, 1, 2)
 
     ts = pd.Series(
         [np.nan, np.nan, np.nan],
@@ -615,8 +616,8 @@ def test_deletion_over_horizon(engine, tsh):
     )
     tsh.insert(engine, ts, name, 'Arthur')
     ival = tsh.interval(engine, name)
-    assert ival.left == datetime(2018, 1, 1)
-    assert ival.right == datetime(2018, 1, 3)
+    assert ival.left == datetime(2018, 1, 2)
+    assert ival.right == datetime(2018, 1, 2)
 
 
 def test_get_history(engine, tsh):
@@ -1465,11 +1466,8 @@ def test_na_at_boundaries(engine, tsh):
 """, result)
 
     ival = tsh.interval(engine, 'test_nan')
-    # now this is really debatable
-    # as intervals should not cover
-    # non-existant values
-    assert ival.left == datetime(2010, 1, 13)
-    assert ival.right == datetime(2010, 1, 17)
+    assert ival.left == datetime(2010, 1, 14)
+    assert ival.right == datetime(2010, 1, 16)
 
 
 def test_no_series(engine, tsh):
