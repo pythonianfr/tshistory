@@ -159,17 +159,26 @@ def rename(db_uri, mapfile, namespace='tsh'):
 
 @tsh.command()
 @click.argument('db-uri')
-@click.argument('deletefile', type=click.Path(exists=True))
+@click.option('--series')
+@click.option('--deletefile', type=click.Path(exists=True))
 @click.option('--namespace', default='tsh')
-def delete(db_uri, deletefile, namespace='tsh'):
+def delete(db_uri, series=None, deletefile=None, namespace='tsh'):
     """delete series by providing a one-column file (csv format)
 
     file header must be `name`
     """
-    series = [
-        p.name
-        for p in pd.read_csv(deletefile).itertuples()
-    ]
+    if not (series or deletefile):
+        print('You must provide a series name _or_ a csv file path')
+        return
+
+    if deletefile:
+        series = [
+            p.name
+            for p in pd.read_csv(deletefile).itertuples()
+        ]
+    else:
+        series = [series]
+
     engine = create_engine(db_uri)
     delete_series(engine, series, namespace)
 

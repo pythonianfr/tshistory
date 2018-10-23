@@ -54,10 +54,21 @@ def test_delete(engine, cli, datadir, tsh):
     tsh.insert(engine, serie, 'bbar', 'Babar')
     tsh.insert(engine, serie, 'bquux', 'Babar')
 
-    r = cli('delete', engine.url, datadir / 'delete.csv',
+    r = cli('delete', engine.url,
+            deletefile=datadir / 'delete.csv',
             namespace=tsh.namespace)
 
     tsh = TimeSerie(tsh.namespace)
+    assert not tsh.exists(engine, 'bfoo')
     assert tsh.get(engine, 'bfoo') is None
     assert tsh.get(engine, 'bbar') is None
     assert tsh.get(engine, 'bquux') is not None
+
+    tsh.insert(engine, serie, 'bbq', 'Babar')
+
+    tsh = TimeSerie(tsh.namespace)
+    r = cli('delete', engine.url,
+            series='bbq',
+            namespace=tsh.namespace)
+
+    assert not tsh.exists(engine, 'bbq')
