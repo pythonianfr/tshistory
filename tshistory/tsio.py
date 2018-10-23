@@ -59,6 +59,7 @@ class TimeSerie(SeriesServices):
                 isinstance(_insertion_date, datetime)), 'Bad format for insertion date'
         assert not newts.index.duplicated().any(), 'There are some duplicates in the index'
 
+        assert newts.index.notna().all(), 'The index contains NaT entries'
         if not newts.index.is_monotonic_increasing:
             newts = newts.sort_index()
 

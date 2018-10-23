@@ -1493,3 +1493,13 @@ def test_insert_errors(engine, tsh):
 
     with pytest.raises(AssertionError):
         tsh.insert(engine, ts, 'error', 'Babar', metadata=42)
+
+
+def test_index_with_nat(engine, tsh):
+    index = list(pd.date_range(start=utcdt(2018, 1, 1),
+                          freq='D', periods=3))
+    index[1] = pd.NaT
+    ts = pd.Series([1, 2, 3], index=index)
+
+    with pytest.raises(AssertionError):
+        tsh.insert(engine, ts, 'index_with_nat', 'Bugger')
