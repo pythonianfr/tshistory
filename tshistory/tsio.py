@@ -216,6 +216,11 @@ class TimeSerie(SeriesServices):
                 else:
                     diffs.append((revdate_b, self.diff(serie_a, serie_b)))
             series = diffs
+        else:
+            series = [
+                (idate, ts.dropna())
+                 for idate, ts in series
+            ]
 
         return {
             idate: serie
