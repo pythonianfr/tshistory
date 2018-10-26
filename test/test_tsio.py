@@ -331,18 +331,6 @@ def test_changeset_metadata(engine, tsh):
     assert meta == {'foo': 'A', 'bar': 42}
 
 
-def test_bad_import(engine, tsh):
-    # the data were parsed as date by pd.read_json()
-    df_result = pd.read_csv(str(DATADIR / 'test_data.csv'))
-    df_result['Gas Day'] = df_result['Gas Day'].apply(parser.parse, dayfirst=True, yearfirst=False)
-    df_result.set_index('Gas Day', inplace=True)
-    ts = df_result['SC']
-
-    tsh.insert(engine, ts, 'SND_SC', 'test')
-    result = tsh.get(engine, 'SND_SC')
-    assert result.dtype == 'float64'
-
-
 def test_revision_date(engine, tsh):
     for i in range(1, 5):
         with engine.begin() as cn:
