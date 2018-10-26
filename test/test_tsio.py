@@ -580,20 +580,23 @@ Freq: D
 
 
 def test_deletion_over_horizon(engine, tsh):
+    idate = utcdt(2018, 2, 1)
     ts = pd.Series(
         [1, 2, 3],
         index=pd.date_range(datetime(2018, 1, 1), freq='D', periods=3)
     )
 
     name = 'delete_over_hz'
-    tsh.insert(engine, ts, name, 'Babar')
+    tsh.insert(engine, ts, name, 'Babar',
+               _insertion_date=idate)
 
     ts = pd.Series(
         [np.nan, np.nan, np.nan],
         index=pd.date_range(datetime(2018, 1, 3), freq='D', periods=3)
     )
 
-    tsh.insert(engine, ts, name, 'Celeste')
+    tsh.insert(engine, ts, name, 'Celeste',
+               _insertion_date=idate.replace(day=2))
     ival = tsh.interval(engine, name)
     assert ival.left == datetime(2018, 1, 1)
     assert ival.right == datetime(2018, 1, 2)
@@ -602,7 +605,8 @@ def test_deletion_over_horizon(engine, tsh):
         [np.nan, np.nan, np.nan],
         index=pd.date_range(datetime(2017, 12, 30), freq='D', periods=3)
     )
-    tsh.insert(engine, ts, name, 'Arthur')
+    tsh.insert(engine, ts, name, 'Arthur',
+               _insertion_date=idate.replace(day=3))
     ival = tsh.interval(engine, name)
     assert ival.left == datetime(2018, 1, 2)
     assert ival.right == datetime(2018, 1, 2)
