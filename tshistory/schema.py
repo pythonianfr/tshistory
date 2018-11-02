@@ -53,7 +53,8 @@ class tsschema(object):
             Column('table_name', String, index=True,
                    nullable=False, unique=True),
             Column('metadata', JSONB(none_as_null=True)),
-            schema=self.namespace
+            schema=self.namespace,
+            keep_existing=True
         )
 
         changeset = Table(
@@ -62,7 +63,8 @@ class tsschema(object):
             Column('author', String, index=True, nullable=False),
             Column('insertion_date', TIMESTAMP(timezone=True), index=True, nullable=False),
             Column('metadata', JSONB(none_as_null=True)),
-            schema=self.namespace
+            schema=self.namespace,
+            keep_existing=True
         )
 
         changeset_series = Table(
@@ -76,7 +78,8 @@ class tsschema(object):
             UniqueConstraint(
                 'cset', 'serie',
                 name='{}_changeset_series_unique'.format(self.namespace)),
-            schema=self.namespace
+            schema=self.namespace,
+            keep_existing=True
         )
 
         self.registry = registry
