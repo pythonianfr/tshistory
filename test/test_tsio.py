@@ -306,19 +306,15 @@ def test_serie_metadata(engine, tsh):
     with pytest.raises(AssertionError):
         tsh.update_metadata(engine, 'ts-metadata', {'tzaware': True})
 
-    tsh.update_metadata(engine, 'ts-metadata', {'tzaware': True}, internal=True)
     assert tsh.metadata(engine, 'ts-metadata') == {
         'index_dtype': '<M8[ns]',
         'index_names': [],
         'index_type': 'datetime64[ns]',
         'topic': 'banana spot price',
-        'tzaware': True,
+        'tzaware': False,
         'value_dtype': '<f8',
         'value_type': 'float64'
     }
-
-    # unbreak the serie for the second test pass :o
-    tsh.update_metadata(engine, 'ts-metadata', initialmeta, internal=True)
 
 
 def test_changeset_metadata(engine, tsh):

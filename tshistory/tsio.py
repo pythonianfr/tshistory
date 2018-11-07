@@ -28,6 +28,14 @@ class TimeSerie(SeriesServices):
     namespace = 'tsh'
     schema = None
     metadatacache = None
+    metakeys = {
+        'tzaware',
+        'index_type',
+        'index_names',
+        'index_dtype',
+        'value_dtype',
+        'value_type'
+    }
     registry_map = None
     serie_tablename = None
     create_lock_id = None
@@ -120,11 +128,10 @@ class TimeSerie(SeriesServices):
         self.metadatacache[seriename] = meta
         return meta
 
-    def update_metadata(self, cn, seriename, metadata, internal=False):
+    def update_metadata(self, cn, seriename, metadata):
         assert isinstance(metadata, dict)
+        assert not set(metadata.keys()) & self.metakeys
         meta = self.metadata(cn, seriename)
-        if not internal:
-            assert set(meta.keys()).intersection(metadata.keys()) == set()
         meta.update(metadata)
         reg = self.schema.registry
         sql = reg.update().where(
