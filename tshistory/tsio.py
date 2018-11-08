@@ -132,11 +132,13 @@ class TimeSerie(SeriesServices):
         assert isinstance(metadata, dict)
         assert not set(metadata.keys()) & self.metakeys
         meta = self.metadata(cn, seriename)
-        meta.update(metadata)
+        # remove al but internal stuff
+        newmeta = {key: meta[key] for key in self.metakeys}
+        newmeta.update(metadata)
         reg = self.schema.registry
         sql = reg.update().where(
             reg.c.seriename == seriename
-        ).values(metadata=meta)
+        ).values(metadata=newmeta)
         self.metadatacache.pop(seriename)
         cn.execute(sql)
 
