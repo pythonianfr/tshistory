@@ -40,6 +40,7 @@ def test_rename(engine, cli, datadir, tsh):
             namespace=tsh.namespace)
 
     tsh = TimeSerie(tsh.namespace)
+    tsh._testing = True
     assert tsh.get(engine, 'afoo') is None
     assert tsh.get(engine, 'abar') is None
 
@@ -59,6 +60,7 @@ def test_delete(engine, cli, datadir, tsh):
             namespace=tsh.namespace)
 
     tsh = TimeSerie(tsh.namespace)
+    tsh._testing = True
     assert not tsh.exists(engine, 'bfoo')
     assert tsh.get(engine, 'bfoo') is None
     assert tsh.get(engine, 'bbar') is None
@@ -67,6 +69,7 @@ def test_delete(engine, cli, datadir, tsh):
     tsh.insert(engine, serie, 'bbq', 'Babar')
 
     tsh = TimeSerie(tsh.namespace)
+    tsh._testing = True
     r = cli('delete', engine.url,
             series='bbq',
             namespace=tsh.namespace)

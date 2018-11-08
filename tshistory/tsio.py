@@ -49,6 +49,12 @@ class TimeSerie(SeriesServices):
         self.serie_tablename = {}
         self.create_lock_id = sum(ord(c) for c in namespace)
 
+    def _check_tx(self, cn):
+        # safety belt to make sure important api points are tx-safe
+        if isinstance(cn, Engine) or not cn.in_transaction():
+            if not getattr(self, '_testing', False):
+                raise TypeError('You must use a transaction object')
+
     def insert(self, cn, newts, seriename, author,
                metadata=None,
                _insertion_date=None):
@@ -59,6 +65,7 @@ class TimeSerie(SeriesServices):
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
+        self._check_tx(cn)
         assert isinstance(newts, pd.Series), 'Not a pd.Series'
         assert isinstance(seriename, str), 'Name not a string'
         assert isinstance(author, str), 'Author not a string'
@@ -129,6 +136,7 @@ class TimeSerie(SeriesServices):
         return meta
 
     def update_metadata(self, cn, seriename, metadata):
+        self._check_tx(cn)
         assert isinstance(metadata, dict)
         assert not set(metadata.keys()) & self.metakeys
         meta = self.metadata(cn, seriename)
@@ -243,7 +251,6 @@ class TimeSerie(SeriesServices):
         `delta` time after the insertion dates and where we
         keep the most recent ones
         """
-
         histo = self.get_history(
             cn, seriename, deltabefore=-delta,
             from_value_date=from_value_date,
@@ -294,6 +301,7 @@ class TimeSerie(SeriesServices):
         return cn.execute(sql).scalar()
 
     def delete(self, cn, seriename):
+        self._check_tx(cn)
         assert not isinstance(cn, Engine), 'use a transaction object'
         assert self.exists(cn, seriename)
         # changeset will keep ghost entries
@@ -328,6 +336,7 @@ class TimeSerie(SeriesServices):
         self._resetcaches()
 
     def strip(self, cn, seriename, csid):
+        self._check_tx(cn)
         logs = self.log(cn, fromrev=csid, names=(seriename,))
         assert logs
 

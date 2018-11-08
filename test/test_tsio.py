@@ -27,6 +27,24 @@ def utcdt(*dt):
     return pd.Timestamp(datetime(*dt), tz='UTC')
 
 
+def test_in_tx(engine):
+    tsh = TimeSerie()
+
+    with pytest.raises(TypeError) as err:
+        tsh.insert(engine, 0, 0, 0)
+    assert err.value.args[0] == 'You must use a transaction object'
+
+    with engine.connect() as cn:
+        with pytest.raises(TypeError) as err:
+            tsh.insert(cn, 0, 0, 0)
+    assert err.value.args[0] == 'You must use a transaction object'
+
+    ts = genserie(datetime(2017, 10, 28, 23),
+                  'H', 4, tz='UTC')
+    with engine.begin() as cn:
+        tsh.insert(cn, ts, 'test_tx', 'Babar')
+
+
 def test_tstamp_roundtrip(engine, tsh):
     assert_structures(engine, tsh)
     ts = genserie(datetime(2017, 10, 28, 23),
