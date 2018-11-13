@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetimetz
 from sqlalchemy.sql.expression import text
+from sqlalchemy.engine import url
+from inireader import reader
 
 
 @contextmanager
@@ -21,6 +23,32 @@ def tempdir(suffix='', prefix='tmp'):
         yield Path(tmp)
     finally:
         shutil.rmtree(tmp)
+
+
+def find_dburi(something: str) -> str:
+    try:
+        url.make_url(something)
+    except Exception:
+        pass
+    else:
+        return something
+
+    # lookup in the cwd, then in the home
+    cfgpath = Path('tshistory.cfg')
+    if not cfgpath.exists():
+        cfgpath = Path('~/tshistory.cfg').expanduser()
+        if not cfgpath.exists():
+            raise Exception('could not use nor look up the db uri')
+
+    try:
+        cfg = reader(cfgpath)
+        return cfg['dburi'][something]
+    except Exception as exc:
+        raise Exception(
+            f'could not find the `{something}` entry in the '
+            f'[dburi] section of the `{cfgpath.resolve()}` '
+            f'conf file (cause: {exc.__class__.__name__} -> {exc})'
+        )
 
 
 def tzaware_serie(ts):

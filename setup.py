@@ -16,6 +16,7 @@ setup(name='tshistory',
           'click',
           'mock',
           'pytest_sa_pg',
+          'inireader'
       ],
       entry_points={
           'console_scripts': [

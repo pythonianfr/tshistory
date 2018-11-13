@@ -13,7 +13,13 @@ from dateutil.parser import parse as temporal
 import pandas as pd
 
 from tshistory.tsio import TimeSerie
-from tshistory.util import fromjson, rename_series, delete_series
+from tshistory.util import (
+    delete_series,
+    find_dburi,
+    fromjson,
+    rename_series
+)
+
 import tshistory.schema
 
 
@@ -53,7 +59,7 @@ def tsh():
 @click.option('--namespace', default='tsh')
 def get(db_uri, seriename, json, namespace='tsh'):
     """show a serie in its current state """
-    engine = create_engine(db_uri)
+    engine = create_engine(find_dburi(db_uri))
     tsh = TimeSerie(namespace)
 
     ts = tsh.get(engine, seriename)
@@ -80,7 +86,7 @@ def history(db_uri, seriename,
             diff, json,
             namespace='tsh'):
     """show a serie full history """
-    engine = create_engine(db_uri)
+    engine = create_engine(find_dburi(db_uri))
 
     tsh = TimeSerie(namespace)
     ts = tsh.get_history(engine, seriename,
@@ -108,7 +114,7 @@ def log(db_uri, limit, show_diff, serie, from_rev, to_rev,
         from_insertion_date, to_insertion_date,
         namespace='tsh'):
     """show revision history of entire repository or series"""
-    engine = create_engine(db_uri)
+    engine = create_engine(find_dburi(db_uri))
     tsh = TimeSerie(namespace)
 
     for rev in tsh.log(engine, limit=limit, diff=show_diff, names=serie,
@@ -131,7 +137,7 @@ series names:    {serie names}
 @click.option('--namespace', default='tsh')
 def info(db_uri, namespace='tsh'):
     """show global statistics of the repository"""
-    engine = create_engine(db_uri)
+    engine = create_engine(find_dburi(db_uri))
 
     info = TimeSerie(namespace).info(engine)
     info['serie names'] = ', '.join(info['serie names'])
@@ -153,7 +159,7 @@ def rename(db_uri, mapfile, namespace='tsh'):
         p.old: p.new
         for p in pd.read_csv(mapfile).itertuples()
     }
-    engine = create_engine(db_uri)
+    engine = create_engine(find_dburi(db_uri))
     rename_series(engine, seriesmap, namespace)
 
 
@@ -179,7 +185,7 @@ def delete(db_uri, series=None, deletefile=None, namespace='tsh'):
     else:
         series = [series]
 
-    engine = create_engine(db_uri)
+    engine = create_engine(find_dburi(db_uri))
     delete_series(engine, series, namespace)
 
 
@@ -191,7 +197,7 @@ def delete(db_uri, series=None, deletefile=None, namespace='tsh'):
 @click.option('--namespace', default='tsh')
 def init_db(db_uri, reset=False, namespace='tsh'):
     """initialize an new db."""
-    engine = create_engine(db_uri)
+    engine = create_engine(find_dburi(db_uri))
     schem = tshistory.schema.tsschema(namespace)
     schem.define()
 
@@ -211,7 +217,7 @@ def init_db(db_uri, reset=False, namespace='tsh'):
 @click.option('--namespace', default='tsh')
 def check(db_uri, series=None, namespace='tsh'):
     "coherence checks of the db"
-    e = create_engine(db_uri)
+    e = create_engine(find_dburi(db_uri))
     if series is None:
         sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
         series = [row.seriename for row in e.execute(sql)]
@@ -246,7 +252,7 @@ def check(db_uri, series=None, namespace='tsh'):
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
 def shell(db_uri, namespace='tsh'):
-    e = create_engine(db_uri)
+    e = create_engine(find_dburi(db_uri))
 
     tsh = TimeSerie(namespace)
     import pdb; pdb.set_trace()
@@ -264,13 +270,13 @@ def repair_start_end(db_uri, namespace='tsh', processes=1, series=None):
     if series:
         series = [series]
     else:
-        engine = create_engine(db_uri)
+        engine = create_engine(find_dburi(db_uri))
         sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
         series = [row.seriename for row in engine.execute(sql)]
         engine.dispose()
 
     def _migrate(seriename):
-        e = create_engine(db_uri, pool_size=1)
+        e = create_engine(find_dburi(db_uri), pool_size=1)
         tsh = TimeSerie(namespace)
         with e.begin() as cn:
             m = SnapshotMigrator(cn, tsh, seriename)
@@ -342,13 +348,13 @@ def migrate_zerodotthree_to_zerodotfour(db_uri, namespace='tsh', processes=1, tr
     if tryserie:
         series = [tryserie]
     else:
-        engine = create_engine(db_uri)
+        engine = create_engine(find_dburi(db_uri))
         sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
         series = [row.seriename for row in engine.execute(sql)]
         engine.dispose()
 
     def _migrate(seriename):
-        e = create_engine(db_uri, pool_size=1)
+        e = create_engine(find_dburi(db_uri), pool_size=1)
         tsh = TimeSerie(namespace)
         with e.begin() as cn:
             m = SnapshotMigrator(cn, tsh, seriename)
