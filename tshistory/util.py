@@ -3,11 +3,24 @@ import zlib
 import hashlib
 import logging
 import threading
+import tempfile
+import shutil
+from contextlib import contextmanager
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetimetz
 from sqlalchemy.sql.expression import text
+
+
+@contextmanager
+def tempdir(suffix='', prefix='tmp'):
+    tmp = tempfile.mkdtemp(suffix=suffix, prefix=prefix)
+    try:
+        yield Path(tmp)
+    finally:
+        shutil.rmtree(tmp)
 
 
 def tzaware_serie(ts):
