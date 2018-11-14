@@ -1,3 +1,4 @@
+import os
 import math
 import zlib
 import hashlib
@@ -25,6 +26,19 @@ def tempdir(suffix='', prefix='tmp'):
         shutil.rmtree(tmp)
 
 
+def get_cfg_path():
+    if 'TSHISTORYCFGPATH' is os.environ:
+        cfgpath = Path(os.environ['TSHISTORYCFGPATH'])
+        if cfgpath.exists():
+            return cfgpath
+    cfgpath = Path('tshistory.cfg')
+    if cfgpath.exists():
+        return cfgpath
+    cfgpath = Path('~/tshistory.cfg').expanduser()
+    if cfgpath.exists():
+        return cfgpath
+
+
 def find_dburi(something: str) -> str:
     try:
         url.make_url(something)
@@ -33,12 +47,10 @@ def find_dburi(something: str) -> str:
     else:
         return something
 
-    # lookup in the cwd, then in the home
-    cfgpath = Path('tshistory.cfg')
-    if not cfgpath.exists():
-        cfgpath = Path('~/tshistory.cfg').expanduser()
-        if not cfgpath.exists():
-            raise Exception('could not use nor look up the db uri')
+    # lookup in the env, then in cwd, then in the home
+    cfgpath = get_cfg_path()
+    if not cfgpath:
+        raise Exception('could not use nor look up the db uri')
 
     try:
         cfg = reader(cfgpath)
