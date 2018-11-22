@@ -277,9 +277,14 @@ class TimeSerie(SeriesServices):
     def latest_insertion_date(self, cn, seriename):
         cset = self.schema.changeset
         tstable = self._get_ts_table(cn, seriename)
-        sql = select([func.max(cset.c.insertion_date)]
-        ).where(tstable.c.cset == cset.c.id)
-        return cn.execute(sql).scalar()
+        sql = select(
+            [func.max(cset.c.insertion_date)]
+        ).where(
+            tstable.c.cset == cset.c.id
+        )
+        return pd.Timestamp(
+            cn.execute(sql).scalar()
+        ).astimezone('UTC')
 
     def last_id(self, cn, seriename):
         snapshot = Snapshot(cn, self, seriename)
