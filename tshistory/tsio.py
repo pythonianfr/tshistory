@@ -240,7 +240,7 @@ class TimeSerie(SeriesServices):
             ]
 
         return {
-            idate: serie
+            pd.Timestamp(idate).astimezone('UTC'): serie
             for idate, serie in series
         }
 
