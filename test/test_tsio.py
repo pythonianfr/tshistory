@@ -775,6 +775,14 @@ insertion_date             value_date
     tsc = tsh.get_history(engine, 'no-such-series')
     assert tsc is None
 
+    idates = tsh.insertion_dates(engine, 'smallserie')
+    assert idates == [
+        pd.Timestamp('2017-02-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2017-02-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2017-02-03 00:00:00+0000', tz='UTC')
+    ]
+
+
 
 def test_history_delta(engine, tsh):
     for d in range(1, 3):

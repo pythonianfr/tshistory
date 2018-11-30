@@ -286,6 +286,21 @@ class TimeSerie(SeriesServices):
             cn.execute(sql).scalar()
         ).astimezone('UTC')
 
+    def insertion_dates(self, cn, seriename):
+        cset = self.schema.changeset
+        tstable = self._get_ts_table(cn, seriename)
+        sql = select(
+            [cset.c.insertion_date]
+        ).where(
+            tstable.c.cset == cset.c.id
+        ).order_by(
+            cset.c.id
+        )
+        return [
+            pd.Timestamp(idate).astimezone('UTC')
+            for idate, in cn.execute(sql).fetchall()
+        ]
+
     def last_id(self, cn, seriename):
         snapshot = Snapshot(cn, self, seriename)
         return snapshot.last_id()
