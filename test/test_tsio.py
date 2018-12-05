@@ -275,6 +275,35 @@ def test_differential(engine, tsh):
 2010-01-07    3.0
 """, tsh.get(engine, 'ts_mixte'))
 
+    assert_df("""
+2010-01-03    2.0
+2010-01-04   -1.0
+2010-01-05    2.0
+2010-01-06    2.0
+    """, tsh.get(engine, 'ts_mixte',
+                 from_value_date=datetime(2010, 1, 3),
+                 to_value_date=datetime(2010, 1, 6)
+    ))
+
+    assert_df("""
+2010-01-04   -1.0
+2010-01-05    2.0
+2010-01-06    2.0
+2010-01-07    3.0
+        """, tsh.get(engine, 'ts_mixte',
+                     from_value_date=datetime(2010, 1, 4)
+    ))
+
+    assert_df("""
+2010-01-01    2.0
+2010-01-02    2.0
+2010-01-03    2.0
+2010-01-04   -1.0
+2010-01-05    2.0
+            """, tsh.get(engine, 'ts_mixte',
+                         to_value_date=datetime(2010, 1, 5)
+        ))
+
     with engine.begin() as cn:
         cn.execute('set search_path to "{0}.timeserie", {0}, public'.format(tsh.namespace))
         allts = pd.read_sql("select seriename, table_name from registry "

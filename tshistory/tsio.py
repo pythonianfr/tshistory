@@ -13,7 +13,6 @@ from tshistory.schema import tsschema
 from tshistory.util import (
     closed_overlaps,
     num2float,
-    subset,
     SeriesServices,
     start_end,
     tzaware_serie
@@ -267,7 +266,7 @@ class TimeSerie(SeriesServices):
                     vimap[vdate] = idate
                     vvmap[vdate] = value
 
-        ts = subset(pd.Series(vvmap).sort_index(), from_value_date, to_value_date)
+        ts = pd.Series(vvmap).sort_index().loc[from_value_date:to_value_date]
         ts.name = seriename
         return ts
 

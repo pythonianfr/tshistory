@@ -90,16 +90,6 @@ def closed_overlaps(fromdate, todate):
     )
 
 
-def subset(ts, fromdate, todate):
-    if fromdate is None and todate is None:
-        return ts
-    if isinstance(fromdate, tuple):
-        fromdate = fromdate[0]
-    if isinstance(todate, tuple):
-        todate = todate[0]
-    return ts.loc[fromdate:todate]
-
-
 def inject_in_index(serie, revdate):
     mindex = [(revdate, valuestamp) for valuestamp in serie.index]
     serie.index = pd.MultiIndex.from_tuples(mindex, names=[

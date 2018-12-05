@@ -11,7 +11,6 @@ from sqlalchemy.sql.expression import select, asc, desc
 from sqlalchemy.dialects.postgresql import BYTEA, TIMESTAMP
 
 from tshistory.util import (
-    subset,
     SeriesServices
 )
 
@@ -219,9 +218,7 @@ class Snapshot(SeriesServices):
         snapdata = self._chunks_to_ts(
             raw[2] for raw in self.rawchunks(head, from_value_date)
         )
-        return subset(snapdata,
-            from_value_date, to_value_date
-        )
+        return snapdata.loc[from_value_date:to_value_date]
 
     def last(self, from_value_date=None, to_value_date=None):
         return self.find(from_value_date=from_value_date,
@@ -307,9 +304,9 @@ class Snapshot(SeriesServices):
                 chunks.append(chunk)
                 head = parent
             series.append(
-                (idate, subset(self._chunks_to_ts(reversed(chunks)),
-                               from_value_date,
-                               to_value_date)
+                (idate, self._chunks_to_ts(reversed(chunks)).loc[
+                        from_value_date:to_value_date
+                    ]
                 )
             )
         return series
