@@ -103,21 +103,20 @@ def history(db_uri, seriename,
 @tsh.command()
 @click.argument('db-uri')
 @click.option('--limit', '-l', default=None)
-@click.option('--show-diff', is_flag=True, default=False)
 @click.option('--serie', '-s', multiple=True)
 @click.option('--from-rev')
 @click.option('--to-rev')
 @click.option('--from-insertion-date', type=temporal)
 @click.option('--to-insertion-date', type=temporal)
 @click.option('--namespace', default='tsh')
-def log(db_uri, limit, show_diff, serie, from_rev, to_rev,
+def log(db_uri, limit, serie, from_rev, to_rev,
         from_insertion_date, to_insertion_date,
         namespace='tsh'):
     """show revision history of entire repository or series"""
     engine = create_engine(find_dburi(db_uri))
     tsh = TimeSerie(namespace)
 
-    for rev in tsh.log(engine, limit=limit, diff=show_diff, names=serie,
+    for rev in tsh.log(engine, limit=limit, names=serie,
                        fromrev=from_rev, torev=to_rev,
                        fromdate=from_insertion_date, todate=to_insertion_date):
         rev['names'] = ','.join(rev['names'])

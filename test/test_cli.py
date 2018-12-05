@@ -18,6 +18,19 @@ def test_info(engine, cli, tsh):
     assert out[2].startswith('series names:')
 
 
+def test_log(engine, cli, tsh):
+    serie = genserie(datetime(2020, 1, 1), 'D', 3)
+    tsh.insert(engine, serie, 'log_me', 'Babar')
+    serie = genserie(datetime(2020, 1, 2), 'D', 3)
+    tsh.insert(engine, serie, 'log_me', 'Babar')
+
+    r = cli('log', engine.url,
+            serie='log_me',
+            namespace=tsh.namespace)
+
+    assert r.output.count('revision:') == 2
+
+
 def test_check(engine, cli, tsh):
     serie = genserie(datetime(2020, 1, 1), 'D', 3)
     tsh.insert(engine, serie, 'things', 'Babar')
