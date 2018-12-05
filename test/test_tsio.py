@@ -233,12 +233,11 @@ def test_differential(engine, tsh):
         closed='both'
     )
 
-    # start testing manual overrides
+    # insert single data, in override of previous one
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 5, initval=[2])
     ts_begin.loc['2010-01-04'] = -1
     tsh.insert(engine, ts_begin, 'ts_mixte', 'test')
 
-    # -1 represents bogus upstream data
     assert_df("""
 2010-01-01    2.0
 2010-01-02    2.0
@@ -247,7 +246,7 @@ def test_differential(engine, tsh):
 2010-01-05    2.0
 """, tsh.get(engine, 'ts_mixte'))
 
-    # refresh all the period + 1 extra data point
+    # add new series with one additional values
     ts_more = genserie(datetime(2010, 1, 2), 'D', 5, [2])
     ts_more.loc['2010-01-04'] = -1
     tsh.insert(engine, ts_more, 'ts_mixte', 'test')
