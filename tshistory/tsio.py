@@ -105,8 +105,7 @@ class TimeSerie(SeriesServices):
         serie
 
         """
-        table = self._get_ts_table(cn, seriename)
-        if table is None:
+        if not self.exists(cn, seriename):
             return
 
         csetfilter = []
@@ -560,7 +559,7 @@ class TimeSerie(SeriesServices):
         tablename = self._serie_to_tablename(cn, seriename)
         if tablename is None:
             # creation time
-            tablename = self._make_tablename(seriename)
+            tablename = self._make_tablename(cn, seriename)
         fq_tablename = '{}.timeserie.{}'.format(self.namespace, tablename)
         table = TABLES.get(fq_tablename)
         if table is None:
@@ -595,7 +594,7 @@ class TimeSerie(SeriesServices):
         inames = [name for name in index.names if name]
         sql = self.schema.registry.insert().values(
             seriename=seriename,
-            table_name=self._make_tablename(seriename),
+            table_name=self._make_tablename(cn, seriename),
             metadata={
                 'tzaware': tzaware_serie(ts),
                 'index_type': index.dtype.name,
@@ -611,7 +610,7 @@ class TimeSerie(SeriesServices):
     def _get_ts_table(self, cn, seriename):
         tablename = self._serie_to_tablename(cn, seriename)
         if tablename:
-            return self._table_definition_for(cn, tablename)
+            return self._table_definition_for(cn, seriename)
 
     # changeset handling
 
