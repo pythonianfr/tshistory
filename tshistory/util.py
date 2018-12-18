@@ -1,7 +1,6 @@
 import os
 import math
 import zlib
-import hashlib
 import logging
 import threading
 import tempfile
@@ -165,18 +164,6 @@ class SeriesServices(object):
         diff_new = other[~mask_overlap]
         diff_new = diff_new[~diff_new.isnull()]
         return pd.concat([diff_overlap, diff_new])
-
-
-    # serialization
-
-    def _make_tablename(self, seriename):
-        """ compute the unqualified (no namespace) table name
-        from a serie name, to allow arbitrary serie names
-        """
-        # postgresql table names are limited to 63 chars.
-        if len(seriename) > 63:
-            return hashlib.sha1(seriename.encode('utf-8')).hexdigest()
-        return seriename
 
 
 def rename_series(engine, serie_map, namespace='tsh'):

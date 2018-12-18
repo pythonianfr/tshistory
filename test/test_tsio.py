@@ -1379,7 +1379,18 @@ def test_rename(engine, tsh):
     assert tsh.get(engine, 'bar') is None
 
     for name in ('quux', 'new-foo', 'new-bar'):
+        assert tsh.exists(engine, name)
         assert tsh.get(engine, name) is not None
+
+    # check we can safely re-use 'foo'
+    serie = genserie(datetime(2025, 1, 1), 'D', 3)
+    tsh.insert(engine, serie, 'foo', 'Babar')
+    ts = tsh.get(engine, 'foo')
+    assert_df("""
+2025-01-01    0.0
+2025-01-02    1.0
+2025-01-03    2.0
+""", ts)
 
 
 def test_index_order(engine, tsh):
