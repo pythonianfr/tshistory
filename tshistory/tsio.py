@@ -323,7 +323,9 @@ class TimeSerie(SeriesServices):
     def delete(self, cn, seriename):
         self._check_tx(cn)
         assert not isinstance(cn, Engine), 'use a transaction object'
-        assert self.exists(cn, seriename)
+        if not self.exists(cn, seriename):
+            print('not deleting unknown series', seriename, self.namespace)
+            return
         # changeset will keep ghost entries
         # we cleanup changeset series, then registry
         # then we drop the two remaining tables
@@ -354,6 +356,7 @@ class TimeSerie(SeriesServices):
                    rid=rid)
         # -> this will transitively cleanup state changeset_series entries
         self._resetcaches()
+        print('deleted', seriename, self.namespace)
 
     def strip(self, cn, seriename, csid):
         self._check_tx(cn)
