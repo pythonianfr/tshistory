@@ -202,13 +202,13 @@ def threadpool(maxthreads):
     def run(func, argslist):
         count = 0
         threads = []
-        L.info('// run %s %s', func.__name__, len(argslist))
+        L.debug('// run %s %s', func.__name__, len(argslist))
 
         # initial threads
         for count, args in enumerate(argslist, start=1):
             th = threading.Thread(target=func, args=args)
             threads.append(th)
-            L.info('// start thread %s', th.name)
+            L.debug('// start thread %s', th.name)
             th.daemon = True
             th.start()
             if count == maxthreads:
@@ -219,11 +219,11 @@ def threadpool(maxthreads):
                 th.join(1. / maxthreads)
                 if not th.is_alive():
                     threads.remove(th)
-                    L.info('// thread %s exited, %s remaining', th.name, len(threads))
+                    L.debug('// thread %s exited, %s remaining', th.name, len(threads))
                     if count < len(argslist):
                         newth = threading.Thread(target=func, args=argslist[count])
                         threads.append(newth)
-                        L.info('// thread %s started', newth.name)
+                        L.debug('// thread %s started', newth.name)
                         newth.daemon = True
                         newth.start()
                         count += 1
