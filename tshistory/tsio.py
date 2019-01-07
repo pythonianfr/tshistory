@@ -2,6 +2,7 @@ from datetime import datetime
 import logging
 import hashlib
 import uuid
+from threading import Lock
 
 import pandas as pd
 
@@ -40,6 +41,7 @@ class TimeSerie(SeriesServices):
     registry_map = None
     serie_tablename = None
     create_lock_id = None
+    cachelock = Lock()
 
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
@@ -704,8 +706,9 @@ class TimeSerie(SeriesServices):
         cn.execute(sql)
 
     def _resetcaches(self):
-        TABLES.clear()
-        SNAPTABLES.clear()
-        self.metadatacache.clear()
-        self.registry_map.clear()
-        self.serie_tablename.clear()
+        with self.cachelock:
+            TABLES.clear()
+            SNAPTABLES.clear()
+            self.metadatacache.clear()
+            self.registry_map.clear()
+            self.serie_tablename.clear()
