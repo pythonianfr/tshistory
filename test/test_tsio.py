@@ -30,6 +30,8 @@ def utcdt(*dt):
 def test_in_tx(engine):
     tsh = TimeSerie()
 
+    assert tsh.type(engine, 'foo') == 'primary'
+
     with pytest.raises(TypeError) as err:
         tsh.insert(engine, 0, 0, 0)
     assert err.value.args[0] == 'You must use a transaction object'

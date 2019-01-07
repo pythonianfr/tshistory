@@ -157,6 +157,9 @@ class TimeSerie(SeriesServices):
         )
         return cn.execute(sql).scalar()
 
+    def type(self, cn, name):
+        return 'primary'
+
     def get_history(self, cn, seriename,
                     from_insertion_date=None,
                     to_insertion_date=None,
