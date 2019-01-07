@@ -291,7 +291,8 @@ class TimeSerie(SeriesServices):
             cn.execute(sql).scalar()
         ).astimezone('UTC')
 
-    def insertion_dates(self, cn, seriename):
+    def insertion_dates(self, cn, seriename,
+                        fromdate=None, todate=None):
         cset = self.schema.changeset
         tstable = self._get_ts_table(cn, seriename)
         sql = select(
@@ -301,6 +302,12 @@ class TimeSerie(SeriesServices):
         ).order_by(
             cset.c.id
         )
+
+        if fromdate:
+            sql = sql.where(cset.c.insertion_date >= fromdate)
+        if todate:
+            sql = sql.where(cset.c.insertion_date <= todate)
+
         return [
             pd.Timestamp(idate).astimezone('UTC')
             for idate, in cn.execute(sql).fetchall()
