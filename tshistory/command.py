@@ -89,10 +89,13 @@ def history(db_uri, seriename,
     engine = create_engine(find_dburi(db_uri))
 
     tsh = TimeSerie(namespace)
-    ts = tsh.get_history(engine, seriename,
-                         from_insertion_date, to_insertion_date,
-                         from_value_date, to_value_date,
-                         diffmode=diff)
+    with engine.begin() as cn:
+        ts = tsh.get_history(
+            cn, seriename,
+            from_insertion_date, to_insertion_date,
+            from_value_date, to_value_date,
+            diffmode=diff
+        )
     if json:
         print(ts.to_json())
     else:
@@ -226,7 +229,8 @@ def check(db_uri, series=None, namespace='tsh'):
     tsh = TimeSerie(namespace)
     for idx, s in enumerate(series):
         t0 = time()
-        hist = tsh.get_history(e, s)
+        with e.begin() as cn:
+            hist = tsh.get_history(cn, s)
         start, end = None, None
         mon = True
         for ts in hist.values():

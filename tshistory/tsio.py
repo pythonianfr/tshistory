@@ -167,6 +167,7 @@ class TimeSerie(SeriesServices):
     def type(self, cn, name):
         return 'primary'
 
+    @tx
     def get_history(self, cn, seriename,
                     from_insertion_date=None,
                     to_insertion_date=None,
@@ -342,7 +343,6 @@ class TimeSerie(SeriesServices):
 
     @tx
     def delete(self, cn, seriename):
-        assert not isinstance(cn, Engine), 'use a transaction object'
         if not self.exists(cn, seriename):
             print('not deleting unknown series', seriename, self.namespace)
             return

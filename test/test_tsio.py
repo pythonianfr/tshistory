@@ -1088,10 +1088,6 @@ def test_serie_deletion(engine, tsh):
     assert csetseriecount - csetseriecount2 == 2
     assert seriecount - seriecount2 == 1
 
-    with pytest.raises(AssertionError) as werr:
-        tsh.delete(engine, 'keepme')
-    assert werr.value.args[0] == 'use a transaction object'
-
     tsh.insert(engine, ts, 'deleteme', 'Celeste')
 
 
