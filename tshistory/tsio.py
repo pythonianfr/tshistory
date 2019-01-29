@@ -26,6 +26,17 @@ L = logging.getLogger('tshistory.tsio')
 TABLES = {}
 
 
+def tx(func):
+    def check_tx_and_call(self, cn, *a, **kw):
+        # safety belt to make sure important api points are tx-safe
+        if isinstance(cn, Engine) or not cn.in_transaction():
+            if not getattr(self, '_testing', False):
+                raise TypeError('You must use a transaction object')
+
+        return func(self, cn, *a, **kw)
+    return check_tx_and_call
+
+
 class TimeSerie(SeriesServices):
     namespace = 'tsh'
     schema = None
@@ -52,12 +63,7 @@ class TimeSerie(SeriesServices):
         self.serie_tablename = {}
         self.create_lock_id = sum(ord(c) for c in namespace)
 
-    def _check_tx(self, cn):
-        # safety belt to make sure important api points are tx-safe
-        if isinstance(cn, Engine) or not cn.in_transaction():
-            if not getattr(self, '_testing', False):
-                raise TypeError('You must use a transaction object')
-
+    @tx
     def insert(self, cn, newts, seriename, author,
                metadata=None,
                _insertion_date=None):
@@ -68,7 +74,6 @@ class TimeSerie(SeriesServices):
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
-        self._check_tx(cn)
         assert isinstance(newts, pd.Series), 'Not a pd.Series'
         assert isinstance(seriename, str), 'Name not a string'
         assert isinstance(author, str), 'Author not a string'
@@ -137,8 +142,8 @@ class TimeSerie(SeriesServices):
         self.metadatacache[seriename] = meta
         return meta
 
+    @tx
     def update_metadata(self, cn, seriename, metadata):
-        self._check_tx(cn)
         assert isinstance(metadata, dict)
         assert not set(metadata.keys()) & self.metakeys
         meta = self.metadata(cn, seriename)
@@ -250,6 +255,7 @@ class TimeSerie(SeriesServices):
             for idate, serie in series
         }
 
+    @tx
     def get_delta(self, cn, seriename, delta,
                   from_value_date=None,
                   to_value_date=None):
@@ -334,8 +340,8 @@ class TimeSerie(SeriesServices):
             sql = sql.where(cset.c.insertion_date >= revdate)
         return cn.execute(sql).scalar()
 
+    @tx
     def delete(self, cn, seriename):
-        self._check_tx(cn)
         assert not isinstance(cn, Engine), 'use a transaction object'
         if not self.exists(cn, seriename):
             print('not deleting unknown series', seriename, self.namespace)
@@ -372,8 +378,8 @@ class TimeSerie(SeriesServices):
         self._resetcaches()
         print('deleted', seriename, self.namespace)
 
+    @tx
     def strip(self, cn, seriename, csid):
-        self._check_tx(cn)
         logs = self.log(cn, fromrev=csid, names=(seriename,))
         assert logs
 
