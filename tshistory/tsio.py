@@ -143,12 +143,16 @@ class TimeSerie(SeriesServices):
         return meta
 
     @tx
-    def update_metadata(self, cn, seriename, metadata):
+    def update_metadata(self, cn, seriename, metadata, internal=False):
         assert isinstance(metadata, dict)
-        assert not set(metadata.keys()) & self.metakeys
+        assert internal or not set(metadata.keys()) & self.metakeys
         meta = self.metadata(cn, seriename)
         # remove al but internal stuff
-        newmeta = {key: meta[key] for key in self.metakeys}
+        newmeta = {
+            key: meta[key]
+            for key in self.metakeys
+            if meta.get(key) is not None
+        }
         newmeta.update(metadata)
         reg = self.schema.registry
         sql = reg.update().where(

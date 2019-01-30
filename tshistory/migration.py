@@ -129,7 +129,8 @@ class SnapshotMigrator:
             {
                 'index_dtype': ts.index.dtype.str,
                 'value_dtype': ts.dtypes.str if not self.isstr else '|O'
-            }
+            },
+            internal=True
         )
 
         print('chunks for serie {}: {}'.format(self.seriename, idx + 1))
