@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from tshistory.snapshot import Snapshot
-from tshistory.util import rename_series, threadpool
+from tshistory.util import threadpool
 from tshistory.tsio import TimeSerie
 from tshistory.testutil import (
     assert_df,
@@ -1454,10 +1454,8 @@ def test_rename(engine, tsh):
     tsh.insert(engine, serie, 'bar', 'Babar')
     tsh.insert(engine, serie, 'quux', 'Babar')
 
-    rename_series(engine, {
-        'foo': 'new-foo',
-        'bar': 'new-bar'
-    })
+    tsh.rename(engine, 'foo', 'new-foo')
+    tsh.rename(engine, 'bar', 'new-bar')
 
     tsh._resetcaches()
 

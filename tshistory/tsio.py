@@ -346,6 +346,17 @@ class TimeSerie(SeriesServices):
         return cn.execute(sql).scalar()
 
     @tx
+    def rename(self, cn, oldname, newname):
+        reg = self.schema.registry
+        sql = reg.update().where(
+            reg.c.seriename == oldname
+        ).values(
+            seriename=newname
+        )
+        cn.execute(sql)
+        self._resetcaches()
+
+    @tx
     def delete(self, cn, seriename):
         if not self.exists(cn, seriename):
             print('not deleting unknown series', seriename, self.namespace)
