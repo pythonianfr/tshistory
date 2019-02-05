@@ -1074,6 +1074,15 @@ def test_serie_deletion(engine, tsh):
 
     seriecount, csetcount, csetseriecount = assert_structures(engine, tsh)
 
+    assert tsh.metadata(engine, 'deleteme') == {
+        'tzaware': False,
+        'index_type': 'datetime64[ns]',
+        'value_type': 'float64',
+        'index_dtype': '<M8[ns]',
+        'index_names': [],
+        'value_dtype': '<f8'
+    }
+
     with engine.begin() as cn:
         tsh.delete(cn, 'deleteme')
 
@@ -1087,8 +1096,24 @@ def test_serie_deletion(engine, tsh):
     assert csetcount - csetcount2  == 2
     assert csetseriecount - csetseriecount2 == 2
     assert seriecount - seriecount2 == 1
+    assert tsh.metadata(engine, 'deleteme') is None
 
-    tsh.insert(engine, ts, 'deleteme', 'Celeste')
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(start=utcdt(2018, 1, 1),
+                            freq='D', periods=3)
+    )
+    with engine.begin() as cn:
+        tsh.insert(cn, ts, 'deleteme', 'Celeste')
+
+    assert tsh.metadata(engine, 'deleteme') == {
+        'tzaware': True,
+        'index_type': 'datetime64[ns, UTC]',
+        'value_type': 'float64',
+        'index_dtype': '|M8[ns]',
+        'index_names': [],
+        'value_dtype': '<f8'
+    }
 
 
 def test_strip(engine, tsh):

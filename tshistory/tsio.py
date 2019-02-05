@@ -139,7 +139,8 @@ class TimeSerie(SeriesServices):
             reg.c.seriename == seriename
         )
         meta = cn.execute(sql).scalar()
-        self.metadatacache[seriename] = meta
+        if meta is not None:
+            self.metadatacache[seriename] = meta
         return meta
 
     @tx
