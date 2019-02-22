@@ -229,3 +229,11 @@ def threadpool(maxthreads):
                         count += 1
 
     return run
+
+
+class unilist(list):
+    " a list which refuses duplicates "
+
+    def append(self, element):
+        assert element not in self
+        super().append(element)

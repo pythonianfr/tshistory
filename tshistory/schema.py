@@ -6,16 +6,35 @@ from sqlalchemy import (Table, Column, Integer, String, MetaData, TIMESTAMP,
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.schema import CreateSchema
 
+from tshistory.util import unilist
 
 L = logging.getLogger('tshistory.schema')
 
 # schemas registry
+_SCHLOCK = Lock()
+_SCHEMA_HANDLERS = unilist()
 
-SCHLOCK = Lock()
-SCHEMAS = {}
-meta = MetaData()
 
-def delete_schema(engine, ns):
+def register_schema(schema):
+    for meth in ('define', 'exists', 'create', 'destroy'):
+        getattr(schema, meth)
+    with _SCHLOCK:
+        if schema not in _SCHEMA_HANDLERS:
+            _SCHEMA_HANDLERS.append(schema)
+
+
+def init_schemas(engine, meta, namespace='tsh'):
+    for schema in _SCHEMA_HANDLERS:
+        schema.define(meta)
+        schema.create(engine)
+
+
+def reset_schemas(engine):
+    for schema in reversed(_SCHEMA_HANDLERS):
+        schema.destroy(engine)
+
+
+def _delete_schema(engine, ns):
     with engine.begin() as cn:
         for subns in ('timeserie', 'snapshot'):
             cn.execute(
@@ -30,19 +49,22 @@ class tsschema(object):
     registry = None
     changeset = None
     changeset_series = None
+    SCHEMAS = {}
 
     def __new__(cls, namespace='tsh'):
-        with SCHLOCK:
-            if namespace in SCHEMAS:
-                return SCHEMAS[namespace]
+        # singleton-per-namespace handling
+        with _SCHLOCK:
+            if namespace in cls.SCHEMAS:
+                return cls.SCHEMAS[namespace]
         return super(tsschema, cls).__new__(cls)
 
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
+        register_schema(self)
 
     def define(self, meta=MetaData()):
-        with SCHLOCK:
-            if self.namespace in SCHEMAS:
+        with _SCHLOCK:
+            if self.namespace in self.SCHEMAS:
                 return
         L.info('build schema %s', self.namespace)
         self.meta = meta
@@ -85,15 +107,18 @@ class tsschema(object):
         self.registry = registry
         self.changeset = changeset
         self.changeset_series = changeset_series
-        with SCHLOCK:
-            SCHEMAS[self.namespace] = self
+        with _SCHLOCK:
+            self.SCHEMAS[self.namespace] = self
 
     def exists(self, engine):
-        return engine.execute('select exists(select schema_name '
-                              'from information_schema.schemata '
-                              'where schema_name = %(name)s)',
-                              name=self.namespace
-                              ).scalar()
+        return engine.execute(
+            'select exists('
+            '  select schema_name '
+            '  from information_schema.schemata '
+            '  where schema_name = %(name)s'
+            ')',
+            name=self.namespace
+        ).scalar()
 
     def create(self, engine):
         L.info('create schema %s %s', self.namespace, self.exists(engine))
@@ -111,19 +136,5 @@ class tsschema(object):
 
     def destroy(self, engine):
         L.info('destroy schema %s', self.namespace)
-        delete_schema(engine, self.namespace)
-        del self.meta
-        del self.registry
-        del self.changeset
-        del self.changeset_series
-
-
-def init(engine, meta, namespace='tsh'):
-    schem = tsschema(namespace)
-    schem.define(meta)
-    schem.create(engine)
-
-
-def reset(engine, namespace='tsh'):
-    SCHEMAS.pop(namespace, None)
-    delete_schema(engine, namespace)
+        _delete_schema(engine, self.namespace)
+        self.SCHEMAS.pop(self.namespace, None)

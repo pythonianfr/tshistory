@@ -37,8 +37,9 @@ def datadir():
                 scope='session')
 def tsh(request, engine):
     namespace = request.param
-    schema.delete_schema(engine, namespace)
-    schema.init(engine, MetaData(), namespace)
+    sch = schema.tsschema(namespace)
+    sch.destroy(engine)
+    schema.init_schemas(engine, MetaData(), namespace)
 
     if namespace == 'zzz':
         Snapshot._max_bucket_size = 5
@@ -49,8 +50,10 @@ def tsh(request, engine):
 
 @pytest.fixture(scope='session')
 def ptsh(engine):
-    schema.reset(engine)
-    schema.init(engine, MetaData())
+    sch = schema.tsschema()
+    sch.destroy(engine)
+    schema.register_schema(sch)
+    schema.init_schemas(engine, MetaData())
     return tsio.TimeSerie()
 
 
