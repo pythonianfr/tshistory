@@ -71,7 +71,9 @@ However here's a simple example:
  ...                    pd.date_range(start=pd.Timestamp(2017, 1, 1),
  ...                                  freq='D', periods=3))
  # db insertion
- >>> tsh.insert(engine, series, 'my_series', 'babar@pythonian.fr')
+ >>> with engine.begin() as cn:
+ >>>     tsh.insert(cn, series, 'my_series', 'babar@pythonian.fr')
+ ...
  2017-01-01    1.0
  2017-01-02    2.0
  2017-01-03    3.0
@@ -81,7 +83,9 @@ However here's a simple example:
  # (there are no provisions to handle integer series as of today)
 
  # retrieval
- >>> tsh.get(engine, 'my_series')
+ >>> with engine.begin() as cn:
+ >>>     tsh.get(cn, 'my_series')
+ ...
  2017-01-01    1.0
  2017-01-02    2.0
  2017-01-03    3.0
@@ -97,7 +101,9 @@ This is good. Now, let's insert more:
  ...                    pd.date_range(start=pd.Timestamp(2017, 1, 2),
  ...                                  freq='D', periods=4))
  # db insertion
- >>> tsh.insert(engine, series, 'my_series', 'babar@pythonian.fr')
+ >>> with engine.begin() as cn:
+ >>>     tsh.insert(cn, series, 'my_series', 'babar@pythonian.fr')
+ ...
  2017-01-03    7.0
  2017-01-04    8.0
  2017-01-05    9.0
@@ -108,7 +114,9 @@ This is good. Now, let's insert more:
  # there in the first step)
 
  # db retrieval
- >>> tsh.get(engine, 'my_series')
+ >>> with engine.begin() as cn:
+ >>>     tsh.get(engine, 'my_series')
+ ...
 2017-01-01    1.0
 2017-01-02    2.0
 2017-01-03    7.0
@@ -129,7 +137,9 @@ just ignored.
 We can access the whole history (or parts of it) in one call:
 
 ```python
- >>> history = tsh.get_history(engine, 'my_series')
+ >>> with engine.begin() as cn:
+ >>>     history = tsh.get_history(engine, 'my_series')
+ ...
  >>>
  >>> for idate, series in history.items(): # it's a dict
  ...     print('insertion date:', idate)
@@ -155,7 +165,9 @@ Also the insertion date is timzeone aware.
 It is possible to show the differences only:
 
 ```python
- >>>diffs = tsh.get_history(engine, 'my_series', diffmode=True)
+ >>> with engine.begin() as cn:
+ >>>     diffs = tsh.get_history(engine, 'my_series', diffmode=True)
+ ...
  >>> for idate, series in tsh.get_history(engine, 'ts', diffmode=True).items():
  ...   print('insertion date:', idate)
  ...   print(series)
