@@ -5,7 +5,7 @@ import random
 from pathlib import Path
 
 from dateutil import parser
-import json
+from json import dumps
 
 import click
 from sqlalchemy import create_engine, MetaData
@@ -90,17 +90,24 @@ def history(db_uri, seriename,
 
     tsh = TimeSerie(namespace)
     with engine.begin() as cn:
-        ts = tsh.get_history(
+        hist = tsh.get_history(
             cn, seriename,
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date,
             diffmode=diff
         )
     if json:
-        print(ts.to_json())
+        out = {
+            str(idate): {
+                str(vdate): val
+                for vdate, val in ts.to_dict().items()
+            }
+            for idate, ts in hist.items()
+        }
+        print(dumps(out))
     else:
-        with pd.option_context('display.max_rows', None, 'display.max_columns', 3):
-            print(ts)
+        for idate in hist:
+            print(hist[idate])
 
 
 @tsh.command()
