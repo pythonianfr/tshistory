@@ -8,7 +8,6 @@ import pandas as pd
 
 from sqlalchemy import Table, Column, Integer, ForeignKey, Index
 from sqlalchemy.sql.elements import NONE_NAME
-from sqlalchemy.engine.base import Engine
 from sqlalchemy.sql.expression import select, func, desc
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 
@@ -18,23 +17,13 @@ from tshistory.util import (
     num2float,
     SeriesServices,
     start_end,
+    tx,
     tzaware_serie
 )
 from tshistory.snapshot import Snapshot, TABLES as SNAPTABLES
 
 L = logging.getLogger('tshistory.tsio')
 TABLES = {}
-
-
-def tx(func):
-    def check_tx_and_call(self, cn, *a, **kw):
-        # safety belt to make sure important api points are tx-safe
-        if isinstance(cn, Engine) or not cn.in_transaction():
-            if not getattr(self, '_testing', False):
-                raise TypeError('You must use a transaction object')
-
-        return func(self, cn, *a, **kw)
-    return check_tx_and_call
 
 
 class TimeSerie(SeriesServices):

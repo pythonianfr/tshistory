@@ -13,6 +13,7 @@ import pandas as pd
 from pandas.api.types import is_datetimetz
 from sqlalchemy.sql.expression import text
 from sqlalchemy.engine import url
+from sqlalchemy.engine.base import Engine
 from inireader import reader
 
 
@@ -229,6 +230,18 @@ def threadpool(maxthreads):
                         count += 1
 
     return run
+
+
+def tx(func):
+    " a decorator to check that the first method argument is a transaction "
+    def check_tx_and_call(self, cn, *a, **kw):
+        # safety belt to make sure important api points are tx-safe
+        if isinstance(cn, Engine) or not cn.in_transaction():
+            if not getattr(self, '_testing', False):
+                raise TypeError('You must use a transaction object')
+
+        return func(self, cn, *a, **kw)
+    return check_tx_and_call
 
 
 class unilist(list):
