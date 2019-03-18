@@ -43,9 +43,7 @@ def tsh(request, engine):
 
     if namespace == 'zzz':
         Snapshot._max_bucket_size = 5
-    tsh = tsio.TimeSerie(namespace)
-    tsh._testing = True
-    yield tsh
+    yield tsio.TimeSerie(namespace)
 
 
 @pytest.fixture(scope='session')

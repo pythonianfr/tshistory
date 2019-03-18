@@ -236,9 +236,12 @@ def tx(func):
     " a decorator to check that the first method argument is a transaction "
     def check_tx_and_call(self, cn, *a, **kw):
         # safety belt to make sure important api points are tx-safe
-        if isinstance(cn, Engine) or not cn.in_transaction():
-            if not getattr(self, '_testing', False):
+        if not isinstance(cn, Engine):
+            if not cn.in_transaction():
                 raise TypeError('You must use a transaction object')
+        else:
+            with cn.begin() as txcn:
+                return func(self, txcn, *a, **kw)
 
         return func(self, cn, *a, **kw)
     return check_tx_and_call
