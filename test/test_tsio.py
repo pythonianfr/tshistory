@@ -880,6 +880,87 @@ insertion_date             value_date
                       deltaafter=timedelta(hours=1)))
 
 
+def test_delta_na(engine, tsh):
+    ldates = (
+        utcdt(2015, 1, 20),
+        utcdt(2015, 1, 21),
+        utcdt(2015, 1, 22)
+    )
+
+    for idx, idate in enumerate(ldates):
+        ts = pd.Series([idx] * 3, index = ldates)
+        tsh.insert(engine, ts, 'without_na', 'arnaud',
+                   _insertion_date=idate)
+
+    assert_df("""
+2015-01-20 00:00:00+00:00    2.0
+2015-01-21 00:00:00+00:00    2.0
+2015-01-22 00:00:00+00:00    2.0
+""", tsh.get(engine, 'without_na'))
+
+    assert_df("""
+2015-01-20 00:00:00+00:00    0.0
+2015-01-21 00:00:00+00:00    1.0
+2015-01-22 00:00:00+00:00    2.0
+    """, tsh.get_delta(engine, 'without_na', delta=timedelta(hours=0)))
+    #as expected
+
+    assert_hist("""
+insertion_date             value_date               
+2015-01-20 00:00:00+00:00  2015-01-20 00:00:00+00:00    0.0
+                           2015-01-21 00:00:00+00:00    0.0
+                           2015-01-22 00:00:00+00:00    0.0
+2015-01-21 00:00:00+00:00  2015-01-20 00:00:00+00:00    1.0
+                           2015-01-21 00:00:00+00:00    1.0
+                           2015-01-22 00:00:00+00:00    1.0
+2015-01-22 00:00:00+00:00  2015-01-20 00:00:00+00:00    2.0
+                           2015-01-21 00:00:00+00:00    2.0
+                           2015-01-22 00:00:00+00:00    2.0
+    """, tsh.get_history(engine, 'without_na'))
+
+    # now, the last insertion has Na as last value
+    ldates = (
+        utcdt(2015, 1, 20),
+        utcdt(2015, 1, 21),
+        utcdt(2015, 1, 22)
+    )
+
+    for idx, idate in enumerate(ldates):
+        serie = pd.Series([float(idx)] * 3, index = ldates)
+        if idx == 2:
+            serie[-1] = np.nan
+        tsh.insert(engine, serie, 'with_na', 'arnaud',
+                   _insertion_date=idate)
+
+    # the value at 2015-01-22 is hidden by the inserted nan
+    assert_df("""
+2015-01-20 00:00:00+00:00    2.0
+2015-01-21 00:00:00+00:00    2.0
+    """, tsh.get(engine, 'with_na'))
+
+    # the last value should not be visible
+    assert_df("""
+2015-01-20 00:00:00+00:00    0.0
+2015-01-21 00:00:00+00:00    1.0
+2015-01-22 00:00:00+00:00    1.0
+    """, tsh.get_delta(engine, 'with_na', delta=timedelta(hours=0)))
+
+    # since the last nan inserted in the last revision is not
+    # displayed by get_history, the last value used in get delta is
+    # the one inserted in 2015-01-21 for the appdate 2015-01-22
+    assert_hist("""
+insertion_date             value_date               
+2015-01-20 00:00:00+00:00  2015-01-20 00:00:00+00:00    0.0
+                           2015-01-21 00:00:00+00:00    0.0
+                           2015-01-22 00:00:00+00:00    0.0
+2015-01-21 00:00:00+00:00  2015-01-20 00:00:00+00:00    1.0
+                           2015-01-21 00:00:00+00:00    1.0
+                           2015-01-22 00:00:00+00:00    1.0
+2015-01-22 00:00:00+00:00  2015-01-20 00:00:00+00:00    2.0
+                           2015-01-21 00:00:00+00:00    2.0
+        """, tsh.get_history(engine, 'with_na'))
+
+
 def test_nr_gethistory(engine, tsh):
     s0 = pd.Series([-1, 0, 0, -1],
                    index=pd.DatetimeIndex(start=datetime(2016, 12, 29),
