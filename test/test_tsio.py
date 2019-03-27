@@ -938,16 +938,14 @@ insertion_date             value_date
 2015-01-21 00:00:00+00:00    2.0
     """, tsh.get(engine, 'with_na'))
 
-    # the last value should not be visible
+    # the last value is also correctly hidden
     assert_df("""
 2015-01-20 00:00:00+00:00    0.0
 2015-01-21 00:00:00+00:00    1.0
-2015-01-22 00:00:00+00:00    1.0
     """, tsh.get_delta(engine, 'with_na', delta=timedelta(hours=0)))
 
-    # since the last nan inserted in the last revision is not
-    # displayed by get_history, the last value used in get delta is
-    # the one inserted in 2015-01-21 for the appdate 2015-01-22
+    # the value gathered by get_delta at value date 2015-01-22 is a
+    # nan, so it masks the previous ones at the same date
     assert_hist("""
 insertion_date             value_date               
 2015-01-20 00:00:00+00:00  2015-01-20 00:00:00+00:00    0.0
@@ -958,7 +956,8 @@ insertion_date             value_date
                            2015-01-22 00:00:00+00:00    1.0
 2015-01-22 00:00:00+00:00  2015-01-20 00:00:00+00:00    2.0
                            2015-01-21 00:00:00+00:00    2.0
-        """, tsh.get_history(engine, 'with_na'))
+                           2015-01-22 00:00:00+00:00    NaN
+        """, tsh.get_history(engine, 'with_na', _keep_nans=True))
 
 
 def test_nr_gethistory(engine, tsh):

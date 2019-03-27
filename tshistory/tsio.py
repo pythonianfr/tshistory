@@ -169,7 +169,8 @@ class TimeSerie(SeriesServices):
                     to_value_date=None,
                     deltabefore=None,
                     deltaafter=None,
-                    diffmode=False):
+                    diffmode=False,
+                    _keep_nans=False):
         table = self._get_ts_table(cn, seriename)
         if table is None:
             return
@@ -240,7 +241,7 @@ class TimeSerie(SeriesServices):
             series = diffs
         else:
             series = [
-                (idate, ts.dropna())
+                (idate, ts if _keep_nans else ts.dropna() )
                  for idate, ts in series
             ]
 
@@ -259,7 +260,8 @@ class TimeSerie(SeriesServices):
         histo = self.get_history(
             cn, seriename, deltabefore=-delta,
             from_value_date=from_value_date,
-            to_value_date=to_value_date
+            to_value_date=to_value_date,
+            _keep_nans=True
         )
         if histo is None:
             return None
@@ -274,7 +276,7 @@ class TimeSerie(SeriesServices):
 
         ts = pd.Series(vvmap).sort_index().loc[from_value_date:to_value_date]
         ts.name = seriename
-        return ts
+        return ts.dropna()
 
     def exists(self, cn, seriename):
         return self._get_ts_table(cn, seriename) is not None
