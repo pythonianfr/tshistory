@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from deprecated import deprecated
+
 from tshistory.schema import tsschema
 from tshistory.util import (
     closed_overlaps,
@@ -24,7 +26,7 @@ L = logging.getLogger('tshistory.tsio')
 SERIESSCHEMA = Path(__file__).parent / 'series.sql'
 
 
-class TimeSerie(SeriesServices):
+class timeseries(SeriesServices):
     namespace = 'tsh'
     schema = None
     metadatacache = None
@@ -162,15 +164,15 @@ class TimeSerie(SeriesServices):
         return 'primary'
 
     @tx
-    def get_history(self, cn, seriename,
-                    from_insertion_date=None,
-                    to_insertion_date=None,
-                    from_value_date=None,
-                    to_value_date=None,
-                    deltabefore=None,
-                    deltaafter=None,
-                    diffmode=False,
-                    _keep_nans=False):
+    def history(self, cn, seriename,
+                from_insertion_date=None,
+                to_insertion_date=None,
+                from_value_date=None,
+                to_value_date=None,
+                deltabefore=None,
+                deltaafter=None,
+                diffmode=False,
+                _keep_nans=False):
         tablename = self._serie_to_tablename(cn, seriename)
         if tablename is None:
             return
@@ -256,7 +258,7 @@ class TimeSerie(SeriesServices):
         }
 
     @tx
-    def get_delta(self, cn, seriename, delta,
+    def staircase(self, cn, seriename, delta,
                   from_value_date=None,
                   to_value_date=None):
         """ compute a series whose value dates are bounded to be
@@ -741,3 +743,11 @@ class TimeSerie(SeriesServices):
             self.metadatacache.clear()
             self.registry_map.clear()
             self.serie_tablename.clear()
+
+
+
+@deprecated(reason='use the `timeseries` object instead')
+class TimeSerie(timeseries):
+
+    get_history = deprecated(timeseries.history)
+    get_delta = deprecated(timeseries.staircase)

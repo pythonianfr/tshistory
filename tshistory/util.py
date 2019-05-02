@@ -229,6 +229,7 @@ def tx(func):
                 return func(self, txcn, *a, **kw)
 
         return func(self, cn, *a, **kw)
+    check_tx_and_call.__name__ = func.__name__
     return check_tx_and_call
 
 
