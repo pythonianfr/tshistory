@@ -42,8 +42,9 @@ def test_hourly_forecast(engine, tracker, ptsh):
                 localbase = base * perturbation
                 serie = pd.Series(localbase[idate.hour:idate.hour + 48],
                                   index=dr)
-                diff = tsh.insert(engine, serie, name, 'test',
-                                  _insertion_date=idate)
+                with engine.begin() as cn:
+                    diff = tsh.insert(cn, serie, name, 'test',
+                                      _insertion_date=idate)
                 if limit and idx > limit:
                     break
 
@@ -134,8 +135,9 @@ def test_bigdata(engine, tracker, ptsh):
         for year in range(2015, 2020):
             date = utcdt(year, 1, 1)
             serie = genserie(date, '10Min', 6 * 24 * 365)
-            tsh.insert(engine, serie, 'big', 'aurelien.campeas@pythonian.fr',
-                       _insertion_date=date)
+            with engine.begin() as cn:
+                tsh.insert(cn, serie, 'big', 'aurelien.campeas@pythonian.fr',
+                           _insertion_date=date)
 
     t0 = time()
     create_data()
