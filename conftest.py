@@ -1,7 +1,7 @@
 from pathlib import Path
 import logging
 
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import create_engine
 import pandas as pd
 
 import pytest
@@ -39,7 +39,7 @@ def tsh(request, engine):
     namespace = request.param
     sch = schema.tsschema(namespace)
     sch.destroy(engine)
-    schema.init_schemas(engine, MetaData(), namespace)
+    schema.init_schemas(engine, namespace)
 
     if namespace == 'zzz':
         Snapshot._max_bucket_size = 5
@@ -51,7 +51,7 @@ def ptsh(engine):
     sch = schema.tsschema()
     sch.destroy(engine)
     schema.register_schema(sch)
-    schema.init_schemas(engine, MetaData())
+    schema.init_schemas(engine)
     return tsio.TimeSerie()
 
 

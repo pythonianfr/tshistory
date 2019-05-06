@@ -1,20 +1,17 @@
 import zlib
 from array import array
 import struct
+from pathlib import Path
 
 import pandas as pd
 import numpy as np
 
-from sqlalchemy import Table, Column, Integer, ForeignKey, Index
-from sqlalchemy.sql.elements import NONE_NAME
-from sqlalchemy.sql.expression import select, asc, desc
-from sqlalchemy.dialects.postgresql import BYTEA, TIMESTAMP
-
 from tshistory.util import (
-    SeriesServices
+    SeriesServices,
+    sqlfile
 )
 
-TABLES = {}
+SCHEMA = Path(__file__).parent / 'snapshot.sql'
 
 
 class Snapshot(SeriesServices):
@@ -28,31 +25,10 @@ class Snapshot(SeriesServices):
         self.name = self.tsh._serie_to_tablename(cn, seriename)
 
     @property
-    def namespace(self):
-        return '{}.snapshot'.format(self.tsh.namespace)
-
-    @property
     def table(self):
-        tablename = '{}.{}'.format(self.namespace, self.name)
-        table = TABLES.get(tablename)
-        if table is None:
-            TABLES[tablename] = table = Table(
-                self.name, self.tsh.schema.meta,
-                Column('id', Integer, primary_key=True),
-                Column('start', TIMESTAMP(timezone=True)),
-                Column('end', TIMESTAMP(timezone=True)),
-                Column('chunk', BYTEA),
-                Column('parent', Integer,
-                       ForeignKey('{}.{}.id'.format(
-                           self.namespace,
-                           self.name))),
-                Index(NONE_NAME, 'start'),
-                Index(NONE_NAME, 'end'),
-                Index(NONE_NAME, 'parent'),
-                schema=self.namespace,
-                keep_existing=True
-            )
-        return table
+        return sqlfile(SCHEMA,
+                       namespace=self.tsh.namespace,
+                       tablename=self.name)
 
     # optimized/asymmetric de/serialisation
 
@@ -140,27 +116,31 @@ class Snapshot(SeriesServices):
         for bucket in self.buckets(ts):
             start = bucket.index.min()
             end = bucket.index.max()
-            sql = self.table.insert().values(
-                start=start,
-                end=end,
-                parent=parent,
-                chunk=self._serialize(bucket)
-            )
-            parent = self.cn.execute(sql).inserted_primary_key[0]
+            sql = (f'insert into "{self.tsh.namespace}.snapshot"."{self.name}" '
+                   '(cstart, cend, parent, chunk) '
+                   'values (%s, %s, %s, %s)'
+                   'returning id')
+            parent = self.cn.execute(
+                sql,
+                start,
+                end,
+                parent,
+                self._serialize(bucket)
+            ).scalar()
 
         return parent
 
     def create(self, initial_ts):
-        self.table.create(self.cn)
+        self.cn.execute(self.table)
         return self.insert_buckets(None, initial_ts)
 
     def update(self, diff):
         # get last chunkhead for cset
-        tstable = self.tsh._get_ts_table(self.cn, self.seriename)
-        headsql = select(
-            [tstable.c.snapshot]
-        ).order_by(desc(tstable.c.id)
-        ).limit(1)
+        # tstable = self.tsh._get_ts_table(self.cn, self.seriename)
+        tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
+        headsql = ('select snapshot '
+                   f'from "{self.tsh.namespace}.timeserie"."{tablename}" '
+                   'order by id desc limit 1')
         head = self.cn.execute(headsql).scalar()
 
         # get raw chunks matching the limits
@@ -184,13 +164,13 @@ class Snapshot(SeriesServices):
             select chunks.id as cid,
                    chunks.parent as parent,
                    chunks.chunk as chunk
-            from "{namespace}"."{table}" as chunks
+            from {namespace}."{table}" as chunks
             where chunks.id in ({heads})
           union
             select chunks.id as cid,
                    chunks.parent as parent,
                    chunks.chunk as chunk
-            from "{namespace}"."{table}" as chunks
+            from {namespace}."{table}" as chunks
             join allchunks on chunks.id = allchunks.parent
             {where}
         )
@@ -200,10 +180,10 @@ class Snapshot(SeriesServices):
     def rawchunks(self, head, from_value_date=None):
         where = ''
         if from_value_date:
-            where = 'where chunks.end >= %(start)s '
+            where = 'where chunks.cend >= %(start)s '
 
         sql = self.rawsql.format(
-            namespace=self.namespace,
+            namespace=f'"{self.tsh.namespace}.snapshot"',
             table=self.name,
             heads=','.join([str(head)]),
             where=where
@@ -228,25 +208,30 @@ class Snapshot(SeriesServices):
         return self.find(from_value_date=from_value_date,
                          to_value_date=to_value_date)[0]
 
-    def cset_heads_query(self, csetfilter=(), order=desc):
-        cset = self.tsh.schema.changeset
-        serie = self.tsh._get_ts_table(self.cn, self.seriename)
-        sql = select([serie.c.cset, serie.c.snapshot]
-        ).order_by(order(serie.c.id)
-        ).select_from(serie.join(cset))
+    def cset_heads_query(self, csetfilter=(), order='desc'):
+        tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
+        sql = [
+            'select ts.cset, ts.snapshot '
+            f'from "{self.tsh.namespace}.timeserie"."{tablename}" as ts, '
+            f'      {self.tsh.namespace}.changeset as cset'
+            ' where cset.id = ts.cset '
+        ]
 
         if csetfilter:
-            sql = sql.where(serie.c.cset <= cset.c.id)
+            sql.append('and ts.cset <= cset.id ')
             for filtercb in csetfilter:
-                sql = sql.where(filtercb(cset))
+                sql.append('and ' + filtercb)
 
+        sql.append(f'order by ts.id {order} ')
         return sql
 
     def find(self, csetfilter=(),
              from_value_date=None, to_value_date=None):
 
         sql = self.cset_heads_query(csetfilter)
-        sql = sql.limit(1)
+        sql.append('limit 1')
+
+        sql = ''.join(sql)
 
         try:
             csid, cid = self.cn.execute(sql).fetchone()
@@ -260,10 +245,10 @@ class Snapshot(SeriesServices):
     def allchunks(self, heads, from_value_date=None):
         where = ''
         if from_value_date:
-            where = 'where chunks.end >= %(start)s '
+            where = 'where chunks.cend >= %(start)s '
 
         sql = self.rawsql.format(
-            namespace=self.namespace,
+            namespace=f'"{self.tsh.namespace}.snapshot"',
             table=self.name,
             heads=','.join(str(head) for head in heads),
             where=where
@@ -277,9 +262,10 @@ class Snapshot(SeriesServices):
         csets = [rev for rev, _ in revs if rev is not None]
         # csid -> heads
 
-        sql = self.cset_heads_query((lambda cset: cset.c.id >= min(csets),
-                                     lambda cset: cset.c.id <= max(csets)),
-                                     order=asc)
+        sql = self.cset_heads_query((f'cset.id >= {min(csets)}',
+                                     f'cset.id <= {max(csets)}'),
+                                     order='asc')
+        sql = ''.join(sql)
 
         cset_snap_map = {
             row.cset: row.snapshot

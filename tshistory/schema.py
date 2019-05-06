@@ -1,14 +1,11 @@
 import logging
 from threading import Lock
+from pathlib import Path
 
-from sqlalchemy import (Table, Column, Integer, String, MetaData, TIMESTAMP,
-                        ForeignKey, UniqueConstraint)
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.schema import CreateSchema
-
-from tshistory.util import unilist
+from tshistory.util import unilist, sqlfile
 
 L = logging.getLogger('tshistory.schema')
+CREATEFILE = Path(__file__).parent / 'schema.sql'
 
 # schemas registry
 _SCHLOCK = Lock()
@@ -23,9 +20,9 @@ def register_schema(schema):
             _SCHEMA_HANDLERS.append(schema)
 
 
-def init_schemas(engine, meta, namespace='tsh'):
+def init_schemas(engine, namespace='tsh'):
     for schema in _SCHEMA_HANDLERS:
-        schema.define(meta)
+        schema.define()
         schema.create(engine)
 
 
@@ -45,7 +42,6 @@ def _delete_schema(engine, ns):
 
 class tsschema(object):
     namespace = 'tsh'
-    meta = None
     registry = None
     changeset = None
     changeset_series = None
@@ -62,51 +58,11 @@ class tsschema(object):
         self.namespace = namespace
         register_schema(self)
 
-    def define(self, meta=MetaData()):
+    def define(self):
         with _SCHLOCK:
             if self.namespace in self.SCHEMAS:
                 return
         L.info('build schema %s', self.namespace)
-        self.meta = meta
-        registry = Table(
-            'registry', meta,
-            Column('id', Integer, primary_key=True),
-            Column('seriename', String, index=True, nullable=False, unique=True),
-            Column('table_name', String, index=True,
-                   nullable=False, unique=True),
-            Column('metadata', JSONB(none_as_null=True)),
-            schema=self.namespace,
-            keep_existing=True
-        )
-
-        changeset = Table(
-            'changeset', meta,
-            Column('id', Integer, primary_key=True),
-            Column('author', String, index=True, nullable=False),
-            Column('insertion_date', TIMESTAMP(timezone=True), index=True, nullable=False),
-            Column('metadata', JSONB(none_as_null=True)),
-            schema=self.namespace,
-            keep_existing=True
-        )
-
-        changeset_series = Table(
-            'changeset_series', meta,
-            Column('cset', Integer,
-                   ForeignKey('{}.changeset.id'.format(self.namespace), ondelete='set null'),
-                   index=True, nullable=True),
-            Column('serie', Integer,
-                   ForeignKey('{}.registry.id'.format(self.namespace), ondelete='cascade'),
-                   index=True, nullable=False),
-            UniqueConstraint(
-                'cset', 'serie',
-                name='{}_changeset_series_unique'.format(self.namespace)),
-            schema=self.namespace,
-            keep_existing=True
-        )
-
-        self.registry = registry
-        self.changeset = changeset
-        self.changeset_series = changeset_series
         with _SCHLOCK:
             self.SCHEMAS[self.namespace] = self
 
@@ -127,12 +83,10 @@ class tsschema(object):
                 L.warning('cannot create already existing namespace %s',
                           self.namespace)
             return
-        engine.execute(CreateSchema(self.namespace))
-        engine.execute(CreateSchema('{}.timeserie'.format(self.namespace)))
-        engine.execute(CreateSchema('{}.snapshot'.format(self.namespace)))
-        self.registry.create(engine)
-        self.changeset.create(engine)
-        self.changeset_series.create(engine)
+        engine.execute(f'create schema if not exists "{self.namespace}"')
+        engine.execute(f'create schema if not exists "{self.namespace}.timeserie"')
+        engine.execute(f'create schema if not exists "{self.namespace}.snapshot"')
+        engine.execute(sqlfile(CREATEFILE, ns=self.namespace))
 
     def destroy(self, engine):
         L.info('destroy schema %s', self.namespace)

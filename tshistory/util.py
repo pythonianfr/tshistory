@@ -11,10 +11,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetimetz
-from sqlalchemy.sql.expression import text
 from sqlalchemy.engine import url
 from sqlalchemy.engine.base import Engine
 from inireader import reader
+
+
+def sqlfile(path, **kw):
+    sql = path.read_text()
+    return sql.format(**kw)
 
 
 @contextmanager
@@ -81,12 +85,10 @@ def start_end(ts, notz=True):
 
 
 def closed_overlaps(fromdate, todate):
-    fromdate = "'-infinity'" if fromdate is None else ':fromdate'
-    todate = "'infinity'" if todate is None else ':todate'
-    return text(
-        '({}, {}) overlaps (start, "end" + interval \'1 microsecond\')'.format(
-            fromdate, todate
-        )
+    fromdate = "'-infinity'" if fromdate is None else '%(fromdate)s'
+    todate = "'infinity'" if todate is None else '%(todate)s'
+    return ' ({}, {}) overlaps (tsstart, tsend + interval \'1 microsecond\') '.format(
+        fromdate, todate
     )
 
 
@@ -165,23 +167,6 @@ class SeriesServices(object):
         diff_new = other[~mask_overlap]
         diff_new = diff_new[~diff_new.isnull()]
         return pd.concat([diff_overlap, diff_new])
-
-
-def rename_series(engine, serie_map, namespace='tsh'):
-    from tshistory.schema import tsschema
-    schema = tsschema(namespace)
-    schema.define()
-
-    reg = schema.registry
-    with engine.begin() as cn:
-        for old, new in serie_map.items():
-            print('rename', old, '->', new)
-            sql = reg.update().where(
-                reg.c.seriename == old
-            ).values(
-                seriename=new
-            )
-            cn.execute(sql)
 
 
 def delete_series(engine, series, namespace='tsh'):

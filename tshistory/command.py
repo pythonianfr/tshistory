@@ -8,7 +8,7 @@ from dateutil import parser
 from json import dumps
 
 import click
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import create_engine
 from dateutil.parser import parse as temporal
 import pandas as pd
 
@@ -16,8 +16,7 @@ from tshistory.tsio import TimeSerie
 from tshistory.util import (
     delete_series,
     find_dburi,
-    fromjson,
-    rename_series
+    fromjson
 )
 
 import tshistory.schema
@@ -169,7 +168,11 @@ def rename(db_uri, mapfile, namespace='tsh'):
         for p in pd.read_csv(mapfile).itertuples()
     }
     engine = create_engine(find_dburi(db_uri))
-    rename_series(engine, seriesmap, namespace)
+    tsh = TimeSerie(namespace)
+    for old, new in seriesmap.items():
+        with engine.begin() as cn:
+            print('rename', old, '->', new)
+            tsh.rename(cn, old, new)
 
 
 @tsh.command()
@@ -213,9 +216,6 @@ def init_db(db_uri, reset=False, namespace='tsh'):
     if reset:
         assert schem.exists(engine)
         schem.destroy(engine)
-
-        # needed because of del self.meta & return in define() :
-        schem.meta = MetaData()
 
     schem.create(engine)
 
@@ -266,161 +266,6 @@ def shell(db_uri, namespace='tsh'):
 
     tsh = TimeSerie(namespace)
     import pdb; pdb.set_trace()
-
-
-# repair
-
-@tsh.command(name='repair-start-end')
-@click.argument('db-uri')
-@click.option('--namespace', default='tsh')
-@click.option('--processes', default=1)
-@click.option('--series', default=None)
-def repair_start_end(db_uri, namespace='tsh', processes=1, series=None):
-    from tshistory.migration import SnapshotMigrator
-    if series:
-        series = [series]
-    else:
-        engine = create_engine(find_dburi(db_uri))
-        sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
-        series = [row.seriename for row in engine.execute(sql)]
-        engine.dispose()
-
-    def _migrate(seriename):
-        e = create_engine(find_dburi(db_uri), pool_size=1)
-        tsh = TimeSerie(namespace)
-        with e.begin() as cn:
-            m = SnapshotMigrator(cn, tsh, seriename)
-            m.fix_start_end()
-        e.dispose()
-
-    def migrate(seriename):
-        try:
-            _migrate(seriename)
-        except Exception:
-            import traceback as tb
-            tb.print_exc()
-            print(seriename, 'FAIL')
-
-    def run(proc, series):
-        seriescount = len(series)
-        pid = os.getpid()
-        for idx, ts in enumerate(series, 1):
-            print('migrate {} proc: {} [{}/{}]'.format(ts, proc, idx, seriescount))
-            migrate(ts)
-
-    if processes == 1:
-        run(0, series)
-        return
-
-    def chunks(l, n):
-        for i in range(0, len(l), n):
-            yield l[i:i + n]
-
-    # try to distribute the payload randomly as in practice it is definitely
-    # *not* evenly dsitributed along the lexical order ...
-    random.shuffle(series)
-    chunks = list(chunks(series, len(series) // processes))
-    print('running with {} processes'.format(len(chunks)))
-
-    pids = []
-    for idx, chunk in enumerate(chunks):
-        pid = os.fork()
-        if not pid:
-            # please the eyes
-            chunk.sort()
-            run(idx, chunk)
-            return
-        pids.append(pid)
-
-    try:
-        for pid in pids:
-            print('waiting for', pid)
-            os.waitpid(pid, 0)
-    except KeyboardInterrupt:
-        for pid in pids:
-            print('kill', pid)
-            os.kill(pid, signal.SIGINT)
-
-# migration
-
-@tsh.command(name='migrate-0.3-to-0.4')
-@click.argument('db-uri')
-@click.option('--namespace', default='tsh')
-@click.option('--processes', default=1)
-@click.option('--tryserie', default=None)
-def migrate_zerodotthree_to_zerodotfour(db_uri, namespace='tsh', processes=1, tryserie=None):
-    """ in-place migration for going from 0.3 to 0.4
-
-    Will populate the start/end fields on series tables and
-    update the chunk representation on snapshots tables.
-    """
-    from tshistory.migration import SnapshotMigrator
-    if tryserie:
-        series = [tryserie]
-    else:
-        engine = create_engine(find_dburi(db_uri))
-        sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
-        series = [row.seriename for row in engine.execute(sql)]
-        engine.dispose()
-
-    def _migrate(seriename):
-        e = create_engine(find_dburi(db_uri), pool_size=1)
-        tsh = TimeSerie(namespace)
-        with e.begin() as cn:
-            m = SnapshotMigrator(cn, tsh, seriename)
-            m.migratechunks()
-        with e.begin() as cn:
-            m = SnapshotMigrator(cn, tsh, seriename)
-            m.migrateseries()
-        e.dispose()
-
-    def migrate(seriename):
-        try:
-            _migrate(seriename)
-        except Exception:
-            import traceback as tb
-            tb.print_exc()
-            print(seriename, 'FAIL')
-
-    def run(proc, series):
-        seriescount = len(series)
-        pid = os.getpid()
-        for idx, ts in enumerate(series, 1):
-            print('migrate {} proc: {} [{}/{}]'.format(ts, proc, idx, seriescount))
-            migrate(ts)
-
-    if processes == 1:
-        run(series)
-        return
-
-    def chunks(l, n):
-        for i in range(0, len(l), n):
-            yield l[i:i + n]
-
-    # try to distribute the payload randomly as in practice it is definitely
-    # *not* evenly dsitributed along the lexical order ...
-    random.shuffle(series)
-    chunks = list(chunks(series, len(series) // processes))
-    print('running with {} processes'.format(len(chunks)))
-
-    pids = []
-    for idx, chunk in enumerate(chunks):
-        pid = os.fork()
-        if not pid:
-            # please the eyes
-            chunk.sort()
-            run(idx, chunk)
-            return
-        pids.append(pid)
-
-    try:
-        for pid in pids:
-            print('waiting for', pid)
-            os.waitpid(pid, 0)
-    except KeyboardInterrupt:
-        for pid in pids:
-            print('kill', pid)
-            os.kill(pid, signal.SIGINT)
 
 
 for ep in iter_entry_points('tshistory.subcommands'):
