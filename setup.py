@@ -21,7 +21,7 @@ setup(name='tshistory',
       ],
       entry_points={
           'console_scripts': [
-              'tsh=tshistory.command:tsh'
+              'tsh=tshistory.cli:tsh'
           ]},
       classifiers=[
           'Development Status :: 4 - Beta',

@@ -8,7 +8,7 @@ import pytest
 from pytest_sa_pg import db
 from click.testing import CliRunner
 
-from tshistory import schema, tsio, command
+from tshistory import schema, tsio, cli as command
 from tshistory.snapshot import Snapshot
 
 
