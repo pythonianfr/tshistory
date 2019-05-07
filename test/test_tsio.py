@@ -1086,8 +1086,8 @@ def test_serie_deletion(engine, tsh):
 
     seriecount2, csetcount2, csetseriecount2 = assert_structures(engine, tsh)
 
-    assert csetcount - csetcount2  == 2
-    assert csetseriecount - csetseriecount2 == 2
+    assert csetcount - csetcount2  == 0
+    assert csetseriecount - csetseriecount2 == 0
     assert seriecount - seriecount2 == 1
     assert tsh.metadata(engine, 'deleteme') is None
 
@@ -1107,6 +1107,12 @@ def test_serie_deletion(engine, tsh):
         'index_names': [],
         'value_dtype': '<f8'
     }
+
+    sql = f"""select count(*) from {tsh.namespace}.changeset
+           where (metadata::jsonb ->> 'tshistory.info')
+           like 'belonged to deleted series `deleteme`' """
+    count = engine.execute(sql).scalar()
+    assert count == 2
 
 
 def test_strip(engine, tsh):
@@ -1185,7 +1191,9 @@ insertion_date             value_date
             meta = l['meta']
             stripinfo = meta.get('tshistory.info')
             if stripinfo:
-                assert stripinfo.startswith('got stripped from')
+                assert (stripinfo.startswith('got stripped from') or
+                        # see how this test is silly ?
+                        stripinfo.startswith('belonged to'))
 
 
 def test_long_name(engine, tsh):

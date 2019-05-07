@@ -257,7 +257,6 @@ def check(db_uri, series=None, namespace='tsh'):
         )
 
 
-
 @tsh.command(name='shell')
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
@@ -266,6 +265,25 @@ def shell(db_uri, namespace='tsh'):
 
     tsh = TimeSerie(namespace)
     import pdb; pdb.set_trace()
+
+
+@tsh.command(name='migrate-0.6-to-0.7')
+@click.argument('db-uri')
+@click.option('--namespace', default='tsh')
+def migrate_dot_6_to_dot_7(db_uri, namespace='tsh'):
+    e = create_engine(find_dburi(db_uri))
+    tsh = TimeSerie(namespace)
+    with e.begin() as cn:
+        # drop not null
+        cn.execute(f'alter table "{namespace}".changeset_series '
+                   'alter column serie drop not null')
+        # alter foreign key on delete: delete -> set null
+        cn.execute(f'alter table "{namespace}".changeset_series '
+                   'drop constraint "changeset_series_serie_fkey"')
+        cn.execute(f'alter table "{namespace}".changeset_series '
+                   'add constraint "changeset_series_serie_fkey" '
+                   f'foreign key (serie) references "{namespace}".registry (id) '
+                   'on delete set null')
 
 
 for ep in iter_entry_points('tshistory.subcommands'):

@@ -17,25 +17,6 @@ from tshistory.testutil import (
 
 
 @pytest.mark.perf
-def test_delete(engine, ptsh):
-    for year in range(1900, 2100):
-        for month in range(1, 13):
-            idate = utcdt(year, month, 1)
-            ts = pd.Series(np.random.random(30),
-                           index=pd.date_range(start=utcdt(year, month, 1),
-                                               freq='D', periods=30))
-            ptsh.insert(engine, ts, 'delete_perf', 'Babar')
-            ptsh.insert(engine, ts, 'delete_perf_a', 'Babar')
-            ptsh.insert(engine, ts, 'delete_perf_b', 'Babar')
-            ptsh.insert(engine, ts, 'delete_perf_c', 'Babar')
-    t0 = time()
-    print(len(ptsh.get(engine, 'delete_perf')))
-    print(len(ptsh.insertion_dates(engine, 'delete_perf')))
-    ptsh.delete(engine, 'delete_perf')
-    print(time() - t0)
-
-
-@pytest.mark.perf
 def test_hourly_forecast(engine, tracker, ptsh):
     tsh = ptsh
 

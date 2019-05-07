@@ -21,7 +21,7 @@ create index on "{ns}".changeset(insertion_date) ;
 
 create table "{ns}".changeset_series (
   cset integer references "{ns}".changeset(id) on delete set null,
-  serie integer not null references "{ns}".registry(id) on delete cascade
+  serie integer references "{ns}".registry(id) on delete set null
 );
 
 create index on "{ns}".changeset_series(cset);

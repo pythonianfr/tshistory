@@ -350,13 +350,27 @@ class timeseries(SeriesServices):
 
     @tx
     def delete(self, cn, seriename):
-        if not self.exists(cn, seriename):
+        tablename = self._serie_to_tablename(cn, seriename)
+        if tablename is None:
             print('not deleting unknown series', seriename, self.namespace)
             return
         # changeset will keep ghost entries
-        # we cleanup changeset series, then registry
-        # then we drop the two remaining tables
-        # cn *must* be a transaction scope
+        # whose cleanup is costly
+        # we will mark them as from a deleted series
+        # update changeset.metadata
+        msg = f'belonged to deleted series `{seriename}`'
+        csetsql = f'select cset from "{self.namespace}.timeserie"."{tablename}"'
+        for csid, in cn.execute(csetsql):
+            metadata = self.changeset_metadata(cn, csid) or {}
+            metadata['tshistory.info'] = msg
+            cn.execute(
+                f'update "{self.namespace}".changeset '
+                'set metadata = %(metadata)s '
+                'where id = %(csid)s',
+                csid=csid,
+                metadata=json.dumps(metadata)
+            )
+
         rid, tablename = cn.execute(
             'select id, table_name from "{}".registry '
             'where seriename = %(seriename)s'.format(self.namespace),
@@ -368,15 +382,6 @@ class timeseries(SeriesServices):
         )
         cn.execute(
             'drop table "{}.snapshot"."{}" cascade'.format(self.namespace, tablename)
-        )
-        # cleanup changesets table
-        cn.execute('with csets as ('
-                   ' select cset from "{ns}".changeset_series '
-                   ' where serie = %(rid)s'
-                   ') '
-                   'delete from "{ns}".changeset as cset using csets '
-                   'where cset.id = csets.cset'.format(ns=self.namespace),
-                   rid=rid
         )
         cn.execute('delete from "{}".registry '
                    'where id = %(rid)s'.format(self.namespace),
