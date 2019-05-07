@@ -388,7 +388,6 @@ class timeseries(SeriesServices):
                    rid=rid)
         # -> this will transitively cleanup state changeset_series entries
         self._resetcaches()
-        print('deleted', seriename, self.namespace)
 
     @tx
     def strip(self, cn, seriename, csid):
