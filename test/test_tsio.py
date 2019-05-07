@@ -9,7 +9,7 @@ import pandas as pd
 
 from tshistory.snapshot import Snapshot
 from tshistory.util import threadpool
-from tshistory.tsio import TimeSerie
+from tshistory.tsio import timeseries
 from tshistory.testutil import (
     assert_df,
     assert_hist,
@@ -89,7 +89,7 @@ Freq: H
 2017-10-29 04:00:00+00:00    3.0
 """, ts)
 
-    hist = tsh.get_history(engine, 'tztest')
+    hist = tsh.history(engine, 'tztest')
     assert_hist("""
 insertion_date             value_date               
 2018-01-01 00:00:00+00:00  2017-10-28 23:00:00+00:00    0.0
@@ -104,9 +104,9 @@ insertion_date             value_date
                            2017-10-29 04:00:00+00:00    3.0
 """, hist)
 
-    hist = tsh.get_history(engine, 'tztest',
-                           from_value_date=utcdt(2017, 10, 29, 1),
-                           to_value_date=utcdt(2017, 10, 29, 3))
+    hist = tsh.history(engine, 'tztest',
+                       from_value_date=utcdt(2017, 10, 29, 1),
+                       to_value_date=utcdt(2017, 10, 29, 3))
     assert_hist("""
 insertion_date             value_date               
 2018-01-01 00:00:00+00:00  2017-10-29 01:00:00+00:00    2.0
@@ -649,7 +649,7 @@ def test_deletion_over_horizon(engine, tsh):
     assert ival.right == datetime(2018, 1, 2)
 
 
-def test_get_history(engine, tsh):
+def test_history(engine, tsh):
     for numserie in (1, 2, 3):
         with engine.begin() as cn:
             tsh.insert(cn, genserie(datetime(2017, 1, 1), 'D', numserie), 'smallserie',
@@ -682,7 +682,7 @@ def test_get_history(engine, tsh):
         }
     ] == [{k: v for k, v in log.items() if k != 'rev'}
           for log in logs]
-    histts = tsh.get_history(engine, 'smallserie')
+    histts = tsh.history(engine, 'smallserie')
 
     assert_hist("""
 insertion_date             value_date
@@ -694,7 +694,7 @@ insertion_date             value_date
                            2017-01-03    2.0
 """, histts)
 
-    diffs = tsh.get_history(engine, 'smallserie', diffmode=True)
+    diffs = tsh.history(engine, 'smallserie', diffmode=True)
     assert_hist("""
 insertion_date             value_date
 2017-02-01 00:00:00+00:00  2017-01-01    0.0
@@ -710,11 +710,11 @@ insertion_date             value_date
 
     # this is perfectly round-tripable
     assert (tsh.get(engine, 'smallserie2') == ts).all()
-    assert_hist_equals(tsh.get_history(engine, 'smallserie2'), histts)
+    assert_hist_equals(tsh.history(engine, 'smallserie2'), histts)
 
     # get history ranges
-    tsa = tsh.get_history(engine, 'smallserie',
-                          from_insertion_date=datetime(2017, 2, 2))
+    tsa = tsh.history(engine, 'smallserie',
+                      from_insertion_date=datetime(2017, 2, 2))
     assert_hist("""
 insertion_date             value_date
 2017-02-02 00:00:00+00:00  2017-01-01    0.0
@@ -724,8 +724,8 @@ insertion_date             value_date
                            2017-01-03    2.0
 """, tsa)
 
-    tsb = tsh.get_history(engine, 'smallserie',
-                          to_insertion_date=datetime(2017, 2, 2))
+    tsb = tsh.history(engine, 'smallserie',
+                      to_insertion_date=datetime(2017, 2, 2))
     assert_hist("""
 insertion_date             value_date
 2017-02-01 00:00:00+00:00  2017-01-01    0.0
@@ -733,23 +733,23 @@ insertion_date             value_date
                            2017-01-02    1.0
 """, tsb)
 
-    tsc = tsh.get_history(engine, 'smallserie',
-                          from_insertion_date=datetime(2017, 2, 2),
-                          to_insertion_date=datetime(2017, 2, 2))
+    tsc = tsh.history(engine, 'smallserie',
+                      from_insertion_date=datetime(2017, 2, 2),
+                      to_insertion_date=datetime(2017, 2, 2))
     assert_hist("""
 insertion_date             value_date
 2017-02-02 00:00:00+00:00  2017-01-01    0.0
                            2017-01-02    1.0
 """, tsc)
 
-    tsc = tsh.get_history(engine, 'smallserie',
-                          from_insertion_date=datetime(2017, 2, 4),
-                          to_insertion_date=datetime(2017, 2, 4))
+    tsc = tsh.history(engine, 'smallserie',
+                      from_insertion_date=datetime(2017, 2, 4),
+                      to_insertion_date=datetime(2017, 2, 4))
     assert tsc == {}
 
-    tsc = tsh.get_history(engine, 'smallserie',
-                          from_insertion_date=datetime(2016, 2, 1),
-                          to_insertion_date=datetime(2017, 2, 2))
+    tsc = tsh.history(engine, 'smallserie',
+                      from_insertion_date=datetime(2016, 2, 1),
+                      to_insertion_date=datetime(2017, 2, 2))
     assert_hist("""
 insertion_date             value_date
 2017-02-01 00:00:00+00:00  2017-01-01    0.0
@@ -757,15 +757,15 @@ insertion_date             value_date
                            2017-01-02    1.0
 """, tsc)
 
-    tsc = tsh.get_history(engine, 'smallserie',
-                          from_insertion_date=datetime(2016, 2, 1),
-                          to_insertion_date=datetime(2016, 12, 31))
+    tsc = tsh.history(engine, 'smallserie',
+                      from_insertion_date=datetime(2016, 2, 1),
+                      to_insertion_date=datetime(2016, 12, 31))
     assert tsc == {}
 
     # restrictions on value dates
-    tsc = tsh.get_history(engine, 'smallserie',
-                          from_value_date=datetime(2017, 1, 1),
-                          to_value_date=datetime(2017, 1, 2))
+    tsc = tsh.history(engine, 'smallserie',
+                      from_value_date=datetime(2017, 1, 1),
+                      to_value_date=datetime(2017, 1, 2))
     assert_hist("""
 insertion_date             value_date
 2017-02-01 00:00:00+00:00  2017-01-01    0.0
@@ -775,8 +775,8 @@ insertion_date             value_date
                            2017-01-02    1.0
 """, tsc)
 
-    tsc = tsh.get_history(engine, 'smallserie',
-                          from_value_date=datetime(2017, 1, 2))
+    tsc = tsh.history(engine, 'smallserie',
+                      from_value_date=datetime(2017, 1, 2))
     assert_hist("""
 insertion_date             value_date
 2017-02-02 00:00:00+00:00  2017-01-02    1.0
@@ -784,8 +784,8 @@ insertion_date             value_date
                            2017-01-03    2.0
 """, tsc)
 
-    tsc = tsh.get_history(engine, 'smallserie',
-                          to_value_date=datetime(2017, 1, 2))
+    tsc = tsh.history(engine, 'smallserie',
+                      to_value_date=datetime(2017, 1, 2))
     assert_hist("""
 insertion_date             value_date
 2017-02-01 00:00:00+00:00  2017-01-01    0.0
@@ -795,7 +795,7 @@ insertion_date             value_date
                            2017-01-02    1.0
 """, tsc)
 
-    tsc = tsh.get_history(engine, 'no-such-series')
+    tsc = tsh.history(engine, 'no-such-series')
     assert tsc is None
 
     idates = tsh.insertion_dates(engine, 'smallserie')
@@ -842,7 +842,7 @@ insertion_date             value_date
                            2018-01-02 02:00:00+00:00    2.0
                            2018-01-02 03:00:00+00:00    2.0
                            2018-01-02 04:00:00+00:00    2.0
-    """, tsh.get_history(engine, 'hd'))
+    """, tsh.history(engine, 'hd'))
 
     assert_hist("""
 insertion_date             value_date               
@@ -860,7 +860,7 @@ insertion_date             value_date
                            2018-01-02 00:00:00+00:00    2.0
                            2018-01-02 01:00:00+00:00    2.0
                            2018-01-02 02:00:00+00:00    2.0
-""",  tsh.get_history(engine, 'hd', deltaafter=timedelta(hours=2)))
+""",  tsh.history(engine, 'hd', deltaafter=timedelta(hours=2)))
 
     assert_hist("""
 insertion_date             value_date               
@@ -868,9 +868,9 @@ insertion_date             value_date
                            2018-01-01 01:00:00+00:00    1.0
 2018-01-02 00:00:00+00:00  2018-01-02 00:00:00+00:00    2.0
                            2018-01-02 01:00:00+00:00    2.0
-""",  tsh.get_history(engine, 'hd',
-                      deltabefore=timedelta(hours=0),
-                      deltaafter=timedelta(hours=1)))
+""",  tsh.history(engine, 'hd',
+                  deltabefore=timedelta(hours=0),
+                  deltaafter=timedelta(hours=1)))
 
 
 def test_delta_na(engine, tsh):
@@ -895,7 +895,7 @@ def test_delta_na(engine, tsh):
 2015-01-20 00:00:00+00:00    0.0
 2015-01-21 00:00:00+00:00    1.0
 2015-01-22 00:00:00+00:00    2.0
-    """, tsh.get_delta(engine, 'without_na', delta=timedelta(hours=0)))
+    """, tsh.staircase(engine, 'without_na', delta=timedelta(hours=0)))
     #as expected
 
     assert_hist("""
@@ -909,7 +909,7 @@ insertion_date             value_date
 2015-01-22 00:00:00+00:00  2015-01-20 00:00:00+00:00    2.0
                            2015-01-21 00:00:00+00:00    2.0
                            2015-01-22 00:00:00+00:00    2.0
-    """, tsh.get_history(engine, 'without_na'))
+    """, tsh.history(engine, 'without_na'))
 
     # now, the last insertion has Na as last value
     ldates = (
@@ -935,9 +935,9 @@ insertion_date             value_date
     assert_df("""
 2015-01-20 00:00:00+00:00    0.0
 2015-01-21 00:00:00+00:00    1.0
-    """, tsh.get_delta(engine, 'with_na', delta=timedelta(hours=0)))
+    """, tsh.staircase(engine, 'with_na', delta=timedelta(hours=0)))
 
-    # the value gathered by get_delta at value date 2015-01-22 is a
+    # the value gathered by staircase at value date 2015-01-22 is a
     # nan, so it masks the previous ones at the same date
     assert_hist("""
 insertion_date             value_date               
@@ -950,7 +950,7 @@ insertion_date             value_date
 2015-01-22 00:00:00+00:00  2015-01-20 00:00:00+00:00    2.0
                            2015-01-21 00:00:00+00:00    2.0
                            2015-01-22 00:00:00+00:00    NaN
-        """, tsh.get_history(engine, 'with_na', _keep_nans=True))
+        """, tsh.history(engine, 'with_na', _keep_nans=True))
 
 
 def test_nr_gethistory(engine, tsh):
@@ -971,11 +971,11 @@ def test_nr_gethistory(engine, tsh):
                        'aurelien.campeas@pythonian.f',
                        _insertion_date=idate + timedelta(days=i))
 
-    df = tsh.get_history(engine, 'foo',
-                         datetime(2016, 1, 3),
-                         datetime(2016, 1, 4),
-                         datetime(2017, 1, 1),
-                         datetime(2017, 1, 4))
+    df = tsh.history(engine, 'foo',
+                     datetime(2016, 1, 3),
+                     datetime(2016, 1, 4),
+                     datetime(2017, 1, 1),
+                     datetime(2017, 1, 4))
 
     assert_hist("""
 insertion_date             value_date
@@ -1142,7 +1142,7 @@ def test_strip(engine, tsh):
         (8, 'celeste')
     ]
 
-    h = tsh.get_history(engine, 'xserie')
+    h = tsh.history(engine, 'xserie')
     assert_hist("""
 insertion_date             value_date         
 2017-01-01 00:00:00+00:00  2017-01-10 00:00:00    0.0
@@ -1172,7 +1172,7 @@ insertion_date             value_date
 2017-01-02 00:00:00+00:00  2017-01-10 00:00:00    0.0
                            2017-01-10 01:00:00    1.0
                            2017-01-10 02:00:00    2.0
-""", tsh.get_history(engine, 'xserie'))
+""", tsh.history(engine, 'xserie'))
 
     assert_df("""
 2017-01-10 00:00:00    0.0
@@ -1204,8 +1204,8 @@ def test_long_name(engine, tsh):
     assert tsh.get(engine, name) is not None
 
 
-def test_get_delta(engine, tsh):
-    assert tsh.get_delta(engine, 'no-such-series',
+def test_staircase(engine, tsh):
+    assert tsh.staircase(engine, 'no-such-series',
                          delta=pd.Timedelta(days=2)) is None
 
     for idate in pd.DatetimeIndex(start=utcdt(2015, 1, 1),
@@ -1215,7 +1215,7 @@ def test_get_delta(engine, tsh):
         tsh.insert(engine, ts, 'republication', 'test',
                    _insertion_date=idate)
 
-    hist = tsh.get_history(engine, 'republication')
+    hist = tsh.history(engine, 'republication')
     assert_hist("""
 insertion_date             value_date               
 2015-01-01 00:00:00+00:00  2015-01-01 00:00:00+00:00    0.0
@@ -1254,7 +1254,7 @@ insertion_date             value_date
                            2015-01-01 09:00:00+00:00    6.0
 """, hist)
 
-    deltas = tsh.get_delta(engine,  'republication', delta=timedelta(hours=3))
+    deltas = tsh.staircase(engine,  'republication', delta=timedelta(hours=3))
     assert deltas.name == 'republication'
 
     assert_df("""
@@ -1267,7 +1267,7 @@ insertion_date             value_date
 2015-01-01 09:00:00+00:00    6.0
 """, deltas)
 
-    deltas = tsh.get_delta(engine,  'republication', delta=timedelta(hours=5))
+    deltas = tsh.staircase(engine,  'republication', delta=timedelta(hours=5))
     assert_df("""
 2015-01-01 05:00:00+00:00    5.0
 2015-01-01 06:00:00+00:00    5.0
@@ -1276,9 +1276,9 @@ insertion_date             value_date
 2015-01-01 09:00:00+00:00    6.0
 """, deltas)
 
-    hist = tsh.get_history(engine, 'republication',
-                           deltabefore=-timedelta(hours=3),
-                           deltaafter=timedelta(hours=3))
+    hist = tsh.history(engine, 'republication',
+                       deltabefore=-timedelta(hours=3),
+                       deltaafter=timedelta(hours=3))
     assert_hist("""
 insertion_date             value_date               
 2015-01-01 00:00:00+00:00  2015-01-01 03:00:00+00:00    3.0
@@ -1287,9 +1287,9 @@ insertion_date             value_date
 2015-01-01 03:00:00+00:00  2015-01-01 06:00:00+00:00    3.0
 """, hist)
 
-    hist = tsh.get_history(engine, 'republication',
-                           deltabefore=-timedelta(hours=5),
-                           deltaafter=timedelta(hours=5))
+    hist = tsh.history(engine, 'republication',
+                       deltabefore=-timedelta(hours=5),
+                       deltaafter=timedelta(hours=5))
 
     assert_hist("""
 insertion_date             value_date               
@@ -1300,7 +1300,7 @@ insertion_date             value_date
 """, hist)
 
 
-def test_get_delta_2_tzaware(engine, tsh):
+def test_staircase_2_tzaware(engine, tsh):
     # maybe a more interesting example, each days we insert 7 data points
     for idx, idate in enumerate(pd.DatetimeIndex(start=utcdt(2015, 1, 1),
                                                  end=utcdt(2015, 1, 4),
@@ -1308,7 +1308,7 @@ def test_get_delta_2_tzaware(engine, tsh):
         ts = genserie(start=idate, freq='H', repeat=7)
         tsh.insert(engine, ts, 'repu2', 'test', _insertion_date=idate)
 
-    deltas = tsh.get_delta(engine, 'repu2', delta=timedelta(hours=3))
+    deltas = tsh.staircase(engine, 'repu2', delta=timedelta(hours=3))
     assert_df("""
 2015-01-01 03:00:00+00:00    3.0
 2015-01-01 04:00:00+00:00    4.0
@@ -1328,7 +1328,7 @@ def test_get_delta_2_tzaware(engine, tsh):
 2015-01-04 06:00:00+00:00    6.0
 """, deltas)
 
-    deltas = tsh.get_delta(engine, 'repu2', delta=timedelta(hours=3),
+    deltas = tsh.staircase(engine, 'repu2', delta=timedelta(hours=3),
                            from_value_date=datetime(2015,1,2),
                            to_value_date=datetime(2015, 1,3))
     assert_df("""
@@ -1339,8 +1339,8 @@ def test_get_delta_2_tzaware(engine, tsh):
 """, deltas)
 
     # which is basically the same as below
-    hist = tsh.get_history(engine, 'repu2',
-                           deltabefore=-timedelta(hours=3))
+    hist = tsh.history(engine, 'repu2',
+                       deltabefore=-timedelta(hours=3))
     assert_hist("""
 insertion_date             value_date               
 2015-01-01 00:00:00+00:00  2015-01-01 03:00:00+00:00    3.0
@@ -1362,7 +1362,7 @@ insertion_date             value_date
 """, hist)
 
     # constrain the boundaries
-    deltas = tsh.get_delta(engine, 'repu2',
+    deltas = tsh.staircase(engine, 'repu2',
                            delta=timedelta(hours=3),
                            from_value_date=utcdt(2015, 1, 1, 6),
                            to_value_date=utcdt(2015, 1, 3, 4))
@@ -1377,7 +1377,7 @@ insertion_date             value_date
 """, deltas)
 
     # out-of-bounds from/to constraint
-    deltas = tsh.get_delta(engine, 'repu2',
+    deltas = tsh.staircase(engine, 'repu2',
                            delta=timedelta(hours=3),
                            from_value_date=utcdt(2014, 1, 1, 6),
                            to_value_date=utcdt(2014, 1, 3, 4))
@@ -1385,7 +1385,7 @@ insertion_date             value_date
     assert isinstance(deltas, pd.Series)
 
 
-def test_get_delta_2_tznaive(engine, tsh):
+def test_staircase_2_tznaive(engine, tsh):
     # same as above, with naive dates
     for idx, idate in enumerate(pd.DatetimeIndex(start=utcdt(2015, 1, 1),
                                                  end=utcdt(2015, 1, 4),
@@ -1393,7 +1393,7 @@ def test_get_delta_2_tznaive(engine, tsh):
         ts = genserie(start=idate.replace(tzinfo=None), freq='H', repeat=7)
         tsh.insert(engine, ts, 'repu-tz-naive', 'test', _insertion_date=idate)
 
-    deltas = tsh.get_delta(engine, 'repu-tz-naive', delta=timedelta(hours=3))
+    deltas = tsh.staircase(engine, 'repu-tz-naive', delta=timedelta(hours=3))
     assert_df("""
 2015-01-01 03:00:00    3.0
 2015-01-01 04:00:00    4.0
@@ -1413,7 +1413,7 @@ def test_get_delta_2_tznaive(engine, tsh):
 2015-01-04 06:00:00    6.0
 """, deltas)
 
-    deltas = tsh.get_delta(engine, 'repu-tz-naive', delta=timedelta(hours=3),
+    deltas = tsh.staircase(engine, 'repu-tz-naive', delta=timedelta(hours=3),
                            from_value_date=datetime(2015,1,2),
                            to_value_date=datetime(2015, 1,3))
     assert_df("""
@@ -1424,8 +1424,8 @@ def test_get_delta_2_tznaive(engine, tsh):
 """, deltas)
 
     # which is basically the same as below
-    hist = tsh.get_history(engine, 'repu-tz-naive',
-                           deltabefore=-timedelta(hours=3))
+    hist = tsh.history(engine, 'repu-tz-naive',
+                       deltabefore=-timedelta(hours=3))
     assert_hist("""
 insertion_date             value_date         
 2015-01-01 00:00:00+00:00  2015-01-01 03:00:00    3.0
@@ -1447,7 +1447,7 @@ insertion_date             value_date
 """, hist)
 
     # constrain the boundaries
-    deltas = tsh.get_delta(engine, 'repu-tz-naive',
+    deltas = tsh.staircase(engine, 'repu-tz-naive',
                            delta=timedelta(hours=3),
                            from_value_date=datetime(2015, 1, 1, 6),
                            to_value_date=datetime(2015, 1, 3, 4))
@@ -1462,7 +1462,7 @@ insertion_date             value_date
 """, deltas)
 
     # out-of-bounds from/to constraint
-    deltas = tsh.get_delta(engine, 'repu-tz-naive',
+    deltas = tsh.staircase(engine, 'repu-tz-naive',
                            delta=timedelta(hours=3),
                            from_value_date=datetime(2014, 1, 1, 6),
                            to_value_date=datetime(2014, 1, 3, 4))
@@ -1526,7 +1526,7 @@ def test_parallel(engine, tsh):
     errors = []
     ns = tsh.namespace
     def insert(ts, name, author):
-        tsh = TimeSerie(namespace=ns)
+        tsh = timeseries(namespace=ns)
         with engine.begin() as cn:
             try:
                 tsh.insert(cn, ts, name, author)

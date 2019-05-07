@@ -111,17 +111,17 @@ def test_hourly_forecast(engine, tracker, ptsh):
     assert len(tshts) == 549
     t0 = time()
     with engine.begin() as cn:
-        hist = tsh.get_history(cn, 'fcast_25')
+        hist = tsh.history(cn, 'fcast_25')
     assert len(hist) == 502
     print('TSH HIST', time() - t0)
     t0 = time()
     with engine.begin() as cn:
-        d1 = tsh.get_delta(cn, 'fcast_25', timedelta(days=1))
+        d1 = tsh.staircase(cn, 'fcast_25', timedelta(days=1))
     print('DELTA all value dates', time() - t0)
     assert len(d1) == 525
     t0 = time()
     with engine.begin() as cn:
-        d2 = tsh.get_delta(cn, 'fcast_25', timedelta(days=1),
+        d2 = tsh.staircase(cn, 'fcast_25', timedelta(days=1),
                            from_value_date=utcdt(2013, 1, 22),
                            to_value_date=utcdt(2013, 1, 23))
     print('DELTA 1 day ', time() - t0)
@@ -153,7 +153,7 @@ def test_bigdata(engine, tracker, ptsh):
 
     t0 = time()
     with engine.begin() as cn:
-        tsh.get_history(cn, 'big')
+        tsh.history(cn, 'big')
     t1 = time() - t0
     tracker.append({'test': 'bigdata_history_all',
                     'class': tshclass,
@@ -164,9 +164,9 @@ def test_bigdata(engine, tracker, ptsh):
         for month in (1, 5, 9, 12):
             date = utcdt(year, month, 1)
             with engine.begin() as cn:
-                tsh.get_history(cn, 'big',
-                                from_insertion_date=date,
-                                to_insertion_date=date + timedelta(days=31))
+                tsh.history(cn, 'big',
+                            from_insertion_date=date,
+                            to_insertion_date=date + timedelta(days=31))
     t1 = time() - t0
     tracker.append({'test': 'bigdata_history_chunks',
                     'class': tshclass,
@@ -201,7 +201,7 @@ def test_lots_of_diffs(engine, tracker, ptsh):
 
     t0 = time()
     with engine.begin() as cn:
-        tsh.get_history(cn, 'manydiffs')
+        tsh.history(cn, 'manydiffs')
     t1 = time() - t0
     tracker.append({'test': 'manydiffs_history_all',
                     'class': tshclass,
@@ -212,9 +212,9 @@ def test_lots_of_diffs(engine, tracker, ptsh):
         for day in range(1, 5):
             date = utcdt(2018, month, day)
             with engine.begin() as cn:
-                ts = tsh.get_history(cn, 'manydiffs',
-                                     from_insertion_date=date,
-                                     to_insertion_date=date + timedelta(days=31))
+                ts = tsh.history(cn, 'manydiffs',
+                                 from_insertion_date=date,
+                                 to_insertion_date=date + timedelta(days=31))
             assert ts is not None
     t1 = time() - t0
     tracker.append({'test': 'manydiffs_history_chunks',

@@ -43,7 +43,7 @@ def tsh(request, engine):
 
     if namespace == 'zzz':
         Snapshot._max_bucket_size = 5
-    yield tsio.TimeSerie(namespace)
+    yield tsio.timeseries(namespace)
 
 
 @pytest.fixture(scope='session')
@@ -52,7 +52,7 @@ def ptsh(engine):
     sch.destroy(engine)
     schema.register_schema(sch)
     schema.init_schemas(engine)
-    return tsio.TimeSerie()
+    return tsio.timeseries()
 
 
 OUT = []

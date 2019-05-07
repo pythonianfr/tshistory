@@ -235,7 +235,7 @@ def test_append(engine, tsh):
         1: None, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8, 10: 9
     }
 
-    hist = tsh.get_history(engine, 'append', deltabefore=pd.Timedelta(hours=1))
+    hist = tsh.history(engine, 'append', deltabefore=pd.Timedelta(hours=1))
     assert_hist("""
 insertion_date             value_date               
 2018-01-01 00:00:00+00:00  2018-01-01 00:00:00+00:00    0.0

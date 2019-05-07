@@ -170,8 +170,8 @@ class SeriesServices(object):
 
 
 def delete_series(engine, series, namespace='tsh'):
-    from tshistory.tsio import TimeSerie
-    tsh = TimeSerie(namespace=namespace)
+    from tshistory.tsio import timeseries
+    tsh = timeseries(namespace=namespace)
 
     for name in series:
         with engine.begin() as cn:

@@ -265,7 +265,7 @@ class timeseries(SeriesServices):
         `delta` time after the insertion dates and where we
         keep the most recent ones
         """
-        histo = self.get_history(
+        histo = self.history(
             cn, seriename, deltabefore=-delta,
             from_value_date=from_value_date,
             to_value_date=to_value_date,

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from tshistory.tsio import TimeSerie
+from tshistory.tsio import timeseries
 from tshistory.testutil import genserie, utcdt
 
 
@@ -89,7 +89,7 @@ def test_delete(engine, cli, datadir, tsh):
             deletefile=datadir / 'delete.csv',
             namespace=tsh.namespace)
 
-    tsh = TimeSerie(tsh.namespace)
+    tsh = timeseries(tsh.namespace)
     tsh._testing = True
     assert not tsh.exists(engine, 'bfoo')
     assert tsh.get(engine, 'bfoo') is None
@@ -98,7 +98,7 @@ def test_delete(engine, cli, datadir, tsh):
 
     tsh.insert(engine, serie, 'bbq', 'Babar')
 
-    tsh = TimeSerie(tsh.namespace)
+    tsh = timeseries(tsh.namespace)
     tsh._testing = True
     r = cli('delete', engine.url,
             series='bbq',

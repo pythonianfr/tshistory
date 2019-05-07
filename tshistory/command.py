@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 from dateutil.parser import parse as temporal
 import pandas as pd
 
-from tshistory.tsio import TimeSerie
+from tshistory.tsio import timeseries
 from tshistory.util import (
     delete_series,
     find_dburi,
@@ -59,7 +59,7 @@ def tsh():
 def get(db_uri, seriename, json, namespace='tsh'):
     """show a serie in its current state """
     engine = create_engine(find_dburi(db_uri))
-    tsh = TimeSerie(namespace)
+    tsh = timeseries(namespace)
 
     ts = tsh.get(engine, seriename)
     if json:
@@ -87,9 +87,9 @@ def history(db_uri, seriename,
     """show a serie full history """
     engine = create_engine(find_dburi(db_uri))
 
-    tsh = TimeSerie(namespace)
+    tsh = timeseries(namespace)
     with engine.begin() as cn:
-        hist = tsh.get_history(
+        hist = tsh.history(
             cn, seriename,
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date,
@@ -123,7 +123,7 @@ def log(db_uri, limit, serie, from_rev, to_rev,
         namespace='tsh'):
     """show revision history of entire repository or series"""
     engine = create_engine(find_dburi(db_uri))
-    tsh = TimeSerie(namespace)
+    tsh = timeseries(namespace)
 
     for rev in tsh.log(engine, limit=limit, names=serie,
                        fromrev=from_rev, torev=to_rev,
@@ -147,7 +147,7 @@ def info(db_uri, namespace='tsh'):
     """show global statistics of the repository"""
     engine = create_engine(find_dburi(db_uri))
 
-    info = TimeSerie(namespace).info(engine)
+    info = timeseries(namespace).info(engine)
     info['serie names'] = ', '.join(info['serie names'])
     print(INFOFMT.format(**info))
 
@@ -168,7 +168,7 @@ def rename(db_uri, mapfile, namespace='tsh'):
         for p in pd.read_csv(mapfile).itertuples()
     }
     engine = create_engine(find_dburi(db_uri))
-    tsh = TimeSerie(namespace)
+    tsh = timeseries(namespace)
     for old, new in seriesmap.items():
         with engine.begin() as cn:
             print('rename', old, '->', new)
@@ -233,11 +233,11 @@ def check(db_uri, series=None, namespace='tsh'):
     else:
         series = [series]
 
-    tsh = TimeSerie(namespace)
+    tsh = timeseries(namespace)
     for idx, s in enumerate(series):
         t0 = time()
         with e.begin() as cn:
-            hist = tsh.get_history(cn, s)
+            hist = tsh.history(cn, s)
         start, end = None, None
         mon = True
         for ts in hist.values():
@@ -263,7 +263,7 @@ def check(db_uri, series=None, namespace='tsh'):
 def shell(db_uri, namespace='tsh'):
     e = create_engine(find_dburi(db_uri))
 
-    tsh = TimeSerie(namespace)
+    tsh = timeseries(namespace)
     import pdb; pdb.set_trace()
 
 
@@ -272,7 +272,7 @@ def shell(db_uri, namespace='tsh'):
 @click.option('--namespace', default='tsh')
 def migrate_dot_6_to_dot_7(db_uri, namespace='tsh'):
     e = create_engine(find_dburi(db_uri))
-    tsh = TimeSerie(namespace)
+    tsh = timeseries(namespace)
     with e.begin() as cn:
         # drop not null
         cn.execute(f'alter table "{namespace}".changeset_series '

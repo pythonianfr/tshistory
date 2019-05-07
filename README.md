@@ -62,10 +62,10 @@ However here's a simple example:
 ```python
  >>> from sqlalchemy import create_engine
  >>> import pandas as pd
- >>> from tshistory.tsio import TimeSerie
+ >>> from tshistory.tsio import timeseries
  >>>
  >>> engine = create_engine('postgres://me:password@localhost/mydb')
- >>> tsh = TimeSerie()
+ >>> tsh = timeseries()
  >>>
  >>> series = pd.Series([1, 2, 3],
  ...                    pd.date_range(start=pd.Timestamp(2017, 1, 1),
@@ -138,7 +138,7 @@ We can access the whole history (or parts of it) in one call:
 
 ```python
  >>> with engine.begin() as cn:
- >>>     history = tsh.get_history(engine, 'my_series')
+ >>>     history = tsh.history(engine, 'my_series')
  ...
  >>>
  >>> for idate, series in history.items(): # it's a dict
@@ -166,9 +166,9 @@ It is possible to show the differences only:
 
 ```python
  >>> with engine.begin() as cn:
- >>>     diffs = tsh.get_history(engine, 'my_series', diffmode=True)
+ >>>     diffs = tsh.history(engine, 'my_series', diffmode=True)
  ...
- >>> for idate, series in tsh.get_history(engine, 'ts', diffmode=True).items():
+ >>> for idate, series in tsh.history(engine, 'ts', diffmode=True).items():
  ...   print('insertion date:', idate)
  ...   print(series)
  ...
