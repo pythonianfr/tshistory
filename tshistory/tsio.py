@@ -154,10 +154,9 @@ class timeseries(SeriesServices):
         )
 
     def changeset_metadata(self, cn, csid):
-        sql = 'select metadata from "{ns}".changeset where id = {id}'.format(
-            ns=self.namespace,
-            id=csid
-        )
+        assert isinstance(csid, int)
+        sql = (f'select metadata from "{self.namespace}".changeset '
+               f'where id = {csid}')
         return cn.execute(sql).scalar()
 
     def type(self, cn, name):
@@ -372,19 +371,19 @@ class timeseries(SeriesServices):
             )
 
         rid, tablename = cn.execute(
-            'select id, table_name from "{}".registry '
-            'where seriename = %(seriename)s'.format(self.namespace),
+            f'select id, table_name from "{self.namespace}".registry '
+            'where seriename = %(seriename)s',
             seriename=seriename
         ).fetchone()
         # drop series tables
         cn.execute(
-            'drop table "{}.timeserie"."{}" cascade'.format(self.namespace, tablename)
+            f'drop table "{self.namespace}.timeserie"."{tablename}" cascade'
         )
         cn.execute(
-            'drop table "{}.snapshot"."{}" cascade'.format(self.namespace, tablename)
+            f'drop table "{self.namespace}.snapshot"."{tablename}" cascade'
         )
-        cn.execute('delete from "{}".registry '
-                   'where id = %(rid)s'.format(self.namespace),
+        cn.execute(f'delete from "{self.namespace}".registry '
+                   'where id = %(rid)s',
                    rid=rid)
         # -> this will transitively cleanup state changeset_series entries
         self._resetcaches()
@@ -398,7 +397,7 @@ class timeseries(SeriesServices):
         for log in logs:
             # update changeset.metadata
             metadata = self.changeset_metadata(cn, log['rev']) or {}
-            metadata['tshistory.info'] = 'got stripped from {}'.format(csid)
+            metadata['tshistory.info'] = f'got stripped from {csid}'
             sql = (f'update "{self.namespace}".changeset '
                    'set metadata = %(metadata)s '
                    'where id = %(id)s')
@@ -422,13 +421,12 @@ class timeseries(SeriesServices):
     def info(self, cn):
         """Gather global statistics on the current tshistory repository
         """
-        sql = 'select count(*) from "{}".registry'.format(self.namespace)
+        sql = f'select count(*) from "{self.namespace}".registry'
         stats = {'series count': cn.execute(sql).scalar()}
-        sql = 'select max(id) from "{}".changeset'.format(self.namespace)
+        sql = f'select max(id) from "{self.namespace}".changeset'
         stats['changeset count'] = cn.execute(sql).scalar()
-        sql = 'select distinct seriename from "{}".registry order by seriename'.format(
-            self.namespace
-        )
+        sql = (f'select distinct seriename from "{self.namespace}".registry '
+               'order by seriename')
         stats['serie names'] = [row for row, in cn.execute(sql).fetchall()]
         return stats
 
@@ -528,7 +526,7 @@ class timeseries(SeriesServices):
         # at creation time we take an exclusive lock to avoid
         # a deadlock on created tables against the changeset-series fk
         cn.execute(
-            'select pg_advisory_xact_lock({})'.format(self.create_lock_id)
+            f'select pg_advisory_xact_lock({self.create_lock_id})'
         )
         self._register_serie(cn, seriename, newts)
         snapshot = Snapshot(cn, self, seriename)
@@ -702,9 +700,9 @@ class timeseries(SeriesServices):
 
     def _previous_cset(self, cn, seriename, csid):
         tablename = self._serie_to_tablename(cn, seriename)
-        sql = ('select cset from "{}.timeserie"."{}" '
+        sql = (f'select cset from "{self.namespace}.timeserie"."{tablename}" '
                'where cset < %(csid)s '
-               'order by cset desc limit 1').format(self.namespace, tablename)
+               'order by cset desc limit 1')
         return cn.execute(sql, csid=csid).scalar()
 
     # insertion handling
@@ -716,8 +714,8 @@ class timeseries(SeriesServices):
         tstype = ts.dtype
         meta = self.metadata(cn, seriename)
         if tstype != meta['value_type']:
-            m = 'Type error when inserting {}, new type is {}, type in base is {}'.format(
-                seriename, tstype, meta['value_type'])
+            m = (f'Type error when inserting {seriename}, '
+                 f'new type is {tstype}, type in base is {meta["value_type"]}')
             raise Exception(m)
         if ts.index.dtype.name != meta['index_type']:
             raise Exception('Incompatible index types')
