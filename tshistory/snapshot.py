@@ -329,3 +329,9 @@ class Snapshot(SeriesServices):
         }
 
         return allchuks - reachable_chunks
+
+    def reclaim(self):
+        todelete = ','.join(str(id) for id in self.garbage())
+        sql = (f'delete from "{self.tsh.namespace}.snapshot"."{self.name}" '
+               f'where id in ({todelete})')
+        self.cn.execute(sql)

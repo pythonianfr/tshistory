@@ -259,8 +259,9 @@ def check(db_uri, series=None, namespace='tsh'):
 
 @tsh.command(name='garbage')
 @click.argument('db-uri')
+@click.option('--reclaim', is_flag=True, default=False)
 @click.option('--namespace', default='tsh')
-def shell(db_uri, namespace='tsh'):
+def shell(db_uri, reclaim=False, namespace='tsh'):
     from tshistory.snapshot import Snapshot
     e = create_engine(find_dburi(db_uri))
     tsh = timeseries(namespace)
@@ -270,6 +271,8 @@ def shell(db_uri, namespace='tsh'):
         garb = snap.garbage()
         if garb:
             print('************************', name, 'garbage =', len(garb))
+            if reclaim:
+                snap.reclaim()
 
 
 @tsh.command(name='shell')

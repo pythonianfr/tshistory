@@ -1168,7 +1168,8 @@ insertion_date             value_date
     with engine.begin() as cn:
         tsh.strip(cn, 'xserie', csid)
 
-    assert len(snap.garbage()) == 2
+    # no garbage left
+    assert len(snap.garbage()) == 0
 
     assert_hist("""
 insertion_date             value_date         

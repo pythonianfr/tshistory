@@ -424,6 +424,9 @@ class timeseries(SeriesServices):
                'where cset >= %(csid)s')
         cn.execute(sql, csid=csid)
 
+        snapshot = Snapshot(cn, self, seriename)
+        snapshot.reclaim()
+
     def info(self, cn):
         """Gather global statistics on the current tshistory repository
         """
