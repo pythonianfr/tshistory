@@ -93,6 +93,12 @@ class timeseries(SeriesServices):
         return self._update(cn, tablename, newts, seriename, author,
                             metadata, _insertion_date)
 
+    def list_series(self, cn):
+        """Return the list of all primary series"""
+        sql = f'select seriename from "{self.namespace}".registry '
+        return [row.seriename for row in cn.execute(sql)]
+
+
     def get(self, cn, seriename, revision_date=None,
             from_value_date=None, to_value_date=None,
             _keep_nans=False):

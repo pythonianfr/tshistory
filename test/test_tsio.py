@@ -1161,9 +1161,14 @@ insertion_date             value_date
                            2017-01-10 04:00:00    4.0
 """, h)
 
+    snap = Snapshot(engine, tsh, 'xserie')
+    assert snap.garbage() == set()
+
     csid = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3))
     with engine.begin() as cn:
         tsh.strip(cn, 'xserie', csid)
+
+    assert len(snap.garbage()) == 2
 
     assert_hist("""
 insertion_date             value_date         

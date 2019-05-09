@@ -296,3 +296,36 @@ class Snapshot(SeriesServices):
                 )
             )
         return series
+
+    def garbage(self):
+        """ inefficient but simple garbage list builder
+        garbage chunks are created on strip operations
+        """
+        tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
+        reachablesql = f"""
+        with recursive heads as (
+            select snapshot from "{self.tsh.namespace}.timeserie"."{tablename}"
+          ),
+          allchunks as (
+            select chunks.id as cid,
+                   chunks.parent as parent
+            from "{self.tsh.namespace}.snapshot"."{self.name}" as chunks
+            where chunks.id in (select * from heads)
+          union
+            select chunks.id as cid,
+                   chunks.parent as parent
+            from "{self.tsh.namespace}.snapshot"."{self.name}" as chunks
+            join allchunks on chunks.id = allchunks.parent
+        )
+        select cid from allchunks
+        """
+
+        reachable_chunks = {
+            rev for rev, in self.cn.execute(reachablesql)
+        }
+        allsql = f'select id from "{self.tsh.namespace}.snapshot"."{self.name}" '
+        allchuks = {
+            rev for rev, in self.cn.execute(allsql).fetchall()
+        }
+
+        return allchuks - reachable_chunks

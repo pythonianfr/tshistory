@@ -257,6 +257,21 @@ def check(db_uri, series=None, namespace='tsh'):
         )
 
 
+@tsh.command(name='garbage')
+@click.argument('db-uri')
+@click.option('--namespace', default='tsh')
+def shell(db_uri, namespace='tsh'):
+    from tshistory.snapshot import Snapshot
+    e = create_engine(find_dburi(db_uri))
+    tsh = timeseries(namespace)
+
+    for name in tsh.list_series(e):
+        snap = Snapshot(e, tsh, name)
+        garb = snap.garbage()
+        if garb:
+            print('************************', name, 'garbage =', len(garb))
+
+
 @tsh.command(name='shell')
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
