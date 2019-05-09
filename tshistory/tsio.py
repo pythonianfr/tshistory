@@ -396,33 +396,28 @@ class timeseries(SeriesServices):
 
     @tx
     def strip(self, cn, seriename, csid):
-        logs = self.log(cn, fromrev=csid, names=(seriename,))
-        assert logs
-
-        # put stripping info in the metadata
-        for log in logs:
-            # update changeset.metadata
-            metadata = self.changeset_metadata(cn, log['rev']) or {}
-            metadata['tshistory.info'] = f'got stripped from {csid}'
-            sql = (f'update "{self.namespace}".changeset '
-                   'set metadata = %(metadata)s '
-                   'where id = %(id)s')
-            cn.execute(sql, id=log['rev'], metadata=json.dumps(metadata))
-            # delete changset_serie item
-            sql = (f'delete from "{self.namespace}".changeset_series as css '
-                   'where css.cset = %(rev)s '
-                   'and   css.serie = %(name)s')
-            cn.execute(
-                sql,
-                rev=log['rev'],
-                name=self._name_to_regid(cn, seriename)
-            )
-
         # wipe the diffs
         tablename = self._serie_to_tablename(cn, seriename)
         sql = (f'delete from "{self.namespace}.timeserie"."{tablename}" '
                'where cset >= %(csid)s')
         cn.execute(sql, csid=csid)
+
+        logs = self.log(cn, fromrev=csid, names=(seriename,))
+        assert logs
+        for log in logs:
+            csid = log['rev']
+            # set in metadata the fact that this changeset
+            # has been stripped (hence is no longer being referenced)
+            metadata = self.changeset_metadata(cn, csid) or {}
+            metadata['tshistory.info'] = f'got stripped from {csid}'
+            sql = (f'update "{self.namespace}".changeset '
+                   'set metadata = %(metadata)s '
+                   'where id = %(csid)s')
+            cn.execute(sql, csid=csid, metadata=json.dumps(metadata))
+            # delete changset_serie item
+            sql = (f'delete from "{self.namespace}".changeset_series as css '
+                   'where css.cset = %(csid)s')
+            cn.execute(sql, csid=csid)
 
         snapshot = Snapshot(cn, self, seriename)
         snapshot.reclaim()
@@ -440,7 +435,6 @@ class timeseries(SeriesServices):
         return stats
 
     def log(self, cn, limit=0, names=None, authors=None,
-            stripped=False,
             fromrev=None, torev=None,
             fromdate=None, todate=None):
         """Build a structure showing the history of all the series in the db,
@@ -450,17 +444,11 @@ class timeseries(SeriesServices):
 
         sql = [
             'select distinct cset.id, cset.author, cset.insertion_date, cset.metadata '
-            f'from "{self.namespace}".changeset as cset, '
-            f'     "{self.namespace}".registry as reg, '
-            f'     "{self.namespace}".changeset_series as css '
+            f'from "{self.namespace}".changeset as cset '
+            f'join "{self.namespace}".changeset_series as css on css.cset = cset.id '
+            f'join "{self.namespace}".registry as reg on reg.id = css.serie '
         ]
         wheres = []
-        if stripped:
-            sql.append(f'left join "{self.namespace}".changeset as cset2 '
-                       'on (cset2.id = css.cset) ')
-        else:
-            wheres.append('cset.id = css.cset and '
-                          'css.serie = reg.id ')
 
         if names:
             # XXX check names exist

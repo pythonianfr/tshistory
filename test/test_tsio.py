@@ -1191,19 +1191,14 @@ insertion_date             value_date
     assert [l['author'] for l in log
     ] == ['babar', 'celeste', 'babar', 'celeste', 'celeste', 'celeste']
 
-    alllogs = tsh.log(engine, stripped=True, names=['xserie', 'yserie'])
-    log = [rev for rev in alllogs
-           if rev['meta']
-           and rev['meta'].get('tshistory.info', '').startswith('got')]
-    assert len(log) == 2  # 2 stripped csets
+    alllogs = tsh.log(engine, names=['xserie', 'yserie'])
+    assert len(alllogs) == 6
 
-    for l in log:
-        assert l['names'] == []  # not good
-        meta = l['meta']
-        stripinfo = meta.get('tshistory.info')
-        assert (stripinfo.startswith('got stripped from') or
-                # see how this test is silly ?
-                stripinfo.startswith('belonged to'))
+    sql = f"""select count(*) from {tsh.namespace}.changeset
+              where (metadata::jsonb ->> 'tshistory.info')
+              like 'got stripped%%' """
+    count = engine.execute(sql).scalar()
+    assert count == 2
 
 
 def test_long_name(engine, tsh):
