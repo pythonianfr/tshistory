@@ -300,7 +300,9 @@ def test_differential(engine, tsh):
         ))
 
     with engine.begin() as cn:
-        cn.execute('set search_path to "{0}.timeserie", {0}, public'.format(tsh.namespace))
+        cn.execute(
+            f'set search_path to "{tsh.namespace}.timeserie", {tsh.namespace}, public'
+        )
         allts = pd.read_sql("select seriename, table_name from registry "
                             "where seriename in ('ts_test', 'ts_mixte')",
                             cn)
@@ -1026,7 +1028,8 @@ def test_dtype_mismatch(engine, tsh):
                    'error1',
                    'test')
 
-    assert 'Type error when inserting error1, new type is float64, type in base is object' == str(excinfo.value)
+    assert ('Type error when inserting error1, new type is float64, '
+            'type in base is object') == str(excinfo.value)
 
     tsh.insert(engine,
                genserie(datetime(2015, 1, 1), 'D', 11),
@@ -1039,7 +1042,8 @@ def test_dtype_mismatch(engine, tsh):
                    'error2',
                    'test')
 
-    assert 'Type error when inserting error2, new type is object, type in base is float64' == str(excinfo.value)
+    assert ('Type error when inserting error2, new type is object, '
+            'type in base is float64') == str(excinfo.value)
 
 
 def test_precision(engine, tsh):
@@ -1051,9 +1055,11 @@ def test_precision(engine, tsh):
     assert 0.12345678912345678 == ts_round.iloc[0]
 
     diff = tsh.insert(engine, ts_round, 'precision', 'test')
-    assert diff is None  # the roundtriped series does not produce a diff when reinserted
+    # the roundtriped series does not produce a diff when reinserted
+    assert diff is None
 
-    diff = tsh.insert(engine, ts, 'precision', 'test')  # neither does the original series
+    # neither does the original series
+    diff = tsh.insert(engine, ts, 'precision', 'test')
     assert diff is None
 
 
@@ -1121,7 +1127,8 @@ def test_strip(engine, tsh):
         ts = genserie(datetime(2017, 1, 10), 'H', 1 + i)
         tsh.insert(engine, ts, 'xserie', 'babar', _insertion_date=pubdate)
         # also insert something completely unrelated
-        tsh.insert(engine, genserie(datetime(2018, 1, 1), 'D', 1 + i), 'yserie', 'celeste')
+        tsh.insert(engine, genserie(datetime(2018, 1, 1), 'D', 1 + i),
+                   'yserie', 'celeste')
 
     csida = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3))
     assert csida is not None
