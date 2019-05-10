@@ -957,15 +957,15 @@ insertion_date             value_date
 
 def test_nr_gethistory(engine, tsh):
     s0 = pd.Series([-1, 0, 0, -1],
-                   index=pd.DatetimeIndex(start=datetime(2016, 12, 29),
-                                          end=datetime(2017, 1, 1),
-                                          freq='D'))
+                   index=pd.date_range(start=datetime(2016, 12, 29),
+                                       end=datetime(2017, 1, 1),
+                                       freq='D'))
     tsh.insert(engine, s0, 'foo', 'zogzog')
 
     s1 = pd.Series([1, 0, 0, 1],
-                   index=pd.DatetimeIndex(start=datetime(2017, 1, 1),
-                                          end=datetime(2017, 1, 4),
-                                          freq='D'))
+                   index=pd.date_range(start=datetime(2017, 1, 1),
+                                       end=datetime(2017, 1, 4),
+                                       freq='D'))
     idate = utcdt(2016, 1, 1)
     for i in range(5):
         with engine.begin() as cn:
@@ -1220,9 +1220,9 @@ def test_staircase(engine, tsh):
     assert tsh.staircase(engine, 'no-such-series',
                          delta=pd.Timedelta(days=2)) is None
 
-    for idate in pd.DatetimeIndex(start=utcdt(2015, 1, 1),
-                                  end=utcdt(2015, 1, 1, 3),
-                                  freq='H'):
+    for idate in pd.date_range(start=utcdt(2015, 1, 1),
+                               end=utcdt(2015, 1, 1, 3),
+                               freq='H'):
         ts = genserie(start=idate, freq='H', repeat=7)
         tsh.insert(engine, ts, 'republication', 'test',
                    _insertion_date=idate)
@@ -1314,9 +1314,9 @@ insertion_date             value_date
 
 def test_staircase_2_tzaware(engine, tsh):
     # maybe a more interesting example, each days we insert 7 data points
-    for idx, idate in enumerate(pd.DatetimeIndex(start=utcdt(2015, 1, 1),
-                                                 end=utcdt(2015, 1, 4),
-                                                 freq='D')):
+    for idx, idate in enumerate(pd.date_range(start=utcdt(2015, 1, 1),
+                                              end=utcdt(2015, 1, 4),
+                                              freq='D')):
         ts = genserie(start=idate, freq='H', repeat=7)
         tsh.insert(engine, ts, 'repu2', 'test', _insertion_date=idate)
 
@@ -1399,9 +1399,9 @@ insertion_date             value_date
 
 def test_staircase_2_tznaive(engine, tsh):
     # same as above, with naive dates
-    for idx, idate in enumerate(pd.DatetimeIndex(start=utcdt(2015, 1, 1),
-                                                 end=utcdt(2015, 1, 4),
-                                                 freq='D')):
+    for idx, idate in enumerate(pd.date_range(start=utcdt(2015, 1, 1),
+                                              end=utcdt(2015, 1, 4),
+                                              freq='D')):
         ts = genserie(start=idate.replace(tzinfo=None), freq='H', repeat=7)
         tsh.insert(engine, ts, 'repu-tz-naive', 'test', _insertion_date=idate)
 
@@ -1672,7 +1672,7 @@ def test_insert_errors(engine, tsh):
 
 def test_index_with_nat(engine, tsh):
     index = list(pd.date_range(start=utcdt(2018, 1, 1),
-                          freq='D', periods=3))
+                               freq='D', periods=3))
     index[1] = pd.NaT
     ts = pd.Series([1, 2, 3], index=index)
 
