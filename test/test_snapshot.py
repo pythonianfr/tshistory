@@ -214,7 +214,7 @@ def test_chunks(engine, tsh):
 
 
 def test_append(engine, tsh):
-    if tsh.namespace == 'zzz':
+    if tsh.namespace == 'z-z':
         return
 
     for x, dt in enumerate(pd.date_range(start=utcdt(2018, 1, 1),
@@ -252,7 +252,7 @@ insertion_date             value_date
 
 
 def test_prepend(engine, tsh):
-    if tsh.namespace == 'zzz':
+    if tsh.namespace == 'z-z':
         return
 
     serie = genserie(datetime(2010, 1, 1), 'D', 40)
@@ -282,8 +282,8 @@ def test_get_from_to(engine, tsh):
     tsh.insert(engine, ts, 'quitelong', 'aurelien.campeas@pythonian.fr')
 
     snap = Snapshot(engine, tsh, 'quitelong')
-    if tsh.namespace == 'zzz':
-        sql = 'select id, parent from "zzz.snapshot".quitelong order by id'
+    if tsh.namespace == 'z-z':
+        sql = 'select id, parent from "z-z.snapshot".quitelong order by id'
         chunks = engine.execute(sql).fetchall()
         # should be perfectly chained
         chunks = {

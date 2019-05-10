@@ -33,7 +33,7 @@ def datadir():
     return DATADIR
 
 
-@pytest.fixture(params=['tsh', 'zzz'],
+@pytest.fixture(params=['tsh', 'z-z'],
                 scope='session')
 def tsh(request, engine):
     namespace = request.param
@@ -41,7 +41,7 @@ def tsh(request, engine):
     sch.destroy(engine)
     schema.init_schemas(engine, namespace)
 
-    if namespace == 'zzz':
+    if namespace == 'z-z':
         Snapshot._max_bucket_size = 5
     yield tsio.timeseries(namespace)
 

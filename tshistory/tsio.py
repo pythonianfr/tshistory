@@ -130,7 +130,7 @@ class timeseries(SeriesServices):
         """Return metadata dict of timeserie."""
         if seriename in self.metadatacache:
             return self.metadatacache[seriename]
-        sql = (f'select metadata from {self.namespace}.registry '
+        sql = (f'select metadata from "{self.namespace}".registry '
                'where seriename = %(seriename)s')
         meta = cn.execute(sql, seriename=seriename).scalar()
         if meta is not None:
@@ -638,7 +638,7 @@ class timeseries(SeriesServices):
     def _register_serie(self, cn, seriename, ts):
         index = ts.index
         inames = [name for name in index.names if name]
-        sql = (f'insert into {self.namespace}.registry '
+        sql = (f'insert into "{self.namespace}".registry '
                '(seriename, table_name, metadata) '
                'values (%s, %s, %s) '
                'returning id')
@@ -670,7 +670,7 @@ class timeseries(SeriesServices):
         if insertion_date is not None:
             assert insertion_date.tzinfo is not None
         idate = pd.Timestamp(insertion_date or datetime.utcnow(), tz='UTC')
-        sql = (f'insert into {self.namespace}.changeset '
+        sql = (f'insert into "{self.namespace}".changeset '
                '(author, metadata, insertion_date) '
                'values (%s, %s, %s) '
                'returning id')

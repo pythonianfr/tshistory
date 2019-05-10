@@ -164,13 +164,13 @@ class Snapshot(SeriesServices):
             select chunks.id as cid,
                    chunks.parent as parent,
                    chunks.chunk as chunk
-            from {namespace}."{table}" as chunks
+            from "{namespace}"."{table}" as chunks
             where chunks.id in ({heads})
           union
             select chunks.id as cid,
                    chunks.parent as parent,
                    chunks.chunk as chunk
-            from {namespace}."{table}" as chunks
+            from "{namespace}"."{table}" as chunks
             join allchunks on chunks.id = allchunks.parent
             {where}
         )
@@ -183,7 +183,7 @@ class Snapshot(SeriesServices):
             where = 'where chunks.cend >= %(start)s '
 
         sql = self.rawsql.format(
-            namespace=f'"{self.tsh.namespace}.snapshot"',
+            namespace=f'{self.tsh.namespace}.snapshot',
             table=self.name,
             heads=','.join([str(head)]),
             where=where
@@ -213,7 +213,7 @@ class Snapshot(SeriesServices):
         sql = [
             'select ts.cset, ts.snapshot '
             f'from "{self.tsh.namespace}.timeserie"."{tablename}" as ts, '
-            f'      {self.tsh.namespace}.changeset as cset'
+            f'      "{self.tsh.namespace}".changeset as cset'
             ' where cset.id = ts.cset '
         ]
 
@@ -248,7 +248,7 @@ class Snapshot(SeriesServices):
             where = 'where chunks.cend >= %(start)s '
 
         sql = self.rawsql.format(
-            namespace=f'"{self.tsh.namespace}.snapshot"',
+            namespace=f'{self.tsh.namespace}.snapshot',
             table=self.name,
             heads=','.join(str(head) for head in heads),
             where=where

@@ -301,7 +301,7 @@ def test_differential(engine, tsh):
 
     with engine.begin() as cn:
         cn.execute(
-            f'set search_path to "{tsh.namespace}.timeserie", {tsh.namespace}, public'
+            f'set search_path to "{tsh.namespace}.timeserie", "{tsh.namespace}", public'
         )
         allts = pd.read_sql("select seriename, table_name from registry "
                             "where seriename in ('ts_test', 'ts_mixte')",
@@ -1114,7 +1114,7 @@ def test_serie_deletion(engine, tsh):
         'value_dtype': '<f8'
     }
 
-    sql = f"""select count(*) from {tsh.namespace}.changeset
+    sql = f"""select count(*) from "{tsh.namespace}".changeset
            where (metadata::jsonb ->> 'tshistory.info')
            like 'belonged to deleted series `deleteme`' """
     count = engine.execute(sql).scalar()
@@ -1201,7 +1201,7 @@ insertion_date             value_date
     alllogs = tsh.log(engine, names=['xserie', 'yserie'])
     assert len(alllogs) == 6
 
-    sql = f"""select count(*) from {tsh.namespace}.changeset
+    sql = f"""select count(*) from "{tsh.namespace}".changeset
               where (metadata::jsonb ->> 'tshistory.info')
               like 'got stripped%%' """
     count = engine.execute(sql).scalar()
