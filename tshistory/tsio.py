@@ -483,7 +483,7 @@ class timeseries(SeriesServices):
         })
         for csetid, author, revdate, meta in rset.fetchall():
             log.append({'rev': csetid, 'author': author,
-                        'date': pd.Timestamp(revdate, tz='utc'),
+                        'date': pd.Timestamp(revdate).tz_convert('utc'),
                         'meta': meta or {},
                         'names': self._changeset_series(cn, csetid)})
 
@@ -669,7 +669,9 @@ class timeseries(SeriesServices):
     def _newchangeset(self, cn, author, insertion_date=None, metadata=None):
         if insertion_date is not None:
             assert insertion_date.tzinfo is not None
-        idate = pd.Timestamp(insertion_date or datetime.utcnow(), tz='UTC')
+            idate = pd.Timestamp(insertion_date)
+        else:
+            idate = pd.Timestamp(datetime.utcnow(), tz='UTC')
         sql = (f'insert into "{self.namespace}".changeset '
                '(author, metadata, insertion_date) '
                'values (%s, %s, %s) '
