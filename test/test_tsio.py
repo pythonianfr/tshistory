@@ -1558,9 +1558,9 @@ def test_chunky_array(engine, tsh):
         index=[utcdt(2018, 1, i) for i in reversed(range(1, 4))]
     )
 
-    assert ts.index.flags['C_CONTIGUOUS']
+    assert ts.index.values.flags['C_CONTIGUOUS']
     ts = ts.sort_index()
-    assert not ts.index.flags['C_CONTIGUOUS']
+    assert not ts.index.values.flags['C_CONTIGUOUS']
 
     with engine.begin() as cn:
         tsh.insert(cn, ts, 'chunky', 'Babar')
