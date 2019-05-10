@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetimetz
+from pandas.api.types import is_datetime64tz_dtype
 from sqlalchemy.engine import url
 from sqlalchemy.engine.base import Engine
 from inireader import reader
@@ -68,7 +68,7 @@ def find_dburi(something: str) -> str:
 
 
 def tzaware_serie(ts):
-    return is_datetimetz(ts.index)
+    return is_datetime64tz_dtype(ts.index)
 
 
 def start_end(ts, notz=True):
