@@ -94,10 +94,12 @@ class timeseries(SeriesServices):
                             metadata, _insertion_date)
 
     def list_series(self, cn):
-        """Return the list of all primary series"""
+        """Return the mapping of all series to their type"""
         sql = f'select seriename from "{self.namespace}".registry '
-        return [row.seriename for row in cn.execute(sql)]
-
+        return {
+            row.seriename: 'primary'
+            for row in cn.execute(sql)
+        }
 
     def get(self, cn, seriename, revision_date=None,
             from_value_date=None, to_value_date=None,
