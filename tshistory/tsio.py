@@ -10,7 +10,6 @@ import pandas as pd
 
 from deprecated import deprecated
 
-from tshistory.schema import tsschema
 from tshistory.util import (
     closed_overlaps,
     num2float,
@@ -45,7 +44,6 @@ class timeseries(SeriesServices):
 
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
-        tsschema(namespace).define()
         self.metadatacache = {}
         self.registry_map = {}
         self.serie_tablename = {}

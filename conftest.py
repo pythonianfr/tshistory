@@ -1,5 +1,4 @@
 from pathlib import Path
-import logging
 
 from sqlalchemy import create_engine
 import pandas as pd
@@ -14,9 +13,6 @@ from tshistory.snapshot import Snapshot
 
 DATADIR = Path(__file__).parent / 'test' / 'data'
 DBURI = 'postgresql://localhost:5433/postgres'
-
-schema.L.addHandler(logging.StreamHandler())
-tsio.L.addHandler(logging.StreamHandler())
 
 
 @pytest.fixture(scope='session')
@@ -38,8 +34,7 @@ def datadir():
 def tsh(request, engine):
     namespace = request.param
     sch = schema.tsschema(namespace)
-    sch.destroy(engine)
-    schema.init_schemas(engine, namespace)
+    sch.create(engine)
 
     if namespace == 'z-z':
         Snapshot._max_bucket_size = 5
@@ -49,9 +44,7 @@ def tsh(request, engine):
 @pytest.fixture(scope='session')
 def ptsh(engine):
     sch = schema.tsschema()
-    sch.destroy(engine)
-    schema.register_schema(sch)
-    schema.init_schemas(engine)
+    sch.create(engine)
     return tsio.timeseries()
 
 
