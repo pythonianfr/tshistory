@@ -22,11 +22,38 @@ def sqlfile(path, **kw):
 
 
 class sqlp:
+    """utility to carry an sql fragment plus the potenially needed
+    parameters
+    """
     __slots__ = ('sql', 'kw')
 
     def __init__(self, sql, **kw):
-        self.sql = f'{sql.strip()} '
+        self.sql = sql
         self.kw = kw
+
+
+class sqlq:
+    """utility to incremntally build an sql query string along with its
+    parameters
+    """
+    __slots__ = ('sql', 'kw')
+
+    def __init__(self, sql, **kw):
+        self.sql = [sql]
+        self.kw = kw
+
+    def append(self, *sql, **kw):
+        self.kw.update(kw)
+        for block in sql:
+            if isinstance(block, sqlp):
+                self.kw.update(block.kw)
+                block = block.sql
+            self.sql.append(block)
+
+    def do(self, cn):
+        return cn.execute(
+            ' '.join(self.sql), **self.kw
+        )
 
 
 @contextmanager

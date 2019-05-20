@@ -10,6 +10,7 @@ from tshistory.util import (
     SeriesServices,
     sqlfile,
     sqlp,
+    sqlq
 )
 
 SCHEMA = Path(__file__).parent / 'snapshot.sql'
@@ -211,33 +212,29 @@ class Snapshot(SeriesServices):
 
     def cset_heads_query(self, csetfilter=(), order='desc'):
         tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
-        sql = [
+        q = sqlq(
             'select ts.cset, ts.snapshot '
             f'from "{self.tsh.namespace}.timeserie"."{tablename}" as ts, '
             f'      "{self.tsh.namespace}".changeset as cset'
-            ' where cset.id = ts.cset '
-        ]
-        params = {}
+            ' where cset.id = ts.cset'
+        )
 
         if csetfilter:
-            sql.append('and ts.cset <= cset.id ')
+            q.append('and ts.cset <= cset.id')
             for filtercb in csetfilter:
-                sql.append('and ' + filtercb.sql)
-                params.update(filtercb.kw)
+                q.append('and ', filtercb)
 
-        sql.append(f'order by ts.id {order} ')
-        return sql, params
+        q.append(f'order by ts.id {order}')
+        return q
 
     def find(self, csetfilter=(),
              from_value_date=None, to_value_date=None):
 
-        sql, params = self.cset_heads_query(csetfilter)
-        sql.append('limit 1')
-
-        sql = ''.join(sql)
+        q = self.cset_heads_query(csetfilter)
+        q.append('limit 1')
 
         try:
-            csid, cid = self.cn.execute(sql, **params).fetchone()
+            csid, cid = q.do(self.cn).fetchone()
         except TypeError:
             # this happens *only* because of the from/to restriction
             return None, None
@@ -265,18 +262,17 @@ class Snapshot(SeriesServices):
         csets = [rev for rev, _ in revs if rev is not None]
         # csid -> heads
 
-        sql, params = self.cset_heads_query(
+        q = self.cset_heads_query(
             (
                 sqlp('cset.id >= %(mincset)s', mincset=min(csets)),
                 sqlp('cset.id <= %(maxcset)s', maxcset=max(csets))
             ),
             order='asc'
         )
-        sql = ''.join(sql)
 
         cset_snap_map = {
             row.cset: row.snapshot
-            for row in self.cn.execute(sql, **params).fetchall()
+            for row in q.do(self.cn).fetchall()
         }
         rawchunks = self.allchunks(
             sorted(cset_snap_map.values()),
