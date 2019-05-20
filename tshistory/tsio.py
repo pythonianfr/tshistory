@@ -191,34 +191,34 @@ class timeseries(SeriesServices):
         if tablename is None:
             return
 
-        revsql = [
-            'select cset.id, cset.insertion_date '
-            f'from "{self.namespace}".changeset as cset, '
-            f'     "{self.namespace}.timeserie"."{tablename}" as ts '
-            'where ts.cset = cset.id '
-        ]
+        q = sqlq(
+            'cset.id', 'cset.insertion_date'
+        ).relation(
+            f'"{self.namespace}.timeserie"."{tablename}" as ts'
+        ).join(
+            f'"{self.namespace}".changeset as cset on cset.id = ts.cset'
+        )
 
         if from_insertion_date:
-            revsql.append('and cset.insertion_date >= %(from_idate)s ')
+            q.where(
+                'cset.insertion_date >= %(from_idate)s',
+                from_idate=from_insertion_date
+            )
         if to_insertion_date:
-            revsql.append('and cset.insertion_date <= %(to_idate)s ')
-
-        if from_value_date or to_value_date:
-            revsql.append(
-                'and ' + closed_overlaps(from_value_date, to_value_date)
+            q.where(
+                'cset.insertion_date <= %(to_idate)s ',
+                to_idate=to_insertion_date
             )
 
-        revsql.append('order by cset.id')
-        revsql = ''.join(revsql)
+        if from_value_date or to_value_date:
+            q.where(
+                closed_overlaps(from_value_date, to_value_date),
+                fromdate=from_value_date,
+                todate=to_value_date
+            )
 
-        revs = cn.execute(
-            revsql, {
-                'fromdate': from_value_date,
-                'todate': to_value_date,
-                'from_idate': from_insertion_date,
-                'to_idate': to_insertion_date
-            }
-        ).fetchall()
+        q.option('order by cset.id')
+        revs = q.do(cn).fetchall()
         if not revs:
             return {}
 
