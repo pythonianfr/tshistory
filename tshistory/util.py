@@ -33,26 +33,68 @@ class sqlp:
 
 
 class sqlq:
-    """utility to incremntally build an sql query string along with its
+    """utility to incrementally build an sql query string along with its
     parameters
     """
-    __slots__ = ('sql', 'kw')
+    __slots__ = ('head', 'headopt', 'relations', 'joins', 'wheres', 'options', 'kw')
 
-    def __init__(self, sql, **kw):
-        self.sql = [sql]
-        self.kw = kw
+    def __init__(self, *head, opt=''):
+        assert opt in ('', 'distinct')
+        self.head = list(head)
+        self.headopt = opt
+        self.relations = []
+        self.joins = []
+        self.wheres = []
+        self.options = []
+        self.kw = {}
 
-    def append(self, *sql, **kw):
+    def select(self, *select):
+        self.head.append(', '.join(select))
+        return self
+
+    def relation(self, *relations):
+        self.relations.append(', '.join(relations))
+        return self
+
+    def join(self, *joins, jtype='inner'):
+        assert jtype in ('inner', 'outer')
+        for j in joins:
+            self.joins.append(f'{jtype} join {j}')
+        return self
+
+    def where(self, *wheres, **kw):
         self.kw.update(kw)
-        for block in sql:
-            if isinstance(block, sqlp):
-                self.kw.update(block.kw)
-                block = block.sql
-            self.sql.append(block)
+        for where in wheres:
+            if isinstance(where, sqlp):
+                self.kw.update(where.kw)
+                where = where.sql
+            self.wheres.append(where)
+        return self
+
+    def option(self, option, **kw):
+        self.options.append(option)
+        self.kw.update(kw)
+        return self
+
+    @property
+    def sql(self):
+        select = f'select {self.headopt} ' + ', '.join(self.head)
+        froms = 'from ' + ', '.join(self.relations)
+        join = ' '.join(self.joins)
+        wheres = 'where ' + ' and '.join(self.wheres) if self.wheres else ''
+        options = ' '.join(self.options)
+        sql = [select, froms, join, wheres, options]
+        return ' '.join(sql)
+
+    def __str__(self):
+        return f'query::[{self.sql}, {self.kw}]'
+
+    __repr__ = __str__
 
     def do(self, cn):
         return cn.execute(
-            ' '.join(self.sql), **self.kw
+            self.sql,
+            **self.kw
         )
 
 

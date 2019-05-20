@@ -213,25 +213,26 @@ class Snapshot(SeriesServices):
     def cset_heads_query(self, csetfilter=(), order='desc'):
         tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
         q = sqlq(
-            'select ts.cset, ts.snapshot '
-            f'from "{self.tsh.namespace}.timeserie"."{tablename}" as ts, '
-            f'      "{self.tsh.namespace}".changeset as cset'
-            ' where cset.id = ts.cset'
+            'ts.cset',  'ts.snapshot'
+        ).relation(
+            f'"{self.tsh.namespace}.timeserie"."{tablename}" as ts',
+        ).join(
+            f'"{self.tsh.namespace}".changeset as cset on cset.id = ts.cset'
         )
 
         if csetfilter:
-            q.append('and ts.cset <= cset.id')
+            q.where('ts.cset <= cset.id')
             for filtercb in csetfilter:
-                q.append('and ', filtercb)
+                q.where(filtercb)
 
-        q.append(f'order by ts.id {order}')
+        q.option(f'order by ts.id {order}')
         return q
 
     def find(self, csetfilter=(),
              from_value_date=None, to_value_date=None):
 
         q = self.cset_heads_query(csetfilter)
-        q.append('limit 1')
+        q.option('limit 1')
 
         try:
             csid, cid = q.do(self.cn).fetchone()

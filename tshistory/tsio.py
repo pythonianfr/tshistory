@@ -17,6 +17,7 @@ from tshistory.util import (
     start_end,
     sqlfile,
     sqlp,
+    sqlq,
     tx,
     tzaware_serie
 )
@@ -449,45 +450,40 @@ class timeseries(SeriesServices):
         """
         log = []
 
-        sql = [
-            'select distinct cset.id, cset.author, cset.insertion_date, cset.metadata '
-            f'from "{self.namespace}".changeset as cset '
-            f'join "{self.namespace}".changeset_series as css on css.cset = cset.id '
-            f'join "{self.namespace}".registry as reg on reg.id = css.serie '
-        ]
-        wheres = []
+        q = sqlq(
+            'cset.id', 'cset.author', 'cset.insertion_date', 'cset.metadata',
+            opt='distinct'
+        ).relation(
+            f'"{self.namespace}".changeset as cset'
+        ).join(
+            f'"{self.namespace}".changeset_series as css on css.cset = cset.id',
+            f'"{self.namespace}".registry as reg on reg.id = css.serie'
+        )
 
         if names:
-            # XXX check names exist
-            wheres.append('reg.seriename in (%s)' % ','.join(
-                repr(name) for name in names)
+            q.where(
+                'reg.seriename in %(names)s',
+                names=tuple(names)
             )
         if authors:
-            wheres.append('cset.author in (%s)' % ','.join(
-                repr(auth) for auth in authors)
+            q.where(
+                'cset.author in %(authors)s',
+                author=tuple(authors)
             )
         if fromrev:
-            wheres.append('cset.id >= %(fromrev)s')
+            q.where('cset.id >= %(fromrev)s', fromrev=fromrev)
         if torev:
-            wheres.append('cset.id <= %(torev)s')
+            q.where('cset.id <= %(torev)s', torev=torev)
         if fromdate:
-            wheres.append('cset.insertion_date >= %(fromdate)s')
+            q.where('cset.insertion_date >= %(fromdate)s', fromdate=fromdate)
         if todate:
-            wheres.append('cset.insertion_date <= %(todate)s')
+            q.where('cset.insertion_date <= %(todate)s', todate=todate)
 
-        sql.append('where ' + ' and '.join(wheres))
         if limit:
-            sql.append('limit %(limit)s ')
-        sql.append('order by cset.id desc')
+            q.option('limit %(limit)s', limit=limit)
+        q.option('order by cset.id desc')
 
-        sql = ''.join(sql)
-
-        rset = cn.execute(sql, {
-            'fromdate': fromdate,
-            'todate': todate,
-            'fromrev': fromrev,
-            'torev': torev
-        })
+        rset = q.do(cn)
         for csetid, author, revdate, meta in rset.fetchall():
             log.append({'rev': csetid, 'author': author,
                         'date': pd.Timestamp(revdate).tz_convert('utc'),
