@@ -363,12 +363,17 @@ class timeseries(SeriesServices):
         }
         tablename = self._serie_to_tablename(cn, seriename)
         assert mode in operators
-        sql = ('select cset '
-               f'from "{self.namespace}.timeserie"."{tablename}" as tstable, '
-               f'      "{self.namespace}".changeset as cset '
-               f'where cset.id = tstable.cset '
-               f'and   cset.insertion_date {operators[mode]} %(revdate)s')
-        return cn.execute(sql, revdate=revdate).scalar()
+        q = sqlq(
+            'cset'
+        ).relation(
+            f'"{self.namespace}.timeserie"."{tablename}" as tstable',
+            f'"{self.namespace}".changeset as cset '
+        ).where(
+            'cset.id = tstable.cset',
+            f'cset.insertion_date {operators[mode]} %(revdate)s',
+            revdate=revdate
+        )
+        return q.do(cn).scalar()
 
     @tx
     def rename(self, cn, oldname, newname):
