@@ -165,9 +165,14 @@ class timeseries(SeriesServices):
 
     def changeset_metadata(self, cn, csid):
         assert isinstance(csid, int)
-        sql = (f'select metadata from "{self.namespace}".changeset '
-               f'where id = {csid}')
-        return cn.execute(sql).scalar()
+        q = sqlq(
+            'metadata'
+        ).relation(
+            f'"{self.namespace}".changeset'
+        ).where(
+            f'id = %(csid)s', csid=csid
+        )
+        return q.do(cn).scalar()
 
     def type(self, cn, name):
         return 'primary'
