@@ -324,23 +324,31 @@ class timeseries(SeriesServices):
     def insertion_dates(self, cn, seriename,
                         fromdate=None, todate=None):
         tablename = self._serie_to_tablename(cn, seriename)
-        fromclause, toclause = '', ''
+        q = sqlq(
+            'insertion_date'
+        ).relation(
+            f'"{self.namespace}".changeset as cset',
+            f'"{self.namespace}.timeserie"."{tablename}" as tstable'
+        ).where(
+            'cset.id = tstable.cset'
+        ).option(
+            'order by cset.id'
+        )
+
         if fromdate:
-            fromclause = ' and cset.insertion_date >= %(fromdate)s '
+            q.where(
+                'cset.insertion_date >= %(fromdate)s',
+                fromdate=fromdate
+            )
         if todate:
-            toclause = ' and cset.insertion_date <= %(todate)s '
-        sql = ('select insertion_date '
-               f'from "{self.namespace}".changeset as cset, '
-               f'     "{self.namespace}.timeserie"."{tablename}" as tstable '
-               'where cset.id = tstable.cset '
-               f'{fromclause} {toclause}'
-               'order by cset.id')
+            q.where(
+                'cset.insertion_date <= %(todate)s',
+                todate=todate
+            )
 
         return [
             pd.Timestamp(idate).astimezone('UTC')
-            for idate, in cn.execute(
-                    sql, fromdate=fromdate, todate=todate
-            ).fetchall()
+            for idate, in q.do(cn).fetchall()
         ]
 
     def last_id(self, cn, seriename):
