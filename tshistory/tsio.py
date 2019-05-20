@@ -309,12 +309,16 @@ class timeseries(SeriesServices):
 
     def latest_insertion_date(self, cn, seriename):
         tablename = self._serie_to_tablename(cn, seriename)
-        sql = ('select max(insertion_date) '
-               f'from "{self.namespace}".changeset as cset, '
-               f'     "{self.namespace}.timeserie"."{tablename}" as tstable '
-               'where cset.id = tstable.cset')
+        q = sqlq(
+            'max(insertion_date)'
+        ).relation(
+            f'"{self.namespace}".changeset as cset',
+            f'"{self.namespace}.timeserie"."{tablename}" as tstable'
+        ).where(
+               'cset.id = tstable.cset'
+        )
         return pd.Timestamp(
-            cn.execute(sql).scalar()
+            q.do(cn).scalar()
         ).astimezone('UTC')
 
     def insertion_dates(self, cn, seriename,
