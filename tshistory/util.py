@@ -21,6 +21,14 @@ def sqlfile(path, **kw):
     return sql.format(**kw)
 
 
+class sqlp:
+    __slots__ = ('sql', 'kw')
+
+    def __init__(self, sql, **kw):
+        self.sql = f'{sql.strip()} '
+        self.kw = kw
+
+
 @contextmanager
 def tempdir(suffix='', prefix='tmp'):
     tmp = tempfile.mkdtemp(suffix=suffix, prefix=prefix)

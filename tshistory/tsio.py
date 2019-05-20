@@ -16,6 +16,7 @@ from tshistory.util import (
     SeriesServices,
     start_end,
     sqlfile,
+    sqlp,
     tx,
     tzaware_serie
 )
@@ -114,7 +115,9 @@ class timeseries(SeriesServices):
         csetfilter = []
         if revision_date:
             csetfilter.append(
-                f'cset.insertion_date <= \'{revision_date.isoformat()}\''
+                sqlp(
+                    f'cset.insertion_date <= %(idate)s', idate=revision_date
+                )
             )
         snap = Snapshot(cn, self, seriename)
         _, current = snap.find(csetfilter=csetfilter,
@@ -231,10 +234,14 @@ class timeseries(SeriesServices):
                     to_date = idate + deltaafter
                 series.append((
                     idate,
-                    snapshot.find(csetfilter=[f'cset.id = {csid}'],
-                                  from_value_date=from_date,
-                                  to_value_date=to_date)[1]
-                ))
+                    snapshot.find(
+                        csetfilter=[
+                            sqlp('cset.id = %(csid)s', csid=csid)
+                        ],
+                        from_value_date=from_date,
+                        to_value_date=to_date)[1]
+                    )
+                )
         else:
             series = snapshot.findall(revs,
                                       from_value_date,

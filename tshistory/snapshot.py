@@ -8,7 +8,8 @@ import numpy as np
 
 from tshistory.util import (
     SeriesServices,
-    sqlfile
+    sqlfile,
+    sqlp,
 )
 
 SCHEMA = Path(__file__).parent / 'snapshot.sql'
@@ -216,25 +217,27 @@ class Snapshot(SeriesServices):
             f'      "{self.tsh.namespace}".changeset as cset'
             ' where cset.id = ts.cset '
         ]
+        params = {}
 
         if csetfilter:
             sql.append('and ts.cset <= cset.id ')
             for filtercb in csetfilter:
-                sql.append('and ' + filtercb)
+                sql.append('and ' + filtercb.sql)
+                params.update(filtercb.kw)
 
         sql.append(f'order by ts.id {order} ')
-        return sql
+        return sql, params
 
     def find(self, csetfilter=(),
              from_value_date=None, to_value_date=None):
 
-        sql = self.cset_heads_query(csetfilter)
+        sql, params = self.cset_heads_query(csetfilter)
         sql.append('limit 1')
 
         sql = ''.join(sql)
 
         try:
-            csid, cid = self.cn.execute(sql).fetchone()
+            csid, cid = self.cn.execute(sql, **params).fetchone()
         except TypeError:
             # this happens *only* because of the from/to restriction
             return None, None
@@ -262,14 +265,18 @@ class Snapshot(SeriesServices):
         csets = [rev for rev, _ in revs if rev is not None]
         # csid -> heads
 
-        sql = self.cset_heads_query((f'cset.id >= {min(csets)}',
-                                     f'cset.id <= {max(csets)}'),
-                                     order='asc')
+        sql, params = self.cset_heads_query(
+            (
+                sqlp('cset.id >= %(mincset)s', mincset=min(csets)),
+                sqlp('cset.id <= %(maxcset)s', maxcset=max(csets))
+            ),
+            order='asc'
+        )
         sql = ''.join(sql)
 
         cset_snap_map = {
             row.cset: row.snapshot
-            for row in self.cn.execute(sql).fetchall()
+            for row in self.cn.execute(sql, **params).fetchall()
         }
         rawchunks = self.allchunks(
             sorted(cset_snap_map.values()),
