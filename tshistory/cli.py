@@ -318,7 +318,3 @@ def register_plugin_subcommands():
 
 
 register_plugin_subcommands()
-
-
-if __name__ == '__main__':
-    tsh()
