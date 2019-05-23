@@ -222,6 +222,11 @@ class timeseries(SeriesServices):
         if not revs:
             return {}
 
+        revs = [
+            (csid, pd.Timestamp(idate).astimezone('UTC'))
+            for csid, idate in revs
+        ]
+
         if diffmode:
             # compute the previous serie value
             first_csid = revs[0][0]
@@ -270,10 +275,7 @@ class timeseries(SeriesServices):
                  for idate, ts in series
             ]
 
-        return {
-            pd.Timestamp(idate).astimezone('UTC'): serie
-            for idate, serie in series
-        }
+        return dict(series)
 
     @tx
     def staircase(self, cn, seriename, delta,
