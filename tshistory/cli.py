@@ -3,6 +3,7 @@ from pkg_resources import iter_entry_points
 from time import time
 import random
 from pathlib import Path
+from collections import defaultdict
 
 from dateutil import parser
 from json import dumps
@@ -297,8 +298,26 @@ def migrate_dot_6_to_dot_7(db_uri, namespace='tsh'):
                 snap.reclaim()
 
 
-for ep in iter_entry_points('tshistory.subcommands'):
-    tsh.add_command(ep.load())
+def register_plugin_subcommands():
+    errors = defaultdict(set)
+    for ep in iter_entry_points('tshistory.subcommands'):
+        try:
+            cmd = ep.load()
+        except Exception as e:
+            errors[str(e)].add(ep.module_name)
+            continue
+        tsh.add_command(cmd)
+
+    if errors:
+        from colorama import init, Fore, Style
+        for error, eplist in errors.items():
+            print(Fore.YELLOW +
+                  f'impossible to add subcommands from {",".join(eplist)}')
+            print(Fore.RED +
+                  f'cause: {error}')
+
+
+register_plugin_subcommands()
 
 
 if __name__ == '__main__':

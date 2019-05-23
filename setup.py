@@ -17,7 +17,8 @@ setup(name='tshistory',
           'click',
           'mock',
           'pytest_sa_pg',
-          'inireader'
+          'inireader',
+          'colorama'
       ],
       entry_points={
           'console_scripts': [
