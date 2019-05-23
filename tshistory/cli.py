@@ -288,14 +288,17 @@ def migrate_dot_6_to_dot_7(db_uri, namespace='tsh'):
                    'on delete set null')
 
     print('reclaim unreachable chunks left behind by strip')
+    from tqdm import tqdm
     from tshistory.snapshot import Snapshot
-    for name in tsh.list_series(e):
+    series = tsh.list_series(e)
+    bar = tqdm(range(len(series)))
+    for name in series:
         snap = Snapshot(e, tsh, name)
         garb = snap.garbage()
         if garb:
-            print('************************', name, 'garbage =', len(garb))
-            if reclaim:
-                snap.reclaim()
+            print(f'{name} garbage = {len(garb)}')
+            snap.reclaim()
+        bar.update()
 
 
 def register_plugin_subcommands():
