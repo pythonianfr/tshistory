@@ -257,24 +257,6 @@ def check(db_uri, series=None, namespace='tsh'):
         )
 
 
-@tsh.command(name='garbage')
-@click.argument('db-uri')
-@click.option('--reclaim', is_flag=True, default=False)
-@click.option('--namespace', default='tsh')
-def shell(db_uri, reclaim=False, namespace='tsh'):
-    from tshistory.snapshot import Snapshot
-    e = create_engine(find_dburi(db_uri))
-    tsh = timeseries(namespace)
-
-    for name in tsh.list_series(e):
-        snap = Snapshot(e, tsh, name)
-        garb = snap.garbage()
-        if garb:
-            print('************************', name, 'garbage =', len(garb))
-            if reclaim:
-                snap.reclaim()
-
-
 @tsh.command(name='shell')
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
@@ -293,6 +275,7 @@ def migrate_dot_6_to_dot_7(db_uri, namespace='tsh'):
     tsh = timeseries(namespace)
     with e.begin() as cn:
         # drop not null
+        print(f'{namespace}: alter changeset_series table')
         cn.execute(f'alter table "{namespace}".changeset_series '
                    'alter column serie drop not null')
         # alter foreign key on delete: delete -> set null
@@ -302,6 +285,16 @@ def migrate_dot_6_to_dot_7(db_uri, namespace='tsh'):
                    'add constraint "changeset_series_serie_fkey" '
                    f'foreign key (serie) references "{namespace}".registry (id) '
                    'on delete set null')
+
+    print('reclaim unreachable chunks left behind by strip')
+    from tshistory.snapshot import Snapshot
+    for name in tsh.list_series(e):
+        snap = Snapshot(e, tsh, name)
+        garb = snap.garbage()
+        if garb:
+            print('************************', name, 'garbage =', len(garb))
+            if reclaim:
+                snap.reclaim()
 
 
 for ep in iter_entry_points('tshistory.subcommands'):
