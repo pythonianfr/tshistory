@@ -616,18 +616,20 @@ class timeseries(SeriesServices):
         """ compute the unqualified (no namespace) table name
         from a serie name, to allow arbitrary serie names
         """
+        # default
+        tablename = seriename
         # postgresql table names are limited to 63 chars.
         if len(seriename) > 63:
-            seriename = hashlib.sha1(seriename.encode('utf-8')).hexdigest()
+            tablename = hashlib.sha1(seriename.encode('utf-8')).hexdigest()
 
         # collision detection (collision can happen after a rename)
         if cn.execute(f'select table_name '
                       f'from "{self.namespace}".registry '
                       f'where table_name = %(seriename)s',
                       seriename=seriename).scalar():
-            return str(uuid.uuid4())
+            tablename = str(uuid.uuid4())
 
-        return seriename
+        return tablename
 
     def _serie_to_tablename(self, cn, seriename):
         tablename = self.serie_tablename.get(seriename)
