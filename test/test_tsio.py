@@ -673,17 +673,17 @@ def test_history(engine, tsh):
         {'author': 'aurelien.campeas@pythonian.fr',
          'meta': {},
          'date': pd.Timestamp('2017-02-01 00:00:00+0000', tz='UTC'),
-         'names': ['smallserie']
+         'name': 'smallserie'
         },
         {'author': 'aurelien.campeas@pythonian.fr',
          'meta': {},
          'date': pd.Timestamp('2017-02-02 00:00:00+0000', tz='UTC'),
-         'names': ['smallserie']
+         'name': 'smallserie'
         },
         {'author': 'aurelien.campeas@pythonian.fr',
          'meta': {},
          'date': pd.Timestamp('2017-02-03 00:00:00+0000', tz='UTC'),
-         'names': ['smallserie']
+         'name': 'smallserie'
         }
     ] == [{k: v for k, v in log.items() if k != 'rev'}
           for log in logs]

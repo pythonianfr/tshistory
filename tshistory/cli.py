@@ -36,13 +36,13 @@ date:     {date}
 def format_rev(rev):
     fmt = REVFMT + '\n'
     if rev.get('diff'):
-        fmt += 'series: {names}\n\n'
+        fmt += 'series: {name}\n\n'
         lines = []
         for ts in rev['diff'].values():
             lines.append(ts.to_string())
         fmt += '\n'.join(lines)
     else:
-        fmt += 'series:   {names}'
+        fmt += 'series:   {name}'
 
     return fmt.format(**rev)
 
@@ -129,7 +129,7 @@ def log(db_uri, limit, serie, from_rev, to_rev,
     for rev in tsh.log(engine, limit=limit, names=serie,
                        fromrev=from_rev, torev=to_rev,
                        fromdate=from_insertion_date, todate=to_insertion_date):
-        rev['names'] = ','.join(rev['names'])
+        # rev['name'] = ','.join(rev['names'])
         print(format_rev(rev))
         print()
 

@@ -512,7 +512,7 @@ class timeseries(SeriesServices):
             log.append({'rev': csetid, 'author': author,
                         'date': pd.Timestamp(revdate).tz_convert('utc'),
                         'meta': meta or {},
-                        'names': self._changeset_series(cn, csetid)})
+                        'name': self._changeset_series(cn, csetid)})
 
         log.sort(key=lambda rev: rev['rev'])
         return log
@@ -715,16 +715,17 @@ class timeseries(SeriesServices):
         ).scalar()
 
     def _changeset_series(self, cn, csid):
-        sql = ('select seriename '
-               f'from "{self.namespace}".registry as reg, '
-               f'     "{self.namespace}".changeset_series as css '
-               'where css.serie = reg.id '
-               'and   css.cset = %(csid)s')
+        q = sqlq(
+            'seriename'
+        ).relation(
+            f'"{self.namespace}".registry as reg',
+        ).join(
+            f'"{self.namespace}".changeset_series as css on css.serie = reg.id'
+        ).where(
+            'css.cset = %(csid)s', csid=csid
+        )
 
-        return [
-            row.seriename
-            for row in cn.execute(sql, csid=csid).fetchall()
-        ]
+        return q.do(cn).scalar()
 
     def _previous_cset(self, cn, seriename, csid):
         tablename = self._serie_to_tablename(cn, seriename)
