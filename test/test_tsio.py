@@ -369,6 +369,9 @@ def test_changeset_metadata(engine, tsh):
     meta = tsh.changeset_metadata(engine, log[0]['rev'])
     assert meta == {'foo': 'A', 'bar': 42}
 
+    log = tsh.log(engine, names=['ts-cs-metadata'], limit=1)
+    assert len(log) == 1
+
 
 def test_revision_date(engine, tsh):
     for i in range(1, 5):

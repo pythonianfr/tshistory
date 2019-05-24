@@ -503,9 +503,9 @@ class timeseries(SeriesServices):
         if todate:
             q.where('cset.insertion_date <= %(todate)s', todate=todate)
 
+        q.option('order by cset.id desc')
         if limit:
             q.option('limit %(limit)s', limit=limit)
-        q.option('order by cset.id desc')
 
         rset = q.do(cn)
         for csetid, author, revdate, meta in rset.fetchall():
