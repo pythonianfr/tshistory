@@ -287,10 +287,34 @@ def migrate_dot_6_to_dot_7(db_uri, namespace='tsh'):
                    f'foreign key (serie) references "{namespace}".registry (id) '
                    'on delete set null')
 
-    print('reclaim unreachable chunks left behind by strip')
     from tqdm import tqdm
     from tshistory.snapshot import Snapshot
     series = tsh.list_series(e)
+    print('migrate series and snapshot start/end columns')
+    bar = tqdm(range(len(series)))
+    with e.begin() as cn:
+        for name in series:
+            table = tsh._serie_to_tablename(cn, name)
+            cn.execute(
+                f'alter table "{namespace}.timeserie"."{table}" '
+                'rename column start to tsstart'
+            )
+            cn.execute(
+                f'alter table "{namespace}.timeserie"."{table}" '
+                'rename column "end" to tsend'
+            )
+            cn.execute(
+                f'alter table "{namespace}.snapshot"."{table}" '
+                'rename column start to cstart'
+            )
+            cn.execute(
+                f'alter table "{namespace}.snapshot"."{table}" '
+                'rename column "end" to cend'
+            )
+            bar.update()
+
+    print()
+    print('reclaim unreachable chunks left behind by strip')
     bar = tqdm(range(len(series)))
     for name in series:
         snap = Snapshot(e, tsh, name)
