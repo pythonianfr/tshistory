@@ -214,7 +214,6 @@ class Snapshot(SeriesServices):
 
     def update(self, diff):
         # get last chunkhead for cset
-        # tstable = self.tsh._get_ts_table(self.cn, self.seriename)
         tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
         headsql = ('select snapshot '
                    f'from "{self.tsh.namespace}.timeserie"."{tablename}" '
