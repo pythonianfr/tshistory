@@ -17,6 +17,81 @@ SCHEMA = Path(__file__).parent / 'snapshot.sql'
 
 
 class Snapshot(SeriesServices):
+    """Here's what's happening when we create a series with 3 insertions
+    in a scenario representative of real world situations.
+
+    We will insert initially:
+
+    2019-1-1   1.0
+    2019-1-2   2.0
+    2019-1-3   3.0
+
+    Then we do a pure append:
+
+    2019-1-4   4.0
+    2019-1-5   5.0
+    2019-1-6   6.0
+
+    Finally we insert with an overlap over the previous insert:
+
+    2019-1-5   9.0   # previous 5.0 becomes 9.0
+    2019-1-7   7.0
+    2019-1-8   8.0
+
+    Now let's look at the logical organisation: we have two tables
+    `Revision` (which track all successive versions of a series) and
+    `Snapshot` (which actually stores the series data using a tree
+    structure).
+
+    Series values   | Insertion table | Snapshot/storage table
+                    +-----------------+------------------------
+                    | id | snapshot   | id | parent | chunk
+                    +----+------------+----+--------+----------
+    1,2,3           | 1  | 1          | 1  | null   | 1,2,3
+    1,2,3,4,5,6     | 2  | 2          | 2  | 1      | 4,5,6
+    1,2,3,4,9,6,7,8 | 3  | 3          | 3  | 1      | 4,9,6,7,8
+
+    Each version creates a chunk with the new data points, plus data
+    from any existing chunk that contains points that are modified
+    by the new version.
+
+    We explain in practice what happens with the three successive
+    insertions.
+
+    So the first insertion trivially creates an initial chunk with the
+    given data points. This initial series version only contains the
+    points in this chunk.
+
+    The second insertion creates a new chunk with the new data
+    points. But also it is linked to the first chunk (its `parent`).
+    At version 2 the series data is distributed amongst the two
+    chunks.
+
+    The third insertion creates a third chunk. The chunk contains the
+    new data points, and because the inserted series overlaps with the
+    existing values (at timestamp 2019-1-5) the new chunk contains a
+    modified copy of the second chunk. It is also linked to the
+    *first* chunk (its `parent`).
+
+    The collection of chunks of the snapshot table form a tree through
+    the parent relationship.
+
+    To rebuild a series at a given version, we must concatenate the
+    data points of its chunk and the successive parents.
+
+    For instance, to get the series at version 2 we do as follow:
+
+    * get the snapshot id associated to the the revision id 2 (will be
+      also 2)
+
+    * collect the chunk associated with id 2
+
+    * since we have a `parent` at 1 also collect the chunk associated
+      with id 1
+
+    * since we don't have a parent at id 1 we stop, and return the
+      concatenated chunks
+    """
     __slots__ = ('cn', 'name', 'tsh')
     _max_bucket_size = 250
 
