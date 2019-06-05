@@ -1,8 +1,8 @@
 create table "{namespace}.timeserie"."{tablename}" (
   id serial primary key,
   cset integer not null references "{namespace}".changeset(id),
-  tsstart timestamp not null,
-  tsend timestamp not null,
+  tsstart timestamp not null, -- whole series index min
+  tsend timestamp not null,   -- whole series index max
   snapshot integer references "{namespace}.snapshot"."{tablename}"(id)
 );
 
