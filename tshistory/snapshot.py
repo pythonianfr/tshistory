@@ -261,6 +261,8 @@ class Snapshot(SeriesServices):
         return chunks
 
     def findall(self, revs, from_value_date, to_value_date):
+        # there might be a None in first position because
+        # of the diff mode
         csets = [rev for rev, _ in revs if rev is not None]
         # csid -> heads
 
@@ -284,7 +286,9 @@ class Snapshot(SeriesServices):
         series = []
         for cset, idate in revs:
             if cset is None:
-                series.append((idate, None))
+                # first occurrence, because of diff mode
+                assert idate is None
+                series.append((None, None))
                 continue
             chunks = []
             head = cset_snap_map[cset]
