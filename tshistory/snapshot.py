@@ -43,6 +43,7 @@ class Snapshot(SeriesServices):
             return None
         # use `view` as a workarround for "cannot include dtype 'M' in a buffer"
         indexes = np.ascontiguousarray(ts.index.values).view(np.uint8).data.tobytes()
+        # will be a `long` or 4 octets structure
         indexes_size = struct.pack('!L', len(indexes))
 
         if self.isstr:
