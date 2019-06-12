@@ -9,15 +9,13 @@ from pathlib import Path
 import pandas as pd
 
 from deprecated import deprecated
+from sqlhelp import sqlfile, select
 
 from tshistory.util import (
     closed_overlaps,
     num2float,
     SeriesServices,
     start_end,
-    sqlfile,
-    sqlp,
-    sqlq,
     tx,
     tzaware_serie
 )
@@ -116,7 +114,7 @@ class timeseries(SeriesServices):
         csetfilter = []
         if revision_date:
             csetfilter.append(
-                sqlp(
+                lambda q: q.where(
                     f'cset.insertion_date <= %(idate)s', idate=revision_date
                 )
             )
@@ -165,9 +163,9 @@ class timeseries(SeriesServices):
 
     def changeset_metadata(self, cn, csid):
         assert isinstance(csid, int)
-        q = sqlq(
+        q = select(
             'metadata'
-        ).relation(
+        ).table(
             f'"{self.namespace}".changeset'
         ).where(
             f'id = %(csid)s', csid=csid
@@ -191,9 +189,9 @@ class timeseries(SeriesServices):
         if tablename is None:
             return
 
-        q = sqlq(
+        q = select(
             'cset.id', 'cset.insertion_date'
-        ).relation(
+        ).table(
             f'"{self.namespace}.timeserie"."{tablename}" as ts'
         ).join(
             f'"{self.namespace}".changeset as cset on cset.id = ts.cset'
@@ -217,7 +215,7 @@ class timeseries(SeriesServices):
                 todate=to_value_date
             )
 
-        q.option('order by cset.id')
+        q.order('cset.id')
         revs = q.do(cn).fetchall()
         if not revs:
             return {}
@@ -247,7 +245,7 @@ class timeseries(SeriesServices):
                     idate,
                     snapshot.find(
                         csetfilter=[
-                            sqlp('cset.id = %(csid)s', csid=csid)
+                            lambda q: q.where('cset.id = %(csid)s', csid=csid)
                         ],
                         from_value_date=from_date,
                         to_value_date=to_date)[1]
@@ -311,9 +309,9 @@ class timeseries(SeriesServices):
 
     def latest_insertion_date(self, cn, seriename):
         tablename = self._serie_to_tablename(cn, seriename)
-        q = sqlq(
+        q = select(
             'max(insertion_date)'
-        ).relation(
+        ).table(
             f'"{self.namespace}".changeset as cset',
             f'"{self.namespace}.timeserie"."{tablename}" as tstable'
         ).where(
@@ -326,16 +324,14 @@ class timeseries(SeriesServices):
     def insertion_dates(self, cn, seriename,
                         fromdate=None, todate=None):
         tablename = self._serie_to_tablename(cn, seriename)
-        q = sqlq(
+        q = select(
             'insertion_date'
-        ).relation(
+        ).table(
             f'"{self.namespace}".changeset as cset',
             f'"{self.namespace}.timeserie"."{tablename}" as tstable'
         ).where(
             'cset.id = tstable.cset'
-        ).option(
-            'order by cset.id'
-        )
+        ).order('cset.id')
 
         if fromdate:
             q.where(
@@ -365,9 +361,9 @@ class timeseries(SeriesServices):
         }
         tablename = self._serie_to_tablename(cn, seriename)
         assert mode in operators
-        q = sqlq(
+        q = select(
             'cset'
-        ).relation(
+        ).table(
             f'"{self.namespace}.timeserie"."{tablename}" as tstable',
             f'"{self.namespace}".changeset as cset '
         ).where(
@@ -474,10 +470,10 @@ class timeseries(SeriesServices):
         """
         log = []
 
-        q = sqlq(
+        q = select(
             'cset.id', 'cset.author', 'cset.insertion_date', 'cset.metadata',
             opt='distinct'
-        ).relation(
+        ).table(
             f'"{self.namespace}".changeset as cset'
         ).join(
             f'"{self.namespace}".changeset_series as css on css.cset = cset.id',
@@ -503,9 +499,9 @@ class timeseries(SeriesServices):
         if todate:
             q.where('cset.insertion_date <= %(todate)s', todate=todate)
 
-        q.option('order by cset.id desc')
+        q.order('cset.id', 'desc')
         if limit:
-            q.option('limit %(limit)s', limit=limit)
+            q.limit(int(limit))
 
         rset = q.do(cn)
         for csetid, author, revdate, meta in rset.fetchall():
@@ -715,9 +711,9 @@ class timeseries(SeriesServices):
         ).scalar()
 
     def _changeset_series(self, cn, csid):
-        q = sqlq(
+        q = select(
             'seriename'
-        ).relation(
+        ).table(
             f'"{self.namespace}".registry as reg',
         ).join(
             f'"{self.namespace}".changeset_series as css on css.serie = reg.id'

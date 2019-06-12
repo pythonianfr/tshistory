@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from tshistory.util import unilist, sqlfile
+from sqlhelp import sqlfile
 
 
 CREATEFILE = Path(__file__).parent / 'schema.sql'

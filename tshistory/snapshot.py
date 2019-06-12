@@ -6,12 +6,10 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from tshistory.util import (
-    SeriesServices,
-    sqlfile,
-    sqlp,
-    sqlq
-)
+from sqlhelp import sqlfile, select
+
+from tshistory.util import SeriesServices
+
 
 SCHEMA = Path(__file__).parent / 'snapshot.sql'
 
@@ -287,9 +285,9 @@ class Snapshot(SeriesServices):
 
     def cset_heads_query(self, csetfilter=(), order='desc'):
         tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
-        q = sqlq(
+        q = select(
             'ts.cset',  'ts.snapshot'
-        ).relation(
+        ).table(
             f'"{self.tsh.namespace}.timeserie"."{tablename}" as ts',
         ).join(
             f'"{self.tsh.namespace}".changeset as cset on cset.id = ts.cset'
@@ -298,16 +296,16 @@ class Snapshot(SeriesServices):
         if csetfilter:
             q.where('ts.cset <= cset.id')
             for filtercb in csetfilter:
-                q.where(filtercb)
+                filtercb(q)
 
-        q.option(f'order by ts.id {order}')
+        q.order('ts.id', order)
         return q
 
     def find(self, csetfilter=(),
              from_value_date=None, to_value_date=None):
 
         q = self.cset_heads_query(csetfilter)
-        q.option('limit 1')
+        q.limit(1)
 
         try:
             csid, cid = q.do(self.cn).fetchone()
@@ -342,8 +340,8 @@ class Snapshot(SeriesServices):
 
         q = self.cset_heads_query(
             (
-                sqlp('cset.id >= %(mincset)s', mincset=min(csets)),
-                sqlp('cset.id <= %(maxcset)s', maxcset=max(csets))
+                lambda q: q.where('cset.id >= %(mincset)s', mincset=min(csets)),
+                lambda q: q.where('cset.id <= %(maxcset)s', maxcset=max(csets))
             ),
             order='asc'
         )
