@@ -660,22 +660,27 @@ class timeseries(SeriesServices):
         cn.execute(table)
         return tablename
 
-    def _register_serie(self, cn, seriename, ts):
+    def _series_initial_meta(self, cn, name, ts):
         index = ts.index
         inames = [name for name in index.names if name]
-        sql = (f'insert into "{self.namespace}".registry '
-               '(seriename, table_name, metadata) '
-               'values (%s, %s, %s) '
-               'returning id')
-        table_name = self._make_tablename(cn, seriename)
-        metadata = json.dumps({
+        return {
             'tzaware': tzaware_serie(ts),
             'index_type': index.dtype.name,
             'index_names': inames,
             'index_dtype': index.dtype.str,
             'value_dtype': ts.dtypes.str,
             'value_type': ts.dtypes.name
-        })
+        }
+
+    def _register_serie(self, cn, seriename, ts):
+        sql = (f'insert into "{self.namespace}".registry '
+               '(seriename, table_name, metadata) '
+               'values (%s, %s, %s) '
+               'returning id')
+        table_name = self._make_tablename(cn, seriename)
+        metadata = json.dumps(
+            self._series_initial_meta(cn, seriename, ts)
+        )
         regid = cn.execute(
             sql,
             seriename,
