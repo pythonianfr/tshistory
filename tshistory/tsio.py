@@ -48,6 +48,17 @@ class timeseries(SeriesServices):
         self.serie_tablename = {}
         self.create_lock_id = sum(ord(c) for c in namespace)
 
+
+    def _guard_insert(self, newts):
+        assert isinstance(newts, pd.Series), 'Not a pd.Series'
+        assert not newts.index.duplicated().any(), 'There are some duplicates in the index'
+
+        assert newts.index.notna().all(), 'The index contains NaT entries'
+        if not newts.index.is_monotonic_increasing:
+            newts = newts.sort_index()
+
+        return num2float(newts)
+
     @tx
     def insert(self, cn, newts, seriename, author,
                metadata=None,
@@ -59,20 +70,12 @@ class timeseries(SeriesServices):
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
-        assert isinstance(newts, pd.Series), 'Not a pd.Series'
         assert isinstance(seriename, str), 'Name not a string'
         assert isinstance(author, str), 'Author not a string'
         assert metadata is None or isinstance(metadata, dict), 'Bad format for metadata'
         assert (_insertion_date is None or
                 isinstance(_insertion_date, datetime)), 'Bad format for insertion date'
-        assert not newts.index.duplicated().any(), 'There are some duplicates in the index'
-
-        assert newts.index.notna().all(), 'The index contains NaT entries'
-        if not newts.index.is_monotonic_increasing:
-            newts = newts.sort_index()
-
-        newts = num2float(newts)
-
+        newts = self._guard_insert(newts)
         if not len(newts):
             return
 
