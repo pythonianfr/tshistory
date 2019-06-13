@@ -189,7 +189,7 @@ You can see a series metadata:
 ```python
  >>> tsh.metadata(engine, 'my_series')
  {'tzaware': False, 'index_type': 'datetime64[ns]', 'value_type': 'float64',
- 'index_dtype': '<M8[ns]', 'index_names': [], 'value_dtype': '<f8'}
+ 'index_dtype': '<M8[ns]', 'value_dtype': '<f8'}
 ```
 
 We built a series with naive time stamps, but timezone-aware

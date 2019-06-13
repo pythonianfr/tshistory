@@ -334,7 +334,6 @@ def test_serie_metadata(engine, tsh):
     initialmeta = tsh.metadata(engine, 'ts-metadata')
     assert initialmeta == {
         'index_dtype': '<M8[ns]',
-        'index_names': [],
         'index_type': 'datetime64[ns]',
         'tzaware': False,
         'value_dtype': '<f8',
@@ -351,7 +350,6 @@ def test_serie_metadata(engine, tsh):
 
     assert tsh.metadata(engine, 'ts-metadata') == {
         'index_dtype': '<M8[ns]',
-        'index_names': [],
         'index_type': 'datetime64[ns]',
         'topic': 'banana spot price',
         'tzaware': False,
@@ -1081,7 +1079,6 @@ def test_serie_deletion(engine, tsh):
         'index_type': 'datetime64[ns]',
         'value_type': 'float64',
         'index_dtype': '<M8[ns]',
-        'index_names': [],
         'value_dtype': '<f8'
     }
 
@@ -1113,7 +1110,6 @@ def test_serie_deletion(engine, tsh):
         'index_type': 'datetime64[ns, UTC]',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',
-        'index_names': [],
         'value_dtype': '<f8'
     }
 

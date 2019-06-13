@@ -32,7 +32,6 @@ class timeseries(SeriesServices):
     metakeys = {
         'tzaware',
         'index_type',
-        'index_names',
         'index_dtype',
         'value_dtype',
         'value_type'
@@ -662,11 +661,9 @@ class timeseries(SeriesServices):
 
     def _series_initial_meta(self, cn, name, ts):
         index = ts.index
-        inames = [name for name in index.names if name]
         return {
             'tzaware': tzaware_serie(ts),
             'index_type': index.dtype.name,
-            'index_names': inames,
             'index_dtype': index.dtype.str,
             'value_dtype': ts.dtypes.str,
             'value_type': ts.dtypes.name
