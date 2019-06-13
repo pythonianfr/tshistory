@@ -84,7 +84,8 @@ class timeseries(SeriesServices):
         tablename = self._serie_to_tablename(cn, seriename)
 
         if tablename is None:
-            return self._create(cn, newts, seriename, author,
+            seriesmeta = self._series_initial_meta(cn, seriename, newts)
+            return self._create(cn, newts, seriename, author, seriesmeta,
                                 metadata, _insertion_date)
 
         return self._update(cn, tablename, newts, seriename, author,
@@ -530,7 +531,7 @@ class timeseries(SeriesServices):
 
     # creation / update
 
-    def _create(self, cn, newts, seriename, author,
+    def _create(self, cn, newts, seriename, author, seriesmeta,
                 metadata=None, insertion_date=None):
         start, end = start_end(newts, notz=False)
         if start is None:
@@ -547,7 +548,7 @@ class timeseries(SeriesServices):
         cn.execute(
             f'select pg_advisory_xact_lock({self.create_lock_id})'
         )
-        self._register_serie(cn, seriename, newts)
+        self._register_serie(cn, seriename, seriesmeta)
         snapshot = Snapshot(cn, self, seriename)
         csid = self._newchangeset(cn, author, insertion_date, metadata)
         head = snapshot.create(newts)
@@ -669,20 +670,17 @@ class timeseries(SeriesServices):
             'value_type': ts.dtypes.name
         }
 
-    def _register_serie(self, cn, seriename, ts):
+    def _register_serie(self, cn, seriename, seriesmeta):
         sql = (f'insert into "{self.namespace}".registry '
                '(seriename, table_name, metadata) '
                'values (%s, %s, %s) '
                'returning id')
         table_name = self._make_tablename(cn, seriename)
-        metadata = json.dumps(
-            self._series_initial_meta(cn, seriename, ts)
-        )
         regid = cn.execute(
             sql,
             seriename,
             table_name,
-            metadata
+            json.dumps(seriesmeta)
         ).scalar()
         self.registry_map[seriename] = regid
 
