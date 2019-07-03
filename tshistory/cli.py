@@ -212,12 +212,6 @@ def init_db(db_uri, reset=False, namespace='tsh'):
     """initialize an new db."""
     engine = create_engine(find_dburi(db_uri))
     schem = tshistory.schema.tsschema(namespace)
-    schem.define()
-
-    if reset:
-        assert schem.exists(engine)
-        schem.destroy(engine)
-
     schem.create(engine)
 
 
