@@ -39,6 +39,7 @@ class timeseries(SeriesServices):
     registry_map = None
     serie_tablename = None
     create_lock_id = None
+    delete_lock_id = None
     cachelock = Lock()
 
     def __init__(self, namespace='tsh'):
@@ -47,6 +48,7 @@ class timeseries(SeriesServices):
         self.registry_map = {}
         self.serie_tablename = {}
         self.create_lock_id = sum(ord(c) for c in namespace)
+        self.delete_lock_id = sum(ord(c) for c in namespace)
 
     @tx
     def insert(self, cn, newts, seriename, author,
@@ -379,6 +381,10 @@ class timeseries(SeriesServices):
         if tablename is None:
             print('not deleting unknown series', seriename, self.namespace)
             return
+        # serialize all deletions to avoid deadlocks
+        cn.execute(
+            f'select pg_advisory_xact_lock({self.delete_lock_id})'
+        )
         # changeset will keep ghost entries
         # whose cleanup is costly
         # we will mark them as from a deleted series
