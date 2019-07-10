@@ -259,7 +259,9 @@ class timeseries(SeriesServices):
                     # we therefore consider the first serie as a diff to the "null" serie
                     diffs.append((revdate_b, serie_b))
                 else:
-                    diffs.append((revdate_b, self.diff(serie_a, serie_b)))
+                    diff = self.diff(serie_a, serie_b)
+                    if len(diff):
+                        diffs.append((revdate_b, diff))
             series = diffs
         else:
             series = [
