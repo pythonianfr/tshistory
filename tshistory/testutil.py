@@ -22,13 +22,17 @@ def assert_df(expected, df):
     assert exp == got
 
 
-def assert_hist(expected, dfdict):
+def hist_to_df(dfdict):
     # copy to avoid side effects
     series = [(key, serie.copy()) for key, serie in dfdict.items()]
     for revdate, serie in series:
         inject_in_index(serie, revdate)
 
-    series = pd.concat([serie for _, serie in series])
+    return pd.concat([serie for _, serie in series])
+
+
+def assert_hist(expected, dfdict):
+    series = hist_to_df(dfdict)
     assert_df(expected, series)
 
 
