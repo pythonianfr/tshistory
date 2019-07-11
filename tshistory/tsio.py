@@ -233,8 +233,12 @@ class timeseries(SeriesServices):
                 to_date = None
                 if deltabefore is not None:
                     from_date = idate - deltabefore
+                else:
+                    from_date = from_value_date
                 if deltaafter is not None:
                     to_date = idate + deltaafter
+                else:
+                    to_date = to_value_date
                 series.append((
                     idate,
                     snapshot.find(
