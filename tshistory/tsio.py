@@ -269,7 +269,10 @@ class timeseries(SeriesServices):
                  for idate, ts in series
             ]
 
-        return dict(series)
+        return {
+            idate: ts
+            for idate, ts in series if len(series)
+        }
 
     @tx
     def staircase(self, cn, seriename, delta,
