@@ -178,22 +178,25 @@ class timeseries(SeriesServices):
                 deltabefore=None,
                 deltaafter=None,
                 diffmode=False,
-                _revisions=None,
+                _wanted_insertion_dates=None,
                 _keep_nans=False):
         tablename = self._serie_to_tablename(cn, seriename)
         if tablename is None:
             return
 
-        if _revisions is None:
-            revs = self._revisions(
+        revs = self._revisions(
+            cn, seriename,
+            from_insertion_date,
+            to_insertion_date,
+            from_value_date,
+            to_value_date
+        )
+        if _wanted_insertion_dates is not None:
+            revs = self._pruned_revisions(
                 cn, seriename,
-                from_insertion_date,
-                to_insertion_date,
-                from_value_date,
-                to_value_date
+                _wanted_insertion_dates,
+                revs
             )
-        else:
-            revs = _revisions
 
         if not revs:
             return {}
@@ -268,16 +271,26 @@ class timeseries(SeriesServices):
         if not self.exists(cn, seriename):
             return
 
-        revisions = self._pruned_staircase_revisions(
-            cn, seriename, delta,
-            from_value_date, to_value_date
+        base = self.get(
+            cn, seriename,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date,
+            _keep_nans=True
         )
+        if not len(base):
+            return pd.Series(name=seriename)
+
+        # prepare the needed revision dates
+        shiftedvdates = [
+            vdate - delta
+            for vdate in base.index
+        ]
 
         hcache = historycache(
             self, cn, seriename,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
-            revisions=revisions
+            _wanted_insertion_dates=shiftedvdates
          )
 
         return hcache.staircase(
@@ -785,42 +798,21 @@ class timeseries(SeriesServices):
             for csid, idate in q.do(cn).fetchall()
         ]
 
-    def _pruned_staircase_revisions(self, cn, seriename, delta,
-                                    from_value_date=None,
-                                    to_value_date=None):
+    def _pruned_revisions(self, cn, seriename,
+                          wanted_revisions,
+                          revisions):
         """We attempt to build a pruned history insertion dates list using the
-        series value dates - delta as a driver: we want at most one
-        insertion date for each value date
+        wanted revisions as a driver: we want at most one
+        insertion date for each wanted revision
 
         This is useful when there are more insertion dates than
         requested points
 
         """
-        base = self.get(
-            cn, seriename,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            _keep_nans=True
-        )
-        if not len(base):
-            return None
-
-        shiftedvdates = [
-            vdate - delta
-            for vdate in base.index
-        ]
-
-        # real csid, insertion_date from the db
-        revs = self._revisions(
-            cn, seriename,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date
-        )
-
         tzaware = self.metadata(cn, seriename).get('tzaware')
-        revisions = []
-        itervdates = reversed(shiftedvdates)
-        iterrevs = reversed(revs)
+        pruned = []
+        itervdates = reversed(wanted_revisions)
+        iterrevs = reversed(revisions)
 
         # for each vdate we retain the nearest inferior insertion date
         # hence we never have more insertion dates than needed
@@ -834,13 +826,13 @@ class timeseries(SeriesServices):
             if not tzaware:
                 compidate = compidate.replace(tzinfo=None)
             if vdate >= compidate:
-                revisions.append(rev)
+                pruned.append(rev)
                 try:
                     vdate = next(itervdates)
                 except StopIteration:
                     break
 
-        revisions.reverse()
+        pruned.reverse()
         return revisions
 
     def _resetcaches(self):
@@ -855,13 +847,13 @@ class historycache:
     def __init__(self, tsh, cn, name,
                  from_value_date=None,
                  to_value_date=None,
-                 revisions=None):
+                 _wanted_insertion_dates=None):
         self.name = name
         self.hist = tsh.history(
             cn, name,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
-            _revisions=revisions,
+            _wanted_insertion_dates=_wanted_insertion_dates,
             _keep_nans=True
         )
 
