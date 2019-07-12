@@ -286,26 +286,32 @@ class timeseries(SeriesServices):
         `delta` time after the insertion dates and where we
         keep the most recent ones
         """
-        histo = self.history(
-            cn, seriename, deltabefore=-delta,
+        if not self.exists(cn, seriename):
+            return
+
+        base = self.get(
+            cn, seriename,
             from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            _keep_nans=True
+            to_value_date=to_value_date
         )
-        if histo is None:
-            return None
+        if not len(base):
+            return base
 
-        vimap = {}
-        vvmap = {}
-        for idate, series in histo.items():
-            for vdate, value in series.iteritems():
-                if vdate not in vimap or vimap[vdate] < idate:
-                    vimap[vdate] = idate
-                    vvmap[vdate] = value
+        chunks = []
+        for vdate in base.index:
+            ts = self.get(
+                cn, seriename, revision_date=vdate - delta,
+                from_value_date=vdate,
+                to_value_date=vdate
+            )
+            if ts is not None and len(ts):
+                chunks.append(ts)
 
-        ts = pd.Series(vvmap).sort_index().loc[from_value_date:to_value_date]
+        ts = pd.Series()
+        if chunks:
+            ts = pd.concat(chunks)
         ts.name = seriename
-        return ts.dropna()
+        return ts
 
     def exists(self, cn, seriename):
         return self._serie_to_tablename(cn, seriename) is not None
