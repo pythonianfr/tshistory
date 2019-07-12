@@ -169,40 +169,6 @@ class timeseries(SeriesServices):
     def type(self, cn, name):
         return 'primary'
 
-    def _revisions(self, cn, tablename,
-                   from_insertion_date=None,
-                   to_insertion_date=None,
-                   from_value_date=None,
-                   to_value_date=None):
-        q = select(
-            'cset.id', 'cset.insertion_date'
-        ).table(
-            f'"{self.namespace}.timeserie"."{tablename}" as ts'
-        ).join(
-            f'"{self.namespace}".changeset as cset on cset.id = ts.cset'
-        )
-
-        if from_insertion_date:
-            q.where(
-                'cset.insertion_date >= %(from_idate)s',
-                from_idate=from_insertion_date
-            )
-        if to_insertion_date:
-            q.where(
-                'cset.insertion_date <= %(to_idate)s ',
-                to_idate=to_insertion_date
-            )
-
-        if from_value_date or to_value_date:
-            q.where(
-                closed_overlaps(from_value_date, to_value_date),
-                fromdate=from_value_date,
-                todate=to_value_date
-            )
-
-        q.order('cset.id')
-        return q.do(cn).fetchall()
-
     @tx
     def history(self, cn, seriename,
                 from_insertion_date=None,
@@ -339,30 +305,15 @@ class timeseries(SeriesServices):
 
     def insertion_dates(self, cn, seriename,
                         fromdate=None, todate=None):
-        tablename = self._serie_to_tablename(cn, seriename)
-        q = select(
-            'insertion_date'
-        ).table(
-            f'"{self.namespace}".changeset as cset',
-            f'"{self.namespace}.timeserie"."{tablename}" as tstable'
-        ).where(
-            'cset.id = tstable.cset'
-        ).order('cset.id')
-
-        if fromdate:
-            q.where(
-                'cset.insertion_date >= %(fromdate)s',
-                fromdate=fromdate
-            )
-        if todate:
-            q.where(
-                'cset.insertion_date <= %(todate)s',
-                todate=todate
-            )
+        revs = self._revisions(
+            cn, seriename,
+            from_insertion_date=fromdate,
+            to_insertion_date=todate
+        )
 
         return [
             pd.Timestamp(idate).astimezone('UTC')
-            for idate, in q.do(cn).fetchall()
+            for _cset, idate in revs
         ]
 
     def last_id(self, cn, seriename):
@@ -794,6 +745,40 @@ class timeseries(SeriesServices):
                '(cset, serie) '
                'values (%s, %s)')
         cn.execute(sql, csid, self._name_to_regid(cn, seriename))
+
+    def _revisions(self, cn, tablename,
+                   from_insertion_date=None,
+                   to_insertion_date=None,
+                   from_value_date=None,
+                   to_value_date=None):
+        q = select(
+            'cset.id', 'cset.insertion_date'
+        ).table(
+            f'"{self.namespace}.timeserie"."{tablename}" as ts'
+        ).join(
+            f'"{self.namespace}".changeset as cset on cset.id = ts.cset'
+        )
+
+        if from_insertion_date:
+            q.where(
+                'cset.insertion_date >= %(from_idate)s',
+                from_idate=from_insertion_date
+            )
+        if to_insertion_date:
+            q.where(
+                'cset.insertion_date <= %(to_idate)s ',
+                to_idate=to_insertion_date
+            )
+
+        if from_value_date or to_value_date:
+            q.where(
+                closed_overlaps(from_value_date, to_value_date),
+                fromdate=from_value_date,
+                todate=to_value_date
+            )
+
+        q.order('cset.id')
+        return q.do(cn).fetchall()
 
     def _resetcaches(self):
         with self.cachelock:
