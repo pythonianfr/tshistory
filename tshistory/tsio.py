@@ -169,20 +169,11 @@ class timeseries(SeriesServices):
     def type(self, cn, name):
         return 'primary'
 
-    @tx
-    def history(self, cn, seriename,
-                from_insertion_date=None,
-                to_insertion_date=None,
-                from_value_date=None,
-                to_value_date=None,
-                deltabefore=None,
-                deltaafter=None,
-                diffmode=False,
-                _keep_nans=False):
-        tablename = self._serie_to_tablename(cn, seriename)
-        if tablename is None:
-            return
-
+    def _revisions(self, cn, tablename,
+                   from_insertion_date=None,
+                   to_insertion_date=None,
+                   from_value_date=None,
+                   to_value_date=None):
         q = select(
             'cset.id', 'cset.insertion_date'
         ).table(
@@ -210,7 +201,34 @@ class timeseries(SeriesServices):
             )
 
         q.order('cset.id')
-        revs = q.do(cn).fetchall()
+        return q.do(cn).fetchall()
+
+    @tx
+    def history(self, cn, seriename,
+                from_insertion_date=None,
+                to_insertion_date=None,
+                from_value_date=None,
+                to_value_date=None,
+                deltabefore=None,
+                deltaafter=None,
+                diffmode=False,
+                revisions=None,
+                _keep_nans=False):
+        tablename = self._serie_to_tablename(cn, seriename)
+        if tablename is None:
+            return
+
+        if revisions is None:
+            revs = self._revisions(
+                cn, tablename,
+                from_insertion_date,
+                to_insertion_date,
+                from_value_date,
+                to_value_date
+            )
+        else:
+            revs = revisions
+
         if not revs:
             return {}
 
@@ -788,12 +806,14 @@ class historycache:
 
     def __init__(self, tsh, cn, name,
                  from_value_date=None,
-                 to_value_date=None):
+                 to_value_date=None,
+                 revisions=None):
         self.name = name
         self.hist = tsh.history(
             cn, name,
             from_value_date=from_value_date,
-            to_value_date=to_value_date
+            to_value_date=to_value_date,
+            revisions=revisions
         )
 
     def get(self, revision_date=None,
