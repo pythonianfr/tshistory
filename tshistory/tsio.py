@@ -289,29 +289,18 @@ class timeseries(SeriesServices):
         if not self.exists(cn, seriename):
             return
 
-        base = self.get(
-            cn, seriename,
+        hcache = historycache(
+            self, cn, seriename,
             from_value_date=from_value_date,
             to_value_date=to_value_date
         )
-        if not len(base):
-            return base
 
-        chunks = []
-        for vdate in base.index:
-            ts = self.get(
-                cn, seriename, revision_date=vdate - delta,
-                from_value_date=vdate,
-                to_value_date=vdate
-            )
-            if ts is not None and len(ts):
-                chunks.append(ts)
+        return hcache.staircase(
+            delta,
+            from_value_date,
+            to_value_date
+        )
 
-        ts = pd.Series()
-        if chunks:
-            ts = pd.concat(chunks)
-        ts.name = seriename
-        return ts
 
     def exists(self, cn, seriename):
         return self._serie_to_tablename(cn, seriename) is not None
@@ -794,6 +783,70 @@ class timeseries(SeriesServices):
             self.registry_map.clear()
             self.serie_tablename.clear()
 
+
+class historycache:
+
+    def __init__(self, tsh, cn, name,
+                 from_value_date=None,
+                 to_value_date=None):
+        self.name = name
+        self.hist = tsh.history(
+            cn, name,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date
+        )
+
+    def get(self, revision_date=None,
+            from_value_date=None,
+            to_value_date=None):
+
+        if not len(self.hist):
+            return pd.Series(name=self.name)
+
+        if revision_date is None:
+            return list(self.hist.values())[-1]
+
+        tzaware = revision_date.tzinfo is not None
+        for idate in reversed(list(self.hist.keys())):
+            compidate = idate
+            if not tzaware:
+                compidate = idate.replace(tzinfo=None)
+            if revision_date >= compidate:
+                return self.hist[idate].loc[
+                    from_value_date:to_value_date
+                ]
+
+        return pd.Series(name=self.name)
+
+    def staircase(self, delta,
+                  from_value_date=None,
+                  to_value_date=None):
+        """ compute a series whose value dates are bounded to be
+        `delta` time after the insertion dates and where we
+        keep the most recent ones
+        """
+        base = self.get(
+            from_value_date=from_value_date,
+            to_value_date=to_value_date
+        )
+        if not len(base):
+            return base
+
+        chunks = []
+        for vdate in base.index:
+            ts = self.get(
+                revision_date=vdate - delta,
+                from_value_date=vdate,
+                to_value_date=vdate
+            )
+            if ts is not None and len(ts):
+                chunks.append(ts)
+
+        ts = pd.Series()
+        if chunks:
+            ts = pd.concat(chunks)
+        ts.name = self.name
+        return ts
 
 
 @deprecated(reason='use the `timeseries` object instead')
