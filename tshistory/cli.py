@@ -336,6 +336,7 @@ def register_plugin_subcommands():
                   f'impossible to add subcommands from {",".join(eplist)}')
             print(Fore.RED +
                   f'cause: {error}')
+        print(Fore.RESET + '')
 
 
 register_plugin_subcommands()
