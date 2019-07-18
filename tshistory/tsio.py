@@ -119,7 +119,7 @@ class timeseries(SeriesServices):
 
         if current is not None and not _keep_nans:
             current.name = seriename
-            current = current[~current.isnull()]
+            current = current.dropna()
         return current
 
     def metadata(self, cn, seriename):
