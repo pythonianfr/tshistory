@@ -14,6 +14,7 @@ from sqlhelp import sqlfile, select
 from tshistory.util import (
     closed_overlaps,
     num2float,
+    pruned_history,
     SeriesServices,
     start_end,
     tx,
@@ -255,10 +256,18 @@ class timeseries(SeriesServices):
                  for idate, ts in series
             ]
 
-        return {
+        hist = {
             idate: ts
             for idate, ts in series if len(series)
         }
+
+        if from_value_date or to_value_date:
+            # now it's possible that the extremities cut
+            # yields similar series for successive idates
+            # and we are not interested in that
+            hist = pruned_history(hist)
+
+        return hist
 
     @tx
     def staircase(self, cn, seriename, delta,

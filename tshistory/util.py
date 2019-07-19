@@ -66,6 +66,23 @@ def tzaware_serie(ts):
     return is_datetime64tz_dtype(ts.index)
 
 
+def pruned_history(hist):
+    if not hist:
+        return hist
+    idates = list(hist.keys())
+    idate = idates[0]
+    current = hist[idate]
+    pruned = {
+        idate: current
+    }
+    for idate in idates[1:]:
+        newts = hist[idate]
+        if not current.equals(newts):
+            pruned[idate] = newts
+            current = newts
+    return pruned
+
+
 def start_end(ts, notz=True):
     ts = ts.dropna()
     if not len(ts):
