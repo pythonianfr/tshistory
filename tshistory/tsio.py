@@ -176,8 +176,6 @@ class timeseries(SeriesServices):
                 to_insertion_date=None,
                 from_value_date=None,
                 to_value_date=None,
-                deltabefore=None,
-                deltaafter=None,
                 diffmode=False,
                 _wanted_insertion_dates=None,
                 _keep_nans=False):
@@ -209,34 +207,11 @@ class timeseries(SeriesServices):
             revs.insert(0, (previous_csid, None))
 
         snapshot = Snapshot(cn, self, seriename)
-        series = []
-        if (deltabefore, deltaafter) != (None, None):
-            for csid, idate in revs:
-                from_date = None
-                to_date = None
-                if deltabefore is not None:
-                    from_date = idate - deltabefore
-                else:
-                    from_date = from_value_date
-                if deltaafter is not None:
-                    to_date = idate + deltaafter
-                else:
-                    to_date = to_value_date
-                series.append((
-                    idate,
-                    snapshot.find(
-                        csetfilter=[
-                            lambda q: q.where('cset.id = %(csid)s', csid=csid)
-                        ],
-                        from_value_date=from_date,
-                        to_value_date=to_date)[1]
-                    )
-                )
-        else:
-            series = snapshot.findall(revs,
-                                      from_value_date,
-                                      to_value_date
-            )
+        series = snapshot.findall(
+            revs,
+            from_value_date,
+            to_value_date
+        )
 
         if diffmode:
             diffs = []
