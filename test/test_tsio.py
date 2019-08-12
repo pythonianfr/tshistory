@@ -15,7 +15,6 @@ from tshistory.testutil import (
     assert_hist,
     assert_hist_equals,
     assert_group_equals,
-    assert_structures,
     genserie,
     tempattr
 )
@@ -41,7 +40,6 @@ def test_in_tx(tsh, engine):
 
 
 def test_tstamp_roundtrip(engine, tsh):
-    assert_structures(engine, tsh)
     ts = genserie(datetime(2017, 10, 28, 23),
                   'H', 4, tz='UTC')
     ts.index = ts.index.tz_convert('Europe/Paris')
@@ -119,11 +117,9 @@ insertion_date             value_date
     ival = tsh.interval(engine, 'tztest')
     assert ival.left == pd.Timestamp('2017-10-28 23:00:00+0000', tz='UTC')
     assert ival.right == pd.Timestamp('2017-10-29 04:00:00+0000', tz='UTC')
-    assert_structures(engine, tsh)
 
 
 def test_differential(engine, tsh):
-    assert_structures(engine, tsh)
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
     tsh.insert(engine, ts_begin, 'ts_test', 'test')
 
@@ -303,14 +299,14 @@ def test_differential(engine, tsh):
         cn.execute(
             f'set search_path to "{tsh.namespace}.timeserie", "{tsh.namespace}", public'
         )
-        allts = pd.read_sql("select seriename, table_name from registry "
-                            "where seriename in ('ts_test', 'ts_mixte')",
+        allts = pd.read_sql("select seriesname, tablename from registry "
+                            "where seriesname in ('ts_test', 'ts_mixte')",
                             cn)
 
         assert_df("""
-seriename table_name
-0   ts_test    ts_test
-1  ts_mixte   ts_mixte
+seriesname tablename
+0    ts_test   ts_test
+1   ts_mixte  ts_mixte
 """.format(tsh.namespace), allts)
 
         assert_df("""
@@ -323,8 +319,6 @@ seriename table_name
 2010-01-07    3.0
 """, tsh.get(cn, 'ts_mixte',
              revision_date=datetime.now()))
-
-    assert_structures(engine, tsh)
 
 
 def test_serie_metadata(engine, tsh):
@@ -361,13 +355,18 @@ def test_serie_metadata(engine, tsh):
 def test_changeset_metadata(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
     tsh.insert(engine, serie, 'ts-cs-metadata', 'babar',
-               {'foo': 'A', 'bar': 42})
+               {'foo': 'A', 'bar': 42},
+               _insertion_date=utcdt(2019, 1, 1)
+    )
 
-    log = tsh.log(engine, names=['ts-cs-metadata'])
-    meta = tsh.changeset_metadata(engine, log[0]['rev'])
-    assert meta == {'foo': 'A', 'bar': 42}
-
-    log = tsh.log(engine, names=['ts-cs-metadata'], limit=1)
+    log = tsh.log(engine, 'ts-cs-metadata')
+    assert log == [{
+        'rev': 1,
+        'author': 'babar',
+        'date': pd.Timestamp('2019-1-1', tz='UTC'),
+        'meta': {'foo': 'A', 'bar': 42}
+    }]
+    log = tsh.log(engine, 'ts-cs-metadata', limit=1)
     assert len(log) == 1
 
 
@@ -666,25 +665,24 @@ def test_history(engine, tsh):
 2017-01-03    2.0
 """, ts)
 
-    logs = tsh.log(engine, names=['smallserie'])
-    assert [
+    logs = tsh.log(engine, 'smallserie')
+    assert logs == [
         {'author': 'aurelien.campeas@pythonian.fr',
          'meta': {},
          'date': pd.Timestamp('2017-02-01 00:00:00+0000', tz='UTC'),
-         'name': 'smallserie'
+         'rev': 1
         },
         {'author': 'aurelien.campeas@pythonian.fr',
          'meta': {},
          'date': pd.Timestamp('2017-02-02 00:00:00+0000', tz='UTC'),
-         'name': 'smallserie'
+         'rev': 2
         },
         {'author': 'aurelien.campeas@pythonian.fr',
          'meta': {},
          'date': pd.Timestamp('2017-02-03 00:00:00+0000', tz='UTC'),
-         'name': 'smallserie'
+         'rev': 3
         }
-    ] == [{k: v for k, v in log.items() if k != 'rev'}
-          for log in logs]
+    ]
     histts = tsh.history(engine, 'smallserie')
 
     assert_hist("""
@@ -1021,8 +1019,6 @@ def test_serie_deletion(engine, tsh):
     tsh.insert(engine, ts, 'keepme', 'Babar')
     tsh.insert(engine, ts, 'deleteme', 'Celeste')
 
-    seriecount, csetcount, csetseriecount = assert_structures(engine, tsh)
-
     assert tsh.metadata(engine, 'deleteme') == {
         'tzaware': False,
         'index_type': 'datetime64[ns]',
@@ -1035,15 +1031,6 @@ def test_serie_deletion(engine, tsh):
         tsh.delete(cn, 'deleteme')
 
     assert not tsh.exists(engine, 'deleteme')
-    log = [entry['author']
-           for entry in tsh.log(engine, names=('keepme', 'deleteme'))]
-    assert log == ['Babar', 'Babar']
-
-    seriecount2, csetcount2, csetseriecount2 = assert_structures(engine, tsh)
-
-    assert csetcount - csetcount2  == 0
-    assert csetseriecount - csetseriecount2 == 0
-    assert seriecount - seriecount2 == 1
     assert tsh.metadata(engine, 'deleteme') is None
 
     ts = pd.Series(
@@ -1062,12 +1049,6 @@ def test_serie_deletion(engine, tsh):
         'value_dtype': '<f8'
     }
 
-    sql = f"""select count(*) from "{tsh.namespace}".changeset
-           where (metadata::jsonb ->> 'tshistory.info')
-           like 'belonged to deleted series `deleteme`' """
-    count = engine.execute(sql).scalar()
-    assert count == 2
-
 
 def test_strip(engine, tsh):
     for i in range(1, 5):
@@ -1084,17 +1065,24 @@ def test_strip(engine, tsh):
     csidc = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3, 1), mode='after')
     assert csidb < csida < csidc
 
-    log = tsh.log(engine, names=['xserie', 'yserie'])
-    assert [(idx, l['author']) for idx, l in enumerate(log, start=1)
-    ] == [
-        (1, 'babar'),
-        (2, 'celeste'),
-        (3, 'babar'),
-        (4, 'celeste'),
-        (5, 'babar'),
-        (6, 'celeste'),
-        (7, 'babar'),
-        (8, 'celeste')
+    log = tsh.log(engine, 'xserie')
+    assert log == [
+        {'author': 'babar',
+         'date': pd.Timestamp('2017-01-01 00:00:00+0000', tz='UTC'),
+         'meta': {},
+         'rev': 1},
+        {'author': 'babar',
+         'date': pd.Timestamp('2017-01-02 00:00:00+0000', tz='UTC'),
+         'meta': {},
+         'rev': 2},
+        {'author': 'babar',
+         'date': pd.Timestamp('2017-01-03 00:00:00+0000', tz='UTC'),
+         'meta': {},
+         'rev': 3},
+        {'author': 'babar',
+         'date': pd.Timestamp('2017-01-04 00:00:00+0000', tz='UTC'),
+         'meta': {},
+         'rev': 4}
     ]
 
     h = tsh.history(engine, 'xserie')
@@ -1141,19 +1129,17 @@ insertion_date             value_date
 2017-01-10 02:00:00    2.0
 """, tsh.get(engine, 'xserie'))
 
-    log = tsh.log(engine, names=['xserie', 'yserie'])
-    # 5 and 7 have disappeared
-    assert [l['author'] for l in log
-    ] == ['babar', 'celeste', 'babar', 'celeste', 'celeste', 'celeste']
-
-    alllogs = tsh.log(engine, names=['xserie', 'yserie'])
-    assert len(alllogs) == 6
-
-    sql = f"""select count(*) from "{tsh.namespace}".changeset
-              where (metadata::jsonb ->> 'tshistory.info')
-              like 'got stripped%%' """
-    count = engine.execute(sql).scalar()
-    assert count == 2
+    log = tsh.log(engine, 'xserie')
+    assert log == [
+        {'author': 'babar',
+         'date': pd.Timestamp('2017-01-01 00:00:00+0000', tz='UTC'),
+         'meta': {},
+         'rev': 1},
+        {'author': 'babar',
+         'date': pd.Timestamp('2017-01-02 00:00:00+0000', tz='UTC'),
+         'meta': {},
+         'rev': 2}
+    ]
 
 
 def test_long_name(engine, tsh):

@@ -16,9 +16,9 @@ class tsschema(object):
     def create(self, engine):
         with engine.begin() as cn:
             cn.execute(f'drop schema if exists "{self.namespace}" cascade')
-            cn.execute(f'drop schema if exists "{self.namespace}.timeserie" cascade')
+            cn.execute(f'drop schema if exists "{self.namespace}.revision" cascade')
             cn.execute(f'drop schema if exists "{self.namespace}.snapshot" cascade')
             cn.execute(f'create schema "{self.namespace}"')
-            cn.execute(f'create schema "{self.namespace}.timeserie"')
+            cn.execute(f'create schema "{self.namespace}.revision"')
             cn.execute(f'create schema "{self.namespace}.snapshot"')
             cn.execute(sqlfile(CREATEFILE, ns=self.namespace))

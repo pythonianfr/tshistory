@@ -1,12 +1,14 @@
-create table "{namespace}.timeserie"."{tablename}" (
+create table "{namespace}.revision"."{tablename}" (
   id serial primary key,
-  cset integer not null references "{namespace}".changeset(id),
   tsstart timestamp not null, -- whole series index min
   tsend timestamp not null,   -- whole series index max
-  snapshot integer references "{namespace}.snapshot"."{tablename}"(id)
+  snapshot integer references "{namespace}.snapshot"."{tablename}"(id),
+  author text not null,
+  insertion_date timestamptz not null,
+  metadata jsonb
 );
 
-create index on "{namespace}.timeserie"."{tablename}"(cset);
-create index on "{namespace}.timeserie"."{tablename}"(snapshot);
-create index on "{namespace}.timeserie"."{tablename}"(tsstart);
-create index on "{namespace}.timeserie"."{tablename}"(tsend);
+create index on "{namespace}.revision"."{tablename}"(snapshot);
+create index on "{namespace}.revision"."{tablename}"(tsstart);
+create index on "{namespace}.revision"."{tablename}"(tsend);
+create index on "{namespace}.revision"."{tablename}"(insertion_date);

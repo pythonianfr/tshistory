@@ -214,7 +214,7 @@ class Snapshot(SeriesServices):
         # get last chunkhead for cset
         tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
         headsql = ('select snapshot '
-                   f'from "{self.tsh.namespace}.timeserie"."{tablename}" '
+                   f'from "{self.tsh.namespace}.revision"."{tablename}" '
                    'order by id desc limit 1')
         head = self.cn.execute(headsql).scalar()
 
@@ -286,19 +286,16 @@ class Snapshot(SeriesServices):
     def cset_heads_query(self, csetfilter=(), order='desc'):
         tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
         q = select(
-            'ts.cset',  'ts.snapshot'
+            'id',  'snapshot'
         ).table(
-            f'"{self.tsh.namespace}.timeserie"."{tablename}" as ts',
-        ).join(
-            f'"{self.tsh.namespace}".changeset as cset on cset.id = ts.cset'
+            f'"{self.tsh.namespace}.revision"."{tablename}"'
         )
 
         if csetfilter:
-            q.where('ts.cset <= cset.id')
             for filtercb in csetfilter:
                 filtercb(q)
 
-        q.order('ts.id', order)
+        q.order('id', order)
         return q
 
     def find(self, csetfilter=(),
@@ -340,14 +337,14 @@ class Snapshot(SeriesServices):
 
         q = self.cset_heads_query(
             (
-                lambda q: q.where('cset.id >= %(mincset)s', mincset=min(csets)),
-                lambda q: q.where('cset.id <= %(maxcset)s', maxcset=max(csets))
+                lambda q: q.where('id >= %(mincset)s', mincset=min(csets)),
+                lambda q: q.where('id <= %(maxcset)s', maxcset=max(csets))
             ),
             order='asc'
         )
 
         cset_snap_map = {
-            row.cset: row.snapshot
+            row.id: row.snapshot
             for row in q.do(self.cn).fetchall()
         }
         rawchunks = self.allchunks(
@@ -385,7 +382,7 @@ class Snapshot(SeriesServices):
         tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
         reachablesql = f"""
         with recursive heads as (
-            select snapshot from "{self.tsh.namespace}.timeserie"."{tablename}"
+            select snapshot from "{self.tsh.namespace}.revision"."{tablename}"
           ),
           allchunks as (
             select chunks.id as cid,

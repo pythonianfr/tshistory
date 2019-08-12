@@ -6,12 +6,14 @@ from pathlib import Path
 from collections import defaultdict
 
 from dateutil import parser
-from json import dumps
+from json import dumps, loads
 
 import click
 from sqlalchemy import create_engine
 from dateutil.parser import parse as temporal
 import pandas as pd
+from tqdm import tqdm
+from sqlhelp import select, update
 
 from tshistory.tsio import timeseries
 from tshistory.util import (
@@ -36,13 +38,10 @@ date:     {date}
 def format_rev(rev):
     fmt = REVFMT + '\n'
     if rev.get('diff'):
-        fmt += 'series: {name}\n\n'
         lines = []
         for ts in rev['diff'].values():
             lines.append(ts.to_string())
         fmt += '\n'.join(lines)
-    else:
-        fmt += 'series:   {name}'
 
     return fmt.format(**rev)
 
@@ -112,30 +111,27 @@ def history(db_uri, seriename,
 
 @tsh.command()
 @click.argument('db-uri')
+@click.argument('series')
 @click.option('--limit', '-l', default=None)
-@click.option('--serie', '-s', multiple=True)
-@click.option('--from-rev')
-@click.option('--to-rev')
 @click.option('--from-insertion-date', type=temporal)
 @click.option('--to-insertion-date', type=temporal)
 @click.option('--namespace', default='tsh')
-def log(db_uri, limit, serie, from_rev, to_rev,
-        from_insertion_date, to_insertion_date,
+def log(db_uri, limit, series,
+        from_insertion_date=None, to_insertion_date=None,
         namespace='tsh'):
     """show revision history of entire repository or series"""
     engine = create_engine(find_dburi(db_uri))
     tsh = timeseries(namespace)
 
-    for rev in tsh.log(engine, limit=limit, names=serie,
-                       fromrev=from_rev, torev=to_rev,
-                       fromdate=from_insertion_date, todate=to_insertion_date):
-        # rev['name'] = ','.join(rev['names'])
+    for rev in tsh.log(
+            engine, series, limit=limit,
+            fromdate=from_insertion_date,
+            todate=to_insertion_date):
         print(format_rev(rev))
         print()
 
 
 INFOFMT = """
-changeset count: {changeset count}
 series count:    {series count}
 series names:    {serie names}
 """.strip()
@@ -222,13 +218,12 @@ def init_db(db_uri, reset=False, namespace='tsh'):
 def check(db_uri, series=None, namespace='tsh'):
     "coherence checks of the db"
     e = create_engine(find_dburi(db_uri))
+    tsh = timeseries(namespace)
     if series is None:
-        sql = 'select seriename from "{}".registry order by seriename'.format(namespace)
-        series = [row.seriename for row in e.execute(sql)]
+        series = tsh.list_series(e)
     else:
         series = [series]
 
-    tsh = timeseries(namespace)
     for idx, s in enumerate(series):
         t0 = time()
         with e.begin() as cn:
@@ -281,7 +276,6 @@ def migrate_dot_6_to_dot_7(db_uri, namespace='tsh'):
                    f'foreign key (serie) references "{namespace}".registry (id) '
                    'on delete set null')
 
-    from tqdm import tqdm
     from tshistory.snapshot import Snapshot
     series = tsh.list_series(e)
     print('migrate series and snapshot start/end columns')
@@ -317,6 +311,107 @@ def migrate_dot_6_to_dot_7(db_uri, namespace='tsh'):
             print(f'{name} garbage = {len(garb)}')
             snap.reclaim()
         bar.update()
+
+
+@tsh.command(name='migrate-0.7-to-0.8')
+@click.argument('db-uri')
+@click.option('--namespace', default='tsh')
+def migrate_dot_7_to_dot_8(db_uri, namespace='tsh'):
+    engine = create_engine(find_dburi(db_uri))
+    tsh = timeseries(namespace)
+
+    tables = [row for row, in engine.execute(
+        f'select table_name from "{namespace}".registry order by seriename'
+    )]
+    print('add columns to series tables')
+    bar = tqdm(range(len(tables)))
+    with engine.begin() as cn:
+        for table in tables:
+            cn.execute(
+                f'alter table "{namespace}.timeserie"."{table}" '
+                'add column author text'
+            )
+            cn.execute(
+                f'alter table "{namespace}.timeserie"."{table}" '
+                'add column insertion_date timestamptz'
+            )
+            cn.execute(
+                f'alter table "{namespace}.timeserie"."{table}" '
+                'add column metadata jsonb'
+            )
+            bar.update()
+    bar.close()
+
+    print('move changeset metadata to series tables')
+    bar = tqdm(range(len(tables)))
+    for table in tables:
+        # query all metadata in one shot
+        q = select(
+            'ts.id, cset.author', 'cset.insertion_date', 'cset.metadata'
+        ).table(
+            f'"{namespace}".changeset as cset'
+        ).join(
+            f'"{namespace}.timeserie"."{table}" as ts on cset.id = ts.cset'
+        )
+        with engine.begin() as cn:
+            for csid, author, idate, metadata in q.do(cn).fetchall():
+                uq = update(
+                    f'"{namespace}.timeserie"."{table}"'
+                ).where(id=csid
+                ).values(
+                    author=author,
+                    insertion_date=idate,
+                    metadata=metadata # no need to loads/dumps
+                )
+                uq.do(cn)
+        bar.update()
+    bar.close()
+
+    print('drop cset column of series')
+    bar = tqdm(range(len(tables)))
+    for table in tables:
+        with engine.begin() as cn:
+            cn.execute(
+                f'alter table "{namespace}.timeserie"."{table}" '
+                'drop column cset'
+            )
+            cn.execute(
+                f'alter table "{namespace}.timeserie"."{table}" '
+                'alter column author set not null'
+            )
+            cn.execute(
+                f'alter table "{namespace}.timeserie"."{table}" '
+                'alter column insertion_date set not null'
+            )
+        bar.update()
+    bar.close()
+
+    print('create index over insertion_date')
+    bar = tqdm(range(len(tables)))
+    with engine.begin() as cn:
+        for table in tables:
+            cn.execute(
+                f'create index on "{namespace}.timeserie"."{table}"(insertion_date)'
+            )
+            bar.update()
+    bar.close()
+
+    with engine.begin() as cn:
+        print(f'{namespace}: drop changeset/changeset_series table')
+        cn.execute(f'drop table "{namespace}".changeset_series')
+        cn.execute(f'drop table "{namespace}".changeset')
+        print('rename namespace timeserie -> revision')
+        cn.execute(f'alter schema "{namespace}.timeserie" '
+                   f'rename to "{namespace}.revision"')
+        print('rename registry columns')
+        cn.execute(
+            f'alter table "{namespace}".registry '
+            'rename column seriename to seriesname'
+        )
+        cn.execute(
+            f'alter table "{namespace}".registry '
+            'rename column table_name to tablename'
+        )
 
 
 def register_plugin_subcommands():

@@ -12,10 +12,9 @@ def test_info(engine, cli, tsh):
             namespace=tsh.namespace)
     out = r.output.strip().split('\n')
 
-    assert len(out) == 3
-    assert out[0].startswith('changeset count:')
-    assert out[1].startswith('series count:')
-    assert out[2].startswith('series names:')
+    assert len(out) == 2
+    assert out[0].startswith('series count:')
+    assert out[1].startswith('series names:')
 
 
 def test_log(engine, cli, tsh):
@@ -24,8 +23,7 @@ def test_log(engine, cli, tsh):
     serie = genserie(datetime(2020, 1, 2), 'D', 3)
     tsh.insert(engine, serie, 'log_me', 'Babar')
 
-    r = cli('log', engine.url,
-            serie='log_me',
+    r = cli('log', engine.url, 'log_me',
             namespace=tsh.namespace)
 
     assert r.output.count('revision:') == 2
