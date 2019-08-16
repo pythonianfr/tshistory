@@ -67,8 +67,6 @@ def test_rename(engine, cli, datadir, tsh):
     r = cli('rename', engine.url, datadir / 'rename.csv',
             namespace=tsh.namespace)
 
-    tsh._resetcaches()
-
     assert tsh.get(engine, 'afoo') is None
     assert tsh.get(engine, 'abar') is None
 

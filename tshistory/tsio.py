@@ -2,7 +2,6 @@ from datetime import datetime
 import logging
 import hashlib
 import uuid
-from threading import Lock
 import json
 from pathlib import Path
 
@@ -29,7 +28,6 @@ SERIESSCHEMA = Path(__file__).parent / 'series.sql'
 class timeseries(SeriesServices):
     namespace = 'tsh'
     schema = None
-    metadatacache = None
     metakeys = {
         'tzaware',
         'index_type',
@@ -37,17 +35,11 @@ class timeseries(SeriesServices):
         'value_dtype',
         'value_type'
     }
-    registry_map = None
-    series_tablename = None
     create_lock_id = None
     delete_lock_id = None
-    cachelock = Lock()
 
     def __init__(self, namespace='tsh'):
         self.namespace = namespace
-        self.metadatacache = {}
-        self.registry_map = {}
-        self.series_tablename = {}
         self.create_lock_id = sum(ord(c) for c in namespace)
         self.delete_lock_id = sum(ord(c) for c in namespace)
 
@@ -125,13 +117,9 @@ class timeseries(SeriesServices):
 
     def metadata(self, cn, seriename):
         """Return metadata dict of timeserie."""
-        if seriename in self.metadatacache:
-            return self.metadatacache[seriename]
         sql = (f'select metadata from "{self.namespace}".registry '
                'where seriesname = %(seriename)s')
         meta = cn.execute(sql, seriename=seriename).scalar()
-        if meta is not None:
-            self.metadatacache[seriename] = meta
         return meta
 
     @tx
@@ -149,7 +137,6 @@ class timeseries(SeriesServices):
         sql = (f'update "{self.namespace}".registry as reg '
                'set metadata = %(metadata)s '
                'where reg.seriesname = %(seriesname)s')
-        self.metadatacache.pop(name)
         cn.execute(
             sql,
             metadata=json.dumps(newmeta),
@@ -337,7 +324,6 @@ class timeseries(SeriesServices):
                'set seriesname = %(newname)s '
                'where seriesname = %(oldname)s')
         cn.execute(sql, oldname=oldname, newname=newname)
-        self._resetcaches()
 
     @tx
     def delete(self, cn, name):
@@ -364,8 +350,6 @@ class timeseries(SeriesServices):
         cn.execute(f'delete from "{self.namespace}".registry '
                    'where id = %(rid)s',
                    rid=rid)
-        # -> this will transitively cleanup state changeset_series entries
-        self._resetcaches()
 
     @tx
     def strip(self, cn, seriename, csid):
@@ -584,10 +568,6 @@ class timeseries(SeriesServices):
         return tablename
 
     def _serie_to_tablename(self, cn, name):
-        tablename = self.series_tablename.get(name)
-        if tablename is not None:
-            return tablename
-
         tablename = cn.execute(
             f'select tablename from "{self.namespace}".registry '
             f'where seriesname = %(seriesname)s',
@@ -596,7 +576,6 @@ class timeseries(SeriesServices):
         if tablename is None:
             # creation time
             return
-        self.series_tablename[name] = tablename
         return tablename
 
     def _table_definition_for(self, cn, seriename):
@@ -638,7 +617,6 @@ class timeseries(SeriesServices):
             table_name,
             json.dumps(seriesmeta)
         ).scalar()
-        self.registry_map[name] = regid
 
     def _get_ts_table(self, cn, seriename):
         tablename = self._serie_to_tablename(cn, seriename)
@@ -673,14 +651,10 @@ class timeseries(SeriesServices):
             )
 
     def _name_to_regid(self, cn, seriename):
-        regid = self.registry_map.get(seriename)
-        if regid is not None:
-            return regid
-
         sql = ('select id '
                f'from "{self.namespace}".registry '
                'where seriename = %(seriename)s')
-        regid = self.registry_map[seriename] = cn.execute(
+        regid = cn.execute(
             sql,
             seriename=seriename
         ).scalar()
@@ -758,12 +732,6 @@ class timeseries(SeriesServices):
 
         pruned.reverse()
         return revisions
-
-    def _resetcaches(self):
-        with self.cachelock:
-            self.metadatacache.clear()
-            self.registry_map.clear()
-            self.series_tablename.clear()
 
 
 class historycache:

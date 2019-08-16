@@ -1360,8 +1360,6 @@ def test_rename(engine, tsh):
     tsh.rename(engine, 'foo', 'new-foo')
     tsh.rename(engine, 'bar', 'new-bar')
 
-    tsh._resetcaches()
-
     assert tsh.get(engine, 'foo') is None
     assert tsh.get(engine, 'bar') is None
 
