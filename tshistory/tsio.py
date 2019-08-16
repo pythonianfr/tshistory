@@ -164,7 +164,6 @@ class timeseries(SeriesServices):
                 from_value_date=None,
                 to_value_date=None,
                 diffmode=False,
-                _wanted_insertion_dates=None,
                 _keep_nans=False):
         tablename = self._serie_to_tablename(cn, name)
         if tablename is None:
@@ -177,12 +176,6 @@ class timeseries(SeriesServices):
             from_value_date,
             to_value_date
         )
-        if _wanted_insertion_dates is not None:
-            revs = self._pruned_revisions(
-                cn, name,
-                _wanted_insertion_dates,
-                revs
-            )
 
         if not revs:
             return {}
@@ -252,16 +245,14 @@ class timeseries(SeriesServices):
             return pd.Series(name=name)
 
         # prepare the needed revision dates
-        shiftedvdates = [
-            vdate - delta
-            for vdate in base.index
-        ]
+        fromidate = base.index.min() - delta
+        toidate = base.index.max() - delta
 
         hcache = historycache(
             self, cn, name,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
-            _wanted_insertion_dates=shiftedvdates
+            to_insertion_date=toidate
          )
 
         return hcache.staircase(
@@ -696,42 +687,6 @@ class timeseries(SeriesServices):
             for csid, idate in q.do(cn).fetchall()
         ]
 
-    def _pruned_revisions(self, cn, name,
-                          wanted_revisions,
-                          revisions):
-        """We attempt to build a pruned history insertion dates list using the
-        wanted revisions as a driver: we want at most one
-        insertion date for each wanted revision
-
-        This is useful when there are more insertion dates than
-        requested points
-
-        """
-        tzaware = self.metadata(cn, name).get('tzaware')
-        pruned = []
-        itervdates = reversed(wanted_revisions)
-        iterrevs = reversed(revisions)
-
-        # for each vdate we retain the nearest inferior insertion date
-        # hence we never have more insertion dates than needed
-        vdate = next(itervdates)
-        while True:
-            try:
-                rev = next(iterrevs)
-            except StopIteration:
-                break
-            compidate = rev[1]
-            if not tzaware:
-                compidate = compidate.replace(tzinfo=None)
-            if vdate >= compidate:
-                pruned.append(rev)
-                try:
-                    vdate = next(itervdates)
-                except StopIteration:
-                    break
-
-        pruned.reverse()
-        return revisions
 
 
 class historycache:
@@ -739,13 +694,16 @@ class historycache:
     def __init__(self, tsh, cn, name,
                  from_value_date=None,
                  to_value_date=None,
-                 _wanted_insertion_dates=None):
+                 from_insertion_date=None,
+                 to_insertion_date=None
+    ):
         self.name = name
         self.hist = tsh.history(
             cn, name,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
-            _wanted_insertion_dates=_wanted_insertion_dates,
+            from_insertion_date=from_insertion_date,
+            to_insertion_date=to_insertion_date,
             _keep_nans=True
         )
 
