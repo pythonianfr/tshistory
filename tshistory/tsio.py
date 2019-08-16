@@ -252,7 +252,8 @@ class timeseries(SeriesServices):
             self, cn, name,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
-            to_insertion_date=toidate
+            to_insertion_date=toidate,
+            tzaware=self.metadata(cn, name).get('tzaware')
          )
 
         return hcache.staircase(
@@ -695,9 +696,10 @@ class historycache:
                  from_value_date=None,
                  to_value_date=None,
                  from_insertion_date=None,
-                 to_insertion_date=None
-    ):
+                 to_insertion_date=None,
+                 tzaware=True):
         self.name = name
+        self.tzaware = tzaware
         self.hist = tsh.history(
             cn, name,
             from_value_date=from_value_date,
@@ -706,6 +708,23 @@ class historycache:
             to_insertion_date=to_insertion_date,
             _keep_nans=True
         )
+        self.idates = list(self.hist.keys())
+        self.naive_idates = [
+            dt.replace(tzinfo=None)
+            for dt in self.idates
+        ]
+
+    def _find_nearest_idate(self, revision_date):
+        if self.tzaware:
+            idates = self.idates
+        else:
+            idates = self.naive_idates
+        idx = len(idates)
+        for idate in reversed(idates):
+            idx -= 1
+            compidate = idate
+            if revision_date >= compidate:
+                return self.idates[idx]
 
     def get(self, revision_date=None,
             from_value_date=None,
@@ -717,15 +736,11 @@ class historycache:
         if revision_date is None:
             return list(self.hist.values())[-1].dropna()
 
-        tzaware = revision_date.tzinfo is not None
-        for idate in reversed(list(self.hist.keys())):
-            compidate = idate
-            if not tzaware:
-                compidate = idate.replace(tzinfo=None)
-            if revision_date >= compidate:
-                return self.hist[idate].loc[
-                    from_value_date:to_value_date
-                ].dropna()
+        idate = self._find_nearest_idate(revision_date)
+        if idate:
+            return self.hist[idate].loc[
+                from_value_date:to_value_date
+            ].dropna()
 
         return pd.Series(name=self.name)
 
