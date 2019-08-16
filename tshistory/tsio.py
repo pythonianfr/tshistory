@@ -11,6 +11,7 @@ from deprecated import deprecated
 from sqlhelp import sqlfile, select, insert
 
 from tshistory.util import (
+    bisect_search,
     closed_overlaps,
     num2float,
     pruned_history,
@@ -689,7 +690,6 @@ class timeseries(SeriesServices):
         ]
 
 
-
 class historycache:
 
     def __init__(self, tsh, cn, name,
@@ -719,12 +719,12 @@ class historycache:
             idates = self.idates
         else:
             idates = self.naive_idates
-        idx = len(idates)
-        for idate in reversed(idates):
-            idx -= 1
-            compidate = idate
-            if revision_date >= compidate:
-                return self.idates[idx]
+        idx = bisect_search(idates, revision_date)
+        if idx == -1:
+            return None
+        if idx >= len(idates):
+            idx = len(idates) - 1
+        return self.idates[idx]
 
     def get(self, revision_date=None,
             from_value_date=None,

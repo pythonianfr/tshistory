@@ -249,3 +249,37 @@ class unilist(list):
     def append(self, element):
         assert element not in self
         super().append(element)
+
+
+def bisect_search(values, value):
+    """return an index j such that ``value`` is between values[j]
+    and values[j+1].
+    values must be monotonic increasing.
+
+    j=-1 or j=len(values) is returned to indicate that ``value`` is
+    out of range below and above respectively.
+
+    thanks to https://stackoverflow.com/questions/2566412/find-nearest-value-in-numpy-array
+    """
+    n = len(values)
+    first, last = values[0], values[-1]
+    if value < first:
+        return -1
+    elif value > last:
+        return n
+    elif value == first:
+        return 0
+    elif value == last:
+        return n - 1
+
+    jl = 0
+    ju = n - 1
+    while ju - jl > 1:
+        jm = (ju+jl) >> 1
+        if value >= values[jm]:
+            jl = jm
+        else:
+            ju = jm
+
+    return jl
+

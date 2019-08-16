@@ -8,7 +8,10 @@ import numpy as np
 import pandas as pd
 
 from tshistory.snapshot import Snapshot
-from tshistory.util import threadpool
+from tshistory.util import (
+    bisect_search,
+    threadpool
+)
 from tshistory.tsio import timeseries
 from tshistory.testutil import (
     assert_df,
@@ -24,6 +27,18 @@ DATADIR = Path(__file__).parent / 'data'
 
 def utcdt(*dt):
     return pd.Timestamp(datetime(*dt), tz='UTC')
+
+
+def test_bisect():
+    values = [-4, -2, 1, 7]
+    assert bisect_search(values, -5) == -1
+    assert bisect_search(values, -4) == 0
+    assert bisect_search(values, -3) == 0
+    assert bisect_search(values, 0) == 1
+    assert bisect_search(values, 1) == 2
+    assert bisect_search(values, 3) == 2
+    assert bisect_search(values, 7) == 3
+    assert bisect_search(values, 8) == 4
 
 
 def test_in_tx(tsh, engine):
