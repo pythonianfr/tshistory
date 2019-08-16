@@ -1252,8 +1252,8 @@ def test_staircase_2_tzaware(engine, tsh):
 """, deltas)
 
     deltas = tsh.staircase(engine, 'repu2', delta=timedelta(hours=3),
-                           from_value_date=datetime(2015,1,2),
-                           to_value_date=datetime(2015, 1,3))
+                           from_value_date=datetime(2015, 1, 2),
+                           to_value_date=datetime(2015, 1, 3))
     assert_df("""
 2015-01-02 03:00:00+00:00    3.0
 2015-01-02 04:00:00+00:00    4.0
@@ -1314,8 +1314,8 @@ def test_staircase_2_tznaive(engine, tsh):
 """, deltas)
 
     deltas = tsh.staircase(engine, 'repu-tz-naive', delta=timedelta(hours=3),
-                           from_value_date=datetime(2015,1,2),
-                           to_value_date=datetime(2015, 1,3))
+                           from_value_date=datetime(2015, 1, 2),
+                           to_value_date=datetime(2015, 1, 3))
     assert_df("""
 2015-01-02 03:00:00    3.0
 2015-01-02 04:00:00    4.0
