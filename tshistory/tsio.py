@@ -44,17 +44,17 @@ class timeseries(SeriesServices):
         self.delete_lock_id = sum(ord(c) for c in namespace)
 
     @tx
-    def insert(self, cn, newts, seriename, author,
+    def insert(self, cn, newts, name, author,
                metadata=None,
                _insertion_date=None):
         """Create a new revision of a given time series
 
         newts: pandas.Series with date index
-        seriename: str unique identifier of the serie
+        name: str unique identifier of the serie
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
-        assert isinstance(seriename, str), 'Name not a string'
+        assert isinstance(name, str), 'Name not a string'
         assert isinstance(author, str), 'Author not a string'
         assert metadata is None or isinstance(metadata, dict), 'Bad format for metadata'
         assert (_insertion_date is None or
@@ -67,15 +67,15 @@ class timeseries(SeriesServices):
                 'datetime' in str(newts.index.dtype) and not
                 isinstance(newts.index, pd.MultiIndex))
 
-        newts.name = seriename
-        tablename = self._serie_to_tablename(cn, seriename)
+        newts.name = name
+        tablename = self._serie_to_tablename(cn, name)
 
         if tablename is None:
-            seriesmeta = self._series_initial_meta(cn, seriename, newts)
-            return self._create(cn, newts, seriename, author, seriesmeta,
+            seriesmeta = self._series_initial_meta(cn, name, newts)
+            return self._create(cn, newts, name, author, seriesmeta,
                                 metadata, _insertion_date)
 
-        return self._update(cn, tablename, newts, seriename, author,
+        return self._update(cn, tablename, newts, name, author,
                             metadata, _insertion_date)
 
     def list_series(self, cn):
@@ -86,7 +86,7 @@ class timeseries(SeriesServices):
             for row in cn.execute(sql)
         }
 
-    def get(self, cn, seriename, revision_date=None,
+    def get(self, cn, name, revision_date=None,
             from_value_date=None, to_value_date=None,
             _keep_nans=False):
         """Compute and return the serie of a given name
@@ -95,7 +95,7 @@ class timeseries(SeriesServices):
         serie
 
         """
-        if not self.exists(cn, seriename):
+        if not self.exists(cn, name):
             return
 
         csetfilter = []
@@ -105,21 +105,21 @@ class timeseries(SeriesServices):
                     f'insertion_date <= %(idate)s', idate=revision_date
                 )
             )
-        snap = Snapshot(cn, self, seriename)
+        snap = Snapshot(cn, self, name)
         _, current = snap.find(csetfilter=csetfilter,
                                from_value_date=from_value_date,
                                to_value_date=to_value_date)
 
         if current is not None and not _keep_nans:
-            current.name = seriename
+            current.name = name
             current = current.dropna()
         return current
 
-    def metadata(self, cn, seriename):
+    def metadata(self, cn, name):
         """Return metadata dict of timeserie."""
         sql = (f'select metadata from "{self.namespace}".registry '
-               'where seriesname = %(seriename)s')
-        meta = cn.execute(sql, seriename=seriename).scalar()
+               'where seriesname = %(name)s')
+        meta = cn.execute(sql, name=name).scalar()
         return meta
 
     @tx
@@ -158,7 +158,7 @@ class timeseries(SeriesServices):
         return 'primary'
 
     @tx
-    def history(self, cn, seriename,
+    def history(self, cn, name,
                 from_insertion_date=None,
                 to_insertion_date=None,
                 from_value_date=None,
@@ -166,12 +166,12 @@ class timeseries(SeriesServices):
                 diffmode=False,
                 _wanted_insertion_dates=None,
                 _keep_nans=False):
-        tablename = self._serie_to_tablename(cn, seriename)
+        tablename = self._serie_to_tablename(cn, name)
         if tablename is None:
             return
 
         revs = self._revisions(
-            cn, seriename,
+            cn, name,
             from_insertion_date,
             to_insertion_date,
             from_value_date,
@@ -179,7 +179,7 @@ class timeseries(SeriesServices):
         )
         if _wanted_insertion_dates is not None:
             revs = self._pruned_revisions(
-                cn, seriename,
+                cn, name,
                 _wanted_insertion_dates,
                 revs
             )
@@ -190,10 +190,10 @@ class timeseries(SeriesServices):
         if diffmode:
             # compute the previous serie value
             first_csid = revs[0][0]
-            previous_csid = self._previous_cset(cn, seriename, first_csid)
+            previous_csid = self._previous_cset(cn, name, first_csid)
             revs.insert(0, (previous_csid, None))
 
-        snapshot = Snapshot(cn, self, seriename)
+        snapshot = Snapshot(cn, self, name)
         series = snapshot.findall(
             revs,
             from_value_date,
@@ -232,24 +232,24 @@ class timeseries(SeriesServices):
         return hist
 
     @tx
-    def staircase(self, cn, seriename, delta,
+    def staircase(self, cn, name, delta,
                   from_value_date=None,
                   to_value_date=None):
         """ compute a series whose value dates are bounded to be
         `delta` time after the insertion dates and where we
         keep the most recent ones
         """
-        if not self.exists(cn, seriename):
+        if not self.exists(cn, name):
             return
 
         base = self.get(
-            cn, seriename,
+            cn, name,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
             _keep_nans=True
         )
         if not len(base):
-            return pd.Series(name=seriename)
+            return pd.Series(name=name)
 
         # prepare the needed revision dates
         shiftedvdates = [
@@ -258,7 +258,7 @@ class timeseries(SeriesServices):
         ]
 
         hcache = historycache(
-            self, cn, seriename,
+            self, cn, name,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
             _wanted_insertion_dates=shiftedvdates
@@ -271,11 +271,11 @@ class timeseries(SeriesServices):
         )
 
 
-    def exists(self, cn, seriename):
-        return self._serie_to_tablename(cn, seriename) is not None
+    def exists(self, cn, name):
+        return self._serie_to_tablename(cn, name) is not None
 
-    def latest_insertion_date(self, cn, seriename):
-        tablename = self._serie_to_tablename(cn, seriename)
+    def latest_insertion_date(self, cn, name):
+        tablename = self._serie_to_tablename(cn, name)
         q = select('max(insertion_date)').table(
             f'"{self.namespace}.revision"."{tablename}"'
         )
@@ -283,10 +283,10 @@ class timeseries(SeriesServices):
             q.do(cn).scalar()
         ).astimezone('UTC')
 
-    def insertion_dates(self, cn, seriename,
+    def insertion_dates(self, cn, name,
                         fromdate=None, todate=None):
         revs = self._revisions(
-            cn, seriename,
+            cn, name,
             from_insertion_date=fromdate,
             to_insertion_date=todate
         )
@@ -296,17 +296,17 @@ class timeseries(SeriesServices):
             for _cset, idate in revs
         ]
 
-    def last_id(self, cn, seriename):
-        snapshot = Snapshot(cn, self, seriename)
+    def last_id(self, cn, name):
+        snapshot = Snapshot(cn, self, name)
         return snapshot.last_id()
 
-    def changeset_at(self, cn, seriename, revdate, mode='strict'):
+    def changeset_at(self, cn, name, revdate, mode='strict'):
         operators = {
             'strict': '=',
             'before': '<=',
             'after': '>='
         }
-        tablename = self._serie_to_tablename(cn, seriename)
+        tablename = self._serie_to_tablename(cn, name)
         assert mode in operators
         q = select(
             'id'
@@ -352,13 +352,13 @@ class timeseries(SeriesServices):
                    rid=rid)
 
     @tx
-    def strip(self, cn, seriename, csid):
+    def strip(self, cn, name, csid):
         # wipe the diffs
-        tablename = self._serie_to_tablename(cn, seriename)
+        tablename = self._serie_to_tablename(cn, name)
         sql = (f'delete from "{self.namespace}.revision"."{tablename}" '
                'where id >= %(csid)s')
         cn.execute(sql, csid=csid)
-        snapshot = Snapshot(cn, self, seriename)
+        snapshot = Snapshot(cn, self, name)
         snapshot.reclaim()
 
     def info(self, cn):
@@ -415,16 +415,16 @@ class timeseries(SeriesServices):
         q.order('id', 'desc')
         return q
 
-    def interval(self, cn, seriename, notz=False):
-        tablename = self._serie_to_tablename(cn, seriename)
+    def interval(self, cn, name, notz=False):
+        tablename = self._serie_to_tablename(cn, name)
         if tablename is None:
-            raise ValueError(f'no such serie: {seriename}')
+            raise ValueError(f'no such serie: {name}')
         sql = (f'select tsstart, tsend '
                f'from "{self.namespace}.revision"."{tablename}" '
                f'order by id desc limit 1')
         res = cn.execute(sql).fetchone()
         start, end = res.tsstart, res.tsend
-        if self.metadata(cn, seriename).get('tzaware') and not notz:
+        if self.metadata(cn, name).get('tzaware') and not notz:
             start, end = pd.Timestamp(start, tz='UTC'), pd.Timestamp(end, tz='UTC')
         return pd.Interval(left=start, right=end, closed='both')
 
@@ -443,7 +443,7 @@ class timeseries(SeriesServices):
 
         return num2float(newts)
 
-    def _create(self, cn, newts, seriename, author, seriesmeta,
+    def _create(self, cn, newts, name, author, seriesmeta,
                 metadata=None, insertion_date=None):
         start, end = start_end(newts, notz=False)
         if start is None:
@@ -460,8 +460,8 @@ class timeseries(SeriesServices):
         cn.execute(
             f'select pg_advisory_xact_lock({self.create_lock_id})'
         )
-        self._register_serie(cn, seriename, seriesmeta)
-        snapshot = Snapshot(cn, self, seriename)
+        self._register_serie(cn, name, seriesmeta)
+        snapshot = Snapshot(cn, self, name)
 
         if insertion_date is not None:
             assert insertion_date.tzinfo is not None
@@ -474,7 +474,7 @@ class timeseries(SeriesServices):
 
         head = snapshot.create(newts)
         start, end = start_end(newts)
-        tablename = self._make_ts_table(cn, seriename)
+        tablename = self._make_ts_table(cn, name)
 
         self._new_revision(
             cn, tablename, head, start, end,
@@ -482,24 +482,24 @@ class timeseries(SeriesServices):
         )
 
         L.info('first insertion of %s (size=%s) by %s',
-               seriename, len(newts), author)
+               name, len(newts), author)
         return newts
 
-    def _update(self, cn, tablename, newts, seriename, author,
+    def _update(self, cn, tablename, newts, name, author,
                 metadata=None, insertion_date=None):
-        self._validate(cn, newts, seriename)
-        snapshot = Snapshot(cn, self, seriename)
+        self._validate(cn, newts, name)
+        snapshot = Snapshot(cn, self, name)
         diff = self.diff(snapshot.last(newts.index.min(),
                                        newts.index.max()),
                          newts)
         if not len(diff):
             L.info('no difference in %s by %s (for ts of size %s)',
-                   seriename, author, len(newts))
+                   name, author, len(newts))
             return
 
         # compute series start/end stamps
         tsstart, tsend = start_end(newts)
-        ival = self.interval(cn, seriename, notz=True)
+        ival = self.interval(cn, name, notz=True)
         start = min(tsstart or ival.left, ival.left)
         end = max(tsend or ival.right, ival.right)
 
@@ -521,7 +521,7 @@ class timeseries(SeriesServices):
             author, insertion_date, metadata
         )
         L.info('inserted diff (size=%s) for ts %s by %s',
-               len(diff), seriename, author)
+               len(diff), name, author)
         return diff
 
     def _new_revision(self, cn, tablename, head, tsstart, tsend,
@@ -578,11 +578,11 @@ class timeseries(SeriesServices):
             return
         return tablename
 
-    def _table_definition_for(self, cn, seriename):
-        tablename = self._serie_to_tablename(cn, seriename)
+    def _table_definition_for(self, cn, name):
+        tablename = self._serie_to_tablename(cn, name)
         if tablename is None:
             # creation time
-            tablename = self._make_tablename(cn, seriename)
+            tablename = self._make_tablename(cn, name)
         table = sqlfile(
             SERIESSCHEMA,
             namespace=self.namespace,
@@ -590,8 +590,8 @@ class timeseries(SeriesServices):
         )
         return table, tablename
 
-    def _make_ts_table(self, cn, seriename):
-        table, tablename = self._table_definition_for(cn, seriename)
+    def _make_ts_table(self, cn, name):
+        table, tablename = self._table_definition_for(cn, name)
         cn.execute(table)
         return tablename
 
@@ -618,15 +618,15 @@ class timeseries(SeriesServices):
             json.dumps(seriesmeta)
         ).scalar()
 
-    def _get_ts_table(self, cn, seriename):
-        tablename = self._serie_to_tablename(cn, seriename)
+    def _get_ts_table(self, cn, name):
+        tablename = self._serie_to_tablename(cn, name)
         if tablename:
-            return self._table_definition_for(cn, seriename)
+            return self._table_definition_for(cn, name)
 
     # changeset handling
 
-    def _previous_cset(self, cn, seriename, csid):
-        tablename = self._serie_to_tablename(cn, seriename)
+    def _previous_cset(self, cn, name, csid):
+        tablename = self._serie_to_tablename(cn, name)
         sql = (f'select id from "{self.namespace}.revision"."{tablename}" '
                'where id < %(csid)s '
                'order by id desc limit 1')
@@ -634,14 +634,14 @@ class timeseries(SeriesServices):
 
     # insertion handling
 
-    def _validate(self, cn, ts, seriename):
+    def _validate(self, cn, ts, name):
         if ts.isnull().all():
             # ts erasure
             return
         tstype = ts.dtype
-        meta = self.metadata(cn, seriename)
+        meta = self.metadata(cn, name)
         if tstype != meta['value_type']:
-            m = (f'Type error when inserting {seriename}, '
+            m = (f'Type error when inserting {name}, '
                  f'new type is {tstype}, type in base is {meta["value_type"]}')
             raise Exception(m)
         if ts.index.dtype.name != meta['index_type']:
@@ -650,22 +650,22 @@ class timeseries(SeriesServices):
                 f'ref=`{meta["index_type"]}`, new=`{ts.index.dtype.name}`'
             )
 
-    def _name_to_regid(self, cn, seriename):
+    def _name_to_regid(self, cn, name):
         sql = ('select id '
                f'from "{self.namespace}".registry '
-               'where seriename = %(seriename)s')
+               'where seriesname = %(name)s')
         regid = cn.execute(
             sql,
-            seriename=seriename
+            name=name
         ).scalar()
         return regid
 
-    def _revisions(self, cn, seriename,
+    def _revisions(self, cn, name,
                    from_insertion_date=None,
                    to_insertion_date=None,
                    from_value_date=None,
                    to_value_date=None):
-        tablename = self._serie_to_tablename(cn, seriename)
+        tablename = self._serie_to_tablename(cn, name)
         q = select(
             'id', 'insertion_date'
         ).table(
@@ -696,7 +696,7 @@ class timeseries(SeriesServices):
             for csid, idate in q.do(cn).fetchall()
         ]
 
-    def _pruned_revisions(self, cn, seriename,
+    def _pruned_revisions(self, cn, name,
                           wanted_revisions,
                           revisions):
         """We attempt to build a pruned history insertion dates list using the
@@ -707,7 +707,7 @@ class timeseries(SeriesServices):
         requested points
 
         """
-        tzaware = self.metadata(cn, seriename).get('tzaware')
+        tzaware = self.metadata(cn, name).get('tzaware')
         pruned = []
         itervdates = reversed(wanted_revisions)
         iterrevs = reversed(revisions)
