@@ -37,7 +37,7 @@ class Snapshot(SeriesServices):
     2019-1-8   8.0
 
     Now let's look at the logical organisation: we have two tables
-    `Revision` (which track all successive versions of a series) and
+    `Revision` (which tracks all successive versions of a series) and
     `Snapshot` (which actually stores the series data using a tree
     structure).
 
