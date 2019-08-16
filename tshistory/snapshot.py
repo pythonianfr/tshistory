@@ -93,11 +93,11 @@ class Snapshot(SeriesServices):
     __slots__ = ('cn', 'name', 'tsh')
     _max_bucket_size = 250
 
-    def __init__(self, cn, tsh, seriename):
+    def __init__(self, cn, tsh, name):
         self.cn = cn
         self.tsh = tsh
-        self.seriename = seriename
-        self.tablename = self.tsh._serie_to_tablename(cn, seriename)
+        self.name = name
+        self.tablename = self.tsh._serie_to_tablename(cn, name)
 
     @property
     def table(self):
@@ -109,7 +109,7 @@ class Snapshot(SeriesServices):
 
     @property
     def isstr(self):
-        return self.tsh.metadata(self.cn, self.seriename)['value_type'] == 'object'
+        return self.tsh.metadata(self.cn, self.name)['value_type'] == 'object'
 
     def _serialize(self, ts):
         if ts is None:
@@ -151,7 +151,7 @@ class Snapshot(SeriesServices):
     def _chunks_to_ts(self, chunks):
         chunks = (self._decodechunk(chunk) for chunk in chunks)
         indexchunks, valueschunks = list(zip(*chunks))
-        metadata = self.tsh.metadata(self.cn, self.seriename)
+        metadata = self.tsh.metadata(self.cn, self.name)
 
         # array is a workaround for an obscure bug with pandas.isin
         index = np.frombuffer(
@@ -172,7 +172,7 @@ class Snapshot(SeriesServices):
         assert len(values) == len(index)
         serie = pd.Series(values, index=index)
         assert serie.index.is_monotonic_increasing
-        serie.name = self.seriename
+        serie.name = self.name
 
         return self._ensure_tz_consistency(serie)
 
@@ -212,7 +212,7 @@ class Snapshot(SeriesServices):
 
     def update(self, diff):
         # get last chunkhead for cset
-        tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
+        tablename = self.tsh._serie_to_tablename(self.cn, self.name)
         headsql = ('select snapshot '
                    f'from "{self.tsh.namespace}.revision"."{tablename}" '
                    'order by id desc limit 1')
@@ -284,7 +284,7 @@ class Snapshot(SeriesServices):
                          to_value_date=to_value_date)[0]
 
     def cset_heads_query(self, csetfilter=(), order='desc'):
-        tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
+        tablename = self.tsh._serie_to_tablename(self.cn, self.name)
         q = select(
             'id',  'snapshot'
         ).table(
@@ -379,7 +379,7 @@ class Snapshot(SeriesServices):
         """ inefficient but simple garbage list builder
         garbage chunks are created on strip operations
         """
-        tablename = self.tsh._serie_to_tablename(self.cn, self.seriename)
+        tablename = self.tsh._serie_to_tablename(self.cn, self.name)
         reachablesql = f"""
         with recursive heads as (
             select snapshot from "{self.tsh.namespace}.revision"."{tablename}"
