@@ -97,13 +97,13 @@ class Snapshot(SeriesServices):
         self.cn = cn
         self.tsh = tsh
         self.seriename = seriename
-        self.name = self.tsh._serie_to_tablename(cn, seriename)
+        self.tablename = self.tsh._serie_to_tablename(cn, seriename)
 
     @property
     def table(self):
         return sqlfile(SCHEMA,
                        namespace=self.tsh.namespace,
-                       tablename=self.name)
+                       tablename=self.tablename)
 
     # optimized/asymmetric de/serialisation
 
@@ -192,7 +192,7 @@ class Snapshot(SeriesServices):
         for bucket in self.buckets(ts):
             start = bucket.index.min()
             end = bucket.index.max()
-            sql = (f'insert into "{self.tsh.namespace}.snapshot"."{self.name}" '
+            sql = (f'insert into "{self.tsh.namespace}.snapshot"."{self.tablename}" '
                    '(cstart, cend, parent, chunk) '
                    'values (%s, %s, %s, %s)'
                    'returning id')
@@ -259,7 +259,7 @@ class Snapshot(SeriesServices):
 
         sql = self.rawsql.format(
             namespace=f'{self.tsh.namespace}.snapshot',
-            table=self.name,
+            table=self.tablename,
             heads=','.join([str(head)]),
             where=where
         )
@@ -320,7 +320,7 @@ class Snapshot(SeriesServices):
 
         sql = self.rawsql.format(
             namespace=f'{self.tsh.namespace}.snapshot',
-            table=self.name,
+            table=self.tablename,
             heads=','.join(str(head) for head in heads),
             where=where
         )
@@ -387,12 +387,12 @@ class Snapshot(SeriesServices):
           allchunks as (
             select chunks.id as cid,
                    chunks.parent as parent
-            from "{self.tsh.namespace}.snapshot"."{self.name}" as chunks
+            from "{self.tsh.namespace}.snapshot"."{self.tablename}" as chunks
             where chunks.id in (select * from heads)
           union
             select chunks.id as cid,
                    chunks.parent as parent
-            from "{self.tsh.namespace}.snapshot"."{self.name}" as chunks
+            from "{self.tsh.namespace}.snapshot"."{self.tablename}" as chunks
             join allchunks on chunks.id = allchunks.parent
         )
         select cid from allchunks
@@ -401,7 +401,7 @@ class Snapshot(SeriesServices):
         reachable_chunks = {
             rev for rev, in self.cn.execute(reachablesql)
         }
-        allsql = f'select id from "{self.tsh.namespace}.snapshot"."{self.name}" '
+        allsql = f'select id from "{self.tsh.namespace}.snapshot"."{self.tablename}" '
         allchuks = {
             rev for rev, in self.cn.execute(allsql).fetchall()
         }
@@ -410,6 +410,6 @@ class Snapshot(SeriesServices):
 
     def reclaim(self):
         todelete = ','.join(str(id) for id in self.garbage())
-        sql = (f'delete from "{self.tsh.namespace}.snapshot"."{self.name}" '
+        sql = (f'delete from "{self.tsh.namespace}.snapshot"."{self.tablename}" '
                f'where id in ({todelete})')
         self.cn.execute(sql)
