@@ -55,12 +55,10 @@ class timeseries(SeriesServices):
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
-        assert isinstance(name, str), 'Name not a string'
-        assert isinstance(author, str), 'Author not a string'
-        assert metadata is None or isinstance(metadata, dict), 'Bad format for metadata'
-        assert (_insertion_date is None or
-                isinstance(_insertion_date, datetime)), 'Bad format for insertion date'
-        newts = self._guard_insert(newts)
+        newts = self._guard_insert(
+            newts, name, author, metadata,
+            _insertion_date
+        )
         if not len(newts):
             return
 
@@ -434,7 +432,12 @@ class timeseries(SeriesServices):
 
     # creation / update
 
-    def _guard_insert(self, newts):
+    def _guard_insert(self, newts, name, author, metadata, insertion_date):
+        assert isinstance(name, str), 'Name not a string'
+        assert isinstance(author, str), 'Author not a string'
+        assert metadata is None or isinstance(metadata, dict), 'Bad format for metadata'
+        assert (insertion_date is None or
+                isinstance(insertion_date, datetime)), 'Bad format for insertion date'
         assert isinstance(newts, pd.Series), 'Not a pd.Series'
         assert not newts.index.duplicated().any(), 'There are some duplicates in the index'
 
