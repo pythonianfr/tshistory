@@ -69,7 +69,7 @@ class timeseries(SeriesServices):
                 isinstance(newts.index, pd.MultiIndex))
 
         newts.name = name
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
 
         if tablename is None:
             seriesmeta = self._series_initial_meta(cn, name, newts)
@@ -168,7 +168,7 @@ class timeseries(SeriesServices):
                 to_value_date=None,
                 diffmode=False,
                 _keep_nans=False):
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
         if tablename is None:
             return
 
@@ -267,11 +267,11 @@ class timeseries(SeriesServices):
 
     @tx
     def exists(self, cn, name):
-        return self._serie_to_tablename(cn, name) is not None
+        return self._series_to_tablename(cn, name) is not None
 
     @tx
     def latest_insertion_date(self, cn, name):
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
         q = select('max(insertion_date)').table(
             f'"{self.namespace}.revision"."{tablename}"'
         )
@@ -305,7 +305,7 @@ class timeseries(SeriesServices):
             'before': '<=',
             'after': '>='
         }
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
         assert mode in operators
         q = select(
             'id'
@@ -326,7 +326,7 @@ class timeseries(SeriesServices):
 
     @tx
     def delete(self, cn, name):
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
         if tablename is None:
             print('not deleting unknown series', name, self.namespace)
             return
@@ -353,7 +353,7 @@ class timeseries(SeriesServices):
     @tx
     def strip(self, cn, name, csid):
         # wipe the diffs
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
         sql = (f'delete from "{self.namespace}.revision"."{tablename}" '
                'where id >= %(csid)s')
         cn.execute(sql, csid=csid)
@@ -394,7 +394,7 @@ class timeseries(SeriesServices):
     def _log_series_query(self, cn, name,
                           authors=None,
                           fromdate=None, todate=None):
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
         q = select(
             'id', 'author', 'insertion_date', 'metadata',
             opt='distinct'
@@ -417,7 +417,7 @@ class timeseries(SeriesServices):
 
     @tx
     def interval(self, cn, name, notz=False):
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
         if tablename is None:
             raise ValueError(f'no such serie: {name}')
         sql = (f'select tsstart, tsend '
@@ -527,7 +527,7 @@ class timeseries(SeriesServices):
 
     def _new_revision(self, cn, name, head, tsstart, tsend,
                       author, insertion_date, metadata):
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
         if insertion_date is not None:
             assert insertion_date.tzinfo is not None
             idate = pd.Timestamp(insertion_date)
@@ -570,7 +570,7 @@ class timeseries(SeriesServices):
         cn.cache['series_tablename'][name] = tablename
         return tablename
 
-    def _serie_to_tablename(self, cn, name):
+    def _series_to_tablename(self, cn, name):
         tablename = cn.cache['series_tablename'].get(name)
         if tablename is not None:
             return tablename
@@ -610,7 +610,7 @@ class timeseries(SeriesServices):
                '(seriesname, tablename, metadata) '
                'values (%s, %s, %s) '
                'returning id')
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
         regid = cn.execute(
             sql,
             name,
@@ -621,7 +621,7 @@ class timeseries(SeriesServices):
     # changeset handling
 
     def _previous_cset(self, cn, name, csid):
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
         sql = (f'select id from "{self.namespace}.revision"."{tablename}" '
                'where id < %(csid)s '
                'order by id desc limit 1')
@@ -650,7 +650,7 @@ class timeseries(SeriesServices):
                    to_insertion_date=None,
                    from_value_date=None,
                    to_value_date=None):
-        tablename = self._serie_to_tablename(cn, name)
+        tablename = self._series_to_tablename(cn, name)
         q = select(
             'id', 'insertion_date'
         ).table(

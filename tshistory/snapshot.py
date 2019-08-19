@@ -94,7 +94,7 @@ class Snapshot(SeriesServices):
         self.cn = cn
         self.tsh = tsh
         self.name = name
-        self.tablename = self.tsh._serie_to_tablename(cn, name)
+        self.tablename = self.tsh._series_to_tablename(cn, name)
 
     # optimized/asymmetric de/serialisation
 
@@ -202,7 +202,7 @@ class Snapshot(SeriesServices):
 
     def update(self, diff):
         # get last chunkhead for cset
-        tablename = self.tsh._serie_to_tablename(self.cn, self.name)
+        tablename = self.tsh._series_to_tablename(self.cn, self.name)
         headsql = ('select snapshot '
                    f'from "{self.tsh.namespace}.revision"."{tablename}" '
                    'order by id desc limit 1')
@@ -274,7 +274,7 @@ class Snapshot(SeriesServices):
                          to_value_date=to_value_date)[0]
 
     def cset_heads_query(self, csetfilter=(), order='desc'):
-        tablename = self.tsh._serie_to_tablename(self.cn, self.name)
+        tablename = self.tsh._series_to_tablename(self.cn, self.name)
         q = select(
             'id',  'snapshot'
         ).table(
@@ -369,7 +369,7 @@ class Snapshot(SeriesServices):
         """ inefficient but simple garbage list builder
         garbage chunks are created on strip operations
         """
-        tablename = self.tsh._serie_to_tablename(self.cn, self.name)
+        tablename = self.tsh._series_to_tablename(self.cn, self.name)
         reachablesql = f"""
         with recursive heads as (
             select snapshot from "{self.tsh.namespace}.revision"."{tablename}"
