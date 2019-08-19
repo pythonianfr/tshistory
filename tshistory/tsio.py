@@ -657,16 +657,6 @@ class timeseries(SeriesServices):
                 f'ref=`{meta["index_type"]}`, new=`{ts.index.dtype.name}`'
             )
 
-    def _name_to_regid(self, cn, name):
-        sql = ('select id '
-               f'from "{self.namespace}".registry '
-               'where seriesname = %(name)s')
-        regid = cn.execute(
-            sql,
-            name=name
-        ).scalar()
-        return regid
-
     def _revisions(self, cn, name,
                    from_insertion_date=None,
                    to_insertion_date=None,
