@@ -9,6 +9,7 @@ import pandas as pd
 
 from tshistory.snapshot import Snapshot
 from tshistory.util import (
+    _set_cache,
     bisect_search,
     threadpool
 )
@@ -139,7 +140,11 @@ def test_differential(engine, tsh):
     tsh.insert(engine, ts_begin, 'ts_test', 'test')
 
     id1 = tsh.last_id(engine, 'ts_test')
-    assert tsh._previous_cset(engine, 'ts_test', id1) is None
+    assert tsh._previous_cset(
+        _set_cache(engine),
+        'ts_test',
+        id1
+    ) is None
 
     assert tsh.exists(engine, 'ts_test')
     assert not tsh.exists(engine, 'this_does_not_exist')
@@ -188,7 +193,11 @@ def test_differential(engine, tsh):
     ts_slight_variation.iloc[6] = 0
     tsh.insert(engine, ts_slight_variation, 'ts_test', 'celeste')
     id2 = tsh.last_id(engine, 'ts_test')
-    assert tsh._previous_cset(engine, 'ts_test', id2) == id1
+    assert tsh._previous_cset(
+        _set_cache(engine),
+        'ts_test',
+        id2
+    ) == id1
 
     assert_df("""
 2010-01-01    0.0

@@ -3,6 +3,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
+from tshistory.util import _set_cache
 from tshistory.snapshot import Snapshot
 from tshistory.testutil import (
     assert_df,
@@ -24,6 +25,7 @@ def chunksize(snap, head, from_value_date=None):
 
 
 def test_chunks(engine, tsh):
+    _set_cache(engine)
     with tempattr(Snapshot, '_max_bucket_size', 2):
         ts = genserie(datetime(2010, 1, 1), 'D', 5)
         tsh.insert(engine, ts, 'chunks', 'test')

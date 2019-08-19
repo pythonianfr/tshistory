@@ -87,6 +87,7 @@ class timeseries(SeriesServices):
             for row in cn.execute(sql)
         }
 
+    @tx
     def get(self, cn, name, revision_date=None,
             from_value_date=None, to_value_date=None,
             _keep_nans=False):
@@ -116,6 +117,7 @@ class timeseries(SeriesServices):
             current = current.dropna()
         return current
 
+    @tx
     def metadata(self, cn, name):
         """Return metadata dict of timeserie."""
         sql = (f'select metadata from "{self.namespace}".registry '
@@ -263,10 +265,11 @@ class timeseries(SeriesServices):
             to_value_date
         )
 
-
+    @tx
     def exists(self, cn, name):
         return self._serie_to_tablename(cn, name) is not None
 
+    @tx
     def latest_insertion_date(self, cn, name):
         tablename = self._serie_to_tablename(cn, name)
         q = select('max(insertion_date)').table(
@@ -276,6 +279,7 @@ class timeseries(SeriesServices):
             q.do(cn).scalar()
         ).astimezone('UTC')
 
+    @tx
     def insertion_dates(self, cn, name,
                         fromdate=None, todate=None):
         revs = self._revisions(
@@ -289,10 +293,12 @@ class timeseries(SeriesServices):
             for _cset, idate in revs
         ]
 
+    @tx
     def last_id(self, cn, name):
         snapshot = Snapshot(cn, self, name)
         return snapshot.last_id()
 
+    @tx
     def changeset_at(self, cn, name, revdate, mode='strict'):
         operators = {
             'strict': '=',
@@ -364,6 +370,7 @@ class timeseries(SeriesServices):
         stats['serie names'] = [row for row, in cn.execute(sql).fetchall()]
         return stats
 
+    @tx
     def log(self, cn, name, limit=0, authors=None,
             fromrev=None, torev=None,
             fromdate=None, todate=None):
@@ -408,6 +415,7 @@ class timeseries(SeriesServices):
         q.order('id', 'desc')
         return q
 
+    @tx
     def interval(self, cn, name, notz=False):
         tablename = self._serie_to_tablename(cn, name)
         if tablename is None:
@@ -558,9 +566,14 @@ class timeseries(SeriesServices):
                       seriesname=name).scalar():
             tablename = str(uuid.uuid4())
 
+        cn.cache['series_tablename'][name] = tablename
         return tablename
 
     def _serie_to_tablename(self, cn, name):
+        tablename = cn.cache['series_tablename'].get(name)
+        if tablename is not None:
+            return tablename
+
         tablename = cn.execute(
             f'select tablename from "{self.namespace}".registry '
             f'where seriesname = %(seriesname)s',
@@ -569,6 +582,7 @@ class timeseries(SeriesServices):
         if tablename is None:
             # creation time
             return
+        cn.cache['series_tablename'][name] = tablename
         return tablename
 
     def _table_definition_for(self, cn, name):

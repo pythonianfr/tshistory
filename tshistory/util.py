@@ -227,6 +227,13 @@ def threadpool(maxthreads):
     return run
 
 
+def _set_cache(txobj):
+    txobj.cache = {
+        'series_tablename': {}
+    }
+    return txobj
+
+
 def tx(func):
     " a decorator to check that the first method argument is a transaction "
     def check_tx_and_call(self, cn, *a, **kw):
@@ -236,9 +243,9 @@ def tx(func):
                 raise TypeError('You must use a transaction object')
         else:
             with cn.begin() as txcn:
-                return func(self, txcn, *a, **kw)
+                return func(self, _set_cache(txcn), *a, **kw)
 
-        return func(self, cn, *a, **kw)
+        return func(self, _set_cache(cn), *a, **kw)
     check_tx_and_call.__name__ = func.__name__
     return check_tx_and_call
 
