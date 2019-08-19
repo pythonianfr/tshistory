@@ -11,9 +11,6 @@ from sqlhelp import sqlfile, select
 from tshistory.util import SeriesServices
 
 
-SCHEMA = Path(__file__).parent / 'snapshot.sql'
-
-
 class Snapshot(SeriesServices):
     """Here's what's happening when we create a series with 3 insertions
     in a scenario representative of real world situations.
@@ -98,12 +95,6 @@ class Snapshot(SeriesServices):
         self.tsh = tsh
         self.name = name
         self.tablename = self.tsh._serie_to_tablename(cn, name)
-
-    @property
-    def table(self):
-        return sqlfile(SCHEMA,
-                       namespace=self.tsh.namespace,
-                       tablename=self.tablename)
 
     # optimized/asymmetric de/serialisation
 
@@ -207,7 +198,6 @@ class Snapshot(SeriesServices):
         return parent
 
     def create(self, initial_ts):
-        self.cn.execute(self.table)
         return self.insert_buckets(None, initial_ts)
 
     def update(self, diff):

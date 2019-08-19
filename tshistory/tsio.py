@@ -461,9 +461,6 @@ class timeseries(SeriesServices):
         cn.execute(
             f'select pg_advisory_xact_lock({self.create_lock_id})'
         )
-        self._register_serie(cn, name, seriesmeta)
-        snapshot = Snapshot(cn, self, name)
-
         if insertion_date is not None:
             assert insertion_date.tzinfo is not None
             idate = pd.Timestamp(insertion_date)
@@ -473,12 +470,15 @@ class timeseries(SeriesServices):
         if metadata:
             metadata = json.dumps(metadata)
 
+        self._make_ts_table(cn, name)
+        self._register_serie(cn, name, seriesmeta)
+
+        snapshot = Snapshot(cn, self, name)
         head = snapshot.create(newts)
         start, end = start_end(newts)
-        tablename = self._make_ts_table(cn, name)
 
         self._new_revision(
-            cn, tablename, head, start, end,
+            cn, name, head, start, end,
             author, insertion_date, metadata
         )
 
@@ -518,15 +518,16 @@ class timeseries(SeriesServices):
 
         head = snapshot.update(diff)
         self._new_revision(
-            cn, tablename, head, start, end,
+            cn, name, head, start, end,
             author, insertion_date, metadata
         )
         L.info('inserted diff (size=%s) for ts %s by %s',
                len(diff), name, author)
         return diff
 
-    def _new_revision(self, cn, tablename, head, tsstart, tsend,
+    def _new_revision(self, cn, name, head, tsstart, tsend,
                       author, insertion_date, metadata):
+        tablename = self._serie_to_tablename(cn, name)
         if insertion_date is not None:
             assert insertion_date.tzinfo is not None
             idate = pd.Timestamp(insertion_date)
@@ -580,27 +581,19 @@ class timeseries(SeriesServices):
             seriesname=name
         ).scalar()
         if tablename is None:
-            # creation time
+            # bogus series name
             return
         cn.cache['series_tablename'][name] = tablename
         return tablename
 
-    def _table_definition_for(self, cn, name):
-        tablename = self._serie_to_tablename(cn, name)
-        if tablename is None:
-            # creation time
-            tablename = self._make_tablename(cn, name)
+    def _make_ts_table(self, cn, name):
+        tablename = self._make_tablename(cn, name)
         table = sqlfile(
             SERIESSCHEMA,
             namespace=self.namespace,
             tablename=tablename
         )
-        return table, tablename
-
-    def _make_ts_table(self, cn, name):
-        table, tablename = self._table_definition_for(cn, name)
         cn.execute(table)
-        return tablename
 
     def _series_initial_meta(self, cn, name, ts):
         index = ts.index
@@ -617,18 +610,13 @@ class timeseries(SeriesServices):
                '(seriesname, tablename, metadata) '
                'values (%s, %s, %s) '
                'returning id')
-        table_name = self._make_tablename(cn, name)
+        tablename = self._serie_to_tablename(cn, name)
         regid = cn.execute(
             sql,
             name,
-            table_name,
+            tablename,
             json.dumps(seriesmeta)
         ).scalar()
-
-    def _get_ts_table(self, cn, name):
-        tablename = self._serie_to_tablename(cn, name)
-        if tablename:
-            return self._table_definition_for(cn, name)
 
     # changeset handling
 
