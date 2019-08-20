@@ -423,8 +423,10 @@ class timeseries(SeriesServices):
                f'order by id desc limit 1')
         res = cn.execute(sql).fetchone()
         start, end = res.tsstart, res.tsend
+        tz = None
         if self.metadata(cn, name).get('tzaware') and not notz:
-            start, end = pd.Timestamp(start, tz='UTC'), pd.Timestamp(end, tz='UTC')
+            tz = 'UTC'
+        start, end = pd.Timestamp(start, tz=tz), pd.Timestamp(end, tz=tz)
         return pd.Interval(left=start, right=end, closed='both')
 
     # /API

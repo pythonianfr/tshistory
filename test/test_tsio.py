@@ -150,7 +150,8 @@ def test_differential(engine, tsh):
     assert not tsh.exists(engine, 'this_does_not_exist')
 
     assert tsh.interval(engine, 'ts_test') == pd.Interval(
-        datetime(2010, 1, 1, 0, 0), datetime(2010, 1, 10, 0, 0),
+        pd.Timestamp(datetime(2010, 1, 1, 0, 0)),
+        pd.Timestamp(datetime(2010, 1, 10, 0, 0)),
         closed='both'
     )
 
@@ -244,7 +245,8 @@ def test_differential(engine, tsh):
 """, tsh.get(engine, 'ts_test'))
 
     assert tsh.interval(engine, 'ts_test') == pd.Interval(
-        datetime(2010, 1, 1, 0, 0), datetime(2010, 1, 17, 0, 0),
+        pd.Timestamp(datetime(2010, 1, 1, 0, 0)),
+        pd.Timestamp(datetime(2010, 1, 17, 0, 0)),
         closed='both'
     )
 
