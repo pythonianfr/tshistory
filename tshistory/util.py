@@ -146,10 +146,12 @@ class SeriesServices(object):
     def patch(self, base, diff):
         assert base is not None
         assert diff is not None
-        newindex = base.index.union(diff.index).sort_values()
+        basei = base.index
+        diffi = diff.index
+        newindex = basei.union(diffi).sort_values()
         patched = pd.Series([0] * len(newindex), index=newindex)
-        patched[base.index] = base
-        patched[diff.index] = diff
+        patched[basei] = base
+        patched[diffi] = diff
         patched.name = base.name
         return patched
 

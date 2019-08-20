@@ -55,12 +55,12 @@ class timeseries(SeriesServices):
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
+        if not len(newts):
+            return
         newts = self._guard_insert(
             newts, name, author, metadata,
             _insertion_date
         )
-        if not len(newts):
-            return
 
         assert ('<M8[ns]' == newts.index.dtype or
                 'datetime' in str(newts.index.dtype) and not
@@ -441,11 +441,14 @@ class timeseries(SeriesServices):
         assert (insertion_date is None or
                 isinstance(insertion_date, datetime)), 'Bad format for insertion date'
         assert isinstance(newts, pd.Series), 'Not a pd.Series'
-        assert not newts.index.duplicated().any(), 'There are some duplicates in the index'
+        index = newts.index
+        assert not index.duplicated().any(), 'There are some duplicates in the index'
 
-        assert newts.index.notna().all(), 'The index contains NaT entries'
-        if not newts.index.is_monotonic_increasing:
+        assert index.notna().all(), 'The index contains NaT entries'
+        if not index.is_monotonic_increasing:
             newts = newts.sort_index()
+        if index.tz is not None:
+           newts.index = index.tz_convert('UTC')
 
         return num2float(newts)
 

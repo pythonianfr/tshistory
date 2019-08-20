@@ -1543,7 +1543,7 @@ def test_insert_errors(engine, tsh):
                    index=pd.date_range(start=utcdt(2018, 1, 1),
                                        freq='D', periods=3))
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         tsh.insert(engine, 42, 'error', 'Babar')
 
     with pytest.raises(AssertionError):
