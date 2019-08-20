@@ -148,7 +148,7 @@ class SeriesServices(object):
         assert diff is not None
         basei = base.index
         diffi = diff.index
-        newindex = basei.union(diffi).sort_values()
+        newindex = basei.union(diffi)
         patched = pd.Series([0] * len(newindex), index=newindex)
         patched[basei] = base
         patched[diffi] = diff
