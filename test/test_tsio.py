@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import pytz
 
+
 from dateutil import parser
 import pytest
 import numpy as np
@@ -69,7 +70,7 @@ Freq: H
     """, ts)
 
     tsh.insert(engine, ts, 'tztest', 'Babar',
-               _insertion_date=utcdt(2018, 1, 1))
+               insertion_date=utcdt(2018, 1, 1))
     back = tsh.get(engine, 'tztest')
 
     # though un localized we understand it's been normalized to utc
@@ -91,7 +92,7 @@ Freq: H
                   'H', 4, tz='UTC')
     ts.index = ts.index.tz_convert('Europe/Paris')
     tsh.insert(engine, ts, 'tztest', 'Celeste',
-                   _insertion_date=utcdt(2018, 1, 3))
+                   insertion_date=utcdt(2018, 1, 3))
 
     ts = tsh.get(engine, 'tztest')
     assert_df("""
@@ -382,7 +383,7 @@ def test_changeset_metadata(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
     tsh.insert(engine, serie, 'ts-cs-metadata', 'babar',
                {'foo': 'A', 'bar': 42},
-               _insertion_date=utcdt(2019, 1, 1)
+               insertion_date=utcdt(2019, 1, 1)
     )
 
     log = tsh.log(engine, 'ts-cs-metadata')
@@ -400,31 +401,31 @@ def test_revision_date(engine, tsh):
     for i in range(1, 5):
         with engine.begin() as cn:
             tsh.insert(cn, genserie(datetime(2017, 1, i), 'D', 3, [i]), 'revdate',
-                       'test', _insertion_date=utcdt(2016, 1, i))
+                       'test', insertion_date=utcdt(2016, 1, i))
 
     # end of prologue, now some real meat
     idate0 = pd.Timestamp('2015-1-1 00:00:00', tz='UTC')
     ts = genserie(datetime(2010, 1, 4), 'D', 4, [0], name='truc')
     tsh.insert(engine, ts, 'ts_through_time',
-               'test', _insertion_date=idate0)
+               'test', insertion_date=idate0)
     assert idate0 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate1 = pd.Timestamp('2015-1-1 15:45:23', tz='UTC')
     ts = genserie(datetime(2010, 1, 4), 'D', 4, [1], name='truc')
     tsh.insert(engine, ts, 'ts_through_time',
-               'test', _insertion_date=idate1)
+               'test', insertion_date=idate1)
     assert idate1 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate2 = pd.Timestamp('2015-1-2 15:43:23', tz='UTC')
     ts = genserie(datetime(2010, 1, 4), 'D', 4, [2], name='truc')
     tsh.insert(engine, ts, 'ts_through_time',
-               'test', _insertion_date=idate2)
+               'test', insertion_date=idate2)
     assert idate2 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate3 = pd.Timestamp('2015-1-3', tz='UTC')
     ts = genserie(datetime(2010, 1, 4), 'D', 4, [3], name='truc')
     tsh.insert(engine, ts, 'ts_through_time',
-               'test', _insertion_date=idate3)
+               'test', insertion_date=idate3)
     assert idate3 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     ts = tsh.get(engine, 'ts_through_time')
@@ -653,7 +654,7 @@ def test_deletion_over_horizon(engine, tsh):
 
     name = 'delete_over_hz'
     tsh.insert(engine, ts, name, 'Babar',
-               _insertion_date=idate)
+               insertion_date=idate)
 
     ts = pd.Series(
         [np.nan, np.nan, np.nan],
@@ -661,7 +662,7 @@ def test_deletion_over_horizon(engine, tsh):
     )
 
     tsh.insert(engine, ts, name, 'Celeste',
-               _insertion_date=idate.replace(day=2))
+               insertion_date=idate.replace(day=2))
     ival = tsh.interval(engine, name)
     assert ival.left == datetime(2018, 1, 1)
     assert ival.right == datetime(2018, 1, 2)
@@ -671,7 +672,7 @@ def test_deletion_over_horizon(engine, tsh):
         index=pd.date_range(datetime(2017, 12, 30), freq='D', periods=3)
     )
     tsh.insert(engine, ts, name, 'Arthur',
-               _insertion_date=idate.replace(day=3))
+               insertion_date=idate.replace(day=3))
     ival = tsh.interval(engine, name)
     assert ival.left == datetime(2018, 1, 2)
     assert ival.right == datetime(2018, 1, 2)
@@ -682,7 +683,7 @@ def test_history(engine, tsh):
         with engine.begin() as cn:
             tsh.insert(cn, genserie(datetime(2017, 1, 1), 'D', numserie), 'smallserie',
                        'aurelien.campeas@pythonian.fr',
-                       _insertion_date=utcdt(2017, 2, numserie))
+                       insertion_date=utcdt(2017, 2, numserie))
 
     ts = tsh.get(engine, 'smallserie')
     assert_df("""
@@ -733,7 +734,7 @@ insertion_date             value_date
         with engine.begin() as cn:
             idate = idate.replace(tzinfo=pytz.timezone('UTC'))
             tsh.insert(cn, histts[idate], 'smallserie2',
-                       'aurelien.campeas@pythonian.f', _insertion_date=idate)
+                       'aurelien.campeas@pythonian.f', insertion_date=idate)
 
     # this is perfectly round-tripable
     assert (tsh.get(engine, 'smallserie2') == ts).all()
@@ -847,7 +848,7 @@ def test_delta_na(engine, tsh):
     for idx, idate in enumerate(ldates):
         ts = pd.Series([idx] * 3, index = ldates)
         tsh.insert(engine, ts, 'without_na', 'arnaud',
-                   _insertion_date=idate)
+                   insertion_date=idate)
 
     assert_df("""
 2015-01-20 00:00:00+00:00    2.0
@@ -887,7 +888,7 @@ insertion_date             value_date
         if idx == 2:
             serie[-1] = np.nan
         tsh.insert(engine, serie, 'with_na', 'arnaud',
-                   _insertion_date=idate)
+                   insertion_date=idate)
 
     # the value at 2015-01-22 is hidden by the inserted nan
     assert_df("""
@@ -922,7 +923,8 @@ def test_nr_gethistory(engine, tsh):
                    index=pd.date_range(start=datetime(2016, 12, 29),
                                        end=datetime(2017, 1, 1),
                                        freq='D'))
-    tsh.insert(engine, s0, 'foo', 'zogzog')
+    tsh.insert(engine, s0, 'foo', 'zogzog',
+               insertion_date=utcdt(2015, 12, 31))
 
     s1 = pd.Series([1, 0, 0, 1],
                    index=pd.date_range(start=datetime(2017, 1, 1),
@@ -933,7 +935,7 @@ def test_nr_gethistory(engine, tsh):
         with engine.begin() as cn:
             tsh.insert(cn, s1 * i, 'foo',
                        'aurelien.campeas@pythonian.f',
-                       _insertion_date=idate + timedelta(days=i))
+                       insertion_date=idate + timedelta(days=i))
 
     df = tsh.history(engine, 'foo',
                      datetime(2016, 1, 3),
@@ -1080,7 +1082,7 @@ def test_strip(engine, tsh):
     for i in range(1, 5):
         pubdate = utcdt(2017, 1, i)
         ts = genserie(datetime(2017, 1, 10), 'H', 1 + i)
-        tsh.insert(engine, ts, 'xserie', 'babar', _insertion_date=pubdate)
+        tsh.insert(engine, ts, 'xserie', 'babar', insertion_date=pubdate)
         # also insert something completely unrelated
         tsh.insert(engine, genserie(datetime(2018, 1, 1), 'D', 1 + i),
                    'yserie', 'celeste')
@@ -1185,7 +1187,7 @@ def test_staircase(engine, tsh):
                                freq='H'):
         ts = genserie(start=idate, freq='H', repeat=7)
         tsh.insert(engine, ts, 'republication', 'test',
-                   _insertion_date=idate)
+                   insertion_date=idate)
 
     hist = tsh.history(engine, 'republication')
     assert_hist("""
@@ -1255,7 +1257,7 @@ def test_staircase_2_tzaware(engine, tsh):
                                               end=utcdt(2015, 1, 4),
                                               freq='D')):
         ts = genserie(start=idate, freq='H', repeat=7)
-        tsh.insert(engine, ts, 'repu2', 'test', _insertion_date=idate)
+        tsh.insert(engine, ts, 'repu2', 'test', insertion_date=idate)
 
     deltas = tsh.staircase(engine, 'repu2', delta=timedelta(hours=3))
     assert_df("""
@@ -1317,7 +1319,7 @@ def test_staircase_2_tznaive(engine, tsh):
                                               end=utcdt(2015, 1, 4),
                                               freq='D')):
         ts = genserie(start=idate.replace(tzinfo=None), freq='H', repeat=7)
-        tsh.insert(engine, ts, 'repu-tz-naive', 'test', _insertion_date=idate)
+        tsh.insert(engine, ts, 'repu-tz-naive', 'test', insertion_date=idate)
 
     deltas = tsh.staircase(engine, 'repu-tz-naive', delta=timedelta(hours=3))
     assert_df("""
@@ -1553,7 +1555,7 @@ def test_insert_errors(engine, tsh):
         tsh.insert(engine, ts, 'error', 42)
 
     with pytest.raises(AssertionError):
-        tsh.insert(engine, ts, 'error', 'Babar', _insertion_date='2010-1-1')
+        tsh.insert(engine, ts, 'error', 'Babar', insertion_date='2010-1-1')
 
     with pytest.raises(AssertionError):
         tsh.insert(engine, ts, 'error', 'Babar', metadata=42)

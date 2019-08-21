@@ -223,7 +223,7 @@ def test_append(engine, tsh):
                                          freq='D', periods=10)):
         ts = genserie(dt, 'D', 1, [x], name='daily')
         tsh.insert(engine, ts, 'append', 'aurelien.campeas@pythonian.fr',
-                   _insertion_date=dt)
+                   insertion_date=dt)
 
     sql = 'select id, parent, chunk from "{}.snapshot".append order by id'.format(
         tsh.namespace

@@ -32,10 +32,10 @@ def test_log(engine, cli, tsh):
 def test_history(engine, cli, tsh):
     serie = genserie(datetime(2020, 1, 1), 'D', 3)
     tsh.insert(engine, serie, 'some_history', 'Babar',
-               _insertion_date=utcdt(2019, 1, 1))
+               insertion_date=utcdt(2019, 1, 1))
     serie = genserie(datetime(2020, 1, 2), 'D', 3)
     tsh.insert(engine, serie, 'some_history', 'Babar',
-               _insertion_date=utcdt(2019, 1, 2))
+               insertion_date=utcdt(2019, 1, 2))
 
     r = cli('history', engine.url,
             'some_history',

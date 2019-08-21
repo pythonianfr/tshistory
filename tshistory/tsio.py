@@ -47,7 +47,7 @@ class timeseries(SeriesServices):
     @tx
     def insert(self, cn, newts, name, author,
                metadata=None,
-               _insertion_date=None):
+               insertion_date=None):
         """Create a new revision of a given time series
 
         newts: pandas.Series with date index
@@ -59,7 +59,7 @@ class timeseries(SeriesServices):
             return
         newts = self._guard_insert(
             newts, name, author, metadata,
-            _insertion_date
+            insertion_date
         )
 
         assert ('<M8[ns]' == newts.index.dtype or
@@ -72,10 +72,10 @@ class timeseries(SeriesServices):
         if tablename is None:
             seriesmeta = self._series_initial_meta(cn, name, newts)
             return self._create(cn, newts, name, author, seriesmeta,
-                                metadata, _insertion_date)
+                                metadata, insertion_date)
 
         return self._update(cn, tablename, newts, name, author,
-                            metadata, _insertion_date)
+                            metadata, insertion_date)
 
     def list_series(self, cn):
         """Return the mapping of all series to their type"""
@@ -273,9 +273,11 @@ class timeseries(SeriesServices):
         q = select('max(insertion_date)').table(
             f'"{self.namespace}.revision"."{tablename}"'
         )
-        return pd.Timestamp(
+        idate = pd.Timestamp(
             q.do(cn).scalar()
-        ).astimezone('UTC')
+        )
+        if not pd.isnull(idate):
+            return idate.astimezone('UTC')
 
     @tx
     def insertion_dates(self, cn, name,
@@ -469,12 +471,6 @@ class timeseries(SeriesServices):
         cn.execute(
             f'select pg_advisory_xact_lock({self.create_lock_id})'
         )
-        if insertion_date is not None:
-            assert insertion_date.tzinfo is not None
-            idate = pd.Timestamp(insertion_date)
-        else:
-            idate = pd.Timestamp(datetime.utcnow(), tz='UTC')
-
         if metadata:
             metadata = json.dumps(metadata)
 
@@ -541,6 +537,9 @@ class timeseries(SeriesServices):
             idate = pd.Timestamp(insertion_date)
         else:
             idate = pd.Timestamp(datetime.utcnow(), tz='UTC')
+        latest_idate = self.latest_insertion_date(cn, name)
+        if latest_idate:
+            assert idate > latest_idate
         if metadata:
             metadata = json.dumps(metadata)
 
