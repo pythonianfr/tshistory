@@ -965,9 +965,10 @@ def test_dtype_mismatch(engine, tsh):
                    genserie(datetime(2015, 1, 1), 'D', 11),
                    'error1',
                    'test')
-
-    assert ('Type error when inserting error1, new type is float64, '
-            'type in base is object') == str(excinfo.value)
+    assert excinfo.value.args[0] == (
+        'Type error when inserting error1, '
+        'new type is float64, type in base is object'
+    )
 
     tsh.insert(engine,
                genserie(datetime(2015, 1, 1), 'D', 11),
@@ -979,9 +980,20 @@ def test_dtype_mismatch(engine, tsh):
                    genserie(datetime(2015, 1, 1), 'D', 11).astype('str'),
                    'error2',
                    'test')
+    assert excinfo.value.args[0] == (
+        'Type error when inserting error2, '
+        'new type is object, type in base is float64'
+    )
 
-    assert ('Type error when inserting error2, new type is object, '
-            'type in base is float64') == str(excinfo.value)
+    with pytest.raises(Exception) as excinfo:
+        tsh.insert(engine,
+                   genserie(utcdt(2015, 1, 1), 'D', 11),
+                   'error2',
+                   'test')
+    assert excinfo.value.args[0] == (
+        'Incompatible index types: '
+        'ref=`datetime64[ns]`, new=`datetime64[ns, UTC]`'
+    )
 
 
 def test_precision(engine, tsh):

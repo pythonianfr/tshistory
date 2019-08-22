@@ -722,7 +722,10 @@ class timeseries(SeriesServices):
                  f'new type is {tstype}, type in base is {meta["value_type"]}')
             raise Exception(m)
         if ts.index.dtype.name != meta['index_type']:
-            raise Exception('Incompatible index types')
+            raise Exception(
+                'Incompatible index types: '
+                f'ref=`{meta["index_type"]}`, new=`{ts.index.dtype.name}`'
+            )
 
     def _name_to_regid(self, cn, seriename):
         regid = self.registry_map.get(seriename)
