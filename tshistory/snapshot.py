@@ -9,6 +9,7 @@ import numpy as np
 from sqlhelp import sqlfile, select
 
 from tshistory.util import (
+    binary_pack,
     numpy_serialize,
     SeriesServices
 )
@@ -110,9 +111,7 @@ class Snapshot(SeriesServices):
             return None
 
         index, values = numpy_serialize(ts, self.isstr)
-        index_size = struct.pack('!L', len(index))
-
-        return zlib.compress(index_size + index + values)
+        return binary_pack(index, values)
 
     def _ensure_tz_consistency(self, ts):
         """Return timeserie with tz aware index or not depending on metadata

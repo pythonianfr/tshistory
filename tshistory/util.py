@@ -1,6 +1,7 @@
 import os
 import math
 import zlib
+import struct
 import logging
 import threading
 import tempfile
@@ -130,6 +131,15 @@ def numpy_serialize(series, isstr=False):
         values = series.values.data.tobytes()
 
     return index, values
+
+
+def binary_pack(index, values):
+    """get series index and values as bytes and return a compressed bytes
+    stream
+
+    """
+    index_size = struct.pack('!L', len(index))
+    return zlib.compress(index_size + index + values)
 
 
 def num2float(pdobj):
