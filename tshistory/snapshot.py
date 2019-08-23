@@ -1,6 +1,4 @@
 import zlib
-from array import array
-import struct
 from pathlib import Path
 
 import pandas as pd
@@ -12,6 +10,7 @@ from tshistory.util import (
     binary_pack,
     binary_unpack,
     numpy_serialize,
+    numpy_deserialize,
     SeriesServices
 )
 
@@ -127,23 +126,15 @@ class Snapshot(SeriesServices):
     def _chunks_to_ts(self, chunks):
         chunks = (binary_unpack(chunk) for chunk in chunks)
         indexchunks, valueschunks = list(zip(*chunks))
-        metadata = self.tsh.metadata(self.cn, self.name)
 
-        # array is a workaround for an obscure bug with pandas.isin
-        index = np.frombuffer(
-            array('d', b''.join(indexchunks)),
-            metadata['index_dtype']
+        meta = self.tsh.metadata(self.cn, self.name)
+        bseparator = b'\0' if meta['value_type'] == 'object' else b''
+
+        index, values = numpy_deserialize(
+            b''.join(indexchunks),
+            bseparator.join(valueschunks),
+            meta
         )
-
-        if self.isstr:
-            values = [v.decode('utf-8') if v != b'\3' else None
-                      for bvalues in valueschunks
-                      for v in bvalues.split(b'\0')]
-        else:
-            values = np.frombuffer(
-                b''.join(valueschunks),
-                metadata['value_dtype']
-            )
 
         assert len(values) == len(index)
         serie = pd.Series(values, index=index)

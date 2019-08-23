@@ -2,6 +2,7 @@ import os
 import math
 import zlib
 import struct
+from array import array
 import logging
 import threading
 import tempfile
@@ -153,6 +154,30 @@ def binary_unpack(zippedbytes):
     )
     values_offset = index_size + 4
     return unzippedbytes[4:values_offset], unzippedbytes[values_offset:]
+
+
+def numpy_deserialize(index, values, metadata):
+    """produce a pandas series from serialized index and values (numpy
+    arrays)
+
+    """
+    # array is a workaround for an obscure bug with pandas.isin
+    index = np.frombuffer(
+        array('d', index),
+        metadata['index_dtype']
+    )
+
+    if metadata['value_type'] == 'object':  # str
+        values = [
+            v.decode('utf-8') if v != b'\3' else None
+            for v in values.split(b'\0')
+        ]
+    else:
+        values = np.frombuffer(
+            values,
+            metadata['value_dtype']
+        )
+    return index, values
 
 
 def num2float(pdobj):
