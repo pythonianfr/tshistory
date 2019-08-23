@@ -12,6 +12,8 @@ from tshistory.snapshot import Snapshot
 from tshistory.util import (
     _set_cache,
     bisect_search,
+    nary_pack,
+    nary_unpack,
     threadpool
 )
 from tshistory.tsio import timeseries
@@ -41,6 +43,35 @@ def test_bisect():
     assert bisect_search(values, 3) == 2
     assert bisect_search(values, 7) == 3
     assert bisect_search(values, 8) == 4
+
+
+def test_pack_unpack():
+    chunks = [
+        b'a',
+        b'bb',
+        b'ccc',
+        b'dd',
+        b'e'
+    ]
+    packed = nary_pack(chunks)
+    assert len(packed) == 33
+    unpacked = nary_unpack(packed)
+    assert chunks == unpacked
+
+    chunks = [
+        b'aurelien',
+        b'campeas',
+        b'develops',
+        b'tshistory'
+    ]
+    packed = nary_pack(chunks)
+    assert packed == (
+        b'\x00\x00\x00\x04\x00\x00\x00\x08\x00\x00\x00\x07\x00'
+        b'\x00\x00\x08\x00\x00\x00\t'
+        b'aureliencampeasdevelopstshistory'
+    )
+    unpacked = nary_unpack(packed)
+    assert chunks == unpacked
 
 
 def test_in_tx(tsh, engine):

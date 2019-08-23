@@ -156,6 +156,41 @@ def binary_unpack(packedbytes):
     return packedbytes[4:bytes2_offset], packedbytes[bytes2_offset:]
 
 
+def nary_pack(bytestrlist):
+    assert len(bytestrlist)
+    sizes = [
+        struct.pack('!L', len(b))
+        for b in bytestrlist
+    ]
+    sizes_size = struct.pack('!L', len(sizes))
+    final = [sizes_size] + sizes + bytestrlist
+    return b''.join(
+        final
+    )
+
+
+def nary_unpack(packedbytes):
+    [sizes_size] = struct.unpack(
+        '!L', packedbytes[:4]
+    )
+    sizes = []
+    for idx in range(1, sizes_size + 1):
+        start = idx * 4
+        [size] = struct.unpack(
+            '!L',
+            packedbytes[start:start + 4]
+        )
+        sizes.append(size)
+
+    chunks = []
+    start = 4 + sizes_size * 4
+    for size in sizes:
+        end = start + size
+        chunks.append(packedbytes[start:end])
+        start = end
+    return chunks
+
+
 def numpy_deserialize(index, values, metadata):
     """produce a pandas series from serialized index and values (numpy
     arrays)
