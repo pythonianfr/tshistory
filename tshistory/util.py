@@ -109,6 +109,29 @@ def inject_in_index(serie, revdate):
     )
 
 
+def numpy_serialize(series, isstr=False):
+    # use `view` as a workarround for "cannot include dtype 'M' in a buffer"
+    index = np.ascontiguousarray(
+        series.index.values
+    ).view(np.uint8).data.tobytes()
+
+    if isstr:
+        # string separatd by 0 and nones/nans represented as 3 (ETX)
+        END, ETX = b'\0'.decode(), b'\3'.decode()
+        # first, safety belt
+        for s in series.values:
+            if not pd.isnull(s):
+                assert END not in s and ETX not in s
+        values = b'\0'.join(
+            b'\3' if pd.isnull(v) else v.encode('utf-8')
+            for v in series.values
+        )
+    else:
+        values = series.values.data.tobytes()
+
+    return index, values
+
+
 def num2float(pdobj):
     # get a Series or a Dataframe column
     if str(pdobj.dtype).startswith('int'):

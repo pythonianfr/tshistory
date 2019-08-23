@@ -8,7 +8,10 @@ import numpy as np
 
 from sqlhelp import sqlfile, select
 
-from tshistory.util import SeriesServices
+from tshistory.util import (
+    numpy_serialize,
+    SeriesServices
+)
 
 
 class Snapshot(SeriesServices):
@@ -105,23 +108,11 @@ class Snapshot(SeriesServices):
     def _serialize(self, ts):
         if ts is None:
             return None
-        # use `view` as a workarround for "cannot include dtype 'M' in a buffer"
-        indexes = np.ascontiguousarray(ts.index.values).view(np.uint8).data.tobytes()
-        # will be a `long` or 4 octets structure
-        indexes_size = struct.pack('!L', len(indexes))
 
-        if self.isstr:
-            # string separatd by 0 and nones/nans represented as 3 (ETX)
-            END, ETX = b'\0'.decode(), b'\3'.decode()
-            # first, safety belt
-            for s in ts.values:
-                if not pd.isnull(s):
-                    assert END not in s and ETX not in s
-            values = b'\0'.join(b'\3' if pd.isnull(v) else v.encode('utf-8')
-                                for v in ts.values)
-        else:
-            values = ts.values.data.tobytes()
-        return zlib.compress(indexes_size + indexes + values)
+        index, values = numpy_serialize(ts, self.isstr)
+        index_size = struct.pack('!L', len(index))
+
+        return zlib.compress(index_size + index + values)
 
     def _ensure_tz_consistency(self, ts):
         """Return timeserie with tz aware index or not depending on metadata
