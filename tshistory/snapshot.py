@@ -10,6 +10,7 @@ from sqlhelp import sqlfile, select
 
 from tshistory.util import (
     binary_pack,
+    binary_unpack,
     numpy_serialize,
     SeriesServices
 )
@@ -123,14 +124,8 @@ class Snapshot(SeriesServices):
             return ts.tz_localize('UTC')
         return ts
 
-    def _decodechunk(self, bytestring):
-        bytestring = zlib.decompress(bytestring)
-        [indexes_size] = struct.unpack('!L', bytestring[:4])
-        values_offset = indexes_size + 4
-        return bytestring[4:values_offset], bytestring[values_offset:]
-
     def _chunks_to_ts(self, chunks):
-        chunks = (self._decodechunk(chunk) for chunk in chunks)
+        chunks = (binary_unpack(chunk) for chunk in chunks)
         indexchunks, valueschunks = list(zip(*chunks))
         metadata = self.tsh.metadata(self.cn, self.name)
 

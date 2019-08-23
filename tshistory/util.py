@@ -142,6 +142,19 @@ def binary_pack(index, values):
     return zlib.compress(index_size + index + values)
 
 
+def binary_unpack(zippedbytes):
+    """get a compressed bytes stream and return series index and values as
+    bytes
+
+    """
+    unzippedbytes = zlib.decompress(zippedbytes)
+    [index_size] = struct.unpack(
+        '!L', unzippedbytes[:4]
+    )
+    values_offset = index_size + 4
+    return unzippedbytes[4:values_offset], unzippedbytes[values_offset:]
+
+
 def num2float(pdobj):
     # get a Series or a Dataframe column
     if str(pdobj.dtype).startswith('int'):
