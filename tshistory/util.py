@@ -134,26 +134,28 @@ def numpy_serialize(series, isstr=False):
     return index, values
 
 
-def binary_pack(index, values):
-    """get series index and values as bytes and return a compressed bytes
-    stream
+def binary_pack(bytes1, bytes2):
+    """assemble two byte strings into a unique byte string
+    storing the size of the first string first
+    this will permit to destructure back the two
+    original byte strings
 
     """
-    index_size = struct.pack('!L', len(index))
-    return zlib.compress(index_size + index + values)
+    bytes1_size = struct.pack('!L', len(bytes1))
+    return zlib.compress(bytes1_size + bytes1 + bytes2)
 
 
 def binary_unpack(zippedbytes):
-    """get a compressed bytes stream and return series index and values as
-    bytes
+    """get a compressed bytes stream and return the two embedded
+    bytes strings
 
     """
     unzippedbytes = zlib.decompress(zippedbytes)
-    [index_size] = struct.unpack(
+    [bytes1_size] = struct.unpack(
         '!L', unzippedbytes[:4]
     )
-    values_offset = index_size + 4
-    return unzippedbytes[4:values_offset], unzippedbytes[values_offset:]
+    bytes2_offset = bytes1_size + 4
+    return unzippedbytes[4:bytes2_offset], unzippedbytes[bytes2_offset:]
 
 
 def numpy_deserialize(index, values, metadata):
