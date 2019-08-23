@@ -1,6 +1,5 @@
 import os
 import math
-import zlib
 import struct
 from array import array
 import logging
@@ -142,20 +141,19 @@ def binary_pack(bytes1, bytes2):
 
     """
     bytes1_size = struct.pack('!L', len(bytes1))
-    return zlib.compress(bytes1_size + bytes1 + bytes2)
+    return bytes1_size + bytes1 + bytes2
 
 
-def binary_unpack(zippedbytes):
+def binary_unpack(packedbytes):
     """get a compressed bytes stream and return the two embedded
     bytes strings
 
     """
-    unzippedbytes = zlib.decompress(zippedbytes)
     [bytes1_size] = struct.unpack(
-        '!L', unzippedbytes[:4]
+        '!L', packedbytes[:4]
     )
     bytes2_offset = bytes1_size + 4
-    return unzippedbytes[4:bytes2_offset], unzippedbytes[bytes2_offset:]
+    return packedbytes[4:bytes2_offset], packedbytes[bytes2_offset:]
 
 
 def numpy_deserialize(index, values, metadata):

@@ -111,7 +111,7 @@ class Snapshot(SeriesServices):
             return None
 
         index, values = numpy_serialize(ts, self.isstr)
-        return binary_pack(index, values)
+        return zlib.compress(binary_pack(index, values))
 
     def _ensure_tz_consistency(self, ts):
         """Return timeserie with tz aware index or not depending on metadata
@@ -124,7 +124,10 @@ class Snapshot(SeriesServices):
         return ts
 
     def _chunks_to_ts(self, chunks):
-        chunks = (binary_unpack(chunk) for chunk in chunks)
+        chunks = (
+            binary_unpack(zlib.decompress(chunk))
+            for chunk in chunks
+        )
         indexchunks, valueschunks = list(zip(*chunks))
 
         meta = self.tsh.metadata(self.cn, self.name)
