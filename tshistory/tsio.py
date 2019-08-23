@@ -118,9 +118,11 @@ class timeseries(SeriesServices):
     @tx
     def metadata(self, cn, name):
         """Return metadata dict of timeserie."""
+        if name in cn.cache['metadata']:
+            return cn.cache['metadata']
         sql = (f'select metadata from "{self.namespace}".registry '
                'where seriesname = %(name)s')
-        meta = cn.execute(sql, name=name).scalar()
+        meta = cn.cache['metadata'][name] = cn.execute(sql, name=name).scalar()
         return meta
 
     @tx
@@ -143,6 +145,7 @@ class timeseries(SeriesServices):
             metadata=json.dumps(newmeta),
             seriesname=name
         )
+        cn.cache['metadata'][name] = meta
 
     def changeset_metadata(self, cn, csid):
         assert isinstance(csid, int)
