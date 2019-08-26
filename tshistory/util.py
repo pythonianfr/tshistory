@@ -1,3 +1,4 @@
+import io
 import os
 import math
 import struct
@@ -156,39 +157,32 @@ def binary_unpack(packedbytes):
     return packedbytes[4:bytes2_offset], packedbytes[bytes2_offset:]
 
 
-def nary_pack(bytestrlist):
-    assert len(bytestrlist)
+def nary_pack(*bytestr):
+    assert len(bytestr)
     sizes = [
         struct.pack('!L', len(b))
-        for b in bytestrlist
+        for b in bytestr
     ]
     sizes_size = struct.pack('!L', len(sizes))
-    final = [sizes_size] + sizes + bytestrlist
-    return b''.join(
-        final
-    )
+    stream = io.BytesIO()
+    stream.write(sizes_size)
+    stream.write(b''.join(sizes))
+    for bstr in bytestr:
+        stream.write(bstr)
+    return stream.getvalue()
 
 
 def nary_unpack(packedbytes):
     [sizes_size] = struct.unpack(
         '!L', packedbytes[:4]
     )
-    sizes = []
-    for idx in range(1, sizes_size + 1):
-        start = idx * 4
-        [size] = struct.unpack(
-            '!L',
-            packedbytes[start:start + 4]
-        )
-        sizes.append(size)
-
-    chunks = []
-    start = 4 + sizes_size * 4
-    for size in sizes:
-        end = start + size
-        chunks.append(packedbytes[start:end])
-        start = end
-    return chunks
+    payloadoffset = 4 + sizes_size * 4
+    sizes = struct.unpack(
+        f'!{"L"*sizes_size}',
+        packedbytes[4: payloadoffset]
+    )
+    fmt = ''.join('%ss' % size for size in sizes)
+    return struct.unpack(fmt, packedbytes[payloadoffset:])
 
 
 def numpy_deserialize(index, values, metadata):

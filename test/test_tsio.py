@@ -46,25 +46,25 @@ def test_bisect():
 
 
 def test_pack_unpack():
-    chunks = [
+    chunks = (
         b'a',
         b'bb',
         b'ccc',
         b'dd',
         b'e'
-    ]
-    packed = nary_pack(chunks)
+    )
+    packed = nary_pack(*chunks)
     assert len(packed) == 33
     unpacked = nary_unpack(packed)
     assert chunks == unpacked
 
-    chunks = [
+    chunks = (
         b'aurelien',
         b'campeas',
         b'develops',
         b'tshistory'
-    ]
-    packed = nary_pack(chunks)
+    )
+    packed = nary_pack(*chunks)
     assert packed == (
         b'\x00\x00\x00\x04\x00\x00\x00\x08\x00\x00\x00\x07\x00'
         b'\x00\x00\x08\x00\x00\x00\t'
