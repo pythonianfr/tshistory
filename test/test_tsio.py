@@ -581,6 +581,15 @@ def test_point_deletion(engine, tsh):
 2010-01-10    machin
 """, tsh.get(engine, 'ts_string_del'))
 
+    meta = tsh.metadata(engine, 'ts_string_del')
+    assert meta == {
+        'index_dtype': '<M8[ns]',
+        'index_type': 'datetime64[ns]',
+        'tzaware': False,
+        'value_dtype': '|O',
+        'value_type': 'object'
+    }
+
     ts_string[4] = 'truc'
     ts_string[6] = 'truc'
 
