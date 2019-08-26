@@ -14,7 +14,9 @@ from tshistory.util import (
     bisect_search,
     nary_pack,
     nary_unpack,
-    threadpool
+    pack_history,
+    threadpool,
+    unpack_history
 )
 from tshistory.tsio import timeseries
 from tshistory.testutil import (
@@ -753,6 +755,22 @@ insertion_date             value_date
                            2017-01-03    2.0
 """, histts)
 
+    # pack/unpack
+    meta = tsh.metadata(engine, 'smallserie')
+    packed = pack_history(meta, histts)
+    meta2, hist2 = unpack_history(packed)
+    assert meta == meta2
+    assert_hist("""
+insertion_date             value_date
+2017-02-01 00:00:00+00:00  2017-01-01    0.0
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+2017-02-03 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+                           2017-01-03    2.0
+""", hist2)
+
+    # diffmode
     diffs = tsh.history(engine, 'smallserie', diffmode=True)
     assert_hist("""
 insertion_date             value_date

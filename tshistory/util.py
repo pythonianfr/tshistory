@@ -2,11 +2,14 @@ import io
 import os
 import math
 import struct
+import json
 from array import array
 import logging
 import threading
 import tempfile
 import shutil
+import zlib
+from functools import partial
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -207,6 +210,48 @@ def numpy_deserialize(index, values, metadata):
             metadata['value_dtype']
         )
     return index, values
+
+
+def pack_history(metadata, hist):
+    byteslist = [json.dumps(metadata).encode('utf-8')]
+    byteslist.append(
+        np.array(
+            list(hist), dtype='|M8[ns]'
+        ).view(np.uint8).data.tobytes()
+    )
+    isstr = metadata['value_type'] == 'object'
+    for tstamp, series in hist.items():
+        index, values = numpy_serialize(
+            series,
+            isstr
+        )
+        byteslist.append(index)
+        byteslist.append(values)
+    stream = io.BytesIO(
+        zlib.compress(
+            nary_pack(*byteslist)
+        )
+    )
+    return stream.getvalue()
+
+
+def unpack_history(bytestring):
+    byteslist = nary_unpack(zlib.decompress(bytestring))
+    metadata = json.loads(byteslist[0])
+    idates = np.frombuffer(
+        array('d', byteslist[1]),
+        '|M8[ns]'
+    )
+    hist = {}
+    utcdt = partial(pd.Timestamp, tz='UTC')
+    for idx, (bindex, bvalues) in enumerate(zip(*[iter(byteslist[2:])]*2)):
+        index, values = numpy_deserialize(
+            bindex, bvalues, metadata
+        )
+        hist[utcdt(idates[idx])] = pd.Series(
+            values, index=index
+        )
+    return metadata, hist
 
 
 def num2float(pdobj):
