@@ -116,7 +116,7 @@ def inject_in_index(serie, revdate):
 
 def numpy_serialize(series, isstr=False):
     # use `view` as a workarround for "cannot include dtype 'M' in a buffer"
-    index = np.ascontiguousarray(
+    bindex = np.ascontiguousarray(
         series.index.values
     ).view(np.uint8).data.tobytes()
 
@@ -127,14 +127,14 @@ def numpy_serialize(series, isstr=False):
         for s in series.values:
             if not pd.isnull(s):
                 assert END not in s and ETX not in s
-        values = b'\0'.join(
+        bvalues = b'\0'.join(
             b'\3' if pd.isnull(v) else v.encode('utf-8')
             for v in series.values
         )
     else:
-        values = series.values.data.tobytes()
+        bvalues = series.values.data.tobytes()
 
-    return index, values
+    return bindex, bvalues
 
 
 def binary_pack(bytes1, bytes2):
@@ -188,25 +188,25 @@ def nary_unpack(packedbytes):
     return struct.unpack(fmt, packedbytes[payloadoffset:])
 
 
-def numpy_deserialize(index, values, metadata):
+def numpy_deserialize(bindex, bvalues, metadata):
     """produce a pandas series from serialized index and values (numpy
     arrays)
 
     """
     # array is a workaround for an obscure bug with pandas.isin
     index = np.frombuffer(
-        array('d', index),
+        array('d', bindex),
         metadata['index_dtype']
     )
 
     if metadata['value_type'] == 'object':  # str
         values = [
             v.decode('utf-8') if v != b'\3' else None
-            for v in values.split(b'\0')
+            for v in bvalues.split(b'\0')
         ]
     else:
         values = np.frombuffer(
-            values,
+            bvalues,
             metadata['value_dtype']
         )
     return index, values
