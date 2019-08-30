@@ -16,11 +16,14 @@ setup(name='tshistory',
           'sqlhelp',
           'click',
           'mock',
-          'pytest_sa_pg',
           'inireader',
           'colorama',
           'tqdm'
       ],
+      package_data={'tshistory': [
+          'schema.sql',
+          'series.sql'
+      ]},
       entry_points={
           'console_scripts': [
               'tsh=tshistory.cli:tsh'
