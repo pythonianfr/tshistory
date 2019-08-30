@@ -1,4 +1,8 @@
+from pathlib import Path
 from setuptools import setup
+
+
+doc = Path(__file__).parent / 'README.md'
 
 
 setup(name='tshistory',
@@ -7,7 +11,8 @@ setup(name='tshistory',
       author_email='aurelien.campeas@pythonian.fr, arnaud.campeas@pythonian.fr',
       url='https://bitbucket.org/pythonian/tshistory',
       description='Store timeseries histories into postgres',
-
+      long_description=doc.read_text(),
+      long_description_content_type='text/markdown',
       packages=['tshistory'],
       install_requires=[
           'pandas ~= 0.24',

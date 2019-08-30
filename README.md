@@ -4,8 +4,6 @@ TSHISTORY
 This is a library to store/retrieve pandas timeseries to/from a
 postgres database, tracking their successive versions.
 
-[TOC]
-
 # Introduction
 
 ## Purpose
