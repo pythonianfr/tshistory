@@ -287,3 +287,23 @@ For instance, the [tsview][tsview] python package provides such a
 [tsview]: https://bitbucket.org/pythonian/tsview
 [backtesting]: https://en.wikipedia.org/wiki/Backtesting
 [cross-validation]: https://en.wikipedia.org/wiki/Cross-validation_(statistics)
+
+
+# Status
+
+It is currently considered `beta` software even though it has been in
+production for two years. It is still evolving. Schema/Database
+changes come with migration procedure using the `tsh` utility.
+
+When it is good: if you do mostly appends (and occasional edits in the
+past) it will store data in a very compact way.
+
+When it is bad: if you edit your series all the time to random value date
+positions, it will be wasteful in storage.
+
+Alternative backend storage and storage strategies will be considered
+in the future.
+
+A more definitive backend-independant api will be provided not far
+from now (the current one relies on sqlalchemy engines).
+
