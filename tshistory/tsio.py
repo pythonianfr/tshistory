@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pandas as pd
 
-from deprecated import deprecated
 from sqlhelp import sqlfile, select, insert
 
 from tshistory.util import (
@@ -775,10 +774,3 @@ class historycache:
             ts = pd.concat(chunks)
         ts.name = self.name
         return ts
-
-
-@deprecated(reason='use the `timeseries` object instead')
-class TimeSerie(timeseries):
-
-    get_history = deprecated(timeseries.history)
-    get_delta = deprecated(timeseries.staircase)
