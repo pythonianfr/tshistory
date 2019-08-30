@@ -215,7 +215,8 @@ def pack_history(metadata, hist):
     byteslist = [json.dumps(metadata).encode('utf-8')]
     byteslist.append(
         np.array(
-            list(hist), dtype='|M8[ns]'
+            [tstamp.to_datetime64() for tstamp in hist],
+            dtype='datetime64'
         ).view(np.uint8).data.tobytes()
     )
     isstr = metadata['value_type'] == 'object'
