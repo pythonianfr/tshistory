@@ -75,6 +75,11 @@ def test_pack_unpack():
     unpacked = nary_unpack(packed)
     assert chunks == unpacked
 
+    chunks = tuple()
+    packed = nary_pack(*chunks)
+    unpacked = nary_unpack(packed)
+    assert chunks == unpacked
+
 
 def test_in_tx(tsh, engine):
     assert tsh.type(engine, 'foo') == 'primary'

@@ -161,7 +161,6 @@ def binary_unpack(packedbytes):
 
 
 def nary_pack(*bytestr):
-    assert len(bytestr)
     sizes = [
         struct.pack('!L', len(b))
         for b in bytestr
