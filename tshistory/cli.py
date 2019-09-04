@@ -257,62 +257,6 @@ def shell(db_uri, namespace='tsh'):
     import pdb; pdb.set_trace()
 
 
-@tsh.command(name='migrate-0.6-to-0.7')
-@click.argument('db-uri')
-@click.option('--namespace', default='tsh')
-def migrate_dot_6_to_dot_7(db_uri, namespace='tsh'):
-    e = create_engine(find_dburi(db_uri))
-    tsh = timeseries(namespace)
-    with e.begin() as cn:
-        # drop not null
-        print(f'{namespace}: alter changeset_series table')
-        cn.execute(f'alter table "{namespace}".changeset_series '
-                   'alter column serie drop not null')
-        # alter foreign key on delete: delete -> set null
-        cn.execute(f'alter table "{namespace}".changeset_series '
-                   'drop constraint "changeset_series_serie_fkey"')
-        cn.execute(f'alter table "{namespace}".changeset_series '
-                   'add constraint "changeset_series_serie_fkey" '
-                   f'foreign key (serie) references "{namespace}".registry (id) '
-                   'on delete set null')
-
-    from tshistory.snapshot import Snapshot
-    series = tsh.list_series(e)
-    print('migrate series and snapshot start/end columns')
-    bar = tqdm(range(len(series)))
-    with e.begin() as cn:
-        for name in series:
-            table = tsh._serie_to_tablename(cn, name)
-            cn.execute(
-                f'alter table "{namespace}.timeserie"."{table}" '
-                'rename column start to tsstart'
-            )
-            cn.execute(
-                f'alter table "{namespace}.timeserie"."{table}" '
-                'rename column "end" to tsend'
-            )
-            cn.execute(
-                f'alter table "{namespace}.snapshot"."{table}" '
-                'rename column start to cstart'
-            )
-            cn.execute(
-                f'alter table "{namespace}.snapshot"."{table}" '
-                'rename column "end" to cend'
-            )
-            bar.update()
-
-    print()
-    print('reclaim unreachable chunks left behind by strip')
-    bar = tqdm(range(len(series)))
-    for name in series:
-        snap = Snapshot(e, tsh, name)
-        garb = snap.garbage()
-        if garb:
-            print(f'{name} garbage = {len(garb)}')
-            snap.reclaim()
-        bar.update()
-
-
 @tsh.command(name='migrate-0.7-to-0.8')
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
