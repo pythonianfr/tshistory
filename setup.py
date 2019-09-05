@@ -23,7 +23,8 @@ setup(name='tshistory',
           'mock',
           'inireader',
           'colorama',
-          'tqdm'
+          'tqdm',
+          'deprecated'
       ],
       package_data={'tshistory': [
           'schema.sql',

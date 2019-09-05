@@ -4,6 +4,7 @@ import hashlib
 import uuid
 import json
 from pathlib import Path
+from deprecated import deprecated
 
 import pandas as pd
 
@@ -44,37 +45,45 @@ class timeseries(SeriesServices):
         self.delete_lock_id = sum(ord(c) for c in namespace)
 
     @tx
-    def insert(self, cn, newts, name, author,
+    def update(self, cn, updatets, name, author,
                metadata=None,
                insertion_date=None):
         """Create a new revision of a given time series
+        with update semantics:
+        * new points will be added to the existing series
+        * existing points will be updated when value differs
+        * nans will be interpreted as point erasure
 
-        newts: pandas.Series with date index
+        updatets: pandas.Series with date index
         name: str unique identifier of the serie
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
-        if not len(newts):
+        if not len(updatets):
             return
-        newts = self._guard_insert(
-            newts, name, author, metadata,
+        updatets = self._guard_insert(
+            updatets, name, author, metadata,
             insertion_date
         )
 
-        assert ('<M8[ns]' == newts.index.dtype or
-                'datetime' in str(newts.index.dtype) and not
-                isinstance(newts.index, pd.MultiIndex))
+        assert ('<M8[ns]' == updatets.index.dtype or
+                'datetime' in str(updatets.index.dtype) and not
+                isinstance(updatets.index, pd.MultiIndex))
 
-        newts.name = name
+        updatets.name = name
         tablename = self._series_to_tablename(cn, name)
 
         if tablename is None:
-            seriesmeta = self._series_initial_meta(cn, name, newts)
-            return self._create(cn, newts, name, author, seriesmeta,
+            seriesmeta = self._series_initial_meta(cn, name, updatets)
+            return self._create(cn, updatets, name, author, seriesmeta,
                                 metadata, insertion_date)
 
-        return self._update(cn, tablename, newts, name, author,
+        return self._update(cn, tablename, updatets, name, author,
                             metadata, insertion_date)
+
+    @deprecated('reason: use the equivalent `update` method')
+    def insert(self, *a, **kw):
+        return self.update(*a, **kw)
 
     @tx
     def replace(self, cn, newts, name, author,
