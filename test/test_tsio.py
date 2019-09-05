@@ -1653,3 +1653,63 @@ def test_index_with_nat(engine, tsh):
 
     with pytest.raises(AssertionError):
         tsh.insert(engine, ts, 'index_with_nat', 'Bugger')
+
+
+def test_replace(engine, tsh):
+    index=pd.date_range(
+        start=utcdt(2020, 1, 1),
+        freq='D', periods=3
+    )
+
+    seriesa = pd.Series(
+        [1, 2, 3],
+        index=index
+    )
+    seriesb = pd.Series(
+        [3, 2],
+        index=index[:2]
+    )
+    seriesc = pd.Series(
+        [2, 2],
+        index=index[1:]
+    )
+
+    tsh.replace(
+        engine, seriesa, 'replaceme', 'Babar',
+        insertion_date=utcdt(2019, 1, 1)
+    )
+    tsh.replace(
+        engine, seriesb, 'replaceme', 'Celeste',
+        insertion_date=utcdt(2019, 1, 2)
+    )
+    tsh.replace(
+        engine, seriesc, 'replaceme', 'Arthur',
+        insertion_date=utcdt(2019, 1, 3)
+    )
+
+    assert_df("""
+2020-01-01 00:00:00+00:00    1.0
+2020-01-02 00:00:00+00:00    2.0
+2020-01-03 00:00:00+00:00    3.0
+""", tsh.get(engine, 'replaceme', revision_date=utcdt(2019, 1, 1)))
+
+    assert_df("""
+2020-01-01 00:00:00+00:00    3.0
+2020-01-02 00:00:00+00:00    2.0
+""",tsh.get(engine, 'replaceme', revision_date=utcdt(2019, 1, 2)))
+
+    assert_df("""
+2020-01-02 00:00:00+00:00    2.0
+2020-01-03 00:00:00+00:00    2.0
+""",tsh.get(engine, 'replaceme', revision_date=utcdt(2019, 1, 3)))
+
+    assert_hist("""
+insertion_date             value_date               
+2019-01-01 00:00:00+00:00  2020-01-01 00:00:00+00:00    1.0
+                           2020-01-02 00:00:00+00:00    2.0
+                           2020-01-03 00:00:00+00:00    3.0
+2019-01-02 00:00:00+00:00  2020-01-01 00:00:00+00:00    3.0
+                           2020-01-02 00:00:00+00:00    2.0
+2019-01-03 00:00:00+00:00  2020-01-02 00:00:00+00:00    2.0
+                           2020-01-03 00:00:00+00:00    2.0
+""", tsh.history(engine, 'replaceme'))

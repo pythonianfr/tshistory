@@ -76,6 +76,55 @@ class timeseries(SeriesServices):
         return self._update(cn, tablename, newts, name, author,
                             metadata, insertion_date)
 
+    @tx
+    def replace(self, cn, newts, name, author,
+               metadata=None,
+               insertion_date=None):
+        """Create a new revision of a given time series
+        and do a wholesale replacement of the series
+        with the provided one (no update semantics)
+
+        newts: pandas.Series with date index
+        name: str unique identifier of the serie
+        author: str free-form author name
+        metadata: optional dict for changeset metadata
+        """
+        if not len(newts):
+            return
+        newts = self._guard_insert(
+            newts, name, author, metadata,
+            insertion_date
+        )
+
+        assert ('<M8[ns]' == newts.index.dtype or
+                'datetime' in str(newts.index.dtype) and not
+                isinstance(newts.index, pd.MultiIndex))
+
+        newts.name = name
+        tablename = self._series_to_tablename(cn, name)
+
+        if tablename is None:
+            seriesmeta = self._series_initial_meta(cn, name, newts)
+            return self._create(cn, newts, name, author, seriesmeta,
+                                metadata, insertion_date)
+
+        self._validate(cn, newts, name)
+
+        # compute series start/end stamps
+        tsstart, tsend = start_end(newts)
+        ival = self.interval(cn, name, notz=True)
+        start = min(tsstart or ival.left, ival.left)
+        end = max(tsend or ival.right, ival.right)
+        head = Snapshot(cn, self, name).create(newts)
+        self._new_revision(
+            cn, name, head, start, end,
+            author, insertion_date, metadata
+        )
+        L.info('inserted series (size=%s) for ts %s by %s',
+               len(newts), name, author)
+        return newts
+
+
     def list_series(self, cn):
         """Return the mapping of all series to their type"""
         sql = f'select seriesname from "{self.namespace}".registry '
