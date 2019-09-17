@@ -20,8 +20,11 @@ from tshistory.testutil import (
 def test_hourly_forecast(engine, tracker, ptsh):
     tsh = ptsh
 
-    # build a sin curve, like e.g. solar input
-    base = [np.sin(x) for x in np.linspace(0, 3.14, 20)]
+    # build a sin curve, like e.g. solar input, 24 points
+    base = [
+        np.sin(x)
+        for x in np.linspace(0, 3.14, 20)
+    ]
     base.insert(0, 0)
     base.insert(0, 0)
     base.append(0)
@@ -43,8 +46,8 @@ def test_hourly_forecast(engine, tracker, ptsh):
                 serie = pd.Series(localbase[idate.hour:idate.hour + 48],
                                   index=dr)
                 with engine.begin() as cn:
-                    diff = tsh.insert(cn, serie, name, 'test',
-                                      _insertion_date=idate)
+                    diff = tsh.update(cn, serie, name, 'test',
+                                      insertion_date=idate)
                 if limit and idx > limit:
                     break
 
@@ -139,7 +142,7 @@ def test_bigdata(engine, tracker, ptsh):
             date = utcdt(year, 1, 1)
             serie = genserie(date, '10Min', 6 * 24 * 365)
             with engine.begin() as cn:
-                tsh.insert(cn, serie, 'big', 'aurelien.campeas@pythonian.fr',
+                tsh.update(cn, serie, 'big', 'aurelien.campeas@pythonian.fr',
                            _insertion_date=date)
 
     t0 = time()
@@ -185,7 +188,7 @@ def test_lots_of_diffs(engine, tracker, ptsh):
                 date = utcdt(2017, month, day)
                 serie = genserie(date, '10Min', 6 * 24)
                 with engine.begin() as cn:
-                    tsh.insert(cn, serie, 'manydiffs',
+                    tsh.update(cn, serie, 'manydiffs',
                                'aurelien.campeas@pythonian.fr',
                                _insertion_date=date.replace(year=2018)
                     )

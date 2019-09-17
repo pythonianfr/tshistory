@@ -85,12 +85,14 @@ def test_in_tx(tsh, engine):
     assert tsh.type(engine, 'foo') == 'primary'
 
     with pytest.raises(TypeError) as err:
-        tsh.insert(engine.connect(), 0, 0, 0)
+        tsh.update(engine.connect(), 0, 0, 0)
     assert err.value.args[0] == 'You must use a transaction object'
 
     ts = genserie(datetime(2017, 10, 28, 23),
                   'H', 4, tz='UTC')
     with engine.begin() as cn:
+        tsh.update(cn, ts, 'test_tx', 'Babar')
+        # that old api is still there
         tsh.insert(cn, ts, 'test_tx', 'Babar')
 
 
@@ -104,7 +106,7 @@ def test_tzaware_non_monotonic(engine, tsh):
         index=pd.date_range(utcdt(2019, 1, 1), freq='D', periods=3)
     )
     ts = pd.concat([ts1, ts2])
-    tsh.insert(engine, ts, 'non-monotonic', 'Babar')
+    tsh.update(engine, ts, 'non-monotonic', 'Babar')
     assert_df("""
 2019-01-01 00:00:00+00:00    1.0
 2019-01-02 00:00:00+00:00    2.0
@@ -128,7 +130,7 @@ def test_tstamp_roundtrip(engine, tsh):
 Freq: H
     """, ts)
 
-    tsh.insert(engine, ts, 'tztest', 'Babar',
+    tsh.update(engine, ts, 'tztest', 'Babar',
                insertion_date=utcdt(2018, 1, 1))
     back = tsh.get(engine, 'tztest')
 
@@ -150,7 +152,7 @@ Freq: H
     ts = genserie(datetime(2017, 10, 29, 1),
                   'H', 4, tz='UTC')
     ts.index = ts.index.tz_convert('Europe/Paris')
-    tsh.insert(engine, ts, 'tztest', 'Celeste',
+    tsh.update(engine, ts, 'tztest', 'Celeste',
                    insertion_date=utcdt(2018, 1, 3))
 
     ts = tsh.get(engine, 'tztest')
@@ -197,7 +199,7 @@ insertion_date             value_date
 
 def test_differential(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
-    tsh.insert(engine, ts_begin, 'ts_test', 'test')
+    tsh.update(engine, ts_begin, 'ts_test', 'test')
 
     id1 = tsh.last_id(engine, 'ts_test')
     assert tsh._previous_cset(
@@ -234,7 +236,7 @@ def test_differential(engine, tsh):
     assert fetched.name == 'ts_test'
 
     # we should detect the emission of a message
-    tsh.insert(engine, ts_begin, 'ts_test', 'babar')
+    tsh.update(engine, ts_begin, 'ts_test', 'babar')
 
     assert_df("""
 2010-01-01    0.0
@@ -252,7 +254,7 @@ def test_differential(engine, tsh):
     ts_slight_variation = ts_begin.copy()
     ts_slight_variation.iloc[3] = 0
     ts_slight_variation.iloc[6] = 0
-    tsh.insert(engine, ts_slight_variation, 'ts_test', 'celeste')
+    tsh.update(engine, ts_slight_variation, 'ts_test', 'celeste')
     id2 = tsh.last_id(engine, 'ts_test')
     assert tsh._previous_cset(
         _set_cache(engine),
@@ -279,7 +281,7 @@ def test_differential(engine, tsh):
     ts_longer.iloc[5] = ts_begin.iloc[7]
 
     with engine.begin() as cn:
-        tsh.insert(cn, ts_longer, 'ts_test', 'test')
+        tsh.update(cn, ts_longer, 'ts_test', 'test')
     id3 = tsh.last_id(engine, 'ts_test')
 
     assert id1 < id2 < id3
@@ -313,7 +315,7 @@ def test_differential(engine, tsh):
     # insert single data, in override of previous one
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 5, initval=[2])
     ts_begin.loc['2010-01-04'] = -1
-    tsh.insert(engine, ts_begin, 'ts_mixte', 'test')
+    tsh.update(engine, ts_begin, 'ts_mixte', 'test')
 
     assert_df("""
 2010-01-01    2.0
@@ -326,7 +328,7 @@ def test_differential(engine, tsh):
     # add new series with one additional values
     ts_more = genserie(datetime(2010, 1, 2), 'D', 5, [2])
     ts_more.loc['2010-01-04'] = -1
-    tsh.insert(engine, ts_more, 'ts_mixte', 'test')
+    tsh.update(engine, ts_more, 'ts_mixte', 'test')
 
     assert_df("""
 2010-01-01    2.0
@@ -340,7 +342,7 @@ def test_differential(engine, tsh):
     # just append an extra data point
     # with no intersection with the previous ts
     ts_one_more = genserie(datetime(2010, 1, 7), 'D', 1, [3])
-    tsh.insert(engine, ts_one_more, 'ts_mixte', 'test')
+    tsh.update(engine, ts_one_more, 'ts_mixte', 'test')
 
     assert_df("""
 2010-01-01    2.0
@@ -409,7 +411,7 @@ seriesname tablename
 
 def test_serie_metadata(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
-    tsh.insert(engine, serie, 'ts-metadata', 'babar')
+    tsh.update(engine, serie, 'ts-metadata', 'babar')
 
     initialmeta = tsh.metadata(engine, 'ts-metadata')
     assert initialmeta == {
@@ -440,7 +442,7 @@ def test_serie_metadata(engine, tsh):
 
 def test_changeset_metadata(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
-    tsh.insert(engine, serie, 'ts-cs-metadata', 'babar',
+    tsh.update(engine, serie, 'ts-cs-metadata', 'babar',
                {'foo': 'A', 'bar': 42},
                insertion_date=utcdt(2019, 1, 1)
     )
@@ -459,31 +461,31 @@ def test_changeset_metadata(engine, tsh):
 def test_revision_date(engine, tsh):
     for i in range(1, 5):
         with engine.begin() as cn:
-            tsh.insert(cn, genserie(datetime(2017, 1, i), 'D', 3, [i]), 'revdate',
+            tsh.update(cn, genserie(datetime(2017, 1, i), 'D', 3, [i]), 'revdate',
                        'test', insertion_date=utcdt(2016, 1, i))
 
     # end of prologue, now some real meat
     idate0 = pd.Timestamp('2015-1-1 00:00:00', tz='UTC')
     ts = genserie(datetime(2010, 1, 4), 'D', 4, [0], name='truc')
-    tsh.insert(engine, ts, 'ts_through_time',
+    tsh.update(engine, ts, 'ts_through_time',
                'test', insertion_date=idate0)
     assert idate0 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate1 = pd.Timestamp('2015-1-1 15:45:23', tz='UTC')
     ts = genserie(datetime(2010, 1, 4), 'D', 4, [1], name='truc')
-    tsh.insert(engine, ts, 'ts_through_time',
+    tsh.update(engine, ts, 'ts_through_time',
                'test', insertion_date=idate1)
     assert idate1 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate2 = pd.Timestamp('2015-1-2 15:43:23', tz='UTC')
     ts = genserie(datetime(2010, 1, 4), 'D', 4, [2], name='truc')
-    tsh.insert(engine, ts, 'ts_through_time',
+    tsh.update(engine, ts, 'ts_through_time',
                'test', insertion_date=idate2)
     assert idate2 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate3 = pd.Timestamp('2015-1-3', tz='UTC')
     ts = genserie(datetime(2010, 1, 4), 'D', 4, [3], name='truc')
-    tsh.insert(engine, ts, 'ts_through_time',
+    tsh.update(engine, ts, 'ts_through_time',
                'test', insertion_date=idate3)
     assert idate3 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
@@ -543,7 +545,7 @@ def test_revision_date(engine, tsh):
 def test_point_deletion(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 11)
     ts_begin.iloc[-1] = np.nan
-    tsh.insert(engine, ts_begin, 'ts_del', 'test')
+    tsh.update(engine, ts_begin, 'ts_del', 'test')
 
     _, ts = Snapshot(engine, tsh, 'ts_del').find()
     assert ts.iloc[-2] == 8.0
@@ -551,7 +553,7 @@ def test_point_deletion(engine, tsh):
     ts_begin.iloc[0] = np.nan
     ts_begin.iloc[3] = np.nan
 
-    tsh.insert(engine, ts_begin, 'ts_del', 'test')
+    tsh.update(engine, ts_begin, 'ts_del', 'test')
 
     assert_df("""
 2010-01-02    1.0
@@ -572,7 +574,7 @@ def test_point_deletion(engine, tsh):
     ts_begin.iloc[0] = 42
     ts_begin.iloc[3] = 23
 
-    tsh.insert(engine, ts_begin, 'ts_del', 'test')
+    tsh.update(engine, ts_begin, 'ts_del', 'test')
 
     assert_df("""
 2010-01-01    42.0
@@ -590,12 +592,12 @@ def test_point_deletion(engine, tsh):
     # now with string!
 
     ts_string = genserie(datetime(2010, 1, 1), 'D', 10, ['machin'])
-    tsh.insert(engine, ts_string, 'ts_string_del', 'test')
+    tsh.update(engine, ts_string, 'ts_string_del', 'test')
 
     ts_string[4] = None
     ts_string[5] = None
 
-    tsh.insert(engine, ts_string, 'ts_string_del', 'test')
+    tsh.update(engine, ts_string, 'ts_string_del', 'test')
     assert_df("""
 2010-01-01    machin
 2010-01-02    machin
@@ -619,7 +621,7 @@ def test_point_deletion(engine, tsh):
     ts_string[4] = 'truc'
     ts_string[6] = 'truc'
 
-    tsh.insert(engine, ts_string, 'ts_string_del', 'test')
+    tsh.update(engine, ts_string, 'ts_string_del', 'test')
     assert_df("""
 2010-01-01    machin
 2010-01-02    machin
@@ -634,13 +636,13 @@ def test_point_deletion(engine, tsh):
 
     ts_string[ts_string.index] = np.nan
     with pytest.raises(ValueError):
-        tsh.insert(engine, ts_string, 'ts_string_del', 'test')
+        tsh.update(engine, ts_string, 'ts_string_del', 'test')
 
 
 def test_nan_first(engine, tsh):
     # first insertion with only nan
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10, [np.nan])
-    assert tsh.insert(engine, ts_begin, 'ts_null', 'test') is None
+    assert tsh.update(engine, ts_begin, 'ts_null', 'test') is None
 
 
 def test_more_point_deletion(engine, tsh):
@@ -662,8 +664,8 @@ def test_more_point_deletion(engine, tsh):
 Freq: D
 """, ts_repushed)
 
-    tsh.insert(engine, ts_repushed, 'ts_repushed', 'test')
-    diff = tsh.insert(engine, ts_repushed, 'ts_repushed', 'test')
+    tsh.update(engine, ts_repushed, 'ts_repushed', 'test')
+    diff = tsh.update(engine, ts_repushed, 'ts_repushed', 'test')
     assert diff is None
 
     # there is no difference
@@ -689,28 +691,28 @@ Freq: D
     # full erasing
     # numeric
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 4)
-    tsh.insert(engine, ts_begin, 'ts_full_del', 'test')
+    tsh.update(engine, ts_begin, 'ts_full_del', 'test')
 
     ts_begin.iloc[:] = np.nan
     with pytest.raises(ValueError):
-        tsh.insert(engine, ts_begin, 'ts_full_del', 'test')
+        tsh.update(engine, ts_begin, 'ts_full_del', 'test')
 
     ts_end = genserie(datetime(2010, 1, 1), 'D', 4)
-    tsh.insert(engine, ts_end, 'ts_full_del', 'test')
+    tsh.update(engine, ts_end, 'ts_full_del', 'test')
 
     # string
 
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 4, ['text'])
-    tsh.insert(engine, ts_begin, 'ts_full_del_str', 'test')
+    tsh.update(engine, ts_begin, 'ts_full_del_str', 'test')
 
     ts_begin = pd.Series([np.nan] * 4, name='ts_full_del_str',
                          index=ts_begin.index)
 
     with pytest.raises(ValueError):
-        tsh.insert(engine, ts_begin, 'ts_full_del_str', 'test')
+        tsh.update(engine, ts_begin, 'ts_full_del_str', 'test')
 
     ts_end = genserie(datetime(2010, 1, 1), 'D', 4, ['text'])
-    tsh.insert(engine, ts_end, 'ts_full_del_str', 'test')
+    tsh.update(engine, ts_end, 'ts_full_del_str', 'test')
 
 
 def test_deletion_over_horizon(engine, tsh):
@@ -721,7 +723,7 @@ def test_deletion_over_horizon(engine, tsh):
     )
 
     name = 'delete_over_hz'
-    tsh.insert(engine, ts, name, 'Babar',
+    tsh.update(engine, ts, name, 'Babar',
                insertion_date=idate)
 
     ts = pd.Series(
@@ -729,7 +731,7 @@ def test_deletion_over_horizon(engine, tsh):
         index=pd.date_range(datetime(2018, 1, 3), freq='D', periods=3)
     )
 
-    tsh.insert(engine, ts, name, 'Celeste',
+    tsh.update(engine, ts, name, 'Celeste',
                insertion_date=idate.replace(day=2))
     ival = tsh.interval(engine, name)
     assert ival.left == datetime(2018, 1, 1)
@@ -739,7 +741,7 @@ def test_deletion_over_horizon(engine, tsh):
         [np.nan, np.nan, np.nan],
         index=pd.date_range(datetime(2017, 12, 30), freq='D', periods=3)
     )
-    tsh.insert(engine, ts, name, 'Arthur',
+    tsh.update(engine, ts, name, 'Arthur',
                insertion_date=idate.replace(day=3))
     ival = tsh.interval(engine, name)
     assert ival.left == datetime(2018, 1, 2)
@@ -749,7 +751,7 @@ def test_deletion_over_horizon(engine, tsh):
 def test_history(engine, tsh):
     for numserie in (1, 2, 3):
         with engine.begin() as cn:
-            tsh.insert(cn, genserie(datetime(2017, 1, 1), 'D', numserie), 'smallserie',
+            tsh.update(cn, genserie(datetime(2017, 1, 1), 'D', numserie), 'smallserie',
                        'aurelien.campeas@pythonian.fr',
                        insertion_date=utcdt(2017, 2, numserie))
 
@@ -817,7 +819,7 @@ insertion_date             value_date
     for idate in histts:
         with engine.begin() as cn:
             idate = idate.replace(tzinfo=pytz.timezone('UTC'))
-            tsh.insert(cn, histts[idate], 'smallserie2',
+            tsh.update(cn, histts[idate], 'smallserie2',
                        'aurelien.campeas@pythonian.f', insertion_date=idate)
 
     # this is perfectly round-tripable
@@ -931,7 +933,7 @@ def test_delta_na(engine, tsh):
 
     for idx, idate in enumerate(ldates):
         ts = pd.Series([idx] * 3, index = ldates)
-        tsh.insert(engine, ts, 'without_na', 'arnaud',
+        tsh.update(engine, ts, 'without_na', 'arnaud',
                    insertion_date=idate)
 
     assert_df("""
@@ -971,7 +973,7 @@ insertion_date             value_date
         serie = pd.Series([float(idx)] * 3, index = ldates)
         if idx == 2:
             serie[-1] = np.nan
-        tsh.insert(engine, serie, 'with_na', 'arnaud',
+        tsh.update(engine, serie, 'with_na', 'arnaud',
                    insertion_date=idate)
 
     # the value at 2015-01-22 is hidden by the inserted nan
@@ -1007,7 +1009,7 @@ def test_nr_gethistory(engine, tsh):
                    index=pd.date_range(start=datetime(2016, 12, 29),
                                        end=datetime(2017, 1, 1),
                                        freq='D'))
-    tsh.insert(engine, s0, 'foo', 'zogzog',
+    tsh.update(engine, s0, 'foo', 'zogzog',
                insertion_date=utcdt(2015, 12, 31))
 
     s1 = pd.Series([1, 0, 0, 1],
@@ -1017,7 +1019,7 @@ def test_nr_gethistory(engine, tsh):
     idate = utcdt(2016, 1, 1)
     for i in range(5):
         with engine.begin() as cn:
-            tsh.insert(cn, s1 * i, 'foo',
+            tsh.update(cn, s1 * i, 'foo',
                        'aurelien.campeas@pythonian.f',
                        insertion_date=idate + timedelta(days=i))
 
@@ -1046,18 +1048,18 @@ def test_add_na(engine, tsh):
     ts_nan = genserie(datetime(2010, 1, 1), 'D', 5)
     ts_nan[[True] * len(ts_nan)] = np.nan
 
-    diff = tsh.insert(engine, ts_nan, 'ts_add_na', 'test')
+    diff = tsh.update(engine, ts_nan, 'ts_add_na', 'test')
     assert diff is None
 
     # in case of insertion in existing data
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 5)
-    tsh.insert(engine, ts_begin, 'ts_add_na', 'test')
+    tsh.update(engine, ts_begin, 'ts_add_na', 'test')
 
     ts_nan = genserie(datetime(2010, 1, 6), 'D', 5)
     ts_nan[[True] * len(ts_nan)] = np.nan
     ts_nan = pd.concat([ts_begin, ts_nan])
 
-    diff = tsh.insert(engine, ts_nan, 'ts_add_na', 'test')
+    diff = tsh.update(engine, ts_nan, 'ts_add_na', 'test')
     assert diff is None
 
     result = tsh.get(engine, 'ts_add_na')
@@ -1065,13 +1067,13 @@ def test_add_na(engine, tsh):
 
 
 def test_dtype_mismatch(engine, tsh):
-    tsh.insert(engine,
+    tsh.update(engine,
                genserie(datetime(2015, 1, 1), 'D', 11).astype('str'),
                'error1',
                'test')
 
     with pytest.raises(Exception) as excinfo:
-        tsh.insert(engine,
+        tsh.update(engine,
                    genserie(datetime(2015, 1, 1), 'D', 11),
                    'error1',
                    'test')
@@ -1080,13 +1082,13 @@ def test_dtype_mismatch(engine, tsh):
         'new type is float64, type in base is object'
     )
 
-    tsh.insert(engine,
+    tsh.update(engine,
                genserie(datetime(2015, 1, 1), 'D', 11),
                'error2',
                'test')
 
     with pytest.raises(Exception) as excinfo:
-        tsh.insert(engine,
+        tsh.update(engine,
                    genserie(datetime(2015, 1, 1), 'D', 11).astype('str'),
                    'error2',
                    'test')
@@ -1096,7 +1098,7 @@ def test_dtype_mismatch(engine, tsh):
     )
 
     with pytest.raises(Exception) as excinfo:
-        tsh.insert(engine,
+        tsh.update(engine,
                    genserie(utcdt(2015, 1, 1), 'D', 11),
                    'error2',
                    'test')
@@ -1110,26 +1112,26 @@ def test_precision(engine, tsh):
     floaty = 0.123456789123456789
     ts = genserie(datetime(2015, 1, 1), 'D', 5, initval=[floaty])
 
-    tsh.insert(engine, ts, 'precision', 'test')
+    tsh.update(engine, ts, 'precision', 'test')
     ts_round = tsh.get(engine, 'precision')
     assert 0.12345678912345678 == ts_round.iloc[0]
 
-    diff = tsh.insert(engine, ts_round, 'precision', 'test')
+    diff = tsh.update(engine, ts_round, 'precision', 'test')
     # the roundtriped series does not produce a diff when reinserted
     assert diff is None
 
     # neither does the original series
-    diff = tsh.insert(engine, ts, 'precision', 'test')
+    diff = tsh.update(engine, ts, 'precision', 'test')
     assert diff is None
 
 
 def test_serie_deletion(engine, tsh):
     ts = genserie(datetime(2018, 1, 10), 'H', 10)
-    tsh.insert(engine, ts, 'keepme', 'Babar')
-    tsh.insert(engine, ts, 'deleteme', 'Celeste')
+    tsh.update(engine, ts, 'keepme', 'Babar')
+    tsh.update(engine, ts, 'deleteme', 'Celeste')
     ts = genserie(datetime(2018, 1, 12), 'H', 10)
-    tsh.insert(engine, ts, 'keepme', 'Babar')
-    tsh.insert(engine, ts, 'deleteme', 'Celeste')
+    tsh.update(engine, ts, 'keepme', 'Babar')
+    tsh.update(engine, ts, 'deleteme', 'Celeste')
 
     assert tsh.metadata(engine, 'deleteme') == {
         'tzaware': False,
@@ -1151,7 +1153,7 @@ def test_serie_deletion(engine, tsh):
                             freq='D', periods=3)
     )
     with engine.begin() as cn:
-        tsh.insert(cn, ts, 'deleteme', 'Celeste')
+        tsh.update(cn, ts, 'deleteme', 'Celeste')
 
     assert tsh.metadata(engine, 'deleteme') == {
         'tzaware': True,
@@ -1166,9 +1168,9 @@ def test_strip(engine, tsh):
     for i in range(1, 5):
         pubdate = utcdt(2017, 1, i)
         ts = genserie(datetime(2017, 1, 10), 'H', 1 + i)
-        tsh.insert(engine, ts, 'xserie', 'babar', insertion_date=pubdate)
+        tsh.update(engine, ts, 'xserie', 'babar', insertion_date=pubdate)
         # also insert something completely unrelated
-        tsh.insert(engine, genserie(datetime(2018, 1, 1), 'D', 1 + i),
+        tsh.update(engine, genserie(datetime(2018, 1, 1), 'D', 1 + i),
                    'yserie', 'celeste')
 
     csida = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3))
@@ -1258,7 +1260,7 @@ def test_long_name(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'D', 40)
 
     name = 'a' * 64
-    tsh.insert(engine, serie, name, 'babar')
+    tsh.update(engine, serie, name, 'babar')
     assert tsh.get(engine, name) is not None
 
 
@@ -1270,7 +1272,7 @@ def test_staircase(engine, tsh):
                                end=utcdt(2015, 1, 1, 3),
                                freq='H'):
         ts = genserie(start=idate, freq='H', repeat=7)
-        tsh.insert(engine, ts, 'republication', 'test',
+        tsh.update(engine, ts, 'republication', 'test',
                    insertion_date=idate)
 
     hist = tsh.history(engine, 'republication')
@@ -1341,7 +1343,7 @@ def test_staircase_2_tzaware(engine, tsh):
                                               end=utcdt(2015, 1, 4),
                                               freq='D')):
         ts = genserie(start=idate, freq='H', repeat=7)
-        tsh.insert(engine, ts, 'repu2', 'test', insertion_date=idate)
+        tsh.update(engine, ts, 'repu2', 'test', insertion_date=idate)
 
     deltas = tsh.staircase(engine, 'repu2', delta=timedelta(hours=3))
     assert_df("""
@@ -1403,7 +1405,7 @@ def test_staircase_2_tznaive(engine, tsh):
                                               end=utcdt(2015, 1, 4),
                                               freq='D')):
         ts = genserie(start=idate.replace(tzinfo=None), freq='H', repeat=7)
-        tsh.insert(engine, ts, 'repu-tz-naive', 'test', insertion_date=idate)
+        tsh.update(engine, ts, 'repu-tz-naive', 'test', insertion_date=idate)
 
     deltas = tsh.staircase(engine, 'repu-tz-naive', delta=timedelta(hours=3))
     assert_df("""
@@ -1465,9 +1467,9 @@ def test_rename(engine, tsh):
 
     serie = genserie(datetime(2020, 1, 1), 'D', 3)
 
-    tsh.insert(engine, serie, 'foo', 'Babar')
-    tsh.insert(engine, serie, 'bar', 'Babar')
-    tsh.insert(engine, serie, 'quux', 'Babar')
+    tsh.update(engine, serie, 'foo', 'Babar')
+    tsh.update(engine, serie, 'bar', 'Babar')
+    tsh.update(engine, serie, 'quux', 'Babar')
 
     tsh.rename(engine, 'foo', 'new-foo')
     tsh.rename(engine, 'bar', 'new-bar')
@@ -1481,7 +1483,7 @@ def test_rename(engine, tsh):
 
     # check we can safely re-use 'foo'
     serie = genserie(datetime(2025, 1, 1), 'D', 3)
-    tsh.insert(engine, serie, 'foo', 'Babar')
+    tsh.update(engine, serie, 'foo', 'Babar')
     ts = tsh.get(engine, 'foo')
     assert_df("""
 2025-01-01    0.0
@@ -1494,7 +1496,7 @@ def test_index_order(engine, tsh):
     ts = genserie(datetime(2020, 1, 1), 'D', 3)
 
     # will be sorted for us as needed
-    tsh.insert(engine, ts.sort_index(ascending=False),
+    tsh.update(engine, ts.sort_index(ascending=False),
                'test_order', 'babar')
 
 
@@ -1516,7 +1518,7 @@ def test_parallel(engine, tsh):
         tsh = timeseries(namespace=ns)
         with engine.begin() as cn:
             try:
-                tsh.insert(cn, ts, name, author)
+                tsh.update(cn, ts, name, author)
             except Exception as e:
                 errors.append(e)
 
@@ -1538,7 +1540,7 @@ def test_chunky_array(engine, tsh):
     assert not ts.index.values.flags['C_CONTIGUOUS']
 
     with engine.begin() as cn:
-        tsh.insert(cn, ts, 'chunky', 'Babar')
+        tsh.update(cn, ts, 'chunky', 'Babar')
 
     # we're ok now
     ts_out = tsh.get(engine, 'chunky')
@@ -1552,14 +1554,14 @@ def test_chunky_array(engine, tsh):
 def test_null_serie(engine, tsh):
     ts = pd.Series()
 
-    tsh.insert(engine, ts, 'null', 'Babar')
+    tsh.update(engine, ts, 'null', 'Babar')
 
 
 def test_na_at_boundaries(engine, tsh):
     ts = pd.Series([np.nan] * 3 + [3] * 5 + [np.nan] * 2,
                    index=pd.date_range(start=datetime(2010, 1, 10),
                                        freq='D', periods=10))
-    tsh.insert(engine, ts, 'test_nan', 'test')
+    tsh.update(engine, ts, 'test_nan', 'test')
     result = tsh.get(engine, 'test_nan')
     assert_df("""
 2010-01-13    3.0
@@ -1586,7 +1588,7 @@ def test_na_at_boundaries(engine, tsh):
     ts = pd.Series([np.nan] * 3 + [4] * 5 + [np.nan] * 2,
                    index=pd.date_range(start=datetime(2010, 1, 10),
                                        freq='D', periods=10))
-    tsh.insert(engine, ts, 'test_nan', 'test')
+    tsh.update(engine, ts, 'test_nan', 'test')
     result = tsh.get(engine, 'test_nan', _keep_nans=True)
     # they don't show up
     assert_df("""
@@ -1605,7 +1607,7 @@ def test_na_at_boundaries(engine, tsh):
     ts = pd.Series([np.nan] * 4 + [5] * 3 + [np.nan] * 3,
                    index=pd.date_range(start=datetime(2010, 1, 10),
                                        freq='D', periods=10))
-    tsh.insert(engine, ts, 'test_nan', 'test')
+    tsh.update(engine, ts, 'test_nan', 'test')
     result = tsh.get(engine, 'test_nan', _keep_nans=True)
     assert_df("""
 2010-01-13    NaN
@@ -1630,19 +1632,19 @@ def test_insert_errors(engine, tsh):
                                        freq='D', periods=3))
 
     with pytest.raises(TypeError):
-        tsh.insert(engine, 42, 'error', 'Babar')
+        tsh.update(engine, 42, 'error', 'Babar')
 
     with pytest.raises(AssertionError):
-        tsh.insert(engine, ts, 42, 'Babar')
+        tsh.update(engine, ts, 42, 'Babar')
 
     with pytest.raises(AssertionError):
-        tsh.insert(engine, ts, 'error', 42)
+        tsh.update(engine, ts, 'error', 42)
 
     with pytest.raises(AssertionError):
-        tsh.insert(engine, ts, 'error', 'Babar', insertion_date='2010-1-1')
+        tsh.update(engine, ts, 'error', 'Babar', insertion_date='2010-1-1')
 
     with pytest.raises(AssertionError):
-        tsh.insert(engine, ts, 'error', 'Babar', metadata=42)
+        tsh.update(engine, ts, 'error', 'Babar', metadata=42)
 
 
 def test_index_with_nat(engine, tsh):
@@ -1652,7 +1654,7 @@ def test_index_with_nat(engine, tsh):
     ts = pd.Series([1, 2, 3], index=index)
 
     with pytest.raises(AssertionError):
-        tsh.insert(engine, ts, 'index_with_nat', 'Bugger')
+        tsh.update(engine, ts, 'index_with_nat', 'Bugger')
 
 
 def test_replace(engine, tsh):

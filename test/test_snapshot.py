@@ -28,7 +28,7 @@ def test_chunks(engine, tsh):
     _set_cache(engine)
     with tempattr(Snapshot, '_max_bucket_size', 2):
         ts = genserie(datetime(2010, 1, 1), 'D', 5)
-        tsh.insert(engine, ts, 'chunks', 'test')
+        tsh.update(engine, ts, 'chunks', 'test')
 
         assert_df("""
 2010-01-01    0.0
@@ -71,7 +71,7 @@ def test_chunks(engine, tsh):
                                            end=datetime(2010, 1, 9),
                                            freq='D'))
 
-        tsh.insert(engine, ts, 'chunks', 'test')
+        tsh.update(engine, ts, 'chunks', 'test')
         whole = tsh.get(engine, 'chunks')
         assert_df("""
 2010-01-01    0.0
@@ -137,7 +137,7 @@ def test_chunks(engine, tsh):
         whole[2] = 0
         whole[7] = 0
 
-        tsh.insert(engine, whole, 'chunks', 'test')
+        tsh.update(engine, whole, 'chunks', 'test')
 
         assert_df("""
 2010-01-01    0.0
@@ -222,7 +222,7 @@ def test_append(engine, tsh):
     for x, dt in enumerate(pd.date_range(start=utcdt(2018, 1, 1),
                                          freq='D', periods=10)):
         ts = genserie(dt, 'D', 1, [x], name='daily')
-        tsh.insert(engine, ts, 'append', 'aurelien.campeas@pythonian.fr',
+        tsh.update(engine, ts, 'append', 'aurelien.campeas@pythonian.fr',
                    insertion_date=dt)
 
     sql = 'select id, parent, chunk from "{}.snapshot".append order by id'.format(
@@ -246,10 +246,10 @@ def test_prepend(engine, tsh):
 
     assert 40 == len(serie)
     ts_insert = serie[2:]
-    tsh.insert(engine, ts_insert, 'prepend', 'test')
+    tsh.update(engine, ts_insert, 'prepend', 'test')
     assert 38 == len(tsh.get(engine, 'prepend'))
 
-    tsh.insert(engine, serie, 'prepend', 'test')
+    tsh.update(engine, serie, 'prepend', 'test')
     assert 40 == len(tsh.get(engine, 'prepend'))
 
     sql = 'select id, parent, chunk from "{}.snapshot".prepend order by id'.format(
@@ -266,7 +266,7 @@ def test_prepend(engine, tsh):
 
 def test_get_from_to(engine, tsh):
     ts = genserie(datetime(2015, 1, 1), 'D', 365)
-    tsh.insert(engine, ts, 'quitelong', 'aurelien.campeas@pythonian.fr')
+    tsh.update(engine, ts, 'quitelong', 'aurelien.campeas@pythonian.fr')
 
     snap = Snapshot(engine, tsh, 'quitelong')
     if tsh.namespace == 'z-z':

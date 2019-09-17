@@ -6,7 +6,7 @@ from tshistory.testutil import genserie, utcdt
 
 def test_info(engine, cli, tsh):
     serie = genserie(datetime(2020, 1, 1), 'D', 3)
-    tsh.insert(engine, serie, 'someseries', 'Babar')
+    tsh.update(engine, serie, 'someseries', 'Babar')
 
     r = cli('info', engine.url,
             namespace=tsh.namespace)
@@ -19,9 +19,9 @@ def test_info(engine, cli, tsh):
 
 def test_log(engine, cli, tsh):
     serie = genserie(datetime(2020, 1, 1), 'D', 3)
-    tsh.insert(engine, serie, 'log_me', 'Babar')
+    tsh.update(engine, serie, 'log_me', 'Babar')
     serie = genserie(datetime(2020, 1, 2), 'D', 3)
-    tsh.insert(engine, serie, 'log_me', 'Babar')
+    tsh.update(engine, serie, 'log_me', 'Babar')
 
     r = cli('log', engine.url, 'log_me',
             namespace=tsh.namespace)
@@ -31,10 +31,10 @@ def test_log(engine, cli, tsh):
 
 def test_history(engine, cli, tsh):
     serie = genserie(datetime(2020, 1, 1), 'D', 3)
-    tsh.insert(engine, serie, 'some_history', 'Babar',
+    tsh.update(engine, serie, 'some_history', 'Babar',
                insertion_date=utcdt(2019, 1, 1))
     serie = genserie(datetime(2020, 1, 2), 'D', 3)
-    tsh.insert(engine, serie, 'some_history', 'Babar',
+    tsh.update(engine, serie, 'some_history', 'Babar',
                insertion_date=utcdt(2019, 1, 2))
 
     r = cli('history', engine.url,
@@ -48,8 +48,8 @@ def test_history(engine, cli, tsh):
 
 def test_check(engine, cli, tsh):
     serie = genserie(datetime(2020, 1, 1), 'D', 3)
-    tsh.insert(engine, serie, 'things', 'Babar')
-    tsh.insert(engine, serie, 'other_things', 'Babar')
+    tsh.update(engine, serie, 'things', 'Babar')
+    tsh.update(engine, serie, 'other_things', 'Babar')
 
     r = cli('check', engine.url,
             namespace=tsh.namespace)
@@ -60,9 +60,9 @@ def test_check(engine, cli, tsh):
 def test_rename(engine, cli, datadir, tsh):
     serie = genserie(datetime(2020, 1, 1), 'D', 3)
 
-    tsh.insert(engine, serie, 'afoo', 'Babar')
-    tsh.insert(engine, serie, 'abar', 'Babar')
-    tsh.insert(engine, serie, 'aquux', 'Babar')
+    tsh.update(engine, serie, 'afoo', 'Babar')
+    tsh.update(engine, serie, 'abar', 'Babar')
+    tsh.update(engine, serie, 'aquux', 'Babar')
 
     r = cli('rename', engine.url, datadir / 'rename.csv',
             namespace=tsh.namespace)
@@ -77,9 +77,9 @@ def test_rename(engine, cli, datadir, tsh):
 def test_delete(engine, cli, datadir, tsh):
     serie = genserie(datetime(2020, 1, 1), 'D', 3)
 
-    tsh.insert(engine, serie, 'bfoo', 'Babar')
-    tsh.insert(engine, serie, 'bbar', 'Babar')
-    tsh.insert(engine, serie, 'bquux', 'Babar')
+    tsh.update(engine, serie, 'bfoo', 'Babar')
+    tsh.update(engine, serie, 'bbar', 'Babar')
+    tsh.update(engine, serie, 'bquux', 'Babar')
 
     r = cli('delete', engine.url,
             deletefile=datadir / 'delete.csv',
@@ -92,7 +92,7 @@ def test_delete(engine, cli, datadir, tsh):
     assert tsh.get(engine, 'bbar') is None
     assert tsh.get(engine, 'bquux') is not None
 
-    tsh.insert(engine, serie, 'bbq', 'Babar')
+    tsh.update(engine, serie, 'bbq', 'Babar')
 
     tsh = timeseries(tsh.namespace)
     tsh._testing = True
