@@ -31,6 +31,22 @@ class timeseries:
                 insertion_date=insertion_date
             )
 
+    def replace(self,
+                updatets: pd.Series,
+                name: str,
+                author: str,
+                metadata: Optional[dict]=None,
+                insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
+        with self.engine.begin() as cn:
+            return self.tsh.replace(
+                cn,
+                updatets,
+                name,
+                author,
+                metadata=metadata,
+                insertion_date=insertion_date
+            )
+
     def get(self, name: str,
             revision_date: Optional[datetime]=None,
             from_value_date: Optional[datetime]=None,
