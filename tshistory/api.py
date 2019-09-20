@@ -1,5 +1,9 @@
 from datetime import datetime
-from typing import Union, Optional
+from typing import (
+    Dict,
+    Optional,
+    Union
+)
 from sqlalchemy import create_engine
 import pandas as pd
 
@@ -58,5 +62,23 @@ class timeseries:
                 revision_date=revision_date,
                 from_value_date=from_value_date,
                 to_value_date=to_value_date
+            )
+
+    def history(self,
+                name: str,
+                from_insertion_date: Optional[datetime]=None,
+                to_insertion_date: Optional[datetime]=None,
+                from_value_date: Optional[datetime]=None,
+                to_value_date: Optional[datetime]=None,
+                diffmode: bool=False) -> Dict[datetime, pd.Series]:
+        with self.engine.begin() as cn:
+            return self.tsh.history(
+                cn,
+                name,
+                from_insertion_date=from_insertion_date,
+                to_insertion_date=to_insertion_date,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                diffmode=diffmode
             )
 
