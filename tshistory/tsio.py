@@ -449,10 +449,10 @@ class timeseries(SeriesServices):
         assert not index.duplicated().any(), 'There are some duplicates in the index'
 
         assert index.notna().all(), 'The index contains NaT entries'
+        if index.tz is not None:
+            newts.index = index.tz_convert('UTC')
         if not index.is_monotonic_increasing:
             newts = newts.sort_index()
-        if index.tz is not None:
-           newts.index = index.tz_convert('UTC')
 
         return num2float(newts)
 

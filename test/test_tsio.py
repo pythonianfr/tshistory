@@ -105,7 +105,14 @@ def test_tzaware_non_monotonic(engine, tsh):
     )
     ts = pd.concat([ts1, ts2])
     tsh.insert(engine, ts, 'non-monotonic', 'Babar')
-    assert tsh.get(engine, 'non-monotonic') is None
+    assert_df("""
+2019-01-01 00:00:00+00:00    1.0
+2019-01-02 00:00:00+00:00    2.0
+2019-01-03 00:00:00+00:00    3.0
+2020-01-01 00:00:00+00:00    1.0
+2020-01-02 00:00:00+00:00    2.0
+2020-01-03 00:00:00+00:00    3.0
+""", tsh.get(engine, 'non-monotonic'))
 
 
 def test_tstamp_roundtrip(engine, tsh):
