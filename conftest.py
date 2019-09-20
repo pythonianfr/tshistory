@@ -45,6 +45,23 @@ def api(engine):
     )
 
 
+# multi-source
+
+@pytest.fixture(scope='session')
+def mapi(engine):
+    sch = schema.tsschema('test-api')
+    sch.create(engine)
+    sch = schema.tsschema('test-api-2')
+    sch.create(engine)
+    o = tsh_api.multisourcetimeseries(
+        DBURI, namespace='test-api'
+    )
+    o.addsource(
+        DBURI, 'test-api-2'
+    )
+    return o
+
+
 @pytest.fixture(scope='session')
 def datadir():
     return DATADIR

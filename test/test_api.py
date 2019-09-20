@@ -1,5 +1,7 @@
 import pandas as pd
 
+from tshistory.api import timeseries, multisourcetimeseries
+
 from tshistory.testutil import (
     assert_df,
     assert_hist,
@@ -100,3 +102,49 @@ insertion_date             value_date
 
     assert api.exists('api-test')
     assert not api.exists('i-dont-exist')
+
+
+def test_multisource(mapi):
+
+    def create(uri, ns, name):
+        api = timeseries(uri, ns)
+        series = pd.Series(
+            [1, 2, 3],
+            index=pd.date_range(
+                utcdt(2020, 1, 1), periods=3, freq='D'
+            )
+        )
+
+        api.update(
+            series, name, 'Babar',
+            insertion_date=utcdt(2019, 1, 1),
+            metadata={'about': 'test'}
+        )
+        out = api.get(name)
+        assert_df("""
+2020-01-01 00:00:00+00:00    1.0
+2020-01-02 00:00:00+00:00    2.0
+2020-01-03 00:00:00+00:00    3.0
+""", out)
+
+        series[utcdt(2020, 1, 4)] = 4
+        api.update(
+            series, name, 'Babar',
+            insertion_date=utcdt(2019, 1, 2)
+        )
+        out = api.get(
+            name,
+            from_value_date=utcdt(2020, 1, 2),
+            to_value_date=utcdt(2020, 1, 3)
+        )
+        assert_df("""
+2020-01-02 00:00:00+00:00    2.0
+2020-01-03 00:00:00+00:00    3.0
+""", out)
+
+    create(mapi.uri, mapi.namespace, 'api-1')
+    create(mapi.uri, 'test-api-2', 'api-2')
+
+    assert not mapi.exists('i-dont-exist')
+    assert mapi.exists('api-1')
+    assert mapi.exists('api-2')
