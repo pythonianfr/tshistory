@@ -94,6 +94,20 @@ def test_in_tx(tsh, engine):
         tsh.insert(cn, ts, 'test_tx', 'Babar')
 
 
+def test_tzaware_non_monotonic(engine, tsh):
+    ts1 = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2020, 1, 1), freq='D', periods=3)
+    )
+    ts2 = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2019, 1, 1), freq='D', periods=3)
+    )
+    ts = pd.concat([ts1, ts2])
+    tsh.insert(engine, ts, 'non-monotonic', 'Babar')
+    assert tsh.get(engine, 'non-monotonic') is None
+
+
 def test_tstamp_roundtrip(engine, tsh):
     ts = genserie(datetime(2017, 10, 28, 23),
                   'H', 4, tz='UTC')
