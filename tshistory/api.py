@@ -51,6 +51,10 @@ class timeseries:
                 insertion_date=insertion_date
             )
 
+    def exists(self, name):
+        with self.engine.begin() as cn:
+            return self.tsh.exists(cn, name)
+
     def get(self, name: str,
             revision_date: Optional[datetime]=None,
             from_value_date: Optional[datetime]=None,

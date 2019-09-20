@@ -97,3 +97,6 @@ insertion_date             value_date
 2019-01-02 00:00:00+00:00  2020-01-04 00:00:00+00:00    4.0
 2019-01-03 00:00:00+00:00  2019-12-31 00:00:00+00:00    0.0
 """, hist)
+
+    assert api.exists('api-test')
+    assert not api.exists('i-dont-exist')
