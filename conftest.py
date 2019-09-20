@@ -4,10 +4,15 @@ from sqlalchemy import create_engine
 import pandas as pd
 
 import pytest
-from pytest_sa_pg import db
+from pytest_sa_pg import db as dbsetup
 from click.testing import CliRunner
 
-from tshistory import schema, tsio, cli as command
+from tshistory import (
+    api as tsh_api,
+    cli as command,
+    schema,
+    tsio
+)
 from tshistory.snapshot import Snapshot
 
 
@@ -16,12 +21,28 @@ DBURI = 'postgresql://localhost:5433/postgres'
 
 
 @pytest.fixture(scope='session')
-def engine(request):
-    db.setup_local_pg_cluster(request, DATADIR, 5433, {
+def db(request):
+    dbsetup.setup_local_pg_cluster(
+        request, DATADIR, 5433, {
         'timezone': 'UTC',
-        'log_timezone': 'UTC'}
+        'log_timezone': 'UTC'
+        }
     )
+
+
+@pytest.fixture(scope='session')
+def engine(db):
     return create_engine(DBURI)
+
+
+@pytest.fixture(scope='session')
+def api(engine):
+    sch = schema.tsschema('test-api')
+    sch.create(engine)
+    return tsh_api.timeseries(
+        DBURI,
+        namespace='test-api'
+    )
 
 
 @pytest.fixture(scope='session')
