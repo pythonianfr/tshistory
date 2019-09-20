@@ -6,11 +6,11 @@ doc = Path(__file__).parent / 'README.md'
 
 
 setup(name='tshistory',
-      version='0.8.0',
+      version='0.8.1',
       author='Pythonian',
       author_email='aurelien.campeas@pythonian.fr, arnaud.campeas@pythonian.fr',
       url='https://bitbucket.org/pythonian/tshistory',
-      description='Store timeseries histories into postgres',
+      description='Timeseries store with version control',
       long_description=doc.read_text(),
       long_description_content_type='text/markdown',
       packages=['tshistory'],
