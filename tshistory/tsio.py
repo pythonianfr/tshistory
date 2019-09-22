@@ -111,6 +111,13 @@ class timeseries(SeriesServices):
 
         self._validate(cn, newts, name)
 
+        # check that we don't insert a duplicate of current value
+        current = self.get(cn, name)
+        if current.equals(newts):
+            L.info('no difference in %s by %s (for ts of size %s)',
+                   name, author, len(newts))
+            return
+
         # compute series start/end stamps
         start, end = start_end(newts)
         head = Snapshot(cn, self, name).create(newts)

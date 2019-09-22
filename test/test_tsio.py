@@ -1758,10 +1758,4 @@ insertion_date             value_date
 2019-01-01 00:00:00+00:00  2020-01-01 00:00:00+00:00    1.0
                            2020-01-02 00:00:00+00:00    2.0
                            2020-01-03 00:00:00+00:00    3.0
-2019-01-02 00:00:00+00:00  2020-01-01 00:00:00+00:00    1.0
-                           2020-01-02 00:00:00+00:00    2.0
-                           2020-01-03 00:00:00+00:00    3.0
     """, hist)
-    snap = Snapshot(_set_cache(engine), tsh, 'replace-reuse')
-    chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(2)]
-    assert chunks == [(2, None)]
