@@ -1662,7 +1662,7 @@ def test_replace(engine, tsh):
     )
 
     seriesa = pd.Series(
-        [1, 2, 3],
+        [1., 2., 3.],
         index=index
     )
     seriesb = pd.Series(
@@ -1678,6 +1678,10 @@ def test_replace(engine, tsh):
         engine, seriesa, 'replaceme', 'Babar',
         insertion_date=utcdt(2019, 1, 1)
     )
+    ival = tsh.interval(engine, 'replaceme')
+    assert ival.left == pd.Timestamp('2020-01-01 00:00:00+0000', tz='UTC')
+    assert ival.right == pd.Timestamp('2020-01-03 00:00:00+0000', tz='UTC')
+
     tsh.replace(
         engine, seriesb, 'replaceme', 'Celeste',
         insertion_date=utcdt(2019, 1, 2)
@@ -1713,3 +1717,13 @@ insertion_date             value_date
 2019-01-03 00:00:00+00:00  2020-01-02 00:00:00+00:00    2.0
                            2020-01-03 00:00:00+00:00    2.0
 """, tsh.history(engine, 'replaceme'))
+
+    seriesa[-1] = np.nan
+    seriesa[0] = np.nan
+    tsh.replace(
+        engine, seriesa, 'replaceme', 'Zebulon',
+        insertion_date=utcdt(2019, 1, 4)
+    )
+    ival = tsh.interval(engine, 'replaceme')
+    assert ival.left == pd.Timestamp('2020-01-01 00:00:00+0000', tz='UTC')
+    assert ival.right == pd.Timestamp('2020-01-03 00:00:00+0000', tz='UTC')
