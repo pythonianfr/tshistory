@@ -1727,3 +1727,41 @@ insertion_date             value_date
     ival = tsh.interval(engine, 'replaceme')
     assert ival.left == pd.Timestamp('2020-01-02 00:00:00+0000', tz='UTC')
     assert ival.right == pd.Timestamp('2020-01-02 00:00:00+0000', tz='UTC')
+
+
+def test_replace_reuse(engine, tsh):
+    index=pd.date_range(
+        start=utcdt(2020, 1, 1),
+        freq='D', periods=3
+    )
+
+    seriesa = pd.Series(
+        [1, 2, 3],
+        index=index
+    )
+    tsh.replace(
+        engine, seriesa, 'replace-reuse', 'Babar',
+        insertion_date=utcdt(2019, 1, 1)
+    )
+    snap = Snapshot(_set_cache(engine), tsh, 'replace-reuse')
+    chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(1)]
+    assert chunks == [(1, None)]
+
+    tsh.replace(
+        engine, seriesa, 'replace-reuse', 'Babar',
+        insertion_date=utcdt(2019, 1, 2)
+    )
+
+    hist = tsh.history(engine, 'replace-reuse')
+    assert_hist("""
+insertion_date             value_date               
+2019-01-01 00:00:00+00:00  2020-01-01 00:00:00+00:00    1.0
+                           2020-01-02 00:00:00+00:00    2.0
+                           2020-01-03 00:00:00+00:00    3.0
+2019-01-02 00:00:00+00:00  2020-01-01 00:00:00+00:00    1.0
+                           2020-01-02 00:00:00+00:00    2.0
+                           2020-01-03 00:00:00+00:00    3.0
+    """, hist)
+    snap = Snapshot(_set_cache(engine), tsh, 'replace-reuse')
+    chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(2)]
+    assert chunks == [(2, None)]
