@@ -1725,5 +1725,5 @@ insertion_date             value_date
         insertion_date=utcdt(2019, 1, 4)
     )
     ival = tsh.interval(engine, 'replaceme')
-    assert ival.left == pd.Timestamp('2020-01-01 00:00:00+0000', tz='UTC')
-    assert ival.right == pd.Timestamp('2020-01-03 00:00:00+0000', tz='UTC')
+    assert ival.left == pd.Timestamp('2020-01-02 00:00:00+0000', tz='UTC')
+    assert ival.right == pd.Timestamp('2020-01-02 00:00:00+0000', tz='UTC')

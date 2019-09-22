@@ -89,6 +89,7 @@ class timeseries(SeriesServices):
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
+        newts = newts.dropna()
         if not len(newts):
             return
         newts = self._guard_insert(
@@ -111,10 +112,7 @@ class timeseries(SeriesServices):
         self._validate(cn, newts, name)
 
         # compute series start/end stamps
-        tsstart, tsend = start_end(newts)
-        ival = self.interval(cn, name, notz=True)
-        start = min(tsstart or ival.left, ival.left)
-        end = max(tsend or ival.right, ival.right)
+        start, end = start_end(newts)
         head = Snapshot(cn, self, name).create(newts)
         self._new_revision(
             cn, name, head, start, end,
