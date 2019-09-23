@@ -215,3 +215,21 @@ def test_multisource(mapi):
     catalog2 = mapi.catalog()
     assert catalog == catalog2
     assert catalog == {'api-1': 'primary'}
+
+    mapi.update_metadata('api-1', {'descr': 'for the mapi test'})
+    with pytest.raises(ValueError) as err:
+        mapi.update_metadata('api-2', {'descr': 'for the mapi test'})
+    assert err.value.args[0].startswith('not allowed to update metadata')
+
+    mapi.rename('api-1', 'renamed-api-1')
+    assert not mapi.exists('api-1')
+    with pytest.raises(ValueError) as err:
+        mapi.rename('api-2', 'renamed-api-2')
+    assert err.value.args[0].startswith('not allowed to rename')
+
+    mapi.delete('renamed-api-1')
+    with pytest.raises(ValueError) as err:
+        mapi.delete('api-2')
+    assert err.value.args[0].startswith('not allowed to delete')
+
+    assert not mapi.exists('renamed-api-1')

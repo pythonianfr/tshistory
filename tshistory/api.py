@@ -285,3 +285,44 @@ class multisourcetimeseries(timeseries):
             'not allowed to replace to a secondary source '
             f'{source.uri} {source.namespace}'
         )
+
+    def update_metadata(self,
+                        name: str,
+                        metadata: dict):
+        source = self._findsourcefor(name)
+        if source is None or source == self.sources[0]:
+            with source.engine.begin() as cn:
+                return source.tsh.update_metadata(
+                    cn,
+                    name,
+                    metadata
+                )
+
+        raise ValueError(
+            'not allowed to update metadata to a secondary source '
+            f'{source.uri} {source.namespace}'
+        )
+
+    def rename(self,
+               currname: str,
+               newname: str):
+        source = self._findsourcefor(currname)
+        if source is None or source == self.sources[0]:
+            with source.engine.begin() as cn:
+                return self.tsh.rename(cn, currname, newname)
+
+        raise ValueError(
+            'not allowed to rename to a secondary source '
+            f'{source.uri} {source.namespace}'
+        )
+
+    def delete(self, name: str):
+        source = self._findsourcefor(name)
+        if source is None or source == self.sources[0]:
+            with self.engine.begin() as cn:
+                return self.tsh.delete(cn, name)
+
+        raise ValueError(
+            'not allowed to delete to a secondary source '
+            f'{source.uri} {source.namespace}'
+        )
