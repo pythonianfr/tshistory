@@ -119,6 +119,13 @@ insertion_date             value_date
     meta = api.metadata('api-test')
     assert meta == {}
 
+    api.update_metadata('api-test', {
+        'desc': 'a metadata test'
+    })
+    meta = api.metadata('api-test')
+    assert meta == {
+        'desc': 'a metadata test'
+    }
 
 
 def test_multisource(mapi):

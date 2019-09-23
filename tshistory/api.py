@@ -110,6 +110,16 @@ class timeseries:
                 meta.pop(key, None)
             return meta
 
+    def update_metadata(self,
+                        name: str,
+                        metadata: dict):
+        with self.engine.begin() as cn:
+            self.tsh.update_metadata(
+                cn,
+                name,
+                metadata
+            )
+
 
 class source:
     __slots__ = ('engine', 'tsh', 'uri', 'namespace')
