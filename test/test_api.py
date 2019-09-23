@@ -137,6 +137,10 @@ insertion_date             value_date
 2020-01-04 00:00:00+00:00    4.0
 """, st)
 
+    api.rename('api-test', 'api-test2')
+    assert api.exists('api-test2')
+    assert not api.exists('api-test')
+
 
 def test_multisource(mapi):
 

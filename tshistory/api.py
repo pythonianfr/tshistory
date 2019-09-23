@@ -138,6 +138,12 @@ class timeseries:
         with self.engine.begin() as cn:
             return self.tsh.type(cn, name)
 
+    def rename(self,
+               currname: str,
+               newname: str):
+        with self.engine.begin() as cn:
+            return self.tsh.rename(cn, currname, newname)
+
 
 
 class source:
