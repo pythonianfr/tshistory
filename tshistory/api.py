@@ -95,6 +95,9 @@ class timeseries:
         with self.engine.begin() as cn:
             return self.tsh.list_series(cn)
 
+    def interval(self, name: str) -> pd.Interval:
+        with self.engine.begin() as cn:
+            return self.tsh.interval(cn, name)
 
 
 class source:

@@ -104,6 +104,10 @@ insertion_date             value_date
     assert api.exists('api-test')
     assert not api.exists('i-dont-exist')
 
+    ival = api.interval('api-test')
+    assert ival.left == pd.Timestamp('2019-12-31 00:00:00+0000', tz='UTC')
+    assert ival.right == pd.Timestamp('2020-01-04 00:00:00+0000', tz='UTC')
+
 
 def test_multisource(mapi):
 
