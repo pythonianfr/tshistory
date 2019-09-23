@@ -141,6 +141,10 @@ insertion_date             value_date
     assert api.exists('api-test2')
     assert not api.exists('api-test')
 
+    api.delete('api-test2')
+    assert not api.exists('api-test')
+    api.delete('api-test2')
+
 
 def test_multisource(mapi):
 
