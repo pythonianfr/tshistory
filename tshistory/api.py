@@ -92,41 +92,53 @@ class timeseries:
             )
 
 
+class source:
+    __slots__ = ('engine', 'tsh', 'uri', 'namespace')
+
+    def __init__(self, uri, namespace):
+        self.uri = uri
+        self.namespace = namespace
+        self.engine = create_engine(uri)
+        self.tsh = dbtimeseries(namespace)
+
 
 class multisourcetimeseries(timeseries):
     __slots__ = (
         'uri', 'namespace',
-        'engine', 'tsh',
-        'sources'
+        'mainsource', 'sources'
     )
+
+    @property
+    def engine(self):
+        return self.mainsource.engine
+
+    @property
+    def tsh(self):
+        return self.mainsource.tsh
 
     def __init__(self,
                  uri: str,
                  namespace: str='tsh'):
         self.uri = uri
         self.namespace = namespace
-        self.engine = create_engine(uri)
-        self.tsh = dbtimeseries(namespace)
-        self.sources = [(self.engine, self.tsh)]
+        self.mainsource = source(uri, namespace)
+        self.sources = [self.mainsource]
 
     def addsource(self, uri, namespace):
         self.sources.append(
-            (
-                create_engine(uri),
-                dbtimeseries(namespace)
-            )
+            source(uri, namespace)
         )
 
     def _findsourcefor(self, name):
-        for engine, tsh in self.sources:
-            with engine.begin() as cn:
-                if tsh.exists(cn, name):
-                    return engine, tsh
+        for source in self.sources:
+            with source.engine.begin() as cn:
+                if source.tsh.exists(cn, name):
+                    return source
 
     def exists(self, name):
-        for engine, tsh in self.sources:
-            with engine.begin() as cn:
-                if tsh.exists(cn, name):
+        for source in self.sources:
+            with source.engine.begin() as cn:
+                if source.tsh.exists(cn, name):
                     return True
         return False
 
@@ -137,9 +149,8 @@ class multisourcetimeseries(timeseries):
         source = self._findsourcefor(name)
         if source is None:
             return
-        engine, tsh = source
-        with engine.begin() as cn:
-            return tsh.get(
+        with source.engine.begin() as cn:
+            return source.tsh.get(
                 cn,
                 name,
                 revision_date=revision_date,
@@ -157,9 +168,8 @@ class multisourcetimeseries(timeseries):
         source = self._findsourcefor(name)
         if source is None:
             return
-        engine, tsh = source
-        with engine.begin() as cn:
-            return tsh.history(
+        with source.engine.begin() as cn:
+            return source.tsh.history(
                 cn,
                 name,
                 from_insertion_date=from_insertion_date,
@@ -168,3 +178,52 @@ class multisourcetimeseries(timeseries):
                 to_value_date=to_value_date,
                 diffmode=diffmode
             )
+
+    def update(self,
+               updatets: pd.Series,
+               name: str,
+               author: str,
+               metadata: Optional[dict]=None,
+               insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
+        source = self._findsourcefor(name)
+        if source is None or source == self.sources[0]:
+            # creation or main source update
+            with source.engine.begin() as cn:
+                return source.tsh.update(
+                    cn,
+                    updatets,
+                    name,
+                    author,
+                    metadata=metadata,
+                    insertion_date=insertion_date
+                )
+
+        raise ValueError(
+            'not allowed to update to a secondary source '
+            f'{source.uri} {source.namespace}'
+        )
+
+
+    def replace(self,
+                newts: pd.Series,
+                name: str,
+                author: str,
+                metadata: Optional[dict]=None,
+                insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
+        source = self._findsourcefor(name)
+        if source is None or source == self.sources[0]:
+            # creation or main source update
+            with source.engine.begin() as cn:
+                return source.tsh.replace(
+                    cn,
+                    newts,
+                    name,
+                    author,
+                    metadata=metadata,
+                    insertion_date=insertion_date
+                )
+
+        raise ValueError(
+            'not allowed to replace to a secondary source '
+            f'{source.uri} {source.namespace}'
+        )

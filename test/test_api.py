@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from tshistory.api import timeseries, multisourcetimeseries
 
@@ -148,3 +149,21 @@ def test_multisource(mapi):
     assert not mapi.exists('i-dont-exist')
     assert mapi.exists('api-1')
     assert mapi.exists('api-2')
+
+    series = pd.Series(
+        [10, 20, 30],
+        index=pd.date_range(
+            utcdt(2020, 1, 1), periods=3, freq='D'
+        )
+    )
+    mapi.update(series, 'api-1', 'auc')
+
+    with pytest.raises(ValueError) as err:
+        mapi.update(series, 'api-2', 'auc')
+    assert err.value.args[0].startswith('not allowed to update')
+
+    mapi.replace(series, 'api-1', 'auc')
+
+    with pytest.raises(ValueError) as err:
+        mapi.replace(series, 'api-2', 'auc')
+    assert err.value.args[0].startswith('not allowed to replace')
