@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import (
     Dict,
     Optional,
@@ -89,6 +89,20 @@ class timeseries:
                 from_value_date=from_value_date,
                 to_value_date=to_value_date,
                 diffmode=diffmode
+            )
+
+    def staircase(self,
+                  name: str,
+                  delta: timedelta,
+                  from_value_date: Optional[datetime]=None,
+                  to_value_date: Optional[datetime]=None) -> Optional[pd.Series]:
+        with self.engine.begin() as cn:
+            return self.tsh.staircase(
+                cn,
+                name,
+                delta,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date
             )
 
     def catalog(self):

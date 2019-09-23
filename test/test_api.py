@@ -1,3 +1,4 @@
+from datetime import timedelta
 import pandas as pd
 import pytest
 
@@ -128,6 +129,13 @@ insertion_date             value_date
     }
 
     assert api.type('api-test') == 'primary'
+
+    st = api.staircase('api-test', delta=timedelta(days=366))
+    assert_df("""
+2020-01-02 00:00:00+00:00    2.0
+2020-01-03 00:00:00+00:00    3.0
+2020-01-04 00:00:00+00:00    4.0
+""", st)
 
 
 def test_multisource(mapi):
