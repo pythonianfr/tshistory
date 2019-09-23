@@ -30,15 +30,14 @@ class timeseries:
                author: str,
                metadata: Optional[dict]=None,
                insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
-        with self.engine.begin() as cn:
-            return self.tsh.update(
-                cn,
-                updatets,
-                name,
-                author,
-                metadata=metadata,
-                insertion_date=insertion_date
-            )
+        return self.tsh.update(
+            self.engine,
+            updatets,
+            name,
+            author,
+            metadata=metadata,
+            insertion_date=insertion_date
+        )
 
     def replace(self,
                 updatets: pd.Series,
@@ -46,32 +45,29 @@ class timeseries:
                 author: str,
                 metadata: Optional[dict]=None,
                 insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
-        with self.engine.begin() as cn:
-            return self.tsh.replace(
-                cn,
-                updatets,
-                name,
-                author,
-                metadata=metadata,
-                insertion_date=insertion_date
-            )
+        return self.tsh.replace(
+            self.engine,
+            updatets,
+            name,
+            author,
+            metadata=metadata,
+            insertion_date=insertion_date
+        )
 
     def exists(self, name):
-        with self.engine.begin() as cn:
-            return self.tsh.exists(cn, name)
+        return self.tsh.exists(self.engine, name)
 
     def get(self, name: str,
             revision_date: Optional[datetime]=None,
             from_value_date: Optional[datetime]=None,
             to_value_date: Optional[datetime]=None) -> Optional[pd.Series]:
-        with self.engine.begin() as cn:
-            return self.tsh.get(
-                cn,
-                name,
-                revision_date=revision_date,
-                from_value_date=from_value_date,
-                to_value_date=to_value_date
-            )
+        return self.tsh.get(
+            self.engine,
+            name,
+            revision_date=revision_date,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date
+        )
 
     def history(self,
                 name: str,
@@ -80,73 +76,64 @@ class timeseries:
                 from_value_date: Optional[datetime]=None,
                 to_value_date: Optional[datetime]=None,
                 diffmode: bool=False) -> Dict[datetime, pd.Series]:
-        with self.engine.begin() as cn:
-            return self.tsh.history(
-                cn,
-                name,
-                from_insertion_date=from_insertion_date,
-                to_insertion_date=to_insertion_date,
-                from_value_date=from_value_date,
-                to_value_date=to_value_date,
-                diffmode=diffmode
-            )
+        return self.tsh.history(
+            self.engine,
+            name,
+            from_insertion_date=from_insertion_date,
+            to_insertion_date=to_insertion_date,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date,
+            diffmode=diffmode
+        )
 
     def staircase(self,
                   name: str,
                   delta: timedelta,
                   from_value_date: Optional[datetime]=None,
                   to_value_date: Optional[datetime]=None) -> Optional[pd.Series]:
-        with self.engine.begin() as cn:
-            return self.tsh.staircase(
-                cn,
-                name,
-                delta,
-                from_value_date=from_value_date,
-                to_value_date=to_value_date
-            )
+        return self.tsh.staircase(
+            self.engine,
+            name,
+            delta,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date
+        )
 
     def catalog(self):
-        with self.engine.begin() as cn:
-            return self.tsh.list_series(cn)
+        return self.tsh.list_series(self.engine)
 
     def interval(self, name: str) -> pd.Interval:
-        with self.engine.begin() as cn:
-            return self.tsh.interval(cn, name)
+        return self.tsh.interval(self.engine, name)
 
     def metadata(self,
                  name: str,
                  all: bool=False):
-        with self.engine.begin() as cn:
-            meta = self.tsh.metadata(cn, name)
-            if all:
-                return meta
-            for key in self.tsh.metakeys:
-                meta.pop(key, None)
+        meta = self.tsh.metadata(self.engine, name)
+        if all:
             return meta
+        for key in self.tsh.metakeys:
+            meta.pop(key, None)
+        return meta
 
     def update_metadata(self,
                         name: str,
                         metadata: dict):
-        with self.engine.begin() as cn:
-            self.tsh.update_metadata(
-                cn,
-                name,
-                metadata
-            )
+        self.tsh.update_metadata(
+            self.engine,
+            name,
+            metadata
+        )
 
     def type(self, name: str):
-        with self.engine.begin() as cn:
-            return self.tsh.type(cn, name)
+        return self.tsh.type(self.engine, name)
 
     def rename(self,
                currname: str,
                newname: str):
-        with self.engine.begin() as cn:
-            return self.tsh.rename(cn, currname, newname)
+        return self.tsh.rename(self.engine, currname, newname)
 
     def delete(self, name: str):
-        with self.engine.begin() as cn:
-            return self.tsh.delete(cn, name)
+        return self.tsh.delete(self.engine, name)
 
 
 
@@ -207,14 +194,13 @@ class multisourcetimeseries(timeseries):
         source = self._findsourcefor(name)
         if source is None:
             return
-        with source.engine.begin() as cn:
-            return source.tsh.get(
-                cn,
-                name,
-                revision_date=revision_date,
-                from_value_date=from_value_date,
-                to_value_date=to_value_date
-            )
+        return source.tsh.get(
+            source.engine,
+            name,
+            revision_date=revision_date,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date
+        )
 
     def history(self,
                 name: str,
@@ -226,16 +212,15 @@ class multisourcetimeseries(timeseries):
         source = self._findsourcefor(name)
         if source is None:
             return
-        with source.engine.begin() as cn:
-            return source.tsh.history(
-                cn,
-                name,
-                from_insertion_date=from_insertion_date,
-                to_insertion_date=to_insertion_date,
-                from_value_date=from_value_date,
-                to_value_date=to_value_date,
-                diffmode=diffmode
-            )
+        return source.tsh.history(
+            source.engine,
+            name,
+            from_insertion_date=from_insertion_date,
+            to_insertion_date=to_insertion_date,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date,
+            diffmode=diffmode
+        )
 
     def update(self,
                updatets: pd.Series,
@@ -246,15 +231,14 @@ class multisourcetimeseries(timeseries):
         source = self._findsourcefor(name)
         if source is None or source == self.sources[0]:
             # creation or main source update
-            with source.engine.begin() as cn:
-                return source.tsh.update(
-                    cn,
-                    updatets,
-                    name,
-                    author,
-                    metadata=metadata,
-                    insertion_date=insertion_date
-                )
+            return source.tsh.update(
+                source.engine,
+                updatets,
+                name,
+                author,
+                metadata=metadata,
+                insertion_date=insertion_date
+            )
 
         raise ValueError(
             'not allowed to update to a secondary source '
@@ -271,15 +255,14 @@ class multisourcetimeseries(timeseries):
         source = self._findsourcefor(name)
         if source is None or source == self.sources[0]:
             # creation or main source update
-            with source.engine.begin() as cn:
-                return source.tsh.replace(
-                    cn,
-                    newts,
-                    name,
-                    author,
-                    metadata=metadata,
-                    insertion_date=insertion_date
-                )
+            return source.tsh.replace(
+                source.engine,
+                newts,
+                name,
+                author,
+                metadata=metadata,
+                insertion_date=insertion_date
+            )
 
         raise ValueError(
             'not allowed to replace to a secondary source '
@@ -291,12 +274,11 @@ class multisourcetimeseries(timeseries):
                         metadata: dict):
         source = self._findsourcefor(name)
         if source is None or source == self.sources[0]:
-            with source.engine.begin() as cn:
-                return source.tsh.update_metadata(
-                    cn,
-                    name,
-                    metadata
-                )
+            return source.tsh.update_metadata(
+                source.engine,
+                name,
+                metadata
+            )
 
         raise ValueError(
             'not allowed to update metadata to a secondary source '
@@ -308,8 +290,7 @@ class multisourcetimeseries(timeseries):
                newname: str):
         source = self._findsourcefor(currname)
         if source is None or source == self.sources[0]:
-            with source.engine.begin() as cn:
-                return self.tsh.rename(cn, currname, newname)
+            return self.tsh.rename(source.engine, currname, newname)
 
         raise ValueError(
             'not allowed to rename to a secondary source '
@@ -319,8 +300,7 @@ class multisourcetimeseries(timeseries):
     def delete(self, name: str):
         source = self._findsourcefor(name)
         if source is None or source == self.sources[0]:
-            with self.engine.begin() as cn:
-                return self.tsh.delete(cn, name)
+            return self.tsh.delete(source.engine, name)
 
         raise ValueError(
             'not allowed to delete to a secondary source '
