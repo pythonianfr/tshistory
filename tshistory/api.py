@@ -99,6 +99,17 @@ class timeseries:
         with self.engine.begin() as cn:
             return self.tsh.interval(cn, name)
 
+    def metadata(self,
+                 name: str,
+                 all: bool=False):
+        with self.engine.begin() as cn:
+            meta = self.tsh.metadata(cn, name)
+            if all:
+                return meta
+            for key in self.tsh.metakeys:
+                meta.pop(key, None)
+            return meta
+
 
 class source:
     __slots__ = ('engine', 'tsh', 'uri', 'namespace')

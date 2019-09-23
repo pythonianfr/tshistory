@@ -108,6 +108,18 @@ insertion_date             value_date
     assert ival.left == pd.Timestamp('2019-12-31 00:00:00+0000', tz='UTC')
     assert ival.right == pd.Timestamp('2020-01-04 00:00:00+0000', tz='UTC')
 
+    meta = api.metadata('api-test', all=True)
+    assert meta == {
+        'tzaware': True,
+        'index_type': 'datetime64[ns, UTC]',
+        'value_type': 'float64',
+        'index_dtype': '|M8[ns]',
+        'value_dtype': '<f8'
+    }
+    meta = api.metadata('api-test')
+    assert meta == {}
+
+
 
 def test_multisource(mapi):
 
