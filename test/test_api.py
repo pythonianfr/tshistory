@@ -167,3 +167,10 @@ def test_multisource(mapi):
     with pytest.raises(ValueError) as err:
         mapi.replace(series, 'api-2', 'auc')
     assert err.value.args[0].startswith('not allowed to replace')
+
+
+    api = timeseries(mapi.uri, mapi.namespace)
+    catalog = api.catalog()
+    catalog2 = mapi.catalog()
+    assert catalog == catalog2
+    assert catalog == {'api-1': 'primary'}

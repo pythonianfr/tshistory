@@ -91,6 +91,11 @@ class timeseries:
                 diffmode=diffmode
             )
 
+    def catalog(self):
+        with self.engine.begin() as cn:
+            return self.tsh.list_series(cn)
+
+
 
 class source:
     __slots__ = ('engine', 'tsh', 'uri', 'namespace')
