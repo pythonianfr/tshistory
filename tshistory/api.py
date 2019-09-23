@@ -120,6 +120,11 @@ class timeseries:
                 metadata
             )
 
+    def type(self, name: str):
+        with self.engine.begin() as cn:
+            return self.tsh.type(cn, name)
+
+
 
 class source:
     __slots__ = ('engine', 'tsh', 'uri', 'namespace')

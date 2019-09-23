@@ -127,6 +127,8 @@ insertion_date             value_date
         'desc': 'a metadata test'
     }
 
+    assert api.type('api-test') == 'primary'
+
 
 def test_multisource(mapi):
 
