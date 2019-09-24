@@ -220,6 +220,13 @@ def test_multisource(mapi):
     with pytest.raises(ValueError) as err:
         mapi.update_metadata('api-2', {'descr': 'for the mapi test'})
     assert err.value.args[0].startswith('not allowed to update metadata')
+    assert mapi.metadata('api-2', all=True) == {
+        'index_dtype': '|M8[ns]',
+        'index_type': 'datetime64[ns, UTC]',
+        'tzaware': True,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
 
     mapi.rename('api-1', 'renamed-api-1')
     assert not mapi.exists('api-1')

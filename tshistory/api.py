@@ -229,6 +229,19 @@ class multisourcetimeseries(timeseries):
             diffmode=diffmode
         )
 
+    def metadata(self,
+                 name: str,
+                 all: bool=False):
+        source = self._findsourcefor(name)
+        if source is None:
+            return
+        meta = source.tsh.metadata(source.engine, name)
+        if all:
+            return meta
+        for key in self.tsh.metakeys:
+            meta.pop(key, None)
+        return meta
+
     def update(self,
                updatets: pd.Series,
                name: str,
