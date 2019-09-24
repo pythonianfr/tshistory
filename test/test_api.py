@@ -20,7 +20,9 @@ def test_bare_get(api):
     )
 
     api.update(
-        series, 'api-test', 'Babar',
+        'api-test',
+        series,
+        'Babar',
         insertion_date=utcdt(2019, 1, 1),
         metadata={'about': 'test'}
     )
@@ -33,7 +35,9 @@ def test_bare_get(api):
 
     series[utcdt(2020, 1, 4)] = 4
     api.update(
-        series, 'api-test', 'Babar',
+        'api-test',
+        series,
+        'Babar',
         insertion_date=utcdt(2019, 1, 2)
     )
     out = api.get(
@@ -48,7 +52,9 @@ def test_bare_get(api):
 
     series[utcdt(2019, 12, 31)] = 0
     api.replace(
-        series, 'api-test', 'Babar',
+        'api-test',
+        series,
+        'Babar',
         insertion_date=utcdt(2019, 1, 3)
     )
     out = api.get('api-test')
@@ -158,7 +164,9 @@ def test_multisource(mapi):
         )
 
         api.update(
-            series, name, 'Babar',
+            name,
+            series,
+            'Babar',
             insertion_date=utcdt(2019, 1, 1),
             metadata={'about': 'test'}
         )
@@ -171,7 +179,9 @@ def test_multisource(mapi):
 
         series[utcdt(2020, 1, 4)] = 4
         api.update(
-            series, name, 'Babar',
+            name,
+            series,
+            'Babar',
             insertion_date=utcdt(2019, 1, 2)
         )
         out = api.get(
@@ -197,16 +207,16 @@ def test_multisource(mapi):
             utcdt(2020, 1, 1), periods=3, freq='D'
         )
     )
-    mapi.update(series, 'api-1', 'auc')
+    mapi.update('api-1', series, 'auc')
 
     with pytest.raises(ValueError) as err:
-        mapi.update(series, 'api-2', 'auc')
+        mapi.update('api-2', series, 'auc')
     assert err.value.args[0].startswith('not allowed to update')
 
-    mapi.replace(series, 'api-1', 'auc')
+    mapi.replace('api-1', series, 'auc')
 
     with pytest.raises(ValueError) as err:
-        mapi.replace(series, 'api-2', 'auc')
+        mapi.replace('api-2', series, 'auc')
     assert err.value.args[0].startswith('not allowed to replace')
 
 

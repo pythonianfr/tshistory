@@ -25,8 +25,8 @@ class timeseries:
         self.tsh = dbtimeseries(namespace)
 
     def update(self,
-               updatets: pd.Series,
                name: str,
+               updatets: pd.Series,
                author: str,
                metadata: Optional[dict]=None,
                insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
@@ -40,8 +40,8 @@ class timeseries:
         )
 
     def replace(self,
-                updatets: pd.Series,
                 name: str,
+                updatets: pd.Series,
                 author: str,
                 metadata: Optional[dict]=None,
                 insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
@@ -243,8 +243,8 @@ class multisourcetimeseries(timeseries):
         return meta
 
     def update(self,
-               updatets: pd.Series,
                name: str,
+               updatets: pd.Series,
                author: str,
                metadata: Optional[dict]=None,
                insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
@@ -263,10 +263,9 @@ class multisourcetimeseries(timeseries):
             'not allowed to update to a secondary source'
         )
 
-
     def replace(self,
-                newts: pd.Series,
                 name: str,
+                newts: pd.Series,
                 author: str,
                 metadata: Optional[dict]=None,
                 insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
