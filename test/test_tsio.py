@@ -86,7 +86,7 @@ Freq: H
                   'H', 4, tz='UTC')
     ts.index = ts.index.tz_convert('Europe/Paris')
     tsh.update(engine, ts, 'tztest', 'Celeste',
-                   insertion_date=utcdt(2018, 1, 3))
+               insertion_date=utcdt(2018, 1, 3))
 
     ts = tsh.get(engine, 'tztest')
     assert_df("""
@@ -294,8 +294,8 @@ def test_differential(engine, tsh):
 2010-01-06    2.0
     """, tsh.get(engine, 'ts_mixte',
                  from_value_date=datetime(2010, 1, 3),
-                 to_value_date=datetime(2010, 1, 6)
-    ))
+                 to_value_date=datetime(2010, 1, 6))
+    )
 
     assert_df("""
 2010-01-04   -1.0
@@ -303,8 +303,8 @@ def test_differential(engine, tsh):
 2010-01-06    2.0
 2010-01-07    3.0
         """, tsh.get(engine, 'ts_mixte',
-                     from_value_date=datetime(2010, 1, 4)
-    ))
+                     from_value_date=datetime(2010, 1, 4))
+    )
 
     assert_df("""
 2010-01-01    2.0
@@ -313,8 +313,8 @@ def test_differential(engine, tsh):
 2010-01-04   -1.0
 2010-01-05    2.0
             """, tsh.get(engine, 'ts_mixte',
-                         to_value_date=datetime(2010, 1, 5)
-        ))
+                         to_value_date=datetime(2010, 1, 5))
+        )
 
     with engine.begin() as cn:
         cn.execute(
@@ -355,8 +355,9 @@ def test_serie_metadata(engine, tsh):
         'value_type': 'float64'
     }
 
-    tsh.update_metadata(engine, 'ts-metadata',
-                        {'topic': 'banana spot price'}
+    tsh.update_metadata(
+        engine, 'ts-metadata',
+        {'topic': 'banana spot price'}
     )
     assert tsh.metadata(engine, 'ts-metadata')['topic'] == 'banana spot price'
 
@@ -375,9 +376,10 @@ def test_serie_metadata(engine, tsh):
 
 def test_changeset_metadata(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
-    tsh.update(engine, serie, 'ts-cs-metadata', 'babar',
-               {'foo': 'A', 'bar': 42},
-               insertion_date=utcdt(2019, 1, 1)
+    tsh.update(
+        engine, serie, 'ts-cs-metadata', 'babar',
+        {'foo': 'A', 'bar': 42},
+        insertion_date=utcdt(2019, 1, 1)
     )
 
     log = tsh.log(engine, 'ts-cs-metadata')
@@ -499,9 +501,11 @@ def test_point_deletion(engine, tsh):
 2010-01-10    9.0
 """, tsh.get(engine, 'ts_del'))
 
-    ts2 = tsh.get(engine, 'ts_del',
-                 # force snapshot reconstruction feature
-                 revision_date=datetime(2038, 1, 1))
+    ts2 = tsh.get(
+        engine, 'ts_del',
+        # force snapshot reconstruction feature
+        revision_date=datetime(2038, 1, 1)
+    )
     assert (tsh.get(engine, 'ts_del') == ts2).all()
 
     ts_begin.iloc[0] = 42
@@ -865,7 +869,7 @@ def test_delta_na(engine, tsh):
     )
 
     for idx, idate in enumerate(ldates):
-        ts = pd.Series([idx] * 3, index = ldates)
+        ts = pd.Series([idx] * 3, index=ldates)
         tsh.update(engine, ts, 'without_na', 'arnaud',
                    insertion_date=idate)
 
@@ -903,7 +907,7 @@ insertion_date             value_date
     )
 
     for idx, idate in enumerate(ldates):
-        serie = pd.Series([float(idx)] * 3, index = ldates)
+        serie = pd.Series([float(idx)] * 3, index=ldates)
         if idx == 2:
             serie[-1] = np.nan
         tsh.update(engine, serie, 'with_na', 'arnaud',
@@ -1247,7 +1251,7 @@ insertion_date             value_date
                            2015-01-01 09:00:00+00:00    6.0
 """, hist)
 
-    deltas = tsh.staircase(engine,  'republication', delta=timedelta(hours=3))
+    deltas = tsh.staircase(engine, 'republication', delta=timedelta(hours=3))
     assert deltas.name == 'republication'
 
     assert_df("""
@@ -1260,7 +1264,7 @@ insertion_date             value_date
 2015-01-01 09:00:00+00:00    6.0
 """, deltas)
 
-    deltas = tsh.staircase(engine,  'republication', delta=timedelta(hours=5))
+    deltas = tsh.staircase(engine, 'republication', delta=timedelta(hours=5))
     assert_df("""
 2015-01-01 05:00:00+00:00    5.0
 2015-01-01 06:00:00+00:00    5.0
@@ -1591,7 +1595,7 @@ def test_index_with_nat(engine, tsh):
 
 
 def test_replace(engine, tsh):
-    index=pd.date_range(
+    index = pd.date_range(
         start=utcdt(2020, 1, 1),
         freq='D', periods=3
     )
@@ -1635,12 +1639,12 @@ def test_replace(engine, tsh):
     assert_df("""
 2020-01-01 00:00:00+00:00    3.0
 2020-01-02 00:00:00+00:00    2.0
-""",tsh.get(engine, 'replaceme', revision_date=utcdt(2019, 1, 2)))
+""", tsh.get(engine, 'replaceme', revision_date=utcdt(2019, 1, 2)))
 
     assert_df("""
 2020-01-02 00:00:00+00:00    2.0
 2020-01-03 00:00:00+00:00    2.0
-""",tsh.get(engine, 'replaceme', revision_date=utcdt(2019, 1, 3)))
+""", tsh.get(engine, 'replaceme', revision_date=utcdt(2019, 1, 3)))
 
     assert_hist("""
 insertion_date             value_date               
@@ -1665,7 +1669,7 @@ insertion_date             value_date
 
 
 def test_replace_reuse(engine, tsh):
-    index=pd.date_range(
+    index = pd.date_range(
         start=utcdt(2020, 1, 1),
         freq='D', periods=3
     )
