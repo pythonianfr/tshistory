@@ -7,6 +7,7 @@ from tshistory.api import timeseries, multisourcetimeseries
 from tshistory.testutil import (
     assert_df,
     assert_hist,
+    genserie,
     utcdt
 )
 
@@ -152,6 +153,87 @@ insertion_date             value_date
     api.delete('api-test2')
 
 
+def formula_class():
+    try:
+        from tshistory_formula.tsio import timeseries
+    except ImportError:
+        return
+    return timeseries
+
+
+def supervision_class():
+    try:
+        from tshistory_supervision.tsio import timeseries
+    except ImportError:
+        return
+    return timeseries
+
+
+@pytest.mark.skipif(
+    not formula_class() or not supervision_class(),
+    reason='need formula and supervision plugins to be available'
+)
+def test_alternative_handler(api):
+    sapi = timeseries(api.uri, api.namespace, formula_class())
+    sapi.update(
+        'test-features',
+        genserie(utcdt(2020, 1, 1), 'D', 3),
+        'Babar',
+    )
+    sapi.tsh.register_formula(
+        sapi.engine,
+        'test-formula',
+        '(+ 1 (series "test-features"))'
+    )
+    tsa = sapi.get('test-features')
+    assert_df("""
+2020-01-01 00:00:00+00:00    0.0
+2020-01-02 00:00:00+00:00    1.0
+2020-01-03 00:00:00+00:00    2.0
+""", tsa)
+
+    tsb = sapi.get('test-formula')
+    assert_df("""
+2020-01-01 00:00:00+00:00    1.0
+2020-01-02 00:00:00+00:00    2.0
+2020-01-03 00:00:00+00:00    3.0
+""", tsb)
+
+    class supervision_and_formula(supervision_class(),
+                                  formula_class()):
+        pass
+
+    sapi = timeseries(api.uri, api.namespace, supervision_and_formula)
+    tsa = sapi.get('test-features')
+    assert_df("""
+2020-01-01 00:00:00+00:00    0.0
+2020-01-02 00:00:00+00:00    1.0
+2020-01-03 00:00:00+00:00    2.0
+""", tsa)
+
+    tsb = sapi.get('test-formula')
+    assert_df("""
+2020-01-01 00:00:00+00:00    1.0
+2020-01-02 00:00:00+00:00    2.0
+2020-01-03 00:00:00+00:00    3.0
+""", tsb)
+
+    sapi.update(
+        'test-features',
+        genserie(utcdt(2020, 1, 2), 'D', 3),
+        'Babar',
+        manual=True
+    )
+
+    tsb = sapi.get('test-formula')
+    assert_df("""
+2020-01-01 00:00:00+00:00    1.0
+2020-01-02 00:00:00+00:00    1.0
+2020-01-03 00:00:00+00:00    2.0
+2020-01-04 00:00:00+00:00    3.0
+""", tsb)
+
+
 def test_multisource(mapi):
 
     def create(uri, ns, name):
@@ -195,7 +277,7 @@ def test_multisource(mapi):
 """, out)
 
     create(mapi.uri, mapi.namespace, 'api-1')
-    create(mapi.uri, 'test-api-2', 'api-2')
+    create(mapi.uri, 'test-mapi-2', 'api-2')
 
     assert not mapi.exists('i-dont-exist')
     assert mapi.exists('api-1')

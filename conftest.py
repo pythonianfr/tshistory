@@ -15,6 +15,11 @@ from tshistory import (
 )
 from tshistory.snapshot import Snapshot
 
+try:
+    from tshistory_formula import schema as fschema
+except ImportError:
+    fschema = None
+
 
 DATADIR = Path(__file__).parent / 'test' / 'data'
 DBURI = 'postgresql://localhost:5433/postgres'
@@ -37,8 +42,14 @@ def engine(db):
 
 @pytest.fixture(scope='session')
 def api(engine):
-    sch = schema.tsschema('test-api')
-    sch.create(engine)
+    if fschema:
+        sch = fschema.formula_schema('test-api')
+        sch.create(engine)
+        sch = schema.tsschema('test-api-upstream')
+        sch.create(engine)
+    else:
+        sch = schema.tsschema('test-api')
+        sch.create(engine)
     return tsh_api.timeseries(
         DBURI,
         namespace='test-api'
@@ -49,15 +60,15 @@ def api(engine):
 
 @pytest.fixture(scope='session')
 def mapi(engine):
-    sch = schema.tsschema('test-api')
+    sch = schema.tsschema('test-mapi')
     sch.create(engine)
-    sch = schema.tsschema('test-api-2')
+    sch = schema.tsschema('test-mapi-2')
     sch.create(engine)
     o = tsh_api.multisourcetimeseries(
-        DBURI, namespace='test-api'
+        DBURI, namespace='test-mapi'
     )
     o.addsource(
-        DBURI, 'test-api-2'
+        DBURI, 'test-mapi-2'
     )
     return o
 

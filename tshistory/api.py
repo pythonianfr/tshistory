@@ -7,7 +7,7 @@ from typing import (
 from sqlalchemy import create_engine
 import pandas as pd
 
-from tshistory.tsio import timeseries as dbtimeseries
+from tshistory.tsio import timeseries as tshclass
 
 
 class timeseries:
@@ -18,25 +18,28 @@ class timeseries:
 
     def __init__(self,
                  uri: str,
-                 namespace: str='tsh'):
+                 namespace: str='tsh',
+                 tshclass: type=tshclass):
         self.uri = uri
         self.namespace = namespace
         self.engine = create_engine(uri)
-        self.tsh = dbtimeseries(namespace)
+        self.tsh = tshclass(namespace)
 
     def update(self,
                name: str,
                updatets: pd.Series,
                author: str,
                metadata: Optional[dict]=None,
-               insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
+               insertion_date: Optional[datetime]=None,
+               **kw) -> Optional[pd.Series]:
         return self.tsh.update(
             self.engine,
             updatets,
             name,
             author,
             metadata=metadata,
-            insertion_date=insertion_date
+            insertion_date=insertion_date,
+            **kw
         )
 
     def replace(self,
@@ -44,14 +47,16 @@ class timeseries:
                 updatets: pd.Series,
                 author: str,
                 metadata: Optional[dict]=None,
-                insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
+                insertion_date: Optional[datetime]=None,
+                **kw) -> Optional[pd.Series]:
         return self.tsh.replace(
             self.engine,
             updatets,
             name,
             author,
             metadata=metadata,
-            insertion_date=insertion_date
+            insertion_date=insertion_date,
+            **kw
         )
 
     def exists(self, name):
@@ -140,11 +145,11 @@ class timeseries:
 class source:
     __slots__ = ('engine', 'tsh', 'uri', 'namespace')
 
-    def __init__(self, uri, namespace):
+    def __init__(self, uri, namespace, tshclass):
         self.uri = uri
         self.namespace = namespace
         self.engine = create_engine(uri)
-        self.tsh = dbtimeseries(namespace)
+        self.tsh = tshclass(namespace)
 
 
 class multisourcetimeseries(timeseries):
@@ -163,15 +168,16 @@ class multisourcetimeseries(timeseries):
 
     def __init__(self,
                  uri: str,
-                 namespace: str='tsh'):
+                 namespace: str='tsh',
+                 tshclass: type=tshclass):
         self.uri = uri
         self.namespace = namespace
-        self.mainsource = source(uri, namespace)
+        self.mainsource = source(uri, namespace, tshclass)
         self.sources = [self.mainsource]
 
-    def addsource(self, uri, namespace):
+    def addsource(self, uri, namespace, tshclass=None):
         self.sources.append(
-            source(uri, namespace)
+            source(uri, namespace, tshclass or self.mainsource.tsh.__class__)
         )
 
     def _findsourcefor(self, name):
@@ -247,7 +253,8 @@ class multisourcetimeseries(timeseries):
                updatets: pd.Series,
                author: str,
                metadata: Optional[dict]=None,
-               insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
+               insertion_date: Optional[datetime]=None,
+               **kw) -> Optional[pd.Series]:
         source = self._findwritesourcefor(name)
         if source:
             return source.tsh.update(
@@ -256,7 +263,8 @@ class multisourcetimeseries(timeseries):
                 name,
                 author,
                 metadata=metadata,
-                insertion_date=insertion_date
+                insertion_date=insertion_date,
+                **kw
             )
 
         raise ValueError(
@@ -268,7 +276,8 @@ class multisourcetimeseries(timeseries):
                 newts: pd.Series,
                 author: str,
                 metadata: Optional[dict]=None,
-                insertion_date: Optional[datetime]=None) -> Optional[pd.Series]:
+                insertion_date: Optional[datetime]=None,
+                **kw) -> Optional[pd.Series]:
         source = self._findwritesourcefor(name)
         if source:
             return source.tsh.replace(
@@ -277,7 +286,8 @@ class multisourcetimeseries(timeseries):
                 name,
                 author,
                 metadata=metadata,
-                insertion_date=insertion_date
+                insertion_date=insertion_date,
+                **kw
             )
 
         raise ValueError(

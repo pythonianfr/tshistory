@@ -437,4 +437,3 @@ def bisect_search(values, value):
             ju = jm
 
     return jl
-
