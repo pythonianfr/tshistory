@@ -87,8 +87,8 @@ class timeseries(SeriesServices):
 
     @tx
     def replace(self, cn, newts, name, author,
-               metadata=None,
-               insertion_date=None):
+                metadata=None,
+                insertion_date=None):
         """Create a new revision of a given time series
         and do a wholesale replacement of the series
         with the provided one (no update semantics)
@@ -273,8 +273,8 @@ class timeseries(SeriesServices):
             series = diffs
         else:
             series = [
-                (idate, ts if _keep_nans else ts.dropna() )
-                 for idate, ts in series
+                (idate, ts if _keep_nans else ts.dropna())
+                for idate, ts in series
             ]
 
         hist = {
@@ -320,7 +320,7 @@ class timeseries(SeriesServices):
             to_value_date=to_value_date,
             to_insertion_date=toidate,
             tzaware=self.metadata(cn, name).get('tzaware')
-         )
+        )
 
         return hcache.staircase(
             delta,
@@ -436,15 +436,15 @@ class timeseries(SeriesServices):
         return stats
 
     @tx
-    def log(self, cn, name, limit=0, authors=None,
-            fromrev=None, torev=None,
+    def log(self, cn, name,
+            limit=None, authors=None,
             fromdate=None, todate=None):
         """Build a structure showing the history of a series in the db,
         per changeset, in chronological order.
         """
         log = []
         q = self._log_series_query(
-            cn, name, authors,
+            cn, name, limit, authors,
             fromdate, todate
         )
         rset = q.do(cn)
@@ -457,7 +457,7 @@ class timeseries(SeriesServices):
         return log
 
     def _log_series_query(self, cn, name,
-                          authors=None,
+                          limit=None, authors=None,
                           fromdate=None, todate=None):
         tablename = self._series_to_tablename(cn, name)
         q = select(
@@ -478,6 +478,8 @@ class timeseries(SeriesServices):
             q.where('insertion_date <= %(todate)s', todate=todate)
 
         q.order('id', 'desc')
+        if limit:
+            q.limit(limit)
         return q
 
     @tx
