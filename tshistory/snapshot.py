@@ -1,10 +1,8 @@
 import zlib
-from pathlib import Path
 
 import pandas as pd
-import numpy as np
 
-from sqlhelp import sqlfile, select
+from sqlhelp import select
 
 from tshistory.util import (
     binary_pack,
@@ -255,7 +253,7 @@ class Snapshot(SeriesServices):
     def cset_heads_query(self, csetfilter=(), order='desc'):
         tablename = self.tsh._series_to_tablename(self.cn, self.name)
         q = select(
-            'id',  'snapshot'
+            'id', 'snapshot'
         ).table(
             f'"{self.tsh.namespace}.revision"."{tablename}"'
         )
@@ -338,9 +336,8 @@ class Snapshot(SeriesServices):
                 head = parent
             series.append(
                 (idate, self._chunks_to_ts(reversed(chunks)).loc[
-                        from_value_date:to_value_date
-                    ]
-                )
+                    from_value_date:to_value_date
+                ])
             )
         return series
 
