@@ -1,4 +1,3 @@
-import os, signal
 from pkg_resources import iter_entry_points
 from time import time
 import random
