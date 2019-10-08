@@ -143,7 +143,7 @@ def test_bigdata(engine, tracker, ptsh):
             serie = genserie(date, '10Min', 6 * 24 * 365)
             with engine.begin() as cn:
                 tsh.update(cn, serie, 'big', 'aurelien.campeas@pythonian.fr',
-                           _insertion_date=date)
+                           insertion_date=date)
 
     t0 = time()
     create_data()
@@ -190,7 +190,7 @@ def test_lots_of_diffs(engine, tracker, ptsh):
                 with engine.begin() as cn:
                     tsh.update(cn, serie, 'manydiffs',
                                'aurelien.campeas@pythonian.fr',
-                               _insertion_date=date.replace(year=2018)
+                               insertion_date=date.replace(year=2018)
                     )
 
     t0 = time()
