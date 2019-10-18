@@ -456,32 +456,6 @@ class timeseries(SeriesServices):
         log.sort(key=lambda rev: rev['rev'])
         return log
 
-    def _log_series_query(self, cn, name,
-                          limit=None, authors=None,
-                          fromdate=None, todate=None):
-        tablename = self._series_to_tablename(cn, name)
-        q = select(
-            'id', 'author', 'insertion_date', 'metadata',
-            opt='distinct'
-        ).table(
-            f'"{self.namespace}.revision"."{tablename}"'
-        )
-
-        if authors:
-            q.where(
-                'author in %(authors)s',
-                author=tuple(authors)
-            )
-        if fromdate:
-            q.where('insertion_date >= %(fromdate)s', fromdate=fromdate)
-        if todate:
-            q.where('insertion_date <= %(todate)s', todate=todate)
-
-        q.order('id', 'desc')
-        if limit:
-            q.limit(limit)
-        return q
-
     @tx
     def interval(self, cn, name, notz=False):
         tablename = self._series_to_tablename(cn, name)
@@ -754,6 +728,32 @@ class timeseries(SeriesServices):
             (csid, pd.Timestamp(idate).astimezone('UTC'))
             for csid, idate in q.do(cn).fetchall()
         ]
+
+    def _log_series_query(self, cn, name,
+                          limit=None, authors=None,
+                          fromdate=None, todate=None):
+        tablename = self._series_to_tablename(cn, name)
+        q = select(
+            'id', 'author', 'insertion_date', 'metadata',
+            opt='distinct'
+        ).table(
+            f'"{self.namespace}.revision"."{tablename}"'
+        )
+
+        if authors:
+            q.where(
+                'author in %(authors)s',
+                author=tuple(authors)
+            )
+        if fromdate:
+            q.where('insertion_date >= %(fromdate)s', fromdate=fromdate)
+        if todate:
+            q.where('insertion_date <= %(todate)s', todate=todate)
+
+        q.order('id', 'desc')
+        if limit:
+            q.limit(limit)
+        return q
 
 
 class historycache:
