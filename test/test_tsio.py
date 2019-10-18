@@ -1698,3 +1698,74 @@ insertion_date             value_date
                            2020-01-02 00:00:00+00:00    2.0
                            2020-01-03 00:00:00+00:00    3.0
     """, hist)
+
+
+def test_revisions_callback(engine, tsh):
+    def makeseries(daystart=1):
+        return pd.Series(
+            [1, 2, 3],
+            index=pd.date_range(
+                start=utcdt(2020, 1, daystart),
+                freq='D', periods=3
+            )
+        )
+
+    tsh.update(
+        engine, makeseries(1), 'rev-callback', 'Babar', metadata={'status': 'good'}
+    )
+    tsh.update(
+        engine, makeseries(2), 'rev-callback', 'Celeste', metadata={'status': 'cold'}
+    )
+    tsh.update(
+        engine, makeseries(3), 'rev-callback', 'Babar'  # no meta
+    )
+    tsh.update(
+        engine, makeseries(4), 'rev-callback', 'Celeste', metadata={'status': 'good'}
+    )
+
+    with engine.begin() as cn:
+        _set_cache(cn)
+        babarrevs = tsh._revisions(
+            cn,
+            'rev-callback',
+            qcallback=lambda q: q.where(author='Babar')
+        )
+        celesterevs = tsh._revisions(
+            cn,
+            'rev-callback',
+            qcallback=lambda q: q.where(author='Celeste')
+        )
+
+    assert [rid for rid, _ in babarrevs] == [1, 3]
+    assert [rid for rid, _ in celesterevs] == [2, 4]
+
+    with engine.begin() as cn:
+        _set_cache(cn)
+        goodstatus = tsh._revisions(
+            cn,
+            'rev-callback',
+            qcallback=lambda q: q.where(
+                "metadata ->> 'status' = %(status)s",
+                status='good'
+            )
+        )
+        coldstatus = tsh._revisions(
+            cn,
+            'rev-callback',
+            qcallback=lambda q: q.where(
+                "metadata ->> 'status' = %(status)s",
+                status='cold'
+            )
+        )
+        nosuchstatus = tsh._revisions(
+            cn,
+            'rev-callback',
+            qcallback=lambda q: q.where(
+                "metadata ->> 'status' = %(status)s",
+                status='i-am-not-there'
+            )
+        )
+
+    assert [rid for rid, _ in goodstatus] == [1, 4]
+    assert [rid for rid, _ in coldstatus] == [2]
+    assert [rid for rid, _ in nosuchstatus] == []

@@ -451,7 +451,7 @@ class timeseries(SeriesServices):
         for csetid, author, revdate, meta in rset.fetchall():
             log.append({'rev': csetid, 'author': author,
                         'date': pd.Timestamp(revdate).tz_convert('utc'),
-                        'meta': json.loads(meta) if meta else {}})
+                        'meta': meta if meta else {}})
 
         log.sort(key=lambda rev: rev['rev'])
         return log
@@ -512,8 +512,6 @@ class timeseries(SeriesServices):
         cn.execute(
             f'select pg_advisory_xact_lock({self.create_lock_id})'
         )
-        if metadata:
-            metadata = json.dumps(metadata)
 
         self._make_ts_table(cn, name)
         self._register_serie(cn, name, seriesmeta)
@@ -697,7 +695,8 @@ class timeseries(SeriesServices):
                    from_insertion_date=None,
                    to_insertion_date=None,
                    from_value_date=None,
-                   to_value_date=None):
+                   to_value_date=None,
+                   qcallback=None):
         tablename = self._series_to_tablename(cn, name)
         q = select(
             'id', 'insertion_date'
@@ -722,6 +721,9 @@ class timeseries(SeriesServices):
                 fromdate=from_value_date,
                 todate=to_value_date
             )
+
+        if qcallback:
+            qcallback(q)
 
         q.order('id')
         return [
