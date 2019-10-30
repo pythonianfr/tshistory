@@ -320,7 +320,7 @@ class SeriesServices(object):
         mask_na_equal = base_overlap.isnull() & other_overlap.isnull()
         mask_equal = mask_equal | mask_na_equal
 
-        diff_overlap = other[mask_overlap][~mask_equal]
+        diff_overlap = other_overlap[~mask_equal]
         diff_new = other[~mask_overlap]
         diff_new = diff_new.dropna()
         return pd.concat([diff_overlap, diff_new])
