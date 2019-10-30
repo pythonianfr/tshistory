@@ -303,7 +303,7 @@ class SeriesServices(object):
     def diff(self, base, other):
         if base is None:
             return other
-        base = base[~base.isnull()]
+        base = base.dropna()
         if not len(base):
             return other
 
@@ -322,7 +322,7 @@ class SeriesServices(object):
 
         diff_overlap = other[mask_overlap][~mask_equal]
         diff_new = other[~mask_overlap]
-        diff_new = diff_new[~diff_new.isnull()]
+        diff_new = diff_new.dropna()
         return pd.concat([diff_overlap, diff_new])
 
 
