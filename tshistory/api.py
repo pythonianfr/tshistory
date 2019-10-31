@@ -15,8 +15,17 @@ class timeseries:
 
     def __new__(cls, uri, namespace='tsh', handler=None):
         kw = {'tshclass': handler} if handler else {}
-        if urlparse(uri).scheme.startswith('postgres'):
+        parseduri = urlparse(uri)
+        if parseduri.scheme.startswith('postgres'):
             return multisourcedbtimeseries(uri, namespace, **kw)
+        elif parseduri.scheme.startswith('http'):
+            try:
+                from tshistory_client.api import Client
+            except ImportError:
+                raise NotImplementedError(
+                    f'to handle `{uri}` you should install `tshistory_client`'
+                )
+            return Client(uri)
         raise NotImplementedError(uri)
 
 

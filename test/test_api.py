@@ -332,3 +332,15 @@ def test_multisource(mapi):
     assert err.value.args[0].startswith('not allowed to delete')
 
     assert not mapi.exists('renamed-api-1')
+
+
+def test_http_api():
+    tsh = timeseries('https://my.fancy.timeseries.store')
+    for methname in ('get', 'update', 'replace', 'exists', #'type',
+                     'history', 'staircase',
+                     'catalog', # 'interval',
+                     'metadata', 'update_metadata',
+                     # 'rename', 'delete'
+    ):
+        assert getattr(tsh, methname, False), methname
+
