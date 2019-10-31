@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 from typing import (
     Dict,
     Optional,
@@ -11,6 +12,15 @@ from tshistory.tsio import timeseries as tshclass
 
 
 class timeseries:
+
+    def __new__(cls, uri, namespace='tsh', handler=None):
+        kw = {'tshclass': handler} if handler else {}
+        if urlparse(uri).scheme.startswith('postgres'):
+            return multisourcedbtimeseries(uri, namespace, **kw)
+        raise NotImplementedError(uri)
+
+
+class dbtimeseries:
     __slots__ = (
         'uri', 'namespace',
         'engine', 'tsh'
@@ -152,7 +162,7 @@ class source:
         self.tsh = tshclass(namespace)
 
 
-class multisourcetimeseries(timeseries):
+class multisourcedbtimeseries(dbtimeseries):
     __slots__ = (
         'uri', 'namespace',
         'mainsource', 'sources'

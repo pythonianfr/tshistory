@@ -2,7 +2,7 @@ from datetime import timedelta
 import pandas as pd
 import pytest
 
-from tshistory.api import timeseries, multisourcetimeseries
+from tshistory.api import timeseries
 
 from tshistory.testutil import (
     assert_df,

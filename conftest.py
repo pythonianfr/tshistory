@@ -64,7 +64,7 @@ def mapi(engine):
     sch.create(engine)
     sch = schema.tsschema('test-mapi-2')
     sch.create(engine)
-    o = tsh_api.multisourcetimeseries(
+    o = tsh_api.timeseries(
         DBURI, namespace='test-mapi'
     )
     o.addsource(
