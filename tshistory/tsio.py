@@ -480,7 +480,9 @@ class timeseries(SeriesServices):
     def _guard_insert(self, newts, name, author, metadata, insertion_date):
         assert isinstance(name, str), 'Name not a string'
         assert isinstance(author, str), 'Author not a string'
-        assert metadata is None or isinstance(metadata, dict), 'Bad format for metadata'
+        assert metadata is None or isinstance(metadata, dict), (
+            f'Bad format for metadata ({repr(metadata)})'
+        )
         assert (insertion_date is None or
                 isinstance(insertion_date, datetime)), 'Bad format for insertion date'
         assert isinstance(newts, pd.Series), 'Not a pd.Series'
