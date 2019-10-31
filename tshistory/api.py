@@ -20,7 +20,7 @@ class timeseries:
         raise NotImplementedError(uri)
 
 
-class dbtimeseries:
+class _dbtimeseries:
     __slots__ = (
         'uri', 'namespace',
         'engine', 'tsh'
@@ -162,7 +162,7 @@ class source:
         self.tsh = tshclass(namespace)
 
 
-class multisourcedbtimeseries(dbtimeseries):
+class multisourcedbtimeseries(_dbtimeseries):
     __slots__ = (
         'uri', 'namespace',
         'mainsource', 'sources'
