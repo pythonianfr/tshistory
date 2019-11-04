@@ -58,19 +58,16 @@ From this you're ready to go !
 However here's a simple example:
 
 ```python
- >>> from sqlalchemy import create_engine
  >>> import pandas as pd
- >>> from tshistory.tsio import timeseries
+ >>> from tshistory.api import timeseries
  >>>
- >>> engine = create_engine('postgres://me:password@localhost/mydb')
- >>> tsh = timeseries()
+ >>> tsh = timeseries('postgres://me:password@localhost/mydb')
  >>>
  >>> series = pd.Series([1, 2, 3],
  ...                    pd.date_range(start=pd.Timestamp(2017, 1, 1),
  ...                                  freq='D', periods=3))
  # db insertion
- >>> with engine.begin() as cn:
- >>>     tsh.insert(cn, series, 'my_series', 'babar@pythonian.fr')
+ >>> tsh.update('my_series', series, 'babar@pythonian.fr')
  ...
  2017-01-01    1.0
  2017-01-02    2.0
@@ -81,8 +78,7 @@ However here's a simple example:
  # (there are no provisions to handle integer series as of today)
 
  # retrieval
- >>> with engine.begin() as cn:
- >>>     tsh.get(cn, 'my_series')
+ >>> tsh.get('my_series')
  ...
  2017-01-01    1.0
  2017-01-02    2.0
@@ -99,8 +95,7 @@ This is good. Now, let's insert more:
  ...                    pd.date_range(start=pd.Timestamp(2017, 1, 2),
  ...                                  freq='D', periods=4))
  # db insertion
- >>> with engine.begin() as cn:
- >>>     tsh.insert(cn, series, 'my_series', 'babar@pythonian.fr')
+ >>> tsh.update('my_series', series, 'babar@pythonian.fr')
  ...
  2017-01-03    7.0
  2017-01-04    8.0
@@ -112,8 +107,7 @@ This is good. Now, let's insert more:
  # there in the first step)
 
  # db retrieval
- >>> with engine.begin() as cn:
- >>>     tsh.get(engine, 'my_series')
+ >>> tsh.get('my_series')
  ...
 2017-01-01    1.0
 2017-01-02    2.0
@@ -135,8 +129,7 @@ just ignored.
 We can access the whole history (or parts of it) in one call:
 
 ```python
- >>> with engine.begin() as cn:
- >>>     history = tsh.history(engine, 'my_series')
+ >>> history = tsh.history('my_series')
  ...
  >>>
  >>> for idate, series in history.items(): # it's a dict
@@ -163,10 +156,9 @@ Also the insertion date is timzeone aware.
 It is possible to show the differences only:
 
 ```python
- >>> with engine.begin() as cn:
- >>>     diffs = tsh.history(engine, 'my_series', diffmode=True)
+ >>> diffs = tsh.history('my_series', diffmode=True)
  ...
- >>> for idate, series in tsh.history(engine, 'ts', diffmode=True).items():
+ >>> for idate, series in diffs.items():
  ...   print('insertion date:', idate)
  ...   print(series)
  ...
@@ -185,7 +177,7 @@ It is possible to show the differences only:
 You can see a series metadata:
 
 ```python
- >>> tsh.metadata(engine, 'my_series')
+ >>> tsh.metadata('series', internal=True)
  {'tzaware': False, 'index_type': 'datetime64[ns]', 'value_type': 'float64',
  'index_dtype': '<M8[ns]', 'value_dtype': '<f8'}
 ```
@@ -298,7 +290,7 @@ changes come with migration procedure using the `tsh` utility.
 When it is good: if you do mostly appends (and occasional edits in the
 past) it will store data in a very compact way.
 
-When it is bad: if you edit your series all the time to random value date
+When it is suboptimal: if you edit your series all the time to random value date
 positions, it will be wasteful in storage.
 
 Reading any version of the series will always be the fastest (io-bound)
