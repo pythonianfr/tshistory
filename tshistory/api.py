@@ -25,7 +25,7 @@ class timeseries:
                 raise NotImplementedError(
                     f'to handle `{uri}` you should install `tshistory_client`'
                 )
-            return Client(uri)
+            return Client(uri)  # in the default namespace !
         raise NotImplementedError(uri)
 
 

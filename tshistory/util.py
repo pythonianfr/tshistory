@@ -248,9 +248,12 @@ def unpack_history(bytestring):
         index, values = numpy_deserialize(
             bindex, bvalues, metadata
         )
-        hist[utcdt(idates[idx])] = pd.Series(
+        series = pd.Series(
             values, index=index
         )
+        if metadata['tzaware']:
+            series = series.tz_localize('utc')
+        hist[utcdt(idates[idx])] = series
     return metadata, hist
 
 
