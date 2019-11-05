@@ -348,6 +348,7 @@ def test_http_api():
                      'catalog', # 'interval',
                      'metadata', 'update_metadata',
                      # 'rename', 'delete'
+                     # 'info', 'log'
     ):
         assert getattr(tsh, methname, False), methname
 
