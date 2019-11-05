@@ -1,12 +1,8 @@
-from pkg_resources import iter_entry_points
 from time import time
-import random
-from pathlib import Path
 from collections import defaultdict
+from json import dumps
 
-from dateutil import parser
-from json import dumps, loads
-
+from pkg_resources import iter_entry_points
 import click
 from sqlalchemy import create_engine
 from dateutil.parser import parse as temporal
@@ -17,8 +13,7 @@ from sqlhelp import select, update
 from tshistory.tsio import timeseries
 from tshistory.util import (
     delete_series,
-    find_dburi,
-    fromjson
+    find_dburi
 )
 
 import tshistory.schema
@@ -368,7 +363,7 @@ def register_plugin_subcommands():
         tsh.add_command(cmd)
 
     if errors:
-        from colorama import init, Fore, Style
+        from colorama import Fore
         for error, eplist in errors.items():
             print(Fore.YELLOW +
                   f'impossible to add subcommands from {",".join(eplist)}')
