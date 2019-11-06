@@ -68,6 +68,9 @@ def test_base_universal_api(pgapi, httpapi):
 2020-01-04 00:00:00+00:00    4.0
 """, out)
 
+    assert httpapi.type('api-test') == pgapi.type('api-test')
+    assert httpapi.interval('api-test') == pgapi.interval('api-test')
+
     out = httpapi.get(
         'api-test',
         revision_date=utcdt(2019, 1, 1)
@@ -343,12 +346,11 @@ def test_multisource(mapi):
 
 def test_http_api():
     tsh = timeseries('https://my.fancy.timeseries.store')
-    for methname in ('get', 'update', 'replace', 'exists', #'type',
+    for methname in ('get', 'update', 'replace', 'exists', 'type',
                      'history', 'staircase',
-                     'catalog', # 'interval',
+                     'catalog', 'interval',
                      'metadata', 'update_metadata',
-                     # 'rename', 'delete'
-                     # 'info', 'log'
+                     'rename', 'delete'
     ):
         assert getattr(tsh, methname, False), methname
 
