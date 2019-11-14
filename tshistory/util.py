@@ -402,14 +402,6 @@ def tx(func):
     return check_tx_and_call
 
 
-class unilist(list):
-    " a list which refuses duplicates "
-
-    def append(self, element):
-        assert element not in self
-        super().append(element)
-
-
 def bisect_search(values, value):
     """return an index j such that ``value`` is between values[j]
     and values[j+1].
