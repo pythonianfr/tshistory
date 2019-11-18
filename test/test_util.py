@@ -1,15 +1,37 @@
 from datetime import datetime
 
 import pytest
+import pandas as pd
 
 from tshistory.util import (
     bisect_search,
     nary_pack,
-    nary_unpack
+    nary_unpack,
 )
 from tshistory.testutil import (
     genserie
 )
+
+
+def test_json():
+    series = pd.Series(
+        [1., 2., 3.],
+        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=3)
+    )
+    jsonseries = series.to_json(date_format='iso')
+    assert jsonseries == (
+        '{"2020-01-01T00:00:00.000Z":1.0,'
+        '"2020-01-01T01:00:00.000Z":2.0,'
+        '"2020-01-01T02:00:00.000Z":3.0}'
+    )
+
+    series2 = pd.read_json(jsonseries, typ='series', dtype=False)
+    if pd.__version__.startswith('0.24'):
+        assert not getattr(series2.index.dtype, 'tz', False)
+        assert series.equals(series2)
+    elif pd.__version__.startswith('0.25'):
+        assert series2.index.dtype.tz.zone == 'UTC'
+        assert not series.equals(series2)
 
 
 def test_bisect():
