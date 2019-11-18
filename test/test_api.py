@@ -245,6 +245,14 @@ def test_alternative_handler(pgapi):
 
 
 def test_multisource(mapi):
+    for methname in ('get', 'update', 'replace', 'exists', 'type',
+                     'history', 'staircase',
+                     'catalog', 'interval',
+                     'metadata', 'update_metadata',
+                     'rename', 'delete'
+    ):
+        assert getattr(mapi, methname, False), methname
+
 
     def create(uri, ns, name):
         api = timeseries(uri, ns)
