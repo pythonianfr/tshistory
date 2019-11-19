@@ -271,9 +271,14 @@ def tojson(ts, precision=1e-14):
 
 def fromjson(jsonb, tsname, tzaware=False):
     series = _fromjson(jsonb, tsname).fillna(value=np.nan)
-    if tzaware and not getattr(series.index.dtype, 'tz', None):
-        # from pandas 0.25 we are already good
-        series.index = series.index.tz_localize('utc')
+    if tzaware:
+        if not getattr(series.index.dtype, 'tz', None):
+            # from pandas 0.25 we are already good
+            series.index = series.index.tz_localize('utc')
+    else:
+        if getattr(series.index.dtype, 'tz', None):
+            # from pandas 0.25 we are now bad
+            series.index = series.index.tz_localize(None)
     return series
 
 
