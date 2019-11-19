@@ -240,7 +240,7 @@ def unpack_history(bytestring):
     metadata = json.loads(byteslist[0])
     idates = np.frombuffer(
         array('d', byteslist[1]),
-        '|M8[ns]'
+        '|M8[ns]' if metadata['tzaware'] else '<M8[ns]'
     )
     hist = {}
     utcdt = partial(pd.Timestamp, tz='UTC')

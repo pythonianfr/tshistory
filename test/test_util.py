@@ -8,9 +8,12 @@ from tshistory.util import (
     fromjson,
     nary_pack,
     nary_unpack,
+    pack_history,
+    unpack_history
 )
 from tshistory.testutil import (
-    genserie
+    genserie,
+    utcdt
 )
 
 
@@ -87,6 +90,38 @@ def test_pack_unpack():
     packed = nary_pack(*chunks)
     unpacked = nary_unpack(packed)
     assert chunks == unpacked
+
+
+def test_pack_unpack_history(tsh, engine):
+    for numserie in (1, 2, 3):
+        with engine.begin() as cn:
+            tsh.update(cn, genserie(datetime(2021, 1, 1), 'D', numserie),
+                       'small-hist-naive',
+                       'aurelien.campeas@pythonian.fr',
+                       insertion_date=utcdt(2021, 2, numserie))
+
+    hist = tsh.history(engine, 'small-hist-naive')
+    meta = tsh.metadata(engine, 'small-hist-naive')
+    packed = pack_history(meta, hist)
+    meta2, hist2 = unpack_history(packed)
+    assert meta2 == meta
+    for idate, series in hist.items():
+        assert hist[idate].equals(series)
+
+    for numserie in (1, 2, 3):
+        with engine.begin() as cn:
+            tsh.update(cn, genserie(utcdt(2021, 1, 1), 'D', numserie),
+                       'small-hist-tzaware',
+                       'aurelien.campeas@pythonian.fr',
+                       insertion_date=utcdt(2021, 2, numserie))
+
+    hist = tsh.history(engine, 'small-hist-tzaware')
+    meta = tsh.metadata(engine, 'small-hist-tzaware')
+    packed = pack_history(meta, hist)
+    meta2, hist2 = unpack_history(packed)
+    assert meta2 == meta
+    for idate, series in hist.items():
+        assert hist[idate].equals(series)
 
 
 def test_in_tx(tsh, engine):
