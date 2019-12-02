@@ -362,3 +362,32 @@ def test_http_api():
     ):
         assert getattr(tsh, methname, False), methname
 
+
+
+def test_local_formula_remote_series(mapi, engine):
+    from tshistory_formula.tsio import timeseries
+
+    rtsh = timeseries('test-mapi-2')
+    rtsh.update(
+        engine,
+        pd.Series(
+            [1, 2, 3],
+            index=pd.date_range(pd.Timestamp('2020-1-1'), periods=3, freq='H')
+        ),
+        'remote-series',
+        'Babar'
+    )
+
+    ltsh = timeseries('test-mapi')
+
+    with pytest.raises(ValueError) as err:
+        ltsh.register_formula(
+            engine,
+            'test-localformula-remoteseries',
+            '(+ 1 (series "remote-series"))'
+        )
+    assert err.value.args[0] == (
+        'Formula `test-localformula-remoteseries` '
+        'refers to unknown series `remote-series`'
+    )
+

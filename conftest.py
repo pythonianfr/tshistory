@@ -50,8 +50,12 @@ def engine(db):
 def mapi(engine):
     sch = schema.tsschema('test-mapi')
     sch.create(engine)
+    # allow formulae there
+    fschema.formula_schema('test-mapi').create(engine)
     sch = schema.tsschema('test-mapi-2')
     sch.create(engine)
+    # allow formulae there
+    fschema.formula_schema('test-mapi-2').create(engine)
     o = tsh_api.timeseries(
         DBURI, namespace='test-mapi'
     )
