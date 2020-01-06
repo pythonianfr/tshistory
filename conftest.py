@@ -56,13 +56,14 @@ def mapi(engine):
     sch.create(engine)
     # allow formulae there
     fschema.formula_schema('test-mapi-2').create(engine)
-    o = tsh_api.timeseries(
-        DBURI, namespace='test-mapi'
+
+    return tsh_api.timeseries(
+        DBURI,
+        namespace='test-mapi',
+        sources=[
+            (DBURI, 'test-mapi-2')
+        ]
     )
-    o.addsource(
-        DBURI, 'test-mapi-2'
-    )
-    return o
 
 
 @pytest.fixture(scope='session')

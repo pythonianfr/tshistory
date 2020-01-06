@@ -13,11 +13,24 @@ from tshistory.tsio import timeseries as tshclass
 
 class timeseries:
 
-    def __new__(cls, uri, namespace='tsh', handler=None):
-        kw = {'tshclass': handler} if handler else {}
+    def __new__(cls, uri,
+                namespace='tsh',
+                handler=tshclass,
+                sources=None):
         parseduri = urlparse(uri)
         if parseduri.scheme.startswith('postgres'):
-            return multisourcedbtimeseries(uri, namespace, **kw)
+            if sources:
+                return multisourcedbtimeseries(
+                    uri,
+                    namespace,
+                    sources=sources,
+                    tshclass=handler)
+            else:
+                return _dbtimeseries(
+                    uri,
+                    namespace,
+                    tshclass=handler
+                )
         elif parseduri.scheme.startswith('http'):
             try:
                 from tshistory_client.api import Client
@@ -188,13 +201,17 @@ class multisourcedbtimeseries(_dbtimeseries):
     def __init__(self,
                  uri: str,
                  namespace: str='tsh',
+                 sources: list=None,
                  tshclass: type=tshclass):
         self.uri = uri
         self.namespace = namespace
         self.mainsource = source(uri, namespace, tshclass)
         self.sources = [self.mainsource]
+        if sources:
+            for uri, namespace in sources:
+                self._addsource(uri, namespace, tshclass)
 
-    def addsource(self, uri, namespace, tshclass=None):
+    def _addsource(self, uri, namespace, tshclass=None):
         self.sources.append(
             source(uri, namespace, tshclass or self.mainsource.tsh.__class__)
         )
