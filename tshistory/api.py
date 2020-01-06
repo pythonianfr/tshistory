@@ -16,21 +16,15 @@ class timeseries:
     def __new__(cls, uri,
                 namespace='tsh',
                 handler=tshclass,
-                sources=None):
+                sources=()):
         parseduri = urlparse(uri)
         if parseduri.scheme.startswith('postgres'):
-            if sources:
-                return multisourcedbtimeseries(
-                    uri,
-                    namespace,
-                    sources=sources,
-                    tshclass=handler)
-            else:
-                return _dbtimeseries(
-                    uri,
-                    namespace,
-                    tshclass=handler
-                )
+            return dbtimeseries(
+                uri,
+                namespace,
+                tshclass=handler,
+                othersources=altsources(handler, sources)
+            )
         elif parseduri.scheme.startswith('http'):
             try:
                 from tshistory_client.api import Client
@@ -42,20 +36,23 @@ class timeseries:
         raise NotImplementedError(uri)
 
 
-class _dbtimeseries:
+class dbtimeseries:
     __slots__ = (
         'uri', 'namespace',
-        'engine', 'tsh'
+        'engine', 'tsh',
+        'othersources'
     )
 
     def __init__(self,
                  uri: str,
                  namespace: str='tsh',
-                 tshclass: type=tshclass):
+                 tshclass: type=tshclass,
+                 othersources=None):
         self.uri = uri
         self.namespace = namespace
         self.engine = create_engine(uri)
         self.tsh = tshclass(namespace)
+        self.othersources = othersources
 
     def update(self,
                name: str,
@@ -64,6 +61,10 @@ class _dbtimeseries:
                metadata: Optional[dict]=None,
                insertion_date: Optional[datetime]=None,
                **kw) -> Optional[pd.Series]:
+
+        # give a chance to say *no*
+        self.othersources.update(name)
+
         return self.tsh.update(
             self.engine,
             updatets,
@@ -81,6 +82,10 @@ class _dbtimeseries:
                 metadata: Optional[dict]=None,
                 insertion_date: Optional[datetime]=None,
                 **kw) -> Optional[pd.Series]:
+
+        # give a chance to say *no*
+        self.othersources.replace(name)
+
         return self.tsh.replace(
             self.engine,
             updatets,
@@ -92,19 +97,33 @@ class _dbtimeseries:
         )
 
     def exists(self, name):
-        return self.tsh.exists(self.engine, name)
+        if (not self.tsh.exists(self.engine, name) and
+            not self.othersources.exists(name)):
+            return False
+
+        return True
 
     def get(self, name: str,
             revision_date: Optional[datetime]=None,
             from_value_date: Optional[datetime]=None,
             to_value_date: Optional[datetime]=None) -> Optional[pd.Series]:
-        return self.tsh.get(
+
+        ts = self.tsh.get(
             self.engine,
             name,
             revision_date=revision_date,
             from_value_date=from_value_date,
             to_value_date=to_value_date
         )
+
+        if ts is None:
+            ts = self.othersources.get(
+                name,
+                revision_date=revision_date,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date
+            )
+        return ts
 
     def history(self,
                 name: str,
@@ -113,7 +132,8 @@ class _dbtimeseries:
                 from_value_date: Optional[datetime]=None,
                 to_value_date: Optional[datetime]=None,
                 diffmode: bool=False) -> Dict[datetime, pd.Series]:
-        return self.tsh.history(
+
+        hist = self.tsh.history(
             self.engine,
             name,
             from_insertion_date=from_insertion_date,
@@ -123,12 +143,23 @@ class _dbtimeseries:
             diffmode=diffmode
         )
 
+        if hist is None:
+            hist = self.othersources.history(
+                name,
+                from_insertion_date=from_insertion_date,
+                to_insertion_date=to_insertion_date,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                diffmode=diffmode
+            )
+        return hist
+
     def staircase(self,
                   name: str,
                   delta: timedelta,
                   from_value_date: Optional[datetime]=None,
                   to_value_date: Optional[datetime]=None) -> Optional[pd.Series]:
-        return self.tsh.staircase(
+        sc = self.tsh.staircase(
             self.engine,
             name,
             delta,
@@ -136,21 +167,39 @@ class _dbtimeseries:
             to_value_date=to_value_date
         )
 
+        if sc is None:
+            sc = self.othersources.staircase(
+                name,
+                delta,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date
+            )
+        return sc
+
     def catalog(self):
         parsed = urlparse(self.uri)
         instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
-        return {
+        local = {
             name: (kind, instancename, self.namespace)
             for name, kind in self.tsh.list_series(self.engine).items()
         }
+        others = self.othersources.catalog()
+        local.update(**others)
+        return local
 
     def interval(self, name: str) -> pd.Interval:
-        return self.tsh.interval(self.engine, name)
+        ival = self.tsh.interval(self.engine, name)
+        if ival is None:
+            ival = self.othersources.interval(name)
+        return ival
 
     def metadata(self,
                  name: str,
                  all: bool=False):
-        meta = self.tsh.metadata(self.engine, name)
+
+        meta = self.othersources.metadata(name, all)
+        if not meta:
+            meta = self.tsh.metadata(self.engine, name)
         if all:
             return meta
         for key in self.tsh.metakeys:
@@ -160,6 +209,9 @@ class _dbtimeseries:
     def update_metadata(self,
                         name: str,
                         metadata: dict):
+
+        # give a chance to say *no*
+        self.othersources.update_metadata(name)
         self.tsh.update_metadata(
             self.engine,
             name,
@@ -172,9 +224,14 @@ class _dbtimeseries:
     def rename(self,
                currname: str,
                newname: str):
+
+        # give a chance to say *no*
+        self.othersources.rename(currname)
         return self.tsh.rename(self.engine, currname, newname)
 
     def delete(self, name: str):
+        # give a chance to say *no*
+        self.othersources.delete(name)
         return self.tsh.delete(self.engine, name)
 
 
@@ -189,56 +246,29 @@ class source:
         self.tsh = tshclass(namespace)
 
 
-class multisourcedbtimeseries(_dbtimeseries):
-    __slots__ = (
-        'uri', 'namespace',
-        'mainsource', 'sources'
-    )
+class altsources:
+    " Class to handle some operations allowed on secondary sources "
+    __slots__ = ('sources',)
 
-    @property
-    def engine(self):
-        return self.mainsource.engine
-
-    @property
-    def tsh(self):
-        return self.mainsource.tsh
-
-    def __init__(self,
-                 uri: str,
-                 namespace: str='tsh',
-                 sources: list=None,
-                 tshclass: type=tshclass):
-        self.uri = uri
-        self.namespace = namespace
-        self.mainsource = source(uri, namespace, tshclass)
-        self.sources = [self.mainsource]
-        if sources:
-            for uri, namespace in sources:
-                self._addsource(uri, namespace, tshclass)
-
-    def _addsource(self, uri, namespace, tshclass=None):
-        self.sources.append(
-            source(uri, namespace, tshclass or self.mainsource.tsh.__class__)
-        )
+    def __init__(self, tshclass, sources=()):
+        self.sources = [
+            source(
+                src_uri,
+                src_namespace,
+                tshclass
+            )
+            for src_uri, src_namespace in sources
+        ]
 
     def _findsourcefor(self, name):
         for source in self.sources:
-            with source.engine.begin() as cn:
-                if source.tsh.exists(cn, name):
-                    return source
-
-    def _findwritesourcefor(self, name):
-        for source in self.sources[1:]:
-            with source.engine.begin() as cn:
-                if source.tsh.exists(cn, name):
-                    return None
-        return self.mainsource
+            if source.tsh.exists(source.engine, name):
+                return source
 
     def exists(self, name):
         for source in self.sources:
-            with source.engine.begin() as cn:
-                if source.tsh.exists(cn, name):
-                    return True
+            if source.tsh.exists(source.engine, name):
+                return True
         return False
 
     def get(self, name: str,
@@ -285,94 +315,49 @@ class multisourcedbtimeseries(_dbtimeseries):
         meta = source.tsh.metadata(source.engine, name)
         if all:
             return meta
-        for key in self.tsh.metakeys:
+        for key in source.tsh.metakeys:
             meta.pop(key, None)
         return meta
 
-    def update(self,
-               name: str,
-               updatets: pd.Series,
-               author: str,
-               metadata: Optional[dict]=None,
-               insertion_date: Optional[datetime]=None,
-               **kw) -> Optional[pd.Series]:
-        source = self._findwritesourcefor(name)
-        if source:
-            return source.tsh.update(
-                source.engine,
-                updatets,
-                name,
-                author,
-                metadata=metadata,
-                insertion_date=insertion_date,
-                **kw
+    def interval(self, name: str) -> pd.Interval:
+        source = self._findsourcefor(name)
+        if source is None:
+            return
+        return source.interval(name)
+
+    def update(self, name):
+        if self.exists(name):
+            raise ValueError(
+                'not allowed to update to a secondary source'
             )
 
-        raise ValueError(
-            'not allowed to update to a secondary source'
-        )
-
-    def replace(self,
-                name: str,
-                newts: pd.Series,
-                author: str,
-                metadata: Optional[dict]=None,
-                insertion_date: Optional[datetime]=None,
-                **kw) -> Optional[pd.Series]:
-        source = self._findwritesourcefor(name)
-        if source:
-            return source.tsh.replace(
-                source.engine,
-                newts,
-                name,
-                author,
-                metadata=metadata,
-                insertion_date=insertion_date,
-                **kw
+    def replace(self, name):
+        if self.exists(name):
+            raise ValueError(
+                'not allowed to replace to a secondary source'
             )
 
-        raise ValueError(
-            'not allowed to replace to a secondary source'
-        )
-
-    def update_metadata(self,
-                        name: str,
-                        metadata: dict):
-        source = self._findwritesourcefor(name)
-        if source:
-            return source.tsh.update_metadata(
-                source.engine,
-                name,
-                metadata
+    def update_metadata(self, name):
+        if self.exists(name):
+            raise ValueError(
+                'not allowed to update metadata to a secondary source'
             )
 
-        raise ValueError(
-            'not allowed to update metadata to a secondary source'
-        )
-
-    def rename(self,
-               currname: str,
-               newname: str):
-        source = self._findwritesourcefor(currname)
-        if source:
-            return self.tsh.rename(source.engine, currname, newname)
-
-        raise ValueError(
-            'not allowed to rename to a secondary source'
-        )
+    def rename(self, name):
+        if self.exists(name):
+            raise ValueError(
+                'not allowed to rename to a secondary source'
+            )
 
     def delete(self, name: str):
-        source = self._findwritesourcefor(name)
-        if source:
-            return self.tsh.delete(source.engine, name)
-
-        raise ValueError(
-            'not allowed to delete to a secondary source'
-        )
+        if self.exists(name):
+            raise ValueError(
+                'not allowed to delete to a secondary source'
+            )
 
     def catalog(self):
-        cat = super().catalog()
-        for source in self.sources[1:]:
+        cat = {}
+        for source in self.sources:
             parsed = urlparse(source.uri)
             instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
             cat.update(**{
