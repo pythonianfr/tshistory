@@ -51,7 +51,7 @@ class dbtimeseries:
         self.uri = uri
         self.namespace = namespace
         self.engine = create_engine(uri)
-        self.tsh = tshclass(namespace)
+        self.tsh = tshclass(namespace, othersources)
         self.othersources = othersources
 
     def update(self,

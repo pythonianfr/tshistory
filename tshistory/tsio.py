@@ -39,10 +39,11 @@ class timeseries(SeriesServices):
     create_lock_id = None
     delete_lock_id = None
 
-    def __init__(self, namespace='tsh'):
+    def __init__(self, namespace='tsh', othersources=None):
         self.namespace = namespace
         self.create_lock_id = sum(ord(c) for c in namespace)
         self.delete_lock_id = sum(ord(c) for c in namespace)
+        self.othersources = othersources
 
     @tx
     def update(self, cn, updatets, name, author,
