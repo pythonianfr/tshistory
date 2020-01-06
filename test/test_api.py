@@ -323,8 +323,13 @@ def test_multisource(mapi):
     api = timeseries(mapi.uri, mapi.namespace)
     catalog = api.catalog()
     catalog2 = mapi.catalog()
-    assert catalog == catalog2
-    assert catalog == {'api-1': 'primary'}
+    assert catalog == {
+        'api-1': ('primary', 'db://localhost:5433/postgres', 'test-mapi')
+    }
+    assert catalog2 == {
+        'api-1': ('primary', 'db://localhost:5433/postgres', 'test-mapi'),
+        'api-2': ('primary', 'db://localhost:5433/postgres', 'test-mapi-2')
+    }
 
     mapi.update_metadata('api-1', {'descr': 'for the mapi test'})
     with pytest.raises(ValueError) as err:

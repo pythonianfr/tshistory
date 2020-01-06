@@ -137,7 +137,12 @@ class _dbtimeseries:
         )
 
     def catalog(self):
-        return self.tsh.list_series(self.engine)
+        parsed = urlparse(self.uri)
+        instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
+        return {
+            name: (kind, instancename, self.namespace)
+            for name, kind in self.tsh.list_series(self.engine).items()
+        }
 
     def interval(self, name: str) -> pd.Interval:
         return self.tsh.interval(self.engine, name)
@@ -364,3 +369,14 @@ class multisourcedbtimeseries(_dbtimeseries):
         raise ValueError(
             'not allowed to delete to a secondary source'
         )
+
+    def catalog(self):
+        cat = super().catalog()
+        for source in self.sources[1:]:
+            parsed = urlparse(source.uri)
+            instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
+            cat.update(**{
+                name: (kind, instancename, source.namespace)
+                for name, kind in source.tsh.list_series(source.engine).items()
+            })
+        return cat
