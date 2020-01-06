@@ -44,6 +44,16 @@ def engine(db):
     return create_engine(DBURI)
 
 
+# api fixtures
+
+@pytest.fixture(scope='session')
+def pgapi(engine):
+    sch = fschema.formula_schema('tsh')
+    sch.create(engine)
+    sch = schema.tsschema('tsh-upstream')
+    sch.create(engine)
+    return tsh_api.timeseries(str(engine.url), 'tsh')
+
 # multi-source
 
 @pytest.fixture(scope='session')
@@ -168,15 +178,6 @@ def write_request_bridge(method):
 
 
 URI = 'http://test-uri'
-
-
-@pytest.fixture(scope='session')
-def pgapi(engine):
-    sch = fschema.formula_schema('tsh')
-    sch.create(engine)
-    sch = schema.tsschema('tsh-upstream')
-    sch.create(engine)
-    return tsh_api.timeseries(str(engine.url), 'tsh')
 
 
 @pytest.fixture(scope='session')
