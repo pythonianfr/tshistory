@@ -131,7 +131,8 @@ class dbtimeseries:
                 to_insertion_date: Optional[datetime]=None,
                 from_value_date: Optional[datetime]=None,
                 to_value_date: Optional[datetime]=None,
-                diffmode: bool=False) -> Dict[datetime, pd.Series]:
+                diffmode: bool=False,
+                _keep_nans: bool=False) -> Dict[datetime, pd.Series]:
 
         hist = self.tsh.history(
             self.engine,
@@ -140,17 +141,19 @@ class dbtimeseries:
             to_insertion_date=to_insertion_date,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
-            diffmode=diffmode
+            diffmode=diffmode,
+            _keep_nans=_keep_nans
         )
 
-        if hist is None:
+        if not hist:
             hist = self.othersources.history(
                 name,
                 from_insertion_date=from_insertion_date,
                 to_insertion_date=to_insertion_date,
                 from_value_date=from_value_date,
                 to_value_date=to_value_date,
-                diffmode=diffmode
+                diffmode=diffmode,
+                _keep_nans=_keep_nans
             )
         return hist
 
@@ -291,7 +294,8 @@ class altsources:
                 to_insertion_date: Optional[datetime]=None,
                 from_value_date: Optional[datetime]=None,
                 to_value_date: Optional[datetime]=None,
-                diffmode: bool=False) -> Dict[datetime, pd.Series]:
+                diffmode: bool=False,
+                _keep_nans: bool=False) -> Dict[datetime, pd.Series]:
         source = self._findsourcefor(name)
         if source is None:
             return
@@ -302,7 +306,8 @@ class altsources:
             to_insertion_date=to_insertion_date,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
-            diffmode=diffmode
+            diffmode=diffmode,
+            _keep_nans=_keep_nans
         )
 
     def metadata(self,
