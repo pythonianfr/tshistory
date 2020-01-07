@@ -21,7 +21,6 @@ from tshistory.snapshot import Snapshot
 
 try:
     from tshistory_formula import schema as fschema
-    from tshistory_formula import api, tsio as ftsio
 except ImportError:
     fschema = None
 
@@ -71,7 +70,7 @@ def mapi(engine):
     return tsh_api.timeseries(
         DBURI,
         namespace='test-mapi',
-        handler=ftsio.timeseries,
+        handler=tsio.timeseries,
         sources=[
             (DBURI, 'test-mapi-2')
         ]
