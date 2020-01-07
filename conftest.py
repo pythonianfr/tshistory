@@ -21,7 +21,7 @@ from tshistory.snapshot import Snapshot
 
 try:
     from tshistory_formula import schema as fschema
-    from tshistory_formula import tsio as ftsio
+    from tshistory_formula import api, tsio as ftsio
 except ImportError:
     fschema = None
 

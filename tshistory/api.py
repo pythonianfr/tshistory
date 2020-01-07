@@ -234,22 +234,6 @@ class dbtimeseries:
         self.othersources.delete(name)
         return self.tsh.delete(self.engine, name)
 
-    # formula api extension
-
-    def register_formula(self, name, formula,
-                         reject_unknown=True, update=False):
-
-        if not getattr(self.tsh, 'register_formula', False):
-            raise TypeError(f'the {self.tsh} handler cannot register formulae')
-
-        self.tsh.register_formula(
-            self.engine,
-            name,
-            formula,
-            reject_unknown=reject_unknown,
-            update=update
-        )
-
 
 class source:
     __slots__ = ('engine', 'tsh', 'uri', 'namespace')
