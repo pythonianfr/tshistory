@@ -368,7 +368,6 @@ def test_http_api():
         assert getattr(tsh, methname, False), methname
 
 
-
 def test_local_formula_remote_series(mapi, engine):
     from tshistory_formula.tsio import timeseries as pgseries
 
@@ -383,13 +382,14 @@ def test_local_formula_remote_series(mapi, engine):
         'Babar'
     )
 
-    with pytest.raises(ValueError) as err:
-        mapi.register_formula(
-            'test-localformula-remoteseries',
-            '(+ 1 (series "remote-series"))'
-        )
-    assert err.value.args[0] == (
-        'Formula `test-localformula-remoteseries` '
-        'refers to unknown series `remote-series`'
+    mapi.register_formula(
+        'test-localformula-remoteseries',
+        '(+ 1 (series "remote-series"))'
     )
 
+    ts = mapi.get('test-localformula-remoteseries')
+    assert_df("""
+2020-01-01 00:00:00    2.0
+2020-01-01 01:00:00    3.0
+2020-01-01 02:00:00    4.0
+""", ts)
