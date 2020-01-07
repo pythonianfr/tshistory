@@ -5,6 +5,8 @@ from typing import (
     Optional,
     Union
 )
+from collections import defaultdict
+
 from sqlalchemy import create_engine
 import pandas as pd
 
@@ -182,13 +184,13 @@ class dbtimeseries:
     def catalog(self):
         parsed = urlparse(self.uri)
         instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
-        local = {
-            name: (kind, instancename, self.namespace)
-            for name, kind in self.tsh.list_series(self.engine).items()
-        }
-        others = self.othersources.catalog()
-        local.update(**others)
-        return local
+        cat = defaultdict(list)
+        for name, kind in self.tsh.list_series(self.engine).items():
+            cat[(instancename, self.namespace)].append((name, kind))
+        for key, val in self.othersources.catalog().items():
+            assert key not in cat
+            cat[key] = val
+        return cat
 
     def interval(self, name: str) -> pd.Interval:
         ival = self.tsh.interval(self.engine, name)
@@ -360,12 +362,11 @@ class altsources:
             )
 
     def catalog(self):
-        cat = {}
+        cat = defaultdict(list)
         for source in self.sources:
             parsed = urlparse(source.uri)
             instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
-            cat.update(**{
-                name: (kind, instancename, source.namespace)
-                for name, kind in source.tsh.list_series(source.engine).items()
-            })
+            cat = defaultdict(list)
+            for name, kind in source.tsh.list_series(source.engine).items():
+                cat[(instancename, source.namespace)].append((name, kind))
         return cat

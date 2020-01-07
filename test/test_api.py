@@ -295,7 +295,7 @@ def test_multisource(mapi):
 """, out)
 
     create(mapi.uri, mapi.namespace, 'api-1')
-    create(mapi.uri, 'test-mapi-2', 'api-2')
+    create(mapi.uri, 'ns-test-mapi-2', 'api-2')
 
     assert not mapi.exists('i-dont-exist')
     assert mapi.exists('api-1')
@@ -324,11 +324,11 @@ def test_multisource(mapi):
     catalog = api.catalog()
     catalog2 = mapi.catalog()
     assert catalog == {
-        'api-1': ('primary', 'db://localhost:5433/postgres', 'test-mapi')
+        ('db://localhost:5433/postgres', 'test-mapi'): [('api-1', 'primary')]
     }
     assert catalog2 == {
-        'api-1': ('primary', 'db://localhost:5433/postgres', 'test-mapi'),
-        'api-2': ('primary', 'db://localhost:5433/postgres', 'test-mapi-2')
+        ('db://localhost:5433/postgres', 'test-mapi'): [('api-1', 'primary')],
+        ('db://localhost:5433/postgres', 'test-mapi-2'): [('api-2', 'primary')]
     }
 
     mapi.update_metadata('api-1', {'descr': 'for the mapi test'})
