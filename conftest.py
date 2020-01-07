@@ -48,23 +48,15 @@ def engine(db):
 
 @pytest.fixture(scope='session')
 def pgapi(engine):
-    sch = fschema.formula_schema('tsh')
-    sch.create(engine)
-    sch = schema.tsschema('tsh-upstream')
-    sch.create(engine)
+    fschema.formula_schema('tsh').create(engine)
+    schema.tsschema('tsh-upstream').create(engine)
     return tsh_api.timeseries(str(engine.url), 'tsh')
 
 # multi-source
 
 @pytest.fixture(scope='session')
 def mapi(engine):
-    sch = schema.tsschema('test-mapi')
-    sch.create(engine)
-    # allow formulae there
     fschema.formula_schema('test-mapi').create(engine)
-    sch = schema.tsschema('test-mapi-2')
-    sch.create(engine)
-    # allow formulae there
     fschema.formula_schema('test-mapi-2').create(engine)
 
     return tsh_api.timeseries(
