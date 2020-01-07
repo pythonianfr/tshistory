@@ -370,9 +370,9 @@ def test_http_api():
 
 
 def test_local_formula_remote_series(mapi, engine):
-    from tshistory_formula.tsio import timeseries
+    from tshistory_formula.tsio import timeseries as pgseries
 
-    rtsh = timeseries('test-mapi-2')
+    rtsh = pgseries('test-mapi-2')
     rtsh.update(
         engine,
         pd.Series(
@@ -383,11 +383,8 @@ def test_local_formula_remote_series(mapi, engine):
         'Babar'
     )
 
-    ltsh = timeseries('test-mapi')
-
     with pytest.raises(ValueError) as err:
-        ltsh.register_formula(
-            engine,
+        mapi.register_formula(
             'test-localformula-remoteseries',
             '(+ 1 (series "remote-series"))'
         )
