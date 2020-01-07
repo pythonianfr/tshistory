@@ -324,11 +324,11 @@ def test_multisource(mapi):
     catalog = api.catalog()
     catalog2 = mapi.catalog()
     assert catalog == {
-        ('db://localhost:5433/postgres', 'test-mapi'): [('api-1', 'primary')]
+        ('db://localhost:5433/postgres', 'ns-test-mapi'): [('api-1', 'primary')]
     }
     assert catalog2 == {
-        ('db://localhost:5433/postgres', 'test-mapi'): [('api-1', 'primary')],
-        ('db://localhost:5433/postgres', 'test-mapi-2'): [('api-2', 'primary')]
+        ('db://localhost:5433/postgres', 'ns-test-mapi'): [('api-1', 'primary')],
+        ('db://localhost:5433/postgres', 'ns-test-mapi-2'): [('api-2', 'primary')]
     }
 
     mapi.update_metadata('api-1', {'descr': 'for the mapi test'})

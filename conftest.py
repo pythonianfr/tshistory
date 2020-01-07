@@ -56,15 +56,15 @@ def pgapi(engine):
 
 @pytest.fixture(scope='session')
 def mapi(engine):
-    fschema.formula_schema('test-mapi').create(engine)
-    fschema.formula_schema('test-mapi-2').create(engine)
+    fschema.formula_schema('ns-test-mapi').create(engine)
+    fschema.formula_schema('ns-test-mapi-2').create(engine)
 
     return tsh_api.timeseries(
         DBURI,
-        namespace='test-mapi',
+        namespace='ns-test-mapi',
         handler=tsio.timeseries,
         sources=[
-            (DBURI, 'test-mapi-2')
+            (DBURI, 'ns-test-mapi-2')
         ]
     )
 
