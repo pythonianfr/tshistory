@@ -181,15 +181,16 @@ class dbtimeseries:
             )
         return sc
 
-    def catalog(self):
+    def catalog(self, allsources=True):
         parsed = urlparse(self.uri)
         instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
         cat = defaultdict(list)
         for name, kind in self.tsh.list_series(self.engine).items():
             cat[(instancename, self.namespace)].append((name, kind))
-        for key, val in self.othersources.catalog().items():
-            assert key not in cat
-            cat[key] = val
+        if allsources:
+            for key, val in self.othersources.catalog().items():
+                assert key not in cat
+                cat[key] = val
         return cat
 
     def interval(self, name: str) -> pd.Interval:

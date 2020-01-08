@@ -330,6 +330,10 @@ def test_multisource(mapi):
         ('db://localhost:5433/postgres', 'ns-test-mapi'): [('api-1', 'primary')],
         ('db://localhost:5433/postgres', 'ns-test-mapi-2'): [('api-2', 'primary')]
     }
+    catalog3 = mapi.catalog(allsources=False)
+    assert catalog3 == {
+        ('db://localhost:5433/postgres', 'ns-test-mapi'): [('api-1', 'primary')]
+    }
 
     mapi.update_metadata('api-1', {'descr': 'for the mapi test'})
     with pytest.raises(ValueError) as err:
