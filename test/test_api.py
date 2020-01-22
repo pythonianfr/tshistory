@@ -370,3 +370,62 @@ def test_http_api():
                      'rename', 'delete'
     ):
         assert getattr(tsh, methname, False), methname
+
+
+@pytest.mark.skipif(
+    not formula_class(),
+    reason='need formula plugin to be available'
+)
+def test_local_formula_remote_series(mapihttp, engine):
+    from tshistory_formula.tsio import timeseries as pgseries
+
+    mapi = mapihttp
+    assert len(mapi.othersources.sources) == 1
+    assert mapi.namespace == 'ns-test-local'
+    assert mapi.uri == 'postgresql://localhost:5433/postgres'
+    assert mapi.othersources.sources[0].namespace == 'ns-test-remote'
+    assert mapi.othersources.sources[0].uri == 'http://test-uri2'
+
+    series = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(pd.Timestamp('2020-1-1'), periods=3, freq='H'),
+    )
+    mapi.update('local-series', series, 'Babar')
+
+    rtsh = pgseries('ns-test-remote')
+    rtsh.update(
+        engine,
+        series,
+        'remote-series',
+        'Celeste',
+        insertion_date=pd.Timestamp('2020-1-1', tz='UTC')
+    )
+
+    cat = mapi.catalog(allsources=True)
+    assert dict(cat) == {
+        ('db://localhost:5433/postgres', 'ns-test-local'): [
+            ('local-series', 'primary')
+        ],
+        ('db://localhost:5433/postgres', 'ns-test-remote'): [
+            ['remote-series', 'primary']
+        ]
+    }
+    mapi.register_formula(
+        'test-localformula-remoteseries',
+        '(+ 1 (series "remote-series"))'
+    )
+
+    ts = mapi.get('test-localformula-remoteseries')
+    assert_df("""
+2020-01-01 00:00:00    2.0
+2020-01-01 01:00:00    3.0
+2020-01-01 02:00:00    4.0
+""", ts)
+
+    hist = mapi.history('test-localformula-remoteseries')
+    assert_hist("""
+insertion_date             value_date         
+2020-01-01 00:00:00+00:00  2020-01-01 00:00:00    2.0
+                           2020-01-01 01:00:00    3.0
+                           2020-01-01 02:00:00    4.0
+""", hist)

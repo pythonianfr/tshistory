@@ -188,8 +188,8 @@ class dbtimeseries:
         for name, kind in self.tsh.list_series(self.engine).items():
             cat[(instancename, self.namespace)].append((name, kind))
         if allsources:
-            for key, val in self.othersources.catalog().items():
-                assert key not in cat
+            for key, val in self.othersources.catalog(allsources).items():
+                assert key not in cat, f'{key} already in {cat}'
                 cat[key] = val
         return cat
 
@@ -203,6 +203,7 @@ class dbtimeseries:
                  name: str,
                  all: bool=False):
 
+        # TEST ME BETTER & FIXME
         meta = self.othersources.metadata(name, all)
         if not meta:
             meta = self.tsh.metadata(self.engine, name)
@@ -242,13 +243,15 @@ class dbtimeseries:
 
 
 class source:
-    __slots__ = ('engine', 'tsh', 'uri', 'namespace')
+    __slots__ = 'uri', 'namespace', 'tsa'
 
     def __init__(self, uri, namespace, tshclass):
         self.uri = uri
         self.namespace = namespace
-        self.engine = create_engine(uri)
-        self.tsh = tshclass(namespace)
+        self.tsa = timeseries(uri, namespace, tshclass)
+
+    def __repr__(self):
+        return f'source(uri={self.uri},ns={self.namespace})'
 
 
 class altsources:
@@ -267,12 +270,12 @@ class altsources:
 
     def _findsourcefor(self, name):
         for source in self.sources:
-            if source.tsh.exists(source.engine, name):
+            if source.tsa.exists(name):
                 return source
 
     def exists(self, name):
         for source in self.sources:
-            if source.tsh.exists(source.engine, name):
+            if source.tsa.exists(name):
                 return True
         return False
 
@@ -283,8 +286,7 @@ class altsources:
         source = self._findsourcefor(name)
         if source is None:
             return
-        return source.tsh.get(
-            source.engine,
+        return source.tsa.get(
             name,
             revision_date=revision_date,
             from_value_date=from_value_date,
@@ -302,8 +304,7 @@ class altsources:
         source = self._findsourcefor(name)
         if source is None:
             return
-        return source.tsh.history(
-            source.engine,
+        return source.tsa.history(
             name,
             from_insertion_date=from_insertion_date,
             to_insertion_date=to_insertion_date,
@@ -319,10 +320,10 @@ class altsources:
         source = self._findsourcefor(name)
         if source is None:
             return
-        meta = source.tsh.metadata(source.engine, name)
+        meta = source.tsa.metadata(name, all)
         if all:
             return meta
-        for key in source.tsh.metakeys:
+        for key in source.tsa.tsh.metakeys:
             meta.pop(key, None)
         return meta
 
@@ -330,6 +331,7 @@ class altsources:
         source = self._findsourcefor(name)
         if source is None:
             return
+        # TESTME & FIXME !
         return source.interval(name)
 
     def update(self, name):
@@ -362,12 +364,8 @@ class altsources:
                 'not allowed to delete to a secondary source'
             )
 
-    def catalog(self):
-        cat = defaultdict(list)
+    def catalog(self, allsources=False):
+        cat = {}
         for source in self.sources:
-            parsed = urlparse(source.uri)
-            instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
-            cat = defaultdict(list)
-            for name, kind in source.tsh.list_series(source.engine).items():
-                cat[(instancename, source.namespace)].append((name, kind))
+            cat.update(source.tsa.catalog(allsources))
         return cat

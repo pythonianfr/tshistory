@@ -172,6 +172,42 @@ def write_request_bridge(method):
 
 URI = 'http://test-uri'
 
+def with_tester(uri, resp, wsgitester):
+    resp.add_callback(
+        responses.GET, uri + '/series/state',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/series/staircase',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/series/history',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/series/catalog',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.PATCH, uri + '/series/state',
+        callback=write_request_bridge(wsgitester.patch)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/series/metadata',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.PUT, uri + '/series/metadata',
+        callback=write_request_bridge(wsgitester.put)
+    )
+
 
 @pytest.fixture(scope='session')
 def httpapi(engine):
@@ -179,43 +215,37 @@ def httpapi(engine):
     wsgitester = WebTester(
         app.make_app(
             str(engine.url),
-            sources=[(DBURI, 'tsh')]  # as of today the http path doesn't handle namespaces
+            sources=[(DBURI, 'ns-test-mapi-2')]
         )
     )
     with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
-        resp.add_callback(
-            responses.GET, 'http://test-uri/series/state',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.GET, 'http://test-uri/series/staircase',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.GET, 'http://test-uri/series/history',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.GET, 'http://test-uri/series/catalog',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.PATCH, 'http://test-uri/series/state',
-            callback=write_request_bridge(wsgitester.patch)
-        )
-
-        resp.add_callback(
-            responses.GET, 'http://test-uri/series/metadata',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.PUT, 'http://test-uri/series/metadata',
-            callback=write_request_bridge(wsgitester.put)
-        )
-
+        with_tester(URI, resp, wsgitester)
+        # yields local-tsh + http ns-test-mapi-2
         yield tsh_api.timeseries(URI, 'tsh')
+
+
+# formula test
+URI2 = 'http://test-uri2'
+
+@pytest.fixture(scope='session')
+def mapihttp(engine):
+    from tshistory_rest import app
+    from tshistory_formula import tsio
+    fschema.formula_schema('ns-test-local').create(engine)
+    fschema.formula_schema('ns-test-remote').create(engine)
+    wsgitester = WebTester(
+        app.make_app(
+            DBURI,  namespace='ns-test-remote'
+        )
+    )
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
+        with_tester(URI2, resp, wsgitester)
+
+        yield tsh_api.timeseries(
+            DBURI,
+            namespace='ns-test-local',
+            handler=tsio.timeseries,
+            sources=[
+                (URI2, 'ns-test-remote')
+            ]
+        )
