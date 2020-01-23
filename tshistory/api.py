@@ -194,9 +194,10 @@ class dbtimeseries:
         return cat
 
     def interval(self, name: str) -> pd.Interval:
-        ival = self.tsh.interval(self.engine, name)
-        if ival is None:
-            ival = self.othersources.interval(name)
+        try:
+            ival = self.tsh.interval(self.engine, name)
+        except ValueError:
+            return self.othersources.interval(name)
         return ival
 
     def metadata(self,
@@ -268,6 +269,9 @@ class altsources:
             for src_uri, src_namespace in sources
         ]
 
+    def __repr__(self):
+        return str(self.sources)
+
     def _findsourcefor(self, name):
         for source in self.sources:
             if source.tsa.exists(name):
@@ -330,9 +334,11 @@ class altsources:
     def interval(self, name: str) -> pd.Interval:
         source = self._findsourcefor(name)
         if source is None:
-            return
-        # TESTME & FIXME !
-        return source.interval(name)
+            raise ValueError(f'no interval for series: {name}')
+        ival = source.tsa.interval(name)
+        if ival is None:
+            raise ValueError(f'no interval for series: {name}')
+        return ival
 
     def update(self, name):
         if self.exists(name):

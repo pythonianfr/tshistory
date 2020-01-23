@@ -461,7 +461,7 @@ class timeseries(SeriesServices):
     def interval(self, cn, name, notz=False):
         tablename = self._series_to_tablename(cn, name)
         if tablename is None:
-            raise ValueError(f'no such serie: {name}')
+            raise ValueError(f'no interval for series: {name}')
         sql = (f'select tsstart, tsend '
                f'from "{self.namespace}.revision"."{tablename}" '
                f'order by id desc limit 1')

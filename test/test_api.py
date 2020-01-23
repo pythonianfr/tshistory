@@ -429,3 +429,14 @@ insertion_date             value_date
                            2020-01-01 01:00:00    3.0
                            2020-01-01 02:00:00    4.0
 """, hist)
+
+    ival = mapi.interval('remote-series')
+    assert (ival.left, ival.right) == (
+        pd.Timestamp('2020-01-01 00:00:00'),
+        pd.Timestamp('2020-01-01 02:00:00')
+    )
+
+    with pytest.raises(ValueError) as err:
+        mapi.interval('test-localformula-remoteseries')
+
+    assert err.value.args[0] == 'no interval for series: test-localformula-remoteseries'
