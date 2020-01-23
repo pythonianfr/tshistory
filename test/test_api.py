@@ -440,3 +440,20 @@ insertion_date             value_date
         mapi.interval('test-localformula-remoteseries')
 
     assert err.value.args[0] == 'no interval for series: test-localformula-remoteseries'
+
+    meta = mapi.metadata('remote-series', all=True)
+    assert meta == {
+        'index_dtype': '<M8[ns]',
+        'index_type': 'datetime64[ns]',
+        'tzaware': False,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+    meta = mapi.metadata('test-localformula-remoteseries', all=True)
+    assert meta == {
+        'index_dtype': '<M8[ns]',
+        'index_type': 'datetime64[ns]',
+        'tzaware': False,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }

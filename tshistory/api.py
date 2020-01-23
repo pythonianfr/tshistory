@@ -204,10 +204,9 @@ class dbtimeseries:
                  name: str,
                  all: bool=False):
 
-        # TEST ME BETTER & FIXME
-        meta = self.othersources.metadata(name, all)
+        meta = self.tsh.metadata(self.engine, name)
         if not meta:
-            meta = self.tsh.metadata(self.engine, name)
+            meta = self.othersources.metadata(name)
         if all:
             return meta
         for key in self.tsh.metakeys:
@@ -318,17 +317,11 @@ class altsources:
             _keep_nans=_keep_nans
         )
 
-    def metadata(self,
-                 name: str,
-                 all: bool=False):
+    def metadata(self, name: str):
         source = self._findsourcefor(name)
         if source is None:
             return
-        meta = source.tsa.metadata(name, all)
-        if all:
-            return meta
-        for key in source.tsa.tsh.metakeys:
-            meta.pop(key, None)
+        meta = source.tsa.metadata(name, all=True)
         return meta
 
     def interval(self, name: str) -> pd.Interval:
