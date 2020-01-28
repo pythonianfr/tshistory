@@ -12,6 +12,7 @@ import zlib
 from functools import partial
 from contextlib import contextmanager
 from pathlib import Path
+from warnings import warn
 
 import numpy as np
 import pandas as pd
@@ -438,3 +439,29 @@ def bisect_search(values, value):
             ju = jm
 
     return jl
+
+
+# api extensions helper
+
+def extend(klass):
+    """Helper to add methods to the base api class
+
+    e.g.
+
+    ```python
+    from tshistory.api import dbtimeseries
+
+    @extend(dbtimeseries)
+    def formule(name):
+        return self.tsh.formula(self.engine, name)
+    ```
+    """
+
+    def decorator(func):
+        name = func.__name__
+        if getattr(klass, name, None) is not None:
+            warn(f'replacing already existing method {name} over {klass}')
+        setattr(klass, name, func)
+        return func
+
+    return decorator
