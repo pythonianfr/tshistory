@@ -214,8 +214,10 @@ def httpapi(engine):
     from tshistory_rest import app
     wsgitester = WebTester(
         app.make_app(
-            str(engine.url),
-            sources=[(DBURI, 'ns-test-mapi-2')]
+            tsh_api.timeseries(
+                str(engine.url),
+                sources=[(DBURI, 'ns-test-mapi-2')]
+            )
         )
     )
     with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
@@ -235,7 +237,10 @@ def mapihttp(engine):
     fschema.formula_schema('ns-test-remote').create(engine)
     wsgitester = WebTester(
         app.make_app(
-            DBURI,  namespace='ns-test-remote'
+            tsh_api.timeseries(
+                DBURI,
+                namespace='ns-test-remote'
+            )
         )
     )
     with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
