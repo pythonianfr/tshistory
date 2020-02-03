@@ -248,6 +248,42 @@ from my_series_app.app import make_app
 app = make_app('postgresql://me:password@localhost/mydb')
 ```
 
+## API surface
+
+For now we only provide a list of supported methods.
+
+
+### Information access (read methods)
+
+* catalog
+
+* exists
+
+* get
+
+* history
+
+* interval
+
+* metadata
+
+* staircase
+
+* type
+
+
+### Information update (write methods)
+
+* update
+
+* update_metadata
+
+* replace
+
+* rename
+
+* delete
+
 
 # Command line
 
