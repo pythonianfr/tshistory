@@ -190,6 +190,65 @@ We built a series with naive time stamps, but timezone-aware
 timestamps work well (and it is advised to use them !).
 
 
+# The API object
+
+In the few examples above we manipulate the time series through an
+object that talks directly to the postgresql back end.
+
+It is possible to also talk to a rest api using the same api, like
+shown below and proceed exactly like in the above code examples:
+
+```python
+ >>> from tshistory.api import timeseries
+ >>>
+ >>> tsa = timeseries('http://my.timeseries.info/api')
+```
+
+## Using an HTTP/REST end point
+
+For this to work, one needs to use the the
+[tshistory_rest][tshistory_rest] and
+[tshistory_client][tshistory_client] packages.
+
+The client package will be used transparently on a
+`timeseries('http://.../api')` call, nothing more needs to be done
+than install it.
+
+For the rest api, you need to build a small [flask][flask] app and set
+up the `tshistory_rest` blueprint like this (in an `app.py` module):
+
+```python
+from flask import Flask
+
+from tshistory.api import timeseries
+from tshistory_rest.blueprint import blueprint as blueprint
+
+
+def make_app(dburi):
+    app = Flask('my-timeseries-app')
+    app.register_blueprint(
+        blueprint(timeseries(dburi)),
+        url_prefix='/api'
+    )
+    return app
+```
+
+Then, you can start it in development mode like this:
+
+```python
+app = make_app('postgresql://me:password@localhost/mydb')
+app.run('192.168.1.1', 8080)
+```
+
+or just leave it to a wsgi container in e.g. a `wsgi.py` module:
+
+```python
+from my_series_app.app import make_app
+
+app = make_app('postgresql://me:password@localhost/mydb')
+```
+
+
 # Command line
 
 ## Basic operations
@@ -281,8 +340,11 @@ For instance, the [tsview][tsview] python package provides such a
 `view` subcommand for generic time series visualisation.
 
 [tsview]: https://bitbucket.org/pythonian/tsview
+[tshistory_rest]: https://bitbucket.org/pythonian/tshistory_rest
+[tshistory_client]: https://bitbucket.org/pythonian/tshistory_client
 [backtesting]: https://en.wikipedia.org/wiki/Backtesting
 [cross-validation]: https://en.wikipedia.org/wiki/Cross-validation_(statistics)
+[flask]: https://www.palletsprojects.com/p/flask/
 
 
 # Status
