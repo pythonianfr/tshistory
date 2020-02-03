@@ -61,13 +61,13 @@ However here's a simple example:
  >>> import pandas as pd
  >>> from tshistory.api import timeseries
  >>>
- >>> tsh = timeseries('postgres://me:password@localhost/mydb')
+ >>> tsa = timeseries('postgres://me:password@localhost/mydb')
  >>>
  >>> series = pd.Series([1, 2, 3],
  ...                    pd.date_range(start=pd.Timestamp(2017, 1, 1),
  ...                                  freq='D', periods=3))
  # db insertion
- >>> tsh.update('my_series', series, 'babar@pythonian.fr')
+ >>> tsa.update('my_series', series, 'babar@pythonian.fr')
  ...
  2017-01-01    1.0
  2017-01-02    2.0
@@ -78,13 +78,17 @@ However here's a simple example:
  # (there are no provisions to handle integer series as of today)
 
  # retrieval
- >>> tsh.get('my_series')
+ >>> tsa.get('my_series')
  ...
  2017-01-01    1.0
  2017-01-02    2.0
  2017-01-03    3.0
  Name: my_series, dtype: float64
 ```
+
+Note that we generally adopt the convention to name the time series
+api object `tsa`.
+
 
 ## Updating a series
 
@@ -95,7 +99,7 @@ This is good. Now, let's insert more:
  ...                    pd.date_range(start=pd.Timestamp(2017, 1, 2),
  ...                                  freq='D', periods=4))
  # db insertion
- >>> tsh.update('my_series', series, 'babar@pythonian.fr')
+ >>> tsa.update('my_series', series, 'babar@pythonian.fr')
  ...
  2017-01-03    7.0
  2017-01-04    8.0
@@ -107,7 +111,7 @@ This is good. Now, let's insert more:
  # there in the first step)
 
  # db retrieval
- >>> tsh.get('my_series')
+ >>> tsa.get('my_series')
  ...
 2017-01-01    1.0
 2017-01-02    2.0
@@ -129,7 +133,7 @@ just ignored.
 We can access the whole history (or parts of it) in one call:
 
 ```python
- >>> history = tsh.history('my_series')
+ >>> history = tsa.history('my_series')
  ...
  >>>
  >>> for idate, series in history.items(): # it's a dict
@@ -156,7 +160,7 @@ Also the insertion date is timzeone aware.
 It is possible to show the differences only:
 
 ```python
- >>> diffs = tsh.history('my_series', diffmode=True)
+ >>> diffs = tsa.history('my_series', diffmode=True)
  ...
  >>> for idate, series in diffs.items():
  ...   print('insertion date:', idate)
@@ -177,7 +181,7 @@ It is possible to show the differences only:
 You can see a series metadata:
 
 ```python
- >>> tsh.metadata('series', internal=True)
+ >>> tsa.metadata('series', internal=True)
  {'tzaware': False, 'index_type': 'datetime64[ns]', 'value_type': 'float64',
  'index_dtype': '<M8[ns]', 'value_dtype': '<f8'}
 ```
