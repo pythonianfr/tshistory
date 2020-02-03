@@ -303,6 +303,3 @@ operation.
 Alternative backend storage and storage strategies will be considered
 in the future.
 
-A more definitive backend-independant api will be provided not far
-from now (the current one relies on sqlalchemy engines).
-
