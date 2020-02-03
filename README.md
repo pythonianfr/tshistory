@@ -294,9 +294,6 @@ changes come with migration procedure using the `tsh` utility.
 When it is good: if you do mostly appends (and occasional edits in the
 past) it will store data in a very compact way.
 
-When it is suboptimal: if you edit your series all the time to random value date
-positions, it will be wasteful in storage.
-
 Reading any version of the series will always be the fastest (io-bound)
 operation.
 
