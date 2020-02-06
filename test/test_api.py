@@ -380,6 +380,12 @@ def test_local_formula_remote_series(mapihttp, engine):
     from tshistory_formula.tsio import timeseries as pgseries
 
     mapi = mapihttp
+    assert repr(mapi) == (
+        'timeseries(uri=postgresql://localhost:5433/postgres,'
+        'ns=ns-test-local,'
+        'sources=[source(uri=http://test-uri2,ns=ns-test-remote)])'
+    )
+
     assert len(mapi.othersources.sources) == 1
     assert mapi.namespace == 'ns-test-local'
     assert mapi.uri == 'postgresql://localhost:5433/postgres'

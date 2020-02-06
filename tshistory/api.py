@@ -45,6 +45,14 @@ class dbtimeseries:
         'othersources'
     )
 
+    def __repr__(self):
+        return (
+            f'timeseries('
+            f'uri={self.uri},'
+            f'ns={self.namespace},'
+            f'sources={self.othersources or nil})'
+        )
+
     def __init__(self,
                  uri: str,
                  namespace: str='tsh',
