@@ -281,13 +281,19 @@ class altsources:
 
     def _findsourcefor(self, name):
         for source in self.sources:
-            if source.tsa.exists(name):
-                return source
+            try:
+                if source.tsa.exists(name):
+                    return source
+            except:
+                print(f'source {source} currently unavailable')
 
     def exists(self, name):
         for source in self.sources:
-            if source.tsa.exists(name):
-                return True
+            try:
+                if source.tsa.exists(name):
+                    return True
+            except:
+                print(f'source {source} currently unavailable')
         return False
 
     def get(self, name: str,
@@ -374,5 +380,9 @@ class altsources:
     def catalog(self, allsources=False):
         cat = {}
         for source in self.sources:
-            cat.update(source.tsa.catalog(allsources))
+            try:
+                cat.update(source.tsa.catalog(allsources))
+            except:
+                import traceback as tb; tb.print_exc()
+                print(f'source {source} temporarily unavailable')
         return cat

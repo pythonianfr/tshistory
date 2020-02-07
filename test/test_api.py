@@ -383,10 +383,11 @@ def test_local_formula_remote_series(mapihttp, engine):
     assert repr(mapi) == (
         'timeseries(uri=postgresql://localhost:5433/postgres,'
         'ns=ns-test-local,'
-        'sources=[source(uri=http://test-uri2,ns=ns-test-remote)])'
+        'sources=[source(uri=http://test-uri2,ns=ns-test-remote), '
+        'source(uri=http://unavailable,ns=ns-test-unavailable-remote)])'
     )
 
-    assert len(mapi.othersources.sources) == 1
+    assert len(mapi.othersources.sources) == 2
     assert mapi.namespace == 'ns-test-local'
     assert mapi.uri == 'postgresql://localhost:5433/postgres'
     assert mapi.othersources.sources[0].namespace == 'ns-test-remote'

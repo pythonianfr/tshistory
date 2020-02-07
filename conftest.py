@@ -251,6 +251,7 @@ def mapihttp(engine):
             namespace='ns-test-local',
             handler=tsio.timeseries,
             sources=[
-                (URI2, 'ns-test-remote')
+                (URI2, 'ns-test-remote'),
+                ('http://unavailable', 'ns-test-unavailable-remote')
             ]
         )
