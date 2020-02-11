@@ -239,6 +239,16 @@ class dbtimeseries:
                   delta: timedelta,
                   from_value_date: Optional[datetime]=None,
                   to_value_date: Optional[datetime]=None) -> Optional[pd.Series]:
+        """Compute a series whose value dates are the most recent
+        constrained to be `delta` time after the insertion dates of
+        the series.
+
+        This kind of query typically makes sense for forecast series
+        where the relationship between insertion date and value date
+        is sound.
+
+        """
+
         sc = self.tsh.staircase(
             self.engine,
             name,
