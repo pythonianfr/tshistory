@@ -107,18 +107,31 @@ class dbtimeseries:
 
     def replace(self,
                 name: str,
-                updatets: pd.Series,
+                replacets: pd.Series,
                 author: str,
                 metadata: Optional[dict]=None,
                 insertion_date: Optional[datetime]=None,
                 **kw) -> Optional[pd.Series]:
+        """Replace a series named by <name> with the input pandas series.
+
+        This creates a new version of the series. The series is completely
+        replaced with the provided values.
+
+        The `author` is mandatory.
+        The `metadata` dictionary allows to associate any metadata
+        with the new series revision.
+
+        It is possible to force an `insertion_date`, which can only be
+        higher than the previous `insertion_date`.
+
+        """
 
         # give a chance to say *no*
         self.othersources.replace(name)
 
         return self.tsh.replace(
             self.engine,
-            updatets,
+            replacets,
             name,
             author,
             metadata=metadata,
