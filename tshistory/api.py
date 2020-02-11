@@ -343,8 +343,12 @@ class dbtimeseries:
 
     def rename(self,
                currname: str,
-               newname: str):
+               newname: str) -> None:
+        """Rename a series.
 
+        The target name must be available.
+
+        """
         # give a chance to say *no*
         self.othersources.rename(currname)
         return self.tsh.rename(self.engine, currname, newname)
