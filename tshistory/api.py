@@ -319,8 +319,14 @@ class dbtimeseries:
 
     def update_metadata(self,
                         name: str,
-                        metadata: dict):
+                        metadata: dict) -> None:
+        """Update a series metadata with a dictionary from strings to anything
+        json-serializable.
 
+        Internal keys are not allowed and any attempt to update them
+        will raise.
+
+        """
         # give a chance to say *no*
         self.othersources.update_metadata(name)
         self.tsh.update_metadata(
