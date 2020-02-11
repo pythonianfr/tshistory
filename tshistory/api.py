@@ -153,6 +153,20 @@ class dbtimeseries:
             revision_date: Optional[datetime]=None,
             from_value_date: Optional[datetime]=None,
             to_value_date: Optional[datetime]=None) -> Optional[pd.Series]:
+        """Get a series by name.
+
+        By default one gets the latest version.
+
+        By specifying `revision_date` one can get the closest version
+        matching the given date.
+
+        The `from_value_date` and `to_value_date` parameters permit to
+        specify a narrower date range (by default all points are
+        provided).
+
+        If the series does not exists, a None is returned.
+
+        """
 
         ts = self.tsh.get(
             self.engine,
