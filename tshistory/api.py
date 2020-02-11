@@ -354,6 +354,11 @@ class dbtimeseries:
         return self.tsh.rename(self.engine, currname, newname)
 
     def delete(self, name: str):
+        """Delete a series.
+
+        This is an irreversible operation.
+
+        """
         # give a chance to say *no*
         self.othersources.delete(name)
         return self.tsh.delete(self.engine, name)
