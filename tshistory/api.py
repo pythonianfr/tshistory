@@ -2,7 +2,9 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from typing import (
     Dict,
+    List,
     Optional,
+    Tuple,
     Union
 )
 from collections import defaultdict
@@ -266,7 +268,15 @@ class dbtimeseries:
             )
         return sc
 
-    def catalog(self, allsources=True):
+    def catalog(self, allsources: bool=True) -> Dict[str,List[Tuple[str,str]]]:
+        """Produces a catalog of all series in the form of a mapping from
+        source to a list of (name, kind) pair.
+
+        By default it provides the series from all sources.
+
+        If `allsources` is False, only the main source is listed.
+
+        """
         parsed = urlparse(self.uri)
         instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
         cat = defaultdict(list)
