@@ -139,7 +139,10 @@ class dbtimeseries:
             **kw
         )
 
-    def exists(self, name):
+    def exists(self, name: str) -> bool:
+        """Checks the existence of a series with a given name.
+
+        """
         if (not self.tsh.exists(self.engine, name) and
             not self.othersources.exists(name)):
             return False
