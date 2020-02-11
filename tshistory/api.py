@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from typing import (
+    Any,
     Dict,
     List,
     Optional,
@@ -301,8 +302,12 @@ class dbtimeseries:
 
     def metadata(self,
                  name: str,
-                 all: bool=False):
+                 all: bool=False) -> Dict[str, Any]:
+        """Return a series metadata dictionary.
 
+        If `all` is True, internal metadata will be provided.
+
+        """
         meta = self.tsh.metadata(self.engine, name)
         if not meta:
             meta = self.othersources.metadata(name)
