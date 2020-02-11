@@ -335,7 +335,10 @@ class dbtimeseries:
             metadata
         )
 
-    def type(self, name: str):
+    def type(self, name: str) -> str:
+        """Return the type of a series, for instance 'primary' or 'formula'.
+
+        """
         return self.tsh.type(self.engine, name)
 
     def rename(self,
