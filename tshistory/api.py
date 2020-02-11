@@ -71,6 +71,26 @@ class dbtimeseries:
                metadata: Optional[dict]=None,
                insertion_date: Optional[datetime]=None,
                **kw) -> Optional[pd.Series]:
+        """Update a series named by <name> with the input pandas series.
+
+        This creates a new version of the series. Only the _changes_
+        between the last version and the provided series are part of
+        the new version.
+
+        A series made of the changed points is returned.  If there was
+        no change, None is returned and no new version is created.
+
+        New points are added, changed points are changed,
+        points with NaN are considered to be _erased_.
+
+        The `author` is mandatory.
+        The `metadata` dictionary allows to associate any metadata
+        with the new series revision.
+
+        It is possible to force an `insertion_date`, which can only be
+        higher than the previous `insertion_date`.
+
+        """
 
         # give a chance to say *no*
         self.othersources.update(name)
