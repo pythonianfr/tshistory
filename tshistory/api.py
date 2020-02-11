@@ -193,6 +193,23 @@ class dbtimeseries:
                 to_value_date: Optional[datetime]=None,
                 diffmode: bool=False,
                 _keep_nans: bool=False) -> Dict[datetime, pd.Series]:
+        """Get all versions of a series in the form of a dict from insertion
+        dates to series version.
+
+        It is possible to restrict the versions range by specifying
+        `from_insertion_date` and `to_insertion_date`.
+
+        It is possible to restrict the values range by specifying
+        `from_value_date` and `to_value_date`.
+
+        If `diffmode` is set to True, we don't get full series values
+        between two consecutive insertion date but only the difference
+        series (with new points, updated points and deleted
+        points). This is typically more costly to compute but can be
+        much more compact, and it encodes the same information as with
+        `diffmode` set to False.
+
+        """
 
         hist = self.tsh.history(
             self.engine,
