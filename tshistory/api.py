@@ -289,6 +289,10 @@ class dbtimeseries:
         return cat
 
     def interval(self, name: str) -> pd.Interval:
+        """Return a pandas interval object which provides the smallest and
+        highest value date of a series.
+
+        """
         try:
             ival = self.tsh.interval(self.engine, name)
         except ValueError:
