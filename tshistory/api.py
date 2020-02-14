@@ -96,7 +96,10 @@ class dbtimeseries:
         """
 
         # give a chance to say *no*
-        self.othersources.update(name)
+        self.othersources.forbidden(
+            name,
+            'not allowed to update to a secondary source'
+        )
 
         return self.tsh.update(
             self.engine,
@@ -130,7 +133,10 @@ class dbtimeseries:
         """
 
         # give a chance to say *no*
-        self.othersources.replace(name)
+        self.othersources.forbidden(
+            name,
+            'not allowed to replace to a secondary source'
+        )
 
         return self.tsh.replace(
             self.engine,
@@ -328,7 +334,11 @@ class dbtimeseries:
 
         """
         # give a chance to say *no*
-        self.othersources.update_metadata(name)
+        self.othersources.forbidden(
+            name,
+            'not allowed to update metadata to a secondary source'
+        )
+
         self.tsh.update_metadata(
             self.engine,
             name,
@@ -350,7 +360,11 @@ class dbtimeseries:
 
         """
         # give a chance to say *no*
-        self.othersources.rename(currname)
+        self.othersources.forbidden(
+            currname,
+            'not allowed to rename to a secondary source'
+        )
+
         return self.tsh.rename(self.engine, currname, newname)
 
     def delete(self, name: str):
@@ -360,7 +374,11 @@ class dbtimeseries:
 
         """
         # give a chance to say *no*
-        self.othersources.delete(name)
+        self.othersources.forbidden(
+            name,
+            'not allowed to delete to a secondary source'
+        )
+
         return self.tsh.delete(self.engine, name)
 
 
@@ -461,35 +479,9 @@ class altsources:
             raise ValueError(f'no interval for series: {name}')
         return ival
 
-    def update(self, name):
+    def forbidden(self, name, msg):
         if self.exists(name):
-            raise ValueError(
-                'not allowed to update to a secondary source'
-            )
-
-    def replace(self, name):
-        if self.exists(name):
-            raise ValueError(
-                'not allowed to replace to a secondary source'
-            )
-
-    def update_metadata(self, name):
-        if self.exists(name):
-            raise ValueError(
-                'not allowed to update metadata to a secondary source'
-            )
-
-    def rename(self, name):
-        if self.exists(name):
-            raise ValueError(
-                'not allowed to rename to a secondary source'
-            )
-
-    def delete(self, name: str):
-        if self.exists(name):
-            raise ValueError(
-                'not allowed to delete to a secondary source'
-            )
+            raise ValueError(msg)
 
     def catalog(self, allsources=False):
         cat = {}
