@@ -244,6 +244,35 @@ def test_alternative_handler(pgapi):
 """, tsb)
 
 
+def test_log(pgapi):
+    series = genserie(utcdt(2020, 1, 1), 'D', 3, initval=[1])
+    pgapi.update(
+        'log-me',
+        series,
+        'Babar',
+        {'foo': 'A', 'bar': 42},
+        insertion_date=utcdt(2020, 1, 1)
+    )
+
+    log = pgapi.log('log-me')
+    assert log == [{
+        'rev': 1,
+        'author': 'Babar',
+        'date': pd.Timestamp('2020-1-1', tz='UTC'),
+        'meta': {'foo': 'A', 'bar': 42}
+    }]
+
+    series[1] = 42
+    pgapi.update(
+        'log-me',
+        series,
+        'Babar',
+        insertion_date=utcdt(2020, 1, 2)
+    )
+    log = pgapi.log('log-me', limit=1)
+    assert len(log) == 1
+
+
 def test_multisource(mapi):
     for methname in ('get', 'update', 'replace', 'exists', 'type',
                      'history', 'staircase',

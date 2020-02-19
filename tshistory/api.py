@@ -351,6 +351,30 @@ class dbtimeseries:
         """
         return self.tsh.type(self.engine, name)
 
+    def log(self,
+            name: str,
+            limit: Optional[int]=None,
+            fromdate: Optional[pd.Timestamp]=None,
+            todate: Optional[pd.Timestamp]=None) -> List[Dict[str, Any]]:
+        """Return a list of revisions for a given series, in reverse
+        chronological order, with filters.
+
+        Revisions are dicts of:
+        * rev: revision id (int)
+        * author: author name
+        * date: timestamp of the revision
+        * meta: the revision metadata
+
+        """
+
+        return self.tsh.log(
+            self.engine,
+            name,
+            limit=limit,
+            fromdate=fromdate,
+            todate=todate
+        )
+
     def rename(self,
                currname: str,
                newname: str) -> None:
