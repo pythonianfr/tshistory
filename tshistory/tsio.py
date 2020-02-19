@@ -309,7 +309,7 @@ class timeseries(SeriesServices):
             _keep_nans=True
         )
         if not len(base):
-            return pd.Series(name=name)
+            return pd.Series(name=name, dtype='float64')
 
         # prepare the needed revision dates
         fromidate = base.index.min() - delta
@@ -802,7 +802,7 @@ class historycache:
             to_value_date=None):
 
         if not len(self.hist):
-            return pd.Series(name=self.name)
+            return pd.Series(name=self.name, dtype='float64')
 
         if revision_date is None:
             return list(self.hist.values())[-1].dropna()
@@ -813,7 +813,7 @@ class historycache:
                 from_value_date:to_value_date
             ].dropna()
 
-        return pd.Series(name=self.name)
+        return pd.Series(name=self.name, dtype='float64')
 
     def staircase(self, delta,
                   from_value_date=None,
@@ -839,7 +839,7 @@ class historycache:
             if ts is not None and len(ts):
                 chunks.append(ts)
 
-        ts = pd.Series()
+        ts = pd.Series(dtype='float64')
         if chunks:
             ts = pd.concat(chunks)
         ts.name = self.name

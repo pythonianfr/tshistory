@@ -1527,7 +1527,7 @@ def test_chunky_array(engine, tsh):
 
 
 def test_null_serie(engine, tsh):
-    ts = pd.Series()
+    ts = pd.Series(dtype='float64')
 
     tsh.update(engine, ts, 'null', 'Babar')
 
