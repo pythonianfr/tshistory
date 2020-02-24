@@ -306,6 +306,32 @@ def patch(base, diff):
     return patched
 
 
+def diff(base, other, _precision=1e-14):
+    if base is None:
+        return other
+    base = base.dropna()
+    if not len(base):
+        return other
+
+    mask_overlap = other.index.isin(base.index)
+    base_overlap = base[other.index[mask_overlap]]
+    other_overlap = other[mask_overlap]
+
+    if base.dtype == 'float64':
+        mask_equal = np.isclose(base_overlap, other_overlap,
+                                rtol=0, atol=_precision)
+    else:
+        mask_equal = base_overlap == other_overlap
+
+    mask_na_equal = base_overlap.isnull() & other_overlap.isnull()
+    mask_equal = mask_equal | mask_na_equal
+
+    diff_overlap = other_overlap[~mask_equal]
+    diff_new = other[~mask_overlap]
+    diff_new = diff_new.dropna()
+    return pd.concat([diff_overlap, diff_new])
+
+
 class SeriesServices(object):
     _precision = 1e-14
 
@@ -315,29 +341,7 @@ class SeriesServices(object):
         return patch(base, diff)
 
     def diff(self, base, other):
-        if base is None:
-            return other
-        base = base.dropna()
-        if not len(base):
-            return other
-
-        mask_overlap = other.index.isin(base.index)
-        base_overlap = base[other.index[mask_overlap]]
-        other_overlap = other[mask_overlap]
-
-        if base.dtype == 'float64':
-            mask_equal = np.isclose(base_overlap, other_overlap,
-                                    rtol=0, atol=self._precision)
-        else:
-            mask_equal = base_overlap == other_overlap
-
-        mask_na_equal = base_overlap.isnull() & other_overlap.isnull()
-        mask_equal = mask_equal | mask_na_equal
-
-        diff_overlap = other_overlap[~mask_equal]
-        diff_new = other[~mask_overlap]
-        diff_new = diff_new.dropna()
-        return pd.concat([diff_overlap, diff_new])
+        return diff(base, other, self._precision)
 
 
 def delete_series(engine, series, namespace='tsh'):

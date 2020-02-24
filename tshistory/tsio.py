@@ -13,9 +13,10 @@ from sqlhelp import sqlfile, select, insert
 from tshistory.util import (
     bisect_search,
     closed_overlaps,
+    diff,
     num2float,
+    patch,
     pruned_history,
-    SeriesServices,
     start_end,
     tx,
     tzaware_serie
@@ -26,7 +27,7 @@ L = logging.getLogger('tshistory.tsio')
 SERIESSCHEMA = Path(__file__).parent / 'series.sql'
 
 
-class timeseries(SeriesServices):
+class timeseries:
     namespace = 'tsh'
     schema = None
     metakeys = {
@@ -268,9 +269,9 @@ class timeseries(SeriesServices):
                     # we therefore consider the first serie as a diff to the "null" serie
                     diffs.append((revdate_b, serie_b))
                 else:
-                    diff = self.diff(serie_a, serie_b)
-                    if len(diff):
-                        diffs.append((revdate_b, diff))
+                    series_diff = diff(serie_a, serie_b)
+                    if len(series_diff):
+                        diffs.append((revdate_b, series_diff))
             series = diffs
         else:
             series = [
@@ -539,10 +540,12 @@ class timeseries(SeriesServices):
                 metadata=None, insertion_date=None):
         self._validate(cn, newts, name)
         snapshot = Snapshot(cn, self, name)
-        diff = self.diff(snapshot.last(newts.index.min(),
-                                       newts.index.max()),
-                         newts)
-        if not len(diff):
+        series_diff= diff(
+            snapshot.last(newts.index.min(),
+                          newts.index.max()),
+            newts
+        )
+        if not len(series_diff):
             L.info('no difference in %s by %s (for ts of size %s)',
                    name, author, len(newts))
             return
@@ -553,26 +556,26 @@ class timeseries(SeriesServices):
         start = min(tsstart or ival.left, ival.left)
         end = max(tsend or ival.right, ival.right)
 
-        if pd.isnull(diff[0]) or pd.isnull(diff[-1]):
+        if pd.isnull(series_diff[0]) or pd.isnull(series_diff[-1]):
             # we *might* be shrinking, let's look at the full series
             # and yes, shrinkers have a slow path
             last = snapshot.last()
-            patched = self.patch(last, diff).dropna()
+            patched = patch(last, series_diff).dropna()
             if not len(patched):
                 raise ValueError('complete erasure of a series is forbidden')
-            if pd.isnull(diff[0]):
+            if pd.isnull(series_diff[0]):
                 start = patched.index[0]
-            if pd.isnull(diff[-1]):
+            if pd.isnull(series_diff[-1]):
                 end = patched.index[-1]
 
-        head = snapshot.update(diff)
+        head = snapshot.update(series_diff)
         self._new_revision(
             cn, name, head, start, end,
             author, insertion_date, metadata
         )
         L.info('inserted diff (size=%s) for ts %s by %s',
-               len(diff), name, author)
-        return diff
+               len(series_diff), name, author)
+        return series_diff
 
     def _new_revision(self, cn, name, head, tsstart, tsend,
                       author, insertion_date, metadata):

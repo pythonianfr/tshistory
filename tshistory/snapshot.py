@@ -7,13 +7,13 @@ from sqlhelp import select
 from tshistory.util import (
     binary_pack,
     binary_unpack,
+    patch,
     numpy_serialize,
     numpy_deserialize,
-    SeriesServices
 )
 
 
-class Snapshot(SeriesServices):
+class Snapshot:
     """Here's what's happening when we create a series with 3 insertions
     in a scenario representative of real world situations.
 
@@ -89,7 +89,7 @@ class Snapshot(SeriesServices):
     * since we don't have a parent at id 1 we stop, and return the
       concatenated chunks
     """
-    __slots__ = ('cn', 'name', 'tsh')
+    __slots__ = ('cn', 'name', 'tsh', 'tablename')
     _max_bucket_size = 250
 
     def __init__(self, cn, tsh, name):
@@ -177,7 +177,7 @@ class Snapshot(SeriesServices):
     def create(self, initial_ts):
         return self.insert_buckets(None, initial_ts)
 
-    def update(self, diff):
+    def update(self, series_diff):
         # get last chunkhead for cset
         tablename = self.tsh._series_to_tablename(self.cn, self.name)
         headsql = ('select snapshot '
@@ -186,18 +186,18 @@ class Snapshot(SeriesServices):
         head = self.cn.execute(headsql).scalar()
 
         # get raw chunks matching the limits
-        diffstart = diff.index.min()
+        diffstart = series_diff.index.min()
         rawchunks = self.rawchunks(head, diffstart)
         cid, parent, _ = rawchunks[0]
         oldsnapshot = self._chunks_to_ts(row[2] for row in rawchunks)
 
         if diffstart > oldsnapshot.index.max():
             # append: let't not rewrite anything
-            newsnapshot = diff
+            newsnapshot = series_diff
             parent = cid
         else:
             # we got a point override, need to patch
-            newsnapshot = self.patch(oldsnapshot, diff)
+            newsnapshot = patch(oldsnapshot, series_diff)
 
         return self.insert_buckets(parent, newsnapshot)
 

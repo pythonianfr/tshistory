@@ -9,6 +9,7 @@ import pandas as pd
 from tshistory.snapshot import Snapshot
 from tshistory.util import (
     _set_cache,
+    diff,
     pack_history,
     threadpool,
     unpack_history
@@ -602,24 +603,24 @@ Freq: D
 """, ts_repushed)
 
     tsh.update(engine, ts_repushed, 'ts_repushed', 'test')
-    diff = tsh.update(engine, ts_repushed, 'ts_repushed', 'test')
-    assert diff is None
+    dif = tsh.update(engine, ts_repushed, 'ts_repushed', 'test')
+    assert dif is None
 
     # there is no difference
-    assert 0 == len(tsh.diff(ts_repushed, ts_repushed))
+    assert 0 == len(diff(ts_repushed, ts_repushed))
 
     ts_add = genserie(datetime(2010, 1, 1), 'D', 15)
     ts_add.iloc[0] = np.nan
     ts_add.iloc[13:] = np.nan
     ts_add.iloc[8] = np.nan
-    diff = tsh.diff(ts_repushed, ts_add)
+    dif = diff(ts_repushed, ts_add)
 
     assert_df("""
 2010-01-02     1.0
 2010-01-03     2.0
 2010-01-09     NaN
 2010-01-12    11.0
-2010-01-13    12.0""", diff.sort_index())
+2010-01-13    12.0""", dif.sort_index())
     # value on nan => value
     # nan on value => nan
     # nan on nan => Nothing
