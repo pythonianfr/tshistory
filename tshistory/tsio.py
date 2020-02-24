@@ -443,6 +443,9 @@ class timeseries(SeriesServices):
         """Build a structure showing the history of a series in the db,
         per changeset, in chronological order.
         """
+        if not self.exists(cn, name):
+            return []
+
         log = []
         q = self._log_series_query(
             cn, name, limit, authors,
