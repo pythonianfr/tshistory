@@ -6,12 +6,34 @@ import pytest
 import pandas as pd
 import numpy as np
 
+from tshistory.util import patch
 from tshistory.snapshot import Snapshot
 from tshistory.testutil import (
     genserie,
     utcdt,
     tempattr
 )
+
+
+@pytest.mark.perf
+def test_patch():
+    data = np.linspace(0, 100, num=365 * 10, dtype='float64')
+    s1 = pd.Series(
+        data,
+        index=pd.date_range(
+            start=utcdt(2020, 1, 1), freq='D', periods=365 * 10
+        )
+    )
+    s2 = pd.Series(
+        data,
+        index=pd.date_range(
+            start=utcdt(2020, 6, 1), freq='D', periods=365 * 10
+        )
+    )
+    t0 = time()
+    for _ in range(100):
+        patched = patch(s1, s2)
+    print('100 patches', time() - t0)
 
 
 @pytest.mark.perf

@@ -293,22 +293,26 @@ def _fromjson(jsonb, tsname):
     return result
 
 
+def patch(base, diff):
+    assert base is not None
+    assert diff is not None
+    basei = base.index
+    diffi = diff.index
+    newindex = basei.union(diffi)
+    patched = pd.Series([0] * len(newindex), index=newindex)
+    patched[basei] = base
+    patched[diffi] = diff
+    patched.name = base.name
+    return patched
+
+
 class SeriesServices(object):
     _precision = 1e-14
 
     # diff handling
 
     def patch(self, base, diff):
-        assert base is not None
-        assert diff is not None
-        basei = base.index
-        diffi = diff.index
-        newindex = basei.union(diffi)
-        patched = pd.Series([0] * len(newindex), index=newindex)
-        patched[basei] = base
-        patched[diffi] = diff
-        patched.name = base.name
-        return patched
+        return patch(base, diff)
 
     def diff(self, base, other):
         if base is None:
