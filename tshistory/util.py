@@ -332,18 +332,6 @@ def diff(base, other, _precision=1e-14):
     return pd.concat([diff_overlap, diff_new])
 
 
-class SeriesServices(object):
-    _precision = 1e-14
-
-    # diff handling
-
-    def patch(self, base, diff):
-        return patch(base, diff)
-
-    def diff(self, base, other):
-        return diff(base, other, self._precision)
-
-
 def delete_series(engine, series, namespace='tsh'):
     from tshistory.tsio import timeseries
     tsh = timeseries(namespace=namespace)
