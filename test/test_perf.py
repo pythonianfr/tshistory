@@ -1,7 +1,6 @@
 from datetime import timedelta
 from time import time
 import calendar
-from pprint import pprint
 
 import pytest
 import pandas as pd
@@ -9,7 +8,6 @@ import numpy as np
 
 from tshistory.snapshot import Snapshot
 from tshistory.testutil import (
-    assert_df,
     genserie,
     utcdt,
     tempattr
