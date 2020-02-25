@@ -6,7 +6,10 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from tshistory.util import patch
+from tshistory.util import (
+    diff,
+    patch
+)
 from tshistory.snapshot import Snapshot
 from tshistory.testutil import (
     genserie,
@@ -34,6 +37,28 @@ def test_patch():
     for _ in range(100):
         patched = patch(s1, s2)
     print('100 patches', time() - t0)
+
+
+@pytest.mark.perf
+def test_unit_diff():
+    data = np.linspace(0, 100, num=365 * 10, dtype='float64')
+    s1 = pd.Series(
+        data,
+        index=pd.date_range(
+            start=utcdt(2020, 1, 1), freq='D', periods=365 * 10
+        )
+    )
+    s2 = pd.Series(
+        data,
+        index=pd.date_range(
+            start=utcdt(2020, 6, 1), freq='D', periods=365 * 10
+        )
+    )
+    s2[10] = np.nan
+    t0 = time()
+    for _ in range(1000):
+        diffed = diff(s1, s2)
+    print('1000 diffs', time() - t0)
 
 
 @pytest.mark.perf
