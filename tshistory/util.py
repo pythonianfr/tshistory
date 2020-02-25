@@ -371,7 +371,11 @@ def diff(base, other, _precision=1e-14):
     if not len(base):
         return other
 
-    mask_overlap = other.index.isin(base.index)
+    mask_overlap = np.isin(
+        other.index.values,
+        base.index.values,
+        assume_unique=True
+    )
     base_overlap = base[other.index[mask_overlap]]
     other_overlap = other[mask_overlap]
 
@@ -381,7 +385,14 @@ def diff(base, other, _precision=1e-14):
     else:
         mask_equal = base_overlap == other_overlap
 
-    mask_na_equal = base_overlap.isnull() & other_overlap.isnull()
+    if base.dtype == 'float64':
+        mask_na_equal = (
+            np.isnan(base_overlap.values) &
+            np.isnan(other_overlap.values)
+        )
+    else:
+        mask_na_equal = base_overlap.isnull() & other_overlap.isnull()
+
     mask_equal = mask_equal | mask_na_equal
 
     diff_overlap = other_overlap[~mask_equal]
