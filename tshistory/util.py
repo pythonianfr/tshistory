@@ -13,6 +13,7 @@ from functools import partial
 from contextlib import contextmanager
 from pathlib import Path
 from warnings import warn
+from functools import reduce
 
 import numpy as np
 import pandas as pd
@@ -301,6 +302,10 @@ def _populate(index, values, outindex, outvalues):
 
 
 def patch(base, diff):
+    """update base series with differing values from diff series:
+    * new points added
+    * updated points
+    """
     assert base is not None
     assert diff is not None
 
@@ -330,6 +335,32 @@ def patch(base, diff):
         uvalues,
         index=uindex,
         name=base.name
+    )
+
+
+def patchmany(series):
+    assert len(series) > 1, 'patchmany wants at least two series'
+    first = series[0]
+
+    if first.dtype == 'object':
+        final = first
+        for ts in series[1:]:
+            final = patch(final, ts)
+        return final
+
+    uindex = reduce(
+        np.union1d,
+        (ts.index.values for ts in series)
+    )
+    uvalues = np.zeros(len(uindex))
+
+    for ts in series:
+        _populate(ts.index, ts.values, uindex, uvalues)
+
+    return pd.Series(
+        uvalues,
+        index=uindex,
+        name=first.name
     )
 
 
