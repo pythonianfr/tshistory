@@ -293,17 +293,44 @@ def _fromjson(jsonb, tsname):
     return result
 
 
+def _populate(index, values, outindex, outvalues):
+    mask = np.in1d(outindex, index)
+    outvalues[
+        mask
+    ] = values
+
+
 def patch(base, diff):
     assert base is not None
     assert diff is not None
-    basei = base.index
-    diffi = diff.index
-    newindex = basei.union(diffi)
-    patched = pd.Series([0] * len(newindex), index=newindex)
-    patched[basei] = base
-    patched[diffi] = diff
-    patched.name = base.name
-    return patched
+
+    if base.dtype == 'object':
+        basei = base.index
+        diffi = diff.index
+        newindex = basei.union(diffi)
+        patched = pd.Series([0] * len(newindex), index=newindex)
+        patched[basei] = base
+        patched[diffi] = diff
+        patched.name = base.name
+        return patched
+
+    index1 = base.index.values
+    index2 = diff.index.values
+
+    uindex = np.union1d(
+        index1,
+        index2
+    )
+    uvalues = np.zeros(len(uindex))
+
+    _populate(index1, base.values, uindex, uvalues)
+    _populate(index2, diff.values, uindex, uvalues)
+
+    return pd.Series(
+        uvalues,
+        index=uindex,
+        name=base.name
+    )
 
 
 def diff(base, other, _precision=1e-14):
