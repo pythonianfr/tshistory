@@ -12,6 +12,26 @@ from tshistory.testutil import (
 )
 
 
+def formula_class():
+    try:
+        from tshistory_formula.tsio import timeseries
+    except ImportError:
+        return
+    return timeseries
+
+
+def supervision_class():
+    try:
+        from tshistory_supervision.tsio import timeseries
+    except ImportError:
+        return
+    return timeseries
+
+
+@pytest.mark.skipif(
+    not formula_class(),
+    reason='need formula plugin to be available'
+)
 def test_base_universal_api(pgapi, httpapi):
     series = pd.Series(
         [1, 2, 3],
@@ -162,22 +182,6 @@ insertion_date             value_date
     pgapi.delete('api-test2')
 
 
-def formula_class():
-    try:
-        from tshistory_formula.tsio import timeseries
-    except ImportError:
-        return
-    return timeseries
-
-
-def supervision_class():
-    try:
-        from tshistory_supervision.tsio import timeseries
-    except ImportError:
-        return
-    return timeseries
-
-
 @pytest.mark.skipif(
     not formula_class() or not supervision_class(),
     reason='need formula and supervision plugins to be available'
@@ -244,6 +248,10 @@ def test_alternative_handler(pgapi):
 """, tsb)
 
 
+@pytest.mark.skipif(
+    not formula_class(),
+    reason='need formula plugin to be available'
+)
 def test_log(pgapi):
     series = genserie(utcdt(2020, 1, 1), 'D', 3, initval=[1])
     pgapi.update(
@@ -273,6 +281,10 @@ def test_log(pgapi):
     assert len(log) == 1
 
 
+@pytest.mark.skipif(
+    not formula_class(),
+    reason='need formula plugin to be available'
+)
 def test_multisource(mapi):
     for methname in ('get', 'update', 'replace', 'exists', 'type',
                      'history', 'staircase',
@@ -390,6 +402,10 @@ def test_multisource(mapi):
     assert not mapi.exists('renamed-api-1')
 
 
+@pytest.mark.skipif(
+    not formula_class(),
+    reason='need formula plugin to be available'
+)
 def test_http_api():
     tsh = timeseries('https://my.fancy.timeseries.store')
     for methname in ('get', 'update', 'replace', 'exists', 'type',
