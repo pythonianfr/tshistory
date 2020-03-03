@@ -2,6 +2,7 @@ from datetime import datetime
 
 import pytest
 import pandas as pd
+import numpy as np
 
 from tshistory.util import (
     bisect_search,
@@ -9,12 +10,34 @@ from tshistory.util import (
     nary_pack,
     nary_unpack,
     pack_history,
+    patch,
     unpack_history
 )
 from tshistory.testutil import (
+    assert_df,
     genserie,
     utcdt
 )
+
+
+def test_patch():
+    s1 = pd.Series(
+        [1., 2., 3., 4.],
+        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+    )
+    s2 = pd.Series(
+        [12., 13., np.nan, 15.],
+        index=pd.date_range(datetime(2020, 1, 1, 1), freq='H', periods=4)
+    )
+    p = patch(s1, s2)
+    assert_df("""
+2020-01-01 00:00:00     1.0
+2020-01-01 01:00:00    12.0
+2020-01-01 02:00:00    13.0
+2020-01-01 03:00:00     NaN
+2020-01-01 04:00:00    15.0
+""", p)
+
 
 
 def test_json():
