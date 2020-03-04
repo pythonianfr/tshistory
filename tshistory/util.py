@@ -371,6 +371,7 @@ def diff(base, other, _precision=1e-14):
     if not len(base):
         return other
 
+    # intersection
     mask_overlap = np.isin(
         other.index.values,
         base.index.values,
@@ -379,6 +380,7 @@ def diff(base, other, _precision=1e-14):
     base_overlap = base[other.index[mask_overlap]]
     other_overlap = other[mask_overlap]
 
+    # equal values at intersection
     if base.dtype == 'float64':
         mask_equal = np.isclose(base_overlap, other_overlap,
                                 rtol=0, atol=_precision)
@@ -395,9 +397,12 @@ def diff(base, other, _precision=1e-14):
 
     mask_equal = mask_equal | mask_na_equal
 
+    # series of updated elements
     diff_overlap = other_overlap[~mask_equal]
+    # series of new elements brought by the `other` side
     diff_new = other[~mask_overlap]
     diff_new = diff_new.dropna()
+
     return pd.concat([diff_overlap, diff_new]).sort_index()
 
 
