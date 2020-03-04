@@ -6,6 +6,7 @@ import numpy as np
 
 from tshistory.util import (
     bisect_search,
+    diff,
     fromjson,
     nary_pack,
     nary_unpack,
@@ -38,7 +39,6 @@ def test_patch():
 2020-01-01 03:00:00     NaN
 2020-01-01 04:00:00    15.0
 """, p)
-
 
 
 def test_float_patchmany():
@@ -87,6 +87,38 @@ def test_string_patchmany():
 2020-01-01 03:00:00    None
 2020-01-01 04:00:00      ee
 """, p)
+
+
+def test_diff():
+    s1 = pd.Series(
+        [1., 2., 3., 4.],
+        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+    )
+    s2 = pd.Series(
+        [12., 13., np.nan, 15.],
+        index=pd.date_range(datetime(2020, 1, 1, 1), freq='H', periods=4)
+    )
+    s2[datetime(2019, 12, 31, 23)] = -1
+
+    ds1s2 = diff(s1, s2)
+    # tail ends come as new items
+    # middle elements as updates
+    assert_df("""
+2019-12-31 23:00:00    -1.0
+2020-01-01 01:00:00    12.0
+2020-01-01 02:00:00    13.0
+2020-01-01 03:00:00     NaN
+2020-01-01 04:00:00    15.0
+""", ds1s2)
+
+    ds2s1 = diff(s2, s1)
+    # only updates there
+    assert_df("""
+2020-01-01 00:00:00    1.0
+2020-01-01 01:00:00    2.0
+2020-01-01 02:00:00    3.0
+2020-01-01 03:00:00    4.0
+""", ds2s1)
 
 
 def test_json():

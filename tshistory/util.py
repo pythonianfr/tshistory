@@ -398,7 +398,7 @@ def diff(base, other, _precision=1e-14):
     diff_overlap = other_overlap[~mask_equal]
     diff_new = other[~mask_overlap]
     diff_new = diff_new.dropna()
-    return pd.concat([diff_overlap, diff_new])
+    return pd.concat([diff_overlap, diff_new]).sort_index()
 
 
 def delete_series(engine, series, namespace='tsh'):
