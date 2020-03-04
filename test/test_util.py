@@ -11,6 +11,7 @@ from tshistory.util import (
     nary_unpack,
     pack_history,
     patch,
+    patchmany,
     unpack_history
 )
 from tshistory.testutil import (
@@ -38,6 +39,30 @@ def test_patch():
 2020-01-01 04:00:00    15.0
 """, p)
 
+
+
+def test_patchmany():
+    s1 = pd.Series(
+        [1., 2., 3., 4.],
+        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+    )
+    s2 = pd.Series(
+        [12., 13., np.nan, 15.],
+        index=pd.date_range(datetime(2020, 1, 1, 1), freq='H', periods=4)
+    )
+    s3 = pd.Series(
+        [0., 1., 2., 13., ],
+        index=pd.date_range(datetime(2019, 12, 31, 23), freq='H', periods=4)
+    )
+    p = patchmany([s1, s2, s3])
+    assert_df("""
+2019-12-31 23:00:00     0.0
+2020-01-01 00:00:00     1.0
+2020-01-01 01:00:00     2.0
+2020-01-01 02:00:00    13.0
+2020-01-01 03:00:00     NaN
+2020-01-01 04:00:00    15.0
+""", p)
 
 
 def test_json():
