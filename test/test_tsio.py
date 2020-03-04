@@ -131,7 +131,7 @@ insertion_date             value_date
     assert ival.right == pd.Timestamp('2017-10-29 04:00:00+0000', tz='UTC')
 
 
-def test_differential(engine, tsh):
+def test_base_diff(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
     tsh.update(engine, ts_begin, 'ts_test', 'test')
 
