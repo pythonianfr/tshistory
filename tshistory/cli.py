@@ -113,9 +113,11 @@ def log(db_uri, limit, series,
     tsa = timeseries(find_dburi(db_uri), namespace)
 
     for rev in tsa.log(
-            series, limit=limit,
-            fromdate=from_insertion_date,
-            todate=to_insertion_date):
+        series,
+        limit=limit,
+        fromdate=from_insertion_date,
+        todate=to_insertion_date):
+
         print(format_rev(rev))
         print()
 
