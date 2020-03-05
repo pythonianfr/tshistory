@@ -185,8 +185,12 @@ def delete(db_uri, series=None, deletefile=None, namespace='tsh'):
     else:
         series = [series]
 
-    engine = create_engine(find_dburi(db_uri))
-    delete_series(engine, series, namespace)
+    tsa = timeseries(find_dburi(db_uri), namespace)
+    for name in series:
+        if not tsa.exists(name):
+            print('no such series', name)
+            continue
+        tsa.delete(name)
 
 
 # db maintenance
