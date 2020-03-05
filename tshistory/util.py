@@ -116,6 +116,8 @@ def inject_in_index(serie, revdate):
     )
 
 
+# serialisation helpers (binary, json)
+
 def numpy_serialize(series, isstr=False):
     # use `view` as a workarround for "cannot include dtype 'M' in a buffer"
     bindex = np.ascontiguousarray(
@@ -294,6 +296,8 @@ def _fromjson(jsonb, tsname):
     return result
 
 
+# diff/patch utilities
+
 def _populate(index, values, outindex, outvalues):
     mask = np.in1d(outindex, index)
     outvalues[
@@ -406,6 +410,7 @@ def diff(base, other, _precision=1e-14):
     return pd.concat([diff_overlap, diff_new]).sort_index()
 
 
+# //ism helper
 
 def threadpool(maxthreads):
     L = logging.getLogger('parallel')
@@ -442,6 +447,8 @@ def threadpool(maxthreads):
     return run
 
 
+# transaction wrapper
+
 def _set_cache(txobj):
     txobj.cache = {
         'series_tablename': {},
@@ -465,6 +472,8 @@ def tx(func):
     check_tx_and_call.__name__ = func.__name__
     return check_tx_and_call
 
+
+# bisection
 
 def bisect_search(values, value):
     """return an index j such that ``value`` is between values[j]

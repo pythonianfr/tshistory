@@ -11,10 +11,7 @@ from tqdm import tqdm
 from sqlhelp import select, update
 
 from tshistory.api import timeseries
-from tshistory.util import (
-    delete_series,
-    find_dburi
-)
+from tshistory.util import find_dburi
 
 import tshistory.schema
 
