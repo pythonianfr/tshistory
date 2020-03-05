@@ -46,6 +46,8 @@ def get_cfg_path():
 
 
 def find_dburi(something: str) -> str:
+    if something.startswith('http'):
+        return something
     try:
         url.make_url(something)
     except Exception:
