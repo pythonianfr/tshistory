@@ -88,6 +88,7 @@ class Snapshot:
 
     * since we don't have a parent at id 1 we stop, and return the
       concatenated chunks
+
     """
     __slots__ = ('cn', 'name', 'tsh', 'tablename')
     _max_bucket_size = 250

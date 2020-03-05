@@ -42,6 +42,12 @@ class timeseries:
 
 
 class dbtimeseries:
+    """Postgres-backed implementation of the API
+
+    The api documentation is carried by this object.
+    The http client provides exactly the same methods.
+
+    """
     __slots__ = (
         'uri', 'namespace',
         'engine', 'tsh',

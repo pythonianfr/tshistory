@@ -518,13 +518,13 @@ def extend(klass):
 
     e.g.
 
-    ```python
-    from tshistory.api import dbtimeseries
+    .. code-block::python
+     from tshistory.api import dbtimeseries
 
-    @extend(dbtimeseries)
-    def formule(name):
-        return self.tsh.formula(self.engine, name)
-    ```
+     @extend(dbtimeseries)
+     def formule(name):
+         return self.tsh.formula(self.engine, name)
+
     """
 
     def decorator(func):
