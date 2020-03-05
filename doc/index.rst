@@ -363,9 +363,9 @@ tools entry point named `tshistory:subcommand` as in e.g.:
 For instance, the `tsview`_ python package provides such a
 `view` subcommand for generic time series visualisation.
 
-.. _tsview: https://bitbucket.org/pythonian/tsview
-.. _tshistory_rest: https://bitbucket.org/pythonian/tshistory_rest
-.. _tshistory_client: https://bitbucket.org/pythonian/tshistory_client
+.. _tsview: https://hg.sr.ht/~pythonian/tsview
+.. _tshistory_rest: https://hg.sr.ht/~pythonian/tshistory_rest
+.. _tshistory_client: https://hg.sr.ht/~pythonian/tshistory_client
 .. _backtesting: https://en.wikipedia.org/wiki/Backtesting
 .. _cross-validation: https://en.wikipedia.org/wiki/Cross-validation_(statistics)
 .. _flask: https://www.palletsprojects.com/p/flask/
