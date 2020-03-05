@@ -10,7 +10,7 @@ import pandas as pd
 from tqdm import tqdm
 from sqlhelp import select, update
 
-from tshistory.tsio import timeseries
+from tshistory.api import timeseries
 from tshistory.util import (
     delete_series,
     find_dburi
@@ -52,10 +52,9 @@ def tsh():
 @click.option('--namespace', default='tsh')
 def get(db_uri, seriename, json, namespace='tsh'):
     """show a serie in its current state """
-    engine = create_engine(find_dburi(db_uri))
-    tsh = timeseries(namespace)
+    tsa = timeseries(find_dburi(db_uri), namespace)
 
-    ts = tsh.get(engine, seriename)
+    ts = tsa.get(seriename)
     if json:
         print(ts.to_json())
     else:
@@ -79,16 +78,13 @@ def history(db_uri, seriename,
             diff, json,
             namespace='tsh'):
     """show a serie full history """
-    engine = create_engine(find_dburi(db_uri))
-
-    tsh = timeseries(namespace)
-    with engine.begin() as cn:
-        hist = tsh.history(
-            cn, seriename,
-            from_insertion_date, to_insertion_date,
-            from_value_date, to_value_date,
-            diffmode=diff
-        )
+    tsa = timeseries(find_dburi(db_uri), namespace)
+    hist = tsa.history(
+        seriename,
+        from_insertion_date, to_insertion_date,
+        from_value_date, to_value_date,
+        diffmode=diff
+    )
     if json:
         out = {
             str(idate): {
@@ -114,11 +110,10 @@ def log(db_uri, limit, series,
         from_insertion_date=None, to_insertion_date=None,
         namespace='tsh'):
     """show revision history of entire repository or series"""
-    engine = create_engine(find_dburi(db_uri))
-    tsh = timeseries(namespace)
+    tsa = timeseries(find_dburi(db_uri), namespace)
 
-    for rev in tsh.log(
-            engine, series, limit=limit,
+    for rev in tsa.log(
+            series, limit=limit,
             fromdate=from_insertion_date,
             todate=to_insertion_date):
         print(format_rev(rev))
@@ -136,9 +131,8 @@ series names:    {serie names}
 @click.option('--namespace', default='tsh')
 def info(db_uri, namespace='tsh'):
     """show global statistics of the repository"""
-    engine = create_engine(find_dburi(db_uri))
-
-    info = timeseries(namespace).info(engine)
+    tsa = timeseries(find_dburi(db_uri), namespace)
+    info = tsa.tsh.info(tsa.engine)
     info['serie names'] = ', '.join(info['serie names'])
     print(INFOFMT.format(**info))
 
@@ -158,12 +152,10 @@ def rename(db_uri, mapfile, namespace='tsh'):
         p.old: p.new
         for p in pd.read_csv(mapfile).itertuples()
     }
-    engine = create_engine(find_dburi(db_uri))
-    tsh = timeseries(namespace)
+    tsa = timeseries(find_dburi(db_uri), namespace)
     for old, new in seriesmap.items():
-        with engine.begin() as cn:
-            print('rename', old, '->', new)
-            tsh.rename(cn, old, new)
+        print('rename', old, '->', new)
+        tsa.rename(old, new)
 
 
 @tsh.command()
@@ -211,17 +203,15 @@ def init_db(db_uri, reset=False, namespace='tsh'):
 @click.option('--namespace', default='tsh')
 def check(db_uri, series=None, namespace='tsh'):
     "coherence checks of the db"
-    e = create_engine(find_dburi(db_uri))
-    tsh = timeseries(namespace)
+    tsa = timeseries(find_dburi(db_uri), namespace)
     if series is None:
-        series = tsh.list_series(e)
+        series = tsa.tsh.list_series(tsa.engine)
     else:
         series = [series]
 
     for idx, s in enumerate(series):
         t0 = time()
-        with e.begin() as cn:
-            hist = tsh.history(cn, s)
+        hist = tsa.history(s)
         start, end = None, None
         mon = True
         for ts in hist.values():
@@ -230,7 +220,7 @@ def check(db_uri, series=None, namespace='tsh'):
             start = min(start or cmin, cmin)
             end = max(end or cmax, cmax)
             mon = ts.index.is_monotonic_increasing
-        ival = tsh.interval(e, s)
+        ival = tsa.interval(s)
         if ival.left != start:
             print('  start:', s, f'{ival.left} != {start}')
         if ival.right != end:
@@ -245,9 +235,7 @@ def check(db_uri, series=None, namespace='tsh'):
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
 def shell(db_uri, namespace='tsh'):
-    e = create_engine(find_dburi(db_uri))
-
-    tsh = timeseries(namespace)
+    tsa = timeseries(find_dburi(db_uri), namespace)
     import pdb; pdb.set_trace()
 
 
