@@ -197,7 +197,6 @@ def delete(db_uri, series=None, deletefile=None, namespace='tsh'):
 
 @tsh.command(name='init-db')
 @click.argument('db-uri')
-@click.option('--reset', is_flag=True, default=False)
 @click.option('--namespace', default='tsh')
 def init_db(db_uri, reset=False, namespace='tsh'):
     """initialize an new db."""
