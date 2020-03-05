@@ -44,14 +44,14 @@ def tsh():
 
 @tsh.command()
 @click.argument('db-uri')
-@click.argument('seriename')
+@click.argument('series')
 @click.option('--json', is_flag=True, default=False)
 @click.option('--namespace', default='tsh')
-def get(db_uri, seriename, json, namespace='tsh'):
+def get(db_uri, series, json, namespace='tsh'):
     """show a serie in its current state """
     tsa = timeseries(find_dburi(db_uri), namespace)
 
-    ts = tsa.get(seriename)
+    ts = tsa.get(series)
     if json:
         print(ts.to_json())
     else:
@@ -61,7 +61,7 @@ def get(db_uri, seriename, json, namespace='tsh'):
 
 @tsh.command()
 @click.argument('db-uri')
-@click.argument('seriename')
+@click.argument('series')
 @click.option('--json', is_flag=True, default=False)
 @click.option('--from-insertion-date', type=temporal)
 @click.option('--to-insertion-date', type=temporal)
@@ -69,7 +69,7 @@ def get(db_uri, seriename, json, namespace='tsh'):
 @click.option('--to-value-date', type=temporal)
 @click.option('--diff/--no-diff', is_flag=True, default=True)
 @click.option('--namespace', default='tsh')
-def history(db_uri, seriename,
+def history(db_uri, series,
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date,
             diff, json,
@@ -77,7 +77,7 @@ def history(db_uri, seriename,
     """show a serie full history """
     tsa = timeseries(find_dburi(db_uri), namespace)
     hist = tsa.history(
-        seriename,
+        series,
         from_insertion_date, to_insertion_date,
         from_value_date, to_value_date,
         diffmode=diff
