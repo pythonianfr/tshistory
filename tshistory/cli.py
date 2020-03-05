@@ -157,6 +157,9 @@ def rename(db_uri, mapfile, namespace='tsh'):
     tsa = timeseries(find_dburi(db_uri), namespace)
     for old, new in seriesmap.items():
         print('rename', old, '->', new)
+        if not tsa.exists(old):
+            print('no such series')
+            continue
         tsa.rename(old, new)
 
 
