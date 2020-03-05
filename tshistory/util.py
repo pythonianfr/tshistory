@@ -406,18 +406,6 @@ def diff(base, other, _precision=1e-14):
     return pd.concat([diff_overlap, diff_new]).sort_index()
 
 
-def delete_series(engine, series, namespace='tsh'):
-    from tshistory.tsio import timeseries
-    tsh = timeseries(namespace=namespace)
-
-    for name in series:
-        with engine.begin() as cn:
-            if not tsh.exists(cn, name):
-                print('skipping unknown', name)
-                continue
-            print('delete', name)
-            tsh.delete(cn, name)
-
 
 def threadpool(maxthreads):
     L = logging.getLogger('parallel')
