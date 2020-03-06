@@ -210,7 +210,7 @@ def test_pack_unpack_history(tsh, engine):
     meta2, hist2 = unpack_history(packed)
     assert meta2 == meta
     for idate, series in hist.items():
-        assert hist[idate].equals(series)
+        assert hist2[idate].equals(series)
 
     for numserie in (1, 2, 3):
         with engine.begin() as cn:
@@ -225,7 +225,7 @@ def test_pack_unpack_history(tsh, engine):
     meta2, hist2 = unpack_history(packed)
     assert meta2 == meta
     for idate, series in hist.items():
-        assert hist[idate].equals(series)
+        assert hist2[idate].equals(series)
 
 
 def test_in_tx(tsh, engine):
