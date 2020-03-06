@@ -232,8 +232,7 @@ class Snapshot:
             where=where
         )
         res = self.cn.execute(sql, start=from_value_date)
-        chunks = [(cid, parent, rawchunk)
-                  for cid, parent, rawchunk in res.fetchall()]
+        chunks = list(res.fetchall())
         chunks.reverse()
         return chunks
 
