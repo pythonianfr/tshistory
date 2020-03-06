@@ -41,7 +41,7 @@ def test_patch():
 
 
 
-def test_patchmany():
+def test_float_patchmany():
     s1 = pd.Series(
         [1., 2., 3., 4.],
         index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
@@ -62,6 +62,30 @@ def test_patchmany():
 2020-01-01 02:00:00    13.0
 2020-01-01 03:00:00     NaN
 2020-01-01 04:00:00    15.0
+""", p)
+
+
+def test_string_patchmany():
+    s1 = pd.Series(
+        ['a', 'b', 'c', 'd'],
+        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+    )
+    s2 = pd.Series(
+        ['bb', 'cc', None, 'ee'],
+        index=pd.date_range(datetime(2020, 1, 1, 1), freq='H', periods=4)
+    )
+    s3 = pd.Series(
+        ['Z', 'a', 'b', 'cc'],
+        index=pd.date_range(datetime(2019, 12, 31, 23), freq='H', periods=4)
+    )
+    p = patchmany([s1, s2, s3])
+    assert_df("""
+2019-12-31 23:00:00       Z
+2020-01-01 00:00:00       a
+2020-01-01 01:00:00       b
+2020-01-01 02:00:00      cc
+2020-01-01 03:00:00    None
+2020-01-01 04:00:00      ee
 """, p)
 
 
