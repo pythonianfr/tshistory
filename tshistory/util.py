@@ -9,11 +9,13 @@ import threading
 import tempfile
 import shutil
 import zlib
-from functools import partial
+from functools import (
+    partial,
+    reduce
+)
 from contextlib import contextmanager
 from pathlib import Path
 from warnings import warn
-from functools import reduce
 
 import numpy as np
 import pandas as pd
@@ -113,8 +115,11 @@ def closed_overlaps(fromdate, todate):
 
 def inject_in_index(serie, revdate):
     mindex = [(revdate, valuestamp) for valuestamp in serie.index]
-    serie.index = pd.MultiIndex.from_tuples(mindex, names=[
-        'insertion_date', 'value_date']
+    serie.index = pd.MultiIndex.from_tuples(
+        mindex,
+        names=[
+            'insertion_date', 'value_date'
+        ]
     )
 
 
@@ -226,7 +231,7 @@ def pack_history(metadata, hist):
         ).view(np.uint8).data.tobytes()
     )
     isstr = metadata['value_type'] == 'object'
-    for tstamp, series in hist.items():
+    for series in hist.values():
         index, values = numpy_serialize(
             series,
             isstr
@@ -491,11 +496,11 @@ def bisect_search(values, value):
     first, last = values[0], values[-1]
     if value < first:
         return -1
-    elif value > last:
+    if value > last:
         return n
-    elif value == first:
+    if value == first:
         return 0
-    elif value == last:
+    if value == last:
         return n - 1
 
     jl = 0
