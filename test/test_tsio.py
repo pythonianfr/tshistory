@@ -1399,7 +1399,51 @@ def test_staircase_2_tznaive(engine, tsh):
 
 
 def test_staircase_tzaware_funny_bug(engine, tsh):
-    # maybe a more interesting example, each days we insert 7 data points
+    # naive first
+    for idx, idate in enumerate(pd.date_range(start=utcdt(2015, 1, 1),
+                                              end=utcdt(2015, 1, 4),
+                                              freq='D')):
+        ts = genserie(start=idate.tz_convert(None), freq='H', repeat=7)
+        tsh.update(
+            engine, ts, 'funny-staircase-naive', 'test', insertion_date=idate
+        )
+
+    deltas = tsh.staircase(
+        engine,
+        'funny-staircase-naive',
+        delta=timedelta(hours=3),
+        from_value_date=utcdt(2015, 1, 2),
+        to_value_date=utcdt(2015, 1, 3)
+    )
+    assert_df("""
+2015-01-02 03:00:00    3.0
+2015-01-02 04:00:00    4.0
+2015-01-02 05:00:00    5.0
+2015-01-02 06:00:00    6.0
+""", deltas)
+
+    deltas = tsh.staircase(
+        engine,
+        'funny-staircase-naive',
+        delta=timedelta(hours=3),
+        from_value_date=datetime(2015, 1, 2)
+    )
+    assert_df("""
+2015-01-02 03:00:00    3.0
+2015-01-02 04:00:00    4.0
+2015-01-02 05:00:00    5.0
+2015-01-02 06:00:00    6.0
+2015-01-03 03:00:00    3.0
+2015-01-03 04:00:00    4.0
+2015-01-03 05:00:00    5.0
+2015-01-03 06:00:00    6.0
+2015-01-04 03:00:00    3.0
+2015-01-04 04:00:00    4.0
+2015-01-04 05:00:00    5.0
+2015-01-04 06:00:00    6.0
+""", deltas)
+
+    # tzaware
     for idx, idate in enumerate(pd.date_range(start=utcdt(2015, 1, 1),
                                               end=utcdt(2015, 1, 4),
                                               freq='D')):
