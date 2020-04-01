@@ -1464,20 +1464,27 @@ def test_staircase_tzaware_funny_bug(engine, tsh):
 2015-01-02 06:00:00+00:00    6.0
 """, deltas)
 
-    with pytest.raises(Exception) as err:
-        deltas = tsh.staircase(
-            engine,
-            'funny-staircase',
-            delta=timedelta(hours=3),
-            from_value_date=utcdt(2015, 1, 2)
-        )
-
-    assert err.value.args[0].startswith(
-        '(psycopg2.errors.AmbiguousFunction) '
-        'function pg_catalog.overlaps(timestamp with time zone, unknown, '
-        'timestamp without time zone, timestamp without time zone) '
-        'is not unique'
+    deltas = tsh.staircase(
+        engine,
+        'funny-staircase',
+        delta=timedelta(hours=3),
+        from_value_date=utcdt(2015, 1, 2)
     )
+
+    assert_df("""
+2015-01-02 03:00:00+00:00    3.0
+2015-01-02 04:00:00+00:00    4.0
+2015-01-02 05:00:00+00:00    5.0
+2015-01-02 06:00:00+00:00    6.0
+2015-01-03 03:00:00+00:00    3.0
+2015-01-03 04:00:00+00:00    4.0
+2015-01-03 05:00:00+00:00    5.0
+2015-01-03 06:00:00+00:00    6.0
+2015-01-04 03:00:00+00:00    3.0
+2015-01-04 04:00:00+00:00    4.0
+2015-01-04 05:00:00+00:00    5.0
+2015-01-04 06:00:00+00:00    6.0
+""", deltas)
 
 
 def test_rename(engine, tsh):
