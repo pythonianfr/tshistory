@@ -239,7 +239,8 @@ def mapihttp(engine):
         app.make_app(
             tsh_api.timeseries(
                 DBURI,
-                namespace='ns-test-remote'
+                namespace='ns-test-remote',
+                handler=tsio.timeseries
             )
         )
     )

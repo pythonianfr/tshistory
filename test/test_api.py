@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime as dt
 import pandas as pd
 import pytest
 
@@ -464,3 +464,60 @@ insertion_date             value_date
         'value_dtype': '<f8',
         'value_type': 'float64'
     }
+
+
+@pytest.mark.skipif(
+    not formula_class(),
+    reason='need formula plugin to be available'
+)
+def test_formula_remote_autotrophic(mapihttp, engine):
+    tsa = mapihttp
+
+    from tshistory_formula.registry import func, finder
+    from tshistory_formula.tsio import timeseries as pgseries
+
+    @func('customseries')
+    def customseries() -> pd.Series:
+        return pd.Series(
+            [1.0, 2.0, 3.0],
+            index=pd.date_range(dt(2019, 1, 1), periods=3, freq='D')
+        )
+
+    @finder('customseries')
+    def find(cn, tsh, tree):
+        return {
+            tree[0]: {
+                'tzaware': True,
+                'index_type': 'datetime64[ns, UTC]',
+                'value_type': 'float64',
+                'index_dtype': '|M8[ns]',
+                'value_dtype': '<f8'
+            }
+        }
+
+    rtsh = pgseries('ns-test-remote')
+    with engine.begin() as cn:
+        rtsh.register_formula(
+            cn,
+            'autotrophic',
+            '(customseries)',
+        )
+
+    tsa.register_formula(
+        'remote-series',
+        '(series "autotrophic")'
+    )
+
+    assert tsa.metadata('remote-series', True) == {
+        'index_dtype': '|M8[ns]',
+        'index_type': 'datetime64[ns, UTC]',
+        'tzaware': True,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+    assert_df("""
+2019-01-01 00:00:00+00:00    1.0
+2019-01-02 00:00:00+00:00    2.0
+2019-01-03 00:00:00+00:00    3.0
+""", tsa.get('remote-series'))
+
