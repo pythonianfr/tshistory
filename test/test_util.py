@@ -11,9 +11,12 @@ from tshistory.util import (
     nary_pack,
     nary_unpack,
     pack_history,
+    pack_series,
     patch,
     patchmany,
-    unpack_history
+    series_metadata,
+    unpack_history,
+    unpack_series
 )
 from tshistory.testutil import (
     assert_df,
@@ -194,6 +197,40 @@ def test_pack_unpack():
     packed = nary_pack(*chunks)
     unpacked = nary_unpack(packed)
     assert chunks == unpacked
+
+
+def test_pack_unpack_series(tsh, engine):
+    series1 = pd.Series(
+        [1., 2., 3.],
+        pd.date_range(utcdt(2021, 1, 1), freq='D', periods=3)
+    )
+    meta = series_metadata(series1)
+    unpacked = unpack_series(
+        'foo',
+        pack_series(
+            meta, series1
+        )
+    )
+    assert_df("""
+2021-01-01 00:00:00+00:00    1.0
+2021-01-02 00:00:00+00:00    2.0
+2021-01-03 00:00:00+00:00    3.0
+""", unpacked)
+
+    series2 = pd.Series(
+        ['a', 'b', 'c'],
+        pd.date_range(utcdt(2021, 1, 1), freq='D', periods=3)
+    )
+    meta = series_metadata(series1)
+    assert_df("""
+2021-01-01 00:00:00+00:00    1.0
+2021-01-02 00:00:00+00:00    2.0
+2021-01-03 00:00:00+00:00    3.0
+""", unpack_series(
+        'foo', pack_series(
+            meta, series1
+        )
+    ))
 
 
 def test_pack_unpack_history(tsh, engine):

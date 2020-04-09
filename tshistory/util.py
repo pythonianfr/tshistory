@@ -235,6 +235,46 @@ def numpy_deserialize(bindex, bvalues, metadata):
     return index, values
 
 
+def pack_series(metadata, series, compressor=zlib.compress):
+    """Transform a series, using associated metadata, into a binary format
+    (using an optional serializer e.g. b85encode)
+    """
+    bindex, bvalues = numpy_serialize(
+        series,
+        metadata['value_type'] == 'object'
+    )
+    bmeta = json.dumps(metadata).encode('utf-8')
+    return compressor(
+        nary_pack(
+            bmeta,
+            bindex,
+            bvalues
+        )
+    )
+
+
+def unpack_series(name, bytestream, decompressor=zlib.decompress):
+    """Transform a binary string into a pandas series of the given name
+    """
+    bmeta, bindex, bvalues = nary_unpack(
+        decompressor(bytestream)
+    )
+    meta = json.loads(bmeta)
+    index, values = numpy_deserialize(
+        bindex,
+        bvalues,
+        meta
+    )
+    series = pd.Series(
+        values,
+        index=index,
+        name=name
+    )
+    if meta['tzaware']:
+        series = series.tz_localize('UTC')
+    return series
+
+
 def pack_history(metadata, hist):
     byteslist = [json.dumps(metadata).encode('utf-8')]
     byteslist.append(
