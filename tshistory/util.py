@@ -123,6 +123,19 @@ def inject_in_index(serie, revdate):
     )
 
 
+# metadata
+
+def series_metadata(ts):
+    index = ts.index
+    return {
+        'tzaware': tzaware_serie(ts),
+        'index_type': index.dtype.name,
+        'index_dtype': index.dtype.str,
+        'value_dtype': ts.dtypes.str,
+        'value_type': ts.dtypes.name
+    }
+
+
 # serialisation helpers (binary, json)
 
 def numpy_serialize(series, isstr=False):

@@ -17,6 +17,7 @@ from tshistory.util import (
     num2float,
     patch,
     pruned_history,
+    series_metadata,
     start_end,
     tx,
     tzaware_serie
@@ -651,14 +652,7 @@ class timeseries:
         cn.execute(table)
 
     def _series_initial_meta(self, cn, name, ts):
-        index = ts.index
-        return {
-            'tzaware': tzaware_serie(ts),
-            'index_type': index.dtype.name,
-            'index_dtype': index.dtype.str,
-            'value_dtype': ts.dtypes.str,
-            'value_type': ts.dtypes.name
-        }
+        return series_metadata(ts)
 
     def _register_serie(self, cn, name, seriesmeta):
         sql = (f'insert into "{self.namespace}".registry '
