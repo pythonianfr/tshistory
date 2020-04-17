@@ -719,18 +719,20 @@ class timeseries(SeriesServices):
             )
 
         if from_value_date or to_value_date:
-            if self.metadata(cn, name)['tzaware']:
-                # work around weirdness/crash in postgres, which will spit
-                #   (psycopg2.errors.AmbiguousFunction)
-                #   function pg_catalog.overlaps(timestamp with time zone, unknown,
-                #   timestamp without time zone, timestamp without time zone)
-                #   is not unique'
-                # if only a tzaware from_value_date is provided.
-                if not(from_value_date and to_value_date):
-                    if from_value_date:
+            # work around weirdness/crash in postgres, which will spit
+            #   (psycopg2.errors.AmbiguousFunction)
+            #   function pg_catalog.overlaps(timestamp with time zone, unknown,
+            #   timestamp without time zone, timestamp without time zone)
+            #   is not unique'
+            # if only a tzaware from_value_date is provided.
+            if not(from_value_date and to_value_date):
+                if from_value_date:
+                    if from_value_date.tzinfo is not None:
                         from_value_date = from_value_date.tz_localize(None)
-                    else:
+                else:
+                    if to_value_date.tzinfo is not None:
                         to_value_date = to_value_date.tz_localize(None)
+
             q.where(
                 closed_overlaps(from_value_date, to_value_date),
                 fromdate=from_value_date,

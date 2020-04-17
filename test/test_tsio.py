@@ -1426,7 +1426,7 @@ def test_staircase_tzaware_funny_bug(engine, tsh):
         engine,
         'funny-staircase-naive',
         delta=timedelta(hours=3),
-        from_value_date=datetime(2015, 1, 2)
+        from_value_date=utcdt(2015, 1, 2)
     )
     assert_df("""
 2015-01-02 03:00:00    3.0
