@@ -47,6 +47,11 @@ class timeseries:
         self.delete_lock_id = sum(ord(c) for c in namespace)
         self.othersources = othersources
 
+    def __repr__(self):
+        return (
+            f'tsio.timeseries({self.namespace},othersources={self.othersources})'
+        )
+
     @tx
     def update(self, cn, updatets, name, author,
                metadata=None,
