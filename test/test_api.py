@@ -518,7 +518,7 @@ insertion_date             value_date
 def test_formula_remote_autotrophic(mapihttp, engine):
     tsa = mapihttp
 
-    from tshistory_formula.registry import func, finder
+    from tshistory_formula.registry import func, metadata
     from tshistory_formula.tsio import timeseries as pgseries
 
     @func('customseries')
@@ -528,8 +528,8 @@ def test_formula_remote_autotrophic(mapihttp, engine):
             index=pd.date_range(dt(2019, 1, 1), periods=3, freq='D')
         )
 
-    @finder('customseries')
-    def find(cn, tsh, tree):
+    @metadata('customseries')
+    def metadata(cn, tsh, tree):
         return {
             tree[0]: {
                 'tzaware': True,
