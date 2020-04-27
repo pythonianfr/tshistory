@@ -200,6 +200,27 @@ class dbtimeseries:
             )
         return ts
 
+    def insertion_dates(self,
+                        name: str,
+                        from_insertion_date: Optional[datetime]=None,
+                        to_insertion_date: Optional[datetime]=None):
+        """Get the list of all insertion dates.
+
+        """
+        if self.tsh.exists(self.engine, name):
+            return self.tsh.insertion_dates(
+                self.engine,
+                name,
+                from_insertion_date,
+                to_insertion_date
+            )
+
+        return self.othersources.insertion_dates(
+            name,
+            from_insertion_date,
+            to_insertion_date
+        )
+
     def history(self,
                 name: str,
                 from_insertion_date: Optional[datetime]=None,
@@ -508,6 +529,15 @@ class altsources:
         if ival is None:
             raise ValueError(f'no interval for series: {name}')
         return ival
+
+    def insertion_dates(self,
+                        name: str,
+                        from_insertion_date: Optional[datetime]=None,
+                        to_insertion_date: Optional[datetime]=None):
+        source = self._findsourcefor(name)
+        if source is None:
+            return
+        return source.tsa.insertion_dates(name)
 
     def forbidden(self, name, msg):
         if self.exists(name):

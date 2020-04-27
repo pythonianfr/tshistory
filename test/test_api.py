@@ -142,6 +142,13 @@ insertion_date             value_date
     assert ival.left == pd.Timestamp('2019-12-31 00:00:00+0000', tz='UTC')
     assert ival.right == pd.Timestamp('2020-01-04 00:00:00+0000', tz='UTC')
 
+    idates = httpapi.insertion_dates('api-test')
+    assert idates == [
+        pd.Timestamp('2019-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2019-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2019-01-03 00:00:00+0000', tz='UTC')
+    ]
+
     meta = pgapi.metadata('api-test', all=True)
     assert meta == {
         'tzaware': True,
@@ -182,6 +189,8 @@ insertion_date             value_date
     pgapi.delete('api-test2')
 
 
+
+
 @pytest.mark.skipif(
     not formula_class() or not supervision_class(),
     reason='need formula and supervision plugins to be available'
@@ -212,6 +221,9 @@ def test_alternative_handler(pgapi):
 2020-01-02 00:00:00+00:00    2.0
 2020-01-03 00:00:00+00:00    3.0
 """, tsb)
+
+    idates = sapi.insertion_dates('test-formula')
+    assert len(idates) == 1
 
     class supervision_and_formula(supervision_class(),
                                   formula_class()):
@@ -566,3 +578,6 @@ def test_formula_remote_autotrophic(mapihttp, engine):
 2019-01-03 00:00:00+00:00    3.0
 """, tsa.get('remote-series'))
 
+    idates = tsa.insertion_dates('remote-series')
+    # autotrophic series lack an `insertion_dates` protocol
+    assert idates == []

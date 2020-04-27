@@ -208,6 +208,11 @@ def with_tester(uri, resp, wsgitester):
         callback=write_request_bridge(wsgitester.put)
     )
 
+    resp.add_callback(
+        responses.GET, uri + '/series/insertion_dates',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
 
 @pytest.fixture(scope='session')
 def httpapi(engine):
