@@ -43,6 +43,10 @@ def test_patch():
 2020-01-01 04:00:00    15.0
 """, p)
 
+    s3 = pd.Series([], dtype=s1.dtype)
+    p = patch(s3, s3)
+    assert len(p) == 0
+
 
 def test_float_patchmany():
     s1 = pd.Series(
