@@ -67,6 +67,18 @@ def test_float_patchmany():
 2020-01-01 04:00:00    15.0
 """, p)
 
+    s4 = pd.Series([], dtype=s1.dtype)
+    p = patchmany([s4, s4, s4])
+    assert len(p) == 0
+
+    p = patchmany([s4, s1, s4])
+    assert_df("""
+2020-01-01 00:00:00    1.0
+2020-01-01 01:00:00    2.0
+2020-01-01 02:00:00    3.0
+2020-01-01 03:00:00    4.0
+""", p)
+
 
 def test_string_patchmany():
     s1 = pd.Series(

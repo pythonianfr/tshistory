@@ -412,9 +412,12 @@ def patchmany(series):
             final = patch(final, ts)
         return final
 
+    if not len([ts for ts in series if len(ts)]):
+        return first
+
     uindex = reduce(
         np.union1d,
-        (ts.index.values for ts in series)
+        (ts.index.values for ts in series if len(ts))
     )
     uvalues = np.zeros(len(uindex))
 
