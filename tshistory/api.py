@@ -167,7 +167,8 @@ class dbtimeseries:
     def get(self, name: str,
             revision_date: Optional[datetime]=None,
             from_value_date: Optional[datetime]=None,
-            to_value_date: Optional[datetime]=None) -> Optional[pd.Series]:
+            to_value_date: Optional[datetime]=None,
+            _keep_nans: bool=False) -> Optional[pd.Series]:
         """Get a series by name.
 
         By default one gets the latest version.
@@ -188,7 +189,8 @@ class dbtimeseries:
             name,
             revision_date=revision_date,
             from_value_date=from_value_date,
-            to_value_date=to_value_date
+            to_value_date=to_value_date,
+            _keep_nans=_keep_nans
         )
 
         if ts is None:
@@ -196,7 +198,8 @@ class dbtimeseries:
                 name,
                 revision_date=revision_date,
                 from_value_date=from_value_date,
-                to_value_date=to_value_date
+                to_value_date=to_value_date,
+                _keep_nans=_keep_nans
             )
         return ts
 
@@ -482,7 +485,8 @@ class altsources:
     def get(self, name: str,
             revision_date: Optional[datetime]=None,
             from_value_date: Optional[datetime]=None,
-            to_value_date: Optional[datetime]=None) -> Optional[pd.Series]:
+            to_value_date: Optional[datetime]=None,
+            _keep_nans: bool=False) -> Optional[pd.Series]:
         source = self._findsourcefor(name)
         if source is None:
             return
@@ -490,7 +494,8 @@ class altsources:
             name,
             revision_date=revision_date,
             from_value_date=from_value_date,
-            to_value_date=to_value_date
+            to_value_date=to_value_date,
+            _keep_nans=_keep_nans
         )
 
     def history(self,
