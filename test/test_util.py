@@ -140,6 +140,22 @@ def test_diff():
 """, ds2s1)
 
 
+def test_diff_duplicated():
+    # with a duplicated row (left)
+    s1 = pd.Series(
+        [1., 2., 3., 4.],
+        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+    )
+    dupe = pd.Series([5.], index=[datetime(2020, 1, 1, 3)])
+    s1 = s1.append(dupe)
+    s2 = pd.Series(
+        [1., 2., 42., 4., .5],
+        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=5)
+    )
+    with pytest.raises(ValueError):
+        diff(s1, s2)
+
+
 def test_json():
     series = pd.Series(
         [1., 2., 3.],
