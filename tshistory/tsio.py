@@ -261,6 +261,15 @@ class timeseries:
             revs.insert(0, (previous_csid, None))
 
         snapshot = Snapshot(cn, self, name)
+
+        # careful there with naive series vs inputs
+        tzaware = self.metadata(cn, name).get('tzaware')
+        if not tzaware:
+            if from_value_date:
+                from_value_date = from_value_date.replace(tzinfo=None)
+            if to_value_date:
+                to_value_date = to_value_date.replace(tzinfo=None)
+
         series = snapshot.findall(
             revs,
             from_value_date,
