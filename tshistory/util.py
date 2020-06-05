@@ -395,6 +395,15 @@ def patch(base, diff):
     _populate(index1, base.values, uindex, uvalues)
     _populate(index2, diff.values, uindex, uvalues)
 
+    # guard for duplicated index
+    u, c = np.unique(uindex, return_counts=True)
+    duplicated = u[c > 1]
+    if duplicated.size > 0:
+        raise ValueError(
+            f'while patching {base} with {diff} we built a '
+            'duplicated index {uindex}'
+        )
+
     return pd.Series(
         uvalues,
         index=uindex,
