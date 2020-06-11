@@ -4,7 +4,6 @@ import hashlib
 import uuid
 import json
 from pathlib import Path
-from deprecated import deprecated
 
 import pandas as pd
 
@@ -89,10 +88,6 @@ class timeseries:
 
         return self._update(cn, tablename, updatets, name, author,
                             metadata, insertion_date)
-
-    @deprecated('reason: use the equivalent `update` method')
-    def insert(self, *a, **kw):
-        return self.update(*a, **kw)
 
     @tx
     def replace(self, cn, newts, name, author,

@@ -338,8 +338,6 @@ def test_in_tx(tsh, engine):
                   'H', 4, tz='UTC')
     with engine.begin() as cn:
         tsh.update(cn, ts, 'test_tx', 'Babar')
-        # that old api is still there
-        tsh.insert(cn, ts, 'test_tx', 'Babar')
 
 
 def test_timeseries_repr(tsh):
