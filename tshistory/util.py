@@ -373,6 +373,9 @@ def patch(base, diff):
     assert base is not None
     assert diff is not None
 
+    if len(base) == 0:
+        return diff
+
     if len(diff) == 0:
         return base
 
