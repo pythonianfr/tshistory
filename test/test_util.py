@@ -48,6 +48,21 @@ def test_patch():
     assert len(p) == 0
 
 
+def test_patch_one_empty():
+    s1 = pd.Series(
+        [1., 2., 3., 4.],
+        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+    )
+    s2 = pd.Series(dtype='float64')
+    p = patch(s1, s2)
+    assert_df("""
+1577836800000000000    1.0
+1577840400000000000    2.0
+1577844000000000000    3.0
+1577847600000000000    4.0
+""", p)
+
+
 def test_float_patchmany():
     s1 = pd.Series(
         [1., 2., 3., 4.],
