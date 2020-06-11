@@ -427,7 +427,11 @@ def patchmany(series):
             final = patch(final, ts)
         return final
 
-    if not len([ts for ts in series if len(ts)]):
+    series = [
+        ts for ts in series
+        if len(ts)
+    ]
+    if not series:
         return first
 
     uindex = reduce(
