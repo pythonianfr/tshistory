@@ -164,6 +164,10 @@ class timeseries:
         if not self.exists(cn, name):
             return
 
+        self._guard_query_dates(
+            revision_date, from_value_date, to_value_date
+        )
+
         csetfilter = []
         if revision_date:
             csetfilter.append(
@@ -248,6 +252,10 @@ class timeseries:
         if tablename is None:
             return
 
+        self._guard_query_dates(
+            from_insertion_date, to_insertion_date,
+            from_value_date, to_value_date
+        )
         revs = self._revisions(
             cn, name,
             from_insertion_date,
@@ -323,6 +331,9 @@ class timeseries:
         if not self.exists(cn, name):
             return
 
+        self._guard_query_dates(
+            from_value_date, to_value_date
+        )
         base = self.get(
             cn, name,
             from_value_date=from_value_date,
@@ -369,6 +380,9 @@ class timeseries:
     @tx
     def insertion_dates(self, cn, name,
                         fromdate=None, todate=None):
+        self._guard_query_dates(
+            fromdate, todate
+        )
         revs = self._revisions(
             cn, name,
             from_insertion_date=fromdate,
@@ -521,6 +535,12 @@ class timeseries:
             newts = newts.sort_index()
 
         return num2float(newts)
+
+    def _guard_query_dates(self, *dates):
+        assert all(
+            isinstance(dt, datetime)
+            for dt in filter(None, dates)
+        ), 'all query dates must be datetime-compatible objects'
 
     def _create(self, cn, newts, name, author, seriesmeta,
                 metadata=None, insertion_date=None):

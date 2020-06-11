@@ -66,6 +66,41 @@ def test_naive_vs_tzaware_query(engine, tsh):
     # we did not crash :)
 
 
+def test_guard_query_dates(engine, tsh):
+    from datetime import date
+
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(datetime(2020, 1, 1), freq='D', periods=3)
+    )
+    tsh.update(engine, ts, 'guard-datetime', 'Babar')
+
+    with pytest.raises(AssertionError):
+        tsh.get(
+            engine, 'guard-datetime',
+            from_value_date=date(2019, 1, 1)
+        )
+
+    with pytest.raises(AssertionError):
+        tsh.history(
+            engine, 'guard-datetime',
+            from_insertion_date=date(2019, 1, 1)
+        )
+
+    with pytest.raises(AssertionError):
+        tsh.staircase(
+            engine, 'guard-datetime',
+            to_value_date=date(2019, 1, 1),
+            delta=timedelta(hours=1)
+        )
+
+    with pytest.raises(AssertionError):
+        tsh.insertion_dates(
+            engine, 'guard-datetime',
+            todate=date(2019, 1, 1)
+        )
+
+
 def test_tstamp_roundtrip(engine, tsh):
     ts = genserie(datetime(2017, 10, 28, 23),
                   'H', 4, tz='UTC')
