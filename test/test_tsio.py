@@ -58,11 +58,12 @@ def test_naive_vs_tzaware_query(engine, tsh):
     )
     tsh.update(engine, ts, 'naive-tzaware-query', 'Babar')
 
-    with pytest.raises(TypeError):
-        tsh.get(
-            engine, 'naive-tzaware-query',
-            from_value_date=utcdt(2019, 1, 1)
-        )
+    tsh.get(
+        engine, 'naive-tzaware-query',
+        from_value_date=utcdt(2019, 1, 1)
+    )
+
+    # we did not crash :)
 
 
 def test_tstamp_roundtrip(engine, tsh):

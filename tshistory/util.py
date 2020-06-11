@@ -73,6 +73,8 @@ def find_dburi(something: str) -> str:
         )
 
 
+# tsio helpers
+
 def tzaware_serie(ts):
     return is_datetime64tz_dtype(ts.index)
 
@@ -121,6 +123,13 @@ def inject_in_index(serie, revdate):
             'insertion_date', 'value_date'
         ]
     )
+
+
+def compatible_date(tzaware, date):
+    if not tzaware:
+        return date.replace(tzinfo=None)
+
+    return date
 
 
 # metadata

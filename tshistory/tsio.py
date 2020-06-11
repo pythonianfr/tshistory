@@ -13,6 +13,7 @@ from sqlhelp import sqlfile, select, insert
 from tshistory.util import (
     bisect_search,
     closed_overlaps,
+    compatible_date,
     diff,
     num2float,
     patch,
@@ -175,6 +176,15 @@ class timeseries:
                     f'insertion_date <= %(idate)s', idate=revision_date
                 )
             )
+
+        # munge query to satisfy pandas idiocy
+        if from_value_date or to_value_date:
+            tzaware = self.metadata(cn, name)['tzaware']
+            if from_value_date:
+                from_value_date = compatible_date(tzaware, from_value_date)
+            if to_value_date:
+                to_value_date = compatible_date(tzaware, to_value_date)
+
         snap = Snapshot(cn, self, name)
         _, current = snap.find(csetfilter=csetfilter,
                                from_value_date=from_value_date,
@@ -263,12 +273,12 @@ class timeseries:
         snapshot = Snapshot(cn, self, name)
 
         # careful there with naive series vs inputs
-        tzaware = self.metadata(cn, name).get('tzaware')
-        if not tzaware:
+        if from_value_date or to_value_date:
+            tzaware = self.metadata(cn, name)['tzaware']
             if from_value_date:
-                from_value_date = from_value_date.replace(tzinfo=None)
+                from_value_date = compatible_date(tzaware, from_value_date)
             if to_value_date:
-                to_value_date = to_value_date.replace(tzinfo=None)
+                to_value_date = compatible_date(tzaware, to_value_date)
 
         series = snapshot.findall(
             revs,
