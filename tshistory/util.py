@@ -373,6 +373,9 @@ def patch(base, diff):
     assert base is not None
     assert diff is not None
 
+    if len(diff) == 0:
+        return base
+
     if base.dtype == 'object':
         basei = base.index
         diffi = diff.index
