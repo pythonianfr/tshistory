@@ -51,6 +51,20 @@ def test_tzaware_non_monotonic(engine, tsh):
 """, tsh.get(engine, 'non-monotonic'))
 
 
+def test_naive_vs_tzaware_query(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(datetime(2020, 1, 1), freq='D', periods=3)
+    )
+    tsh.update(engine, ts, 'naive-tzaware-query', 'Babar')
+
+    with pytest.raises(TypeError):
+        tsh.get(
+            engine, 'naive-tzaware-query',
+            from_value_date=utcdt(2019, 1, 1)
+        )
+
+
 def test_tstamp_roundtrip(engine, tsh):
     ts = genserie(datetime(2017, 10, 28, 23),
                   'H', 4, tz='UTC')
