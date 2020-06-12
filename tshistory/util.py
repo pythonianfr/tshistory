@@ -368,7 +368,7 @@ def _fromjson(jsonb, tsname):
 # diff/patch utilities
 
 def _populate(index, values, outindex, outvalues):
-    mask = np.in1d(outindex, index)
+    mask = np.in1d(outindex, index, assume_unique=True)
     outvalues[
         mask
     ] = values
