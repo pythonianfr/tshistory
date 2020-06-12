@@ -450,7 +450,7 @@ def patchmany(series):
     uvalues = np.zeros(len(uindex))
 
     for ts in series:
-        _populate(ts.index, ts.values, uindex, uvalues)
+        _populate(ts.index.values, ts.values, uindex, uvalues)
 
     return pd.Series(
         uvalues,
