@@ -445,7 +445,7 @@ def patchmany(series):
 
     uindex = reduce(
         np.union1d,
-        (ts.index.values for ts in series if len(ts))
+        (ts.index.values for ts in series)
     )
     uvalues = np.zeros(len(uindex))
 
