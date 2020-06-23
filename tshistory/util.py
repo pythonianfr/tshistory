@@ -419,6 +419,9 @@ def patch(base, diff):
             'duplicated index {uindex}'
         )
 
+    assert np.all(uindex[:-1] < uindex[1:]), (
+        "patch -> produced index is not monotonic increasing"
+    )
     return pd.Series(
         uvalues,
         index=uindex,
@@ -452,6 +455,9 @@ def patchmany(series):
     for ts in series:
         _populate(ts.index.values, ts.values, uindex, uvalues)
 
+    assert np.all(uindex[:-1] < uindex[1:]), (
+        "patch -> produced index is not monotonic increasing"
+    )
     return pd.Series(
         uvalues,
         index=uindex,
