@@ -580,7 +580,7 @@ class timeseries:
                 metadata=None, insertion_date=None):
         self._validate(cn, newts, name)
         snapshot = Snapshot(cn, self, name)
-        series_diff= diff(
+        series_diff = diff(
             snapshot.last(newts.index.min(),
                           newts.index.max()),
             newts
