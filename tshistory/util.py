@@ -422,11 +422,15 @@ def patch(base, diff):
     assert np.all(uindex[:-1] < uindex[1:]), (
         "patch -> produced index is not monotonic increasing"
     )
-    return pd.Series(
+    tz = base.index.dtype.tz.zone if is_datetime64tz_dtype(base.index) else None
+    series = pd.Series(
         uvalues,
         index=uindex,
         name=base.name
     )
+    if tz:
+        series.index = series.index.tz_localize(tz)
+    return series
 
 
 def patchmany(series):
@@ -458,11 +462,15 @@ def patchmany(series):
     assert np.all(uindex[:-1] < uindex[1:]), (
         "patch -> produced index is not monotonic increasing"
     )
-    return pd.Series(
+    tz = first.index.dtype.tz.zone if is_datetime64tz_dtype(first.index) else None
+    series = pd.Series(
         uvalues,
         index=uindex,
         name=first.name
     )
+    if tz:
+        series.index = series.index.tz_localize(tz)
+    return series
 
 
 def diff(base, other, _precision=1e-14):
