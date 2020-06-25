@@ -48,6 +48,40 @@ def test_patch():
     assert len(p) == 0
 
 
+def test_patch_tzaware():
+    s1 = pd.Series(
+        [1., 2., 3., 4.],
+        index=pd.date_range(utcdt(2020, 6, 23, 22), freq='H', periods=4)
+    )
+    s2 = pd.Series(
+        [3.1, 4., 5.],
+        index=pd.date_range(utcdt(2020, 6, 24), freq='H', periods=3)
+    )
+    p = patch(s1, s2)
+    assert_df("""
+2020-06-23 22:00:00    1.0
+2020-06-23 23:00:00    2.0
+2020-06-24 00:00:00    3.1
+2020-06-24 01:00:00    4.0
+2020-06-24 02:00:00    5.0
+""", p)
+
+    assert s1.index.dtype.name == 'datetime64[ns, UTC]'
+    assert s2.index.dtype.name == 'datetime64[ns, UTC]'
+    assert p.index.dtype.name == 'datetime64[ns]'
+
+    p2 = patchmany([s1, s2])
+    assert_df("""
+2020-06-23 22:00:00    1.0
+2020-06-23 23:00:00    2.0
+2020-06-24 00:00:00    3.1
+2020-06-24 01:00:00    4.0
+2020-06-24 02:00:00    5.0
+""", p2)
+
+    assert p2.index.dtype.name == 'datetime64[ns]'
+
+
 def test_patch_one_empty():
     s1 = pd.Series(
         [1., 2., 3., 4.],
