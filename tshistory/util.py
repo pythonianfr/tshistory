@@ -410,18 +410,6 @@ def patch(base, diff):
     _populate(index1, base.values, uindex, uvalues)
     _populate(index2, diff.values, uindex, uvalues)
 
-    # guard for duplicated index
-    u, c = np.unique(uindex, return_counts=True)
-    duplicated = u[c > 1]
-    if duplicated.size > 0:
-        raise ValueError(
-            f'while patching {base} with {diff} we built a '
-            'duplicated index {uindex}'
-        )
-
-    assert np.all(uindex[:-1] < uindex[1:]), (
-        "patch -> produced index is not monotonic increasing"
-    )
     tz = base.index.dtype.tz.zone if is_datetime64tz_dtype(base.index) else None
     series = pd.Series(
         uvalues,
@@ -459,9 +447,6 @@ def patchmany(series):
     for ts in series:
         _populate(ts.index.values, ts.values, uindex, uvalues)
 
-    assert np.all(uindex[:-1] < uindex[1:]), (
-        "patch -> produced index is not monotonic increasing"
-    )
     tz = first.index.dtype.tz.zone if is_datetime64tz_dtype(first.index) else None
     series = pd.Series(
         uvalues,
