@@ -284,6 +284,55 @@ def unpack_series(name, bytestream, decompressor=zlib.decompress):
     return series
 
 
+def pack_many_series(serieslist, compressor=zlib.compress):
+    """Transform a series list, using associated metadata, into a binary format
+    """
+    binaries = []
+    for (metadata, series) in serieslist:
+        bindex, bvalues = numpy_serialize(
+            series,
+            metadata['value_type'] == 'object'
+        )
+        metadata['name'] = series.name
+        bmeta = json.dumps(metadata).encode('utf-8')
+        binaries.append(bmeta)
+        binaries.append(bindex)
+        binaries.append(bvalues)
+
+    return compressor(
+        nary_pack(
+            *binaries
+        )
+    )
+
+
+def unpack_many_series(bytestream, decompressor=zlib.decompress):
+    """Transform a binary string into a pandas series of the given name
+    """
+    binaries = nary_unpack(
+        decompressor(bytestream)
+    )
+    serieslist = []
+    for bmeta, bindex, bvalues in zip(*[iter(binaries)]*3):
+        meta = json.loads(bmeta)
+        index, values = numpy_deserialize(
+            bindex,
+            bvalues,
+            meta
+        )
+        name = meta['name']
+        series = pd.Series(
+            values,
+            index=index,
+            name=name
+        )
+        if meta['tzaware']:
+            series = series.tz_localize('UTC')
+        serieslist.append(series)
+
+    return serieslist
+
+
 def pack_history(metadata, hist):
     byteslist = [json.dumps(metadata).encode('utf-8')]
     byteslist.append(

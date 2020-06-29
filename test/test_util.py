@@ -11,11 +11,13 @@ from tshistory.util import (
     nary_pack,
     nary_unpack,
     pack_history,
+    pack_many_series,
     pack_series,
     patch,
     patchmany,
     series_metadata,
     unpack_history,
+    unpack_many_series,
     unpack_series
 )
 from tshistory.testutil import (
@@ -327,6 +329,40 @@ def test_pack_unpack_series(tsh, engine):
             meta, series1
         )
     ))
+
+
+def test_pack_unpack_many_series(tsh, engine):
+    s1 = pd.Series(
+        [1., 2., 3.],
+        index=pd.date_range(utcdt(2020, 1, 1), freq='H', periods=3)
+    )
+    s2 = pd.Series(
+        [1.1, 2.2, 3.3],
+        index=pd.date_range(datetime(2020, 1, 2), freq='H', periods=3)
+    )
+    meta1 = {
+        'tzaware': True,
+        'index_type': 'datetime64[ns, UTC]',
+        'value_type': 'float64',
+        'index_dtype': '|M8[ns]',
+        'value_dtype': '<f8'
+    }
+    meta2 = {
+        'index_dtype': '<M8[ns]',
+        'index_type': 'datetime64[ns]',
+        'tzaware': False,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+    packed = pack_many_series(
+        [
+            (meta1, s1),
+            (meta2, s2)
+        ]
+    )
+    unpacked = unpack_many_series(packed)
+    assert unpacked[0].equals(s1)
+    assert unpacked[1].equals(s2)
 
 
 def test_pack_unpack_history(tsh, engine):
