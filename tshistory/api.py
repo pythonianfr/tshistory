@@ -541,7 +541,8 @@ class altsources:
                         to_insertion_date: Optional[datetime]=None):
         source = self._findsourcefor(name)
         if source is None:
-            return
+            # let's be nice in all cases
+            return []
         return source.tsa.insertion_dates(name)
 
     def forbidden(self, name, msg):

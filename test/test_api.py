@@ -189,6 +189,34 @@ insertion_date             value_date
     pgapi.delete('api-test2')
 
 
+@pytest.mark.skipif(
+    not formula_class() or not supervision_class(),
+    reason='need formula and supervision plugins to be available'
+)
+def test_autotrophic_idates(mapihttp):
+    from tshistory_formula import api
+    from tshistory_formula.registry import func, finder
+
+    @func('autotrophic')
+    def custom() -> pd.Series:
+        return pd.Series(
+            [1, 2, 3],
+            pd.date_range(utcdt(2020, 1, 1), periods=1, freq='D')
+        )
+
+    @finder('autotrophic')
+    def custom(cn, tsh, tree):
+        return {
+            'I HAVE A NAME FOR DISPLAY PURPOSES': tree
+        }
+
+    mapihttp.register_formula(
+        'autotrophic-idates',
+        '(autotrophic)'
+    )
+
+    idates = mapihttp.insertion_dates('autotrophic-idates')
+    assert idates == []
 
 
 @pytest.mark.skipif(
@@ -468,7 +496,8 @@ def test_local_formula_remote_series(mapihttp, engine):
     cat = mapi.catalog(allsources=True)
     assert dict(cat) == {
         ('db://localhost:5433/postgres', 'ns-test-local'): [
-            ('local-series', 'primary')
+            ('local-series', 'primary'),
+            ('autotrophic-idates', 'formula')
         ],
         ('db://localhost:5433/postgres', 'ns-test-remote'): [
             ['remote-series', 'primary']
