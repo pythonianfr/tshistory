@@ -48,6 +48,7 @@ def engine(db):
 
 @pytest.fixture(scope='session')
 def pgapi(engine):
+    schema.tsschema('tsh').create(engine)
     fschema.formula_schema('tsh').create(engine)
     schema.tsschema('tsh-upstream').create(engine)
     return tsh_api.timeseries(str(engine.url), 'tsh')
@@ -56,7 +57,9 @@ def pgapi(engine):
 
 @pytest.fixture(scope='session')
 def mapi(engine):
+    schema.tsschema('ns-test-mapi').create(engine)
     fschema.formula_schema('ns-test-mapi').create(engine)
+    schema.tsschema('ns-test-mapi-2').create(engine)
     fschema.formula_schema('ns-test-mapi-2').create(engine)
 
     return tsh_api.timeseries(
@@ -238,7 +241,9 @@ URI2 = 'http://test-uri2'
 def mapihttp(engine):
     from tshistory_rest import app
     from tshistory_formula import tsio
+    schema.tsschema('ns-test-local').create(engine)
     fschema.formula_schema('ns-test-local').create(engine)
+    schema.tsschema('ns-test-remote').create(engine)
     fschema.formula_schema('ns-test-remote').create(engine)
     wsgitester = WebTester(
         app.make_app(
