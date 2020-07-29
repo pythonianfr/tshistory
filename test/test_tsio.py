@@ -79,10 +79,9 @@ def test_tzaware_vs_naive_query(engine, tsh):
             from_value_date=datetime(2019, 1, 1)
         )
     assert err.value.args[0] == (
-        'from/to: 2019-01-01 00:00:00/None, '
-        'index type: datetime64[ns, UTC] '
-        '(from "Cannot compare tz-naive and tz-aware datetime-like objects")'
-
+        'name: "tzaware-naive-query", revdate: None '
+        '(from "from/to: 2019-01-01 00:00:00/None, index type: datetime64[ns, UTC] '
+        '(from "Cannot compare tz-naive and tz-aware datetime-like objects")")'
     )
 
 

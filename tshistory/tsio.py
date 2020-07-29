@@ -185,9 +185,15 @@ class timeseries:
                 to_value_date = compatible_date(tzaware, to_value_date)
 
         snap = Snapshot(cn, self, name)
-        _, current = snap.find(csetfilter=csetfilter,
-                               from_value_date=from_value_date,
-                               to_value_date=to_value_date)
+        try:
+            _, current = snap.find(csetfilter=csetfilter,
+                                   from_value_date=from_value_date,
+                                   to_value_date=to_value_date)
+        except ValueError as err:
+            raise ValueError(
+                f'name: "{name}", revdate: {revision_date} '
+                f'(from "{err}")'
+            )
 
         if current is not None and not _keep_nans:
             current.name = name
