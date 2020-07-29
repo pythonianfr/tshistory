@@ -379,7 +379,10 @@ class dbtimeseries:
         """Return the type of a series, for instance 'primary' or 'formula'.
 
         """
-        return self.tsh.type(self.engine, name)
+        if self.tsh.exists(self.engine, name):
+            return self.tsh.type(self.engine, name)
+
+        return self.othersources.type(name)
 
     def log(self,
             name: str,
@@ -525,6 +528,13 @@ class altsources:
             return
         meta = source.tsa.metadata(name, all=True)
         return meta
+
+    def type(self, name: str):
+        source = self._findsourcefor(name)
+        if source is None:
+            return
+
+        return source.tsa.type(name)
 
     def interval(self, name: str) -> pd.Interval:
         source = self._findsourcefor(name)

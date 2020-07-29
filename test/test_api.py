@@ -610,3 +610,7 @@ def test_formula_remote_autotrophic(mapihttp, engine):
     idates = tsa.insertion_dates('remote-series')
     # autotrophic series lack an `insertion_dates` protocol
     assert idates == []
+
+    assert tsa.type('remote-series') == 'formula'
+    assert tsa.othersources.sources[0].tsa.type('autotrophic') == 'formula'
+    assert tsa.type('autotrophic') == 'formula'
