@@ -22,6 +22,7 @@ setup(name='tshistory',
           'click',
           'mock',
           'inireader',
+          'pytz',
           'colorama',
           'tqdm'
       ],

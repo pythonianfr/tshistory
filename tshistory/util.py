@@ -17,6 +17,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from warnings import warn
 
+import pytz
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64tz_dtype
@@ -128,6 +129,9 @@ def inject_in_index(serie, revdate):
 def compatible_date(tzaware, date):
     if not tzaware:
         return date.replace(tzinfo=None)
+
+    if tzaware and date.tzinfo is None:
+        return date.replace(tzinfo=pytz.utc)
 
     return date
 

@@ -73,16 +73,12 @@ def test_tzaware_vs_naive_query(engine, tsh):
     )
     tsh.update(engine, ts, 'tzaware-naive-query', 'Babar')
 
-    with pytest.raises(ValueError) as err:
-        tsh.get(
-            engine, 'tzaware-naive-query',
-            from_value_date=datetime(2019, 1, 1)
-        )
-    assert err.value.args[0] == (
-        'name: "tzaware-naive-query", revdate: None '
-        '(from "from/to: 2019-01-01 00:00:00/None, index type: datetime64[ns, UTC] '
-        '(from "Cannot compare tz-naive and tz-aware datetime-like objects")")'
+    tsh.get(
+        engine, 'tzaware-naive-query',
+        from_value_date=datetime(2019, 1, 1)
     )
+
+    # we did not crash :)
 
 
 def test_guard_query_dates(engine, tsh):
