@@ -66,6 +66,26 @@ def test_naive_vs_tzaware_query(engine, tsh):
     # we did not crash :)
 
 
+def test_tzaware_vs_naive_query(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2020, 1, 1), freq='D', periods=3)
+    )
+    tsh.update(engine, ts, 'tzaware-naive-query', 'Babar')
+
+    with pytest.raises(ValueError) as err:
+        tsh.get(
+            engine, 'tzaware-naive-query',
+            from_value_date=datetime(2019, 1, 1)
+        )
+    assert err.value.args[0] == (
+        'from/to: 2019-01-01 00:00:00/None, '
+        'index type: datetime64[ns, UTC] '
+        '(from "Cannot compare tz-naive and tz-aware datetime-like objects")'
+
+    )
+
+
 def test_guard_query_dates(engine, tsh):
     from datetime import date
 

@@ -240,7 +240,14 @@ class Snapshot:
         snapdata = self._chunks_to_ts(
             raw[2] for raw in self.rawchunks(head, from_value_date)
         )
-        return snapdata.loc[from_value_date:to_value_date]
+        try:
+            return snapdata.loc[from_value_date:to_value_date]
+        except TypeError as err:
+            raise ValueError(
+                f'from/to: {from_value_date}/{to_value_date}, '
+                f'index type: {snapdata.index.dtype} '
+                f'(from "{err}")'
+            )
 
     def last(self, from_value_date=None, to_value_date=None):
         return self.find(from_value_date=from_value_date,
