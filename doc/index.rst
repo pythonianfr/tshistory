@@ -24,7 +24,8 @@ It can be used as a building block for machine learning, model
 optimization and validation, both for inputs and outputs.
 
 
-## Principles
+Principles
+----------
 
 There are many ways to represent timeseries in a relational database,
 and `tshistory` provides two things:
