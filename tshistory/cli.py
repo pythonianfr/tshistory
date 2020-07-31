@@ -136,60 +136,6 @@ def info(db_uri, namespace='tsh'):
     print(INFOFMT.format(**info))
 
 
-# series maintenance
-
-@tsh.command()
-@click.argument('db-uri')
-@click.argument('mapfile', type=click.Path(exists=True))
-@click.option('--namespace', default='tsh')
-def rename(db_uri, mapfile, namespace='tsh'):
-    """rename series by providing a map file (csv format)
-
-    map file header must be `old,new`
-    """
-    seriesmap = {
-        p.old: p.new
-        for p in pd.read_csv(mapfile).itertuples()
-    }
-    tsa = timeseries(find_dburi(db_uri), namespace)
-    for old, new in seriesmap.items():
-        print('rename', old, '->', new)
-        if not tsa.exists(old):
-            print('no such series')
-            continue
-        tsa.rename(old, new)
-
-
-@tsh.command()
-@click.argument('db-uri')
-@click.option('--series')
-@click.option('--deletefile', type=click.Path(exists=True))
-@click.option('--namespace', default='tsh')
-def delete(db_uri, series=None, deletefile=None, namespace='tsh'):
-    """delete series by providing a one-column file (csv format)
-
-    file header must be `name`
-    """
-    if not (series or deletefile):
-        print('You must provide a series name _or_ a csv file path')
-        return
-
-    if deletefile:
-        series = [
-            p.name
-            for p in pd.read_csv(deletefile).itertuples()
-        ]
-    else:
-        series = [series]
-
-    tsa = timeseries(find_dburi(db_uri), namespace)
-    for name in series:
-        if not tsa.exists(name):
-            print('no such series', name)
-            continue
-        tsa.delete(name)
-
-
 # db maintenance
 
 @tsh.command(name='init-db')
