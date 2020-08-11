@@ -353,11 +353,16 @@ class timeseries:
         fromidate = base.index.min() - delta
         toidate = base.index.max() - delta
 
-        hcache = historycache(
-            self, cn, name,
+        hist = self.history(
+            cn, name,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
             to_insertion_date=toidate,
+            _keep_nans=True
+        )
+
+        hcache = historycache(
+            name, hist,
             tzaware=self.metadata(cn, name).get('tzaware')
         )
 
@@ -822,22 +827,10 @@ class timeseries:
 
 class historycache:
 
-    def __init__(self, tsh, cn, name,
-                 from_value_date=None,
-                 to_value_date=None,
-                 from_insertion_date=None,
-                 to_insertion_date=None,
-                 tzaware=True):
+    def __init__(self, name, hist, tzaware=True):
         self.name = name
         self.tzaware = tzaware
-        self.hist = tsh.history(
-            cn, name,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            from_insertion_date=from_insertion_date,
-            to_insertion_date=to_insertion_date,
-            _keep_nans=True
-        )
+        self.hist = hist
         self.idates = list(self.hist.keys())
         self.naive_idates = [
             dt.replace(tzinfo=None)
