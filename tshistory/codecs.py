@@ -1,6 +1,8 @@
 from array import array
+from datetime import datetime
 import io
 import json
+import pytz
 import struct
 import zlib
 
@@ -384,3 +386,36 @@ def unpack_group_history(bytestring):
         hist[idates[dfidx]] = df
         dfidx += 1
     return hist
+
+
+# file binary serialisation
+
+def make_snapshot_record(lastid, start, end, parent, packed, bstart, offset):
+    # everything consumes 4 octets
+    buff = bytearray(28)
+    struct.pack_into('!I', buff, 0, lastid + 1)
+    struct.pack_into('!f', buff, 4, start.timestamp())
+    struct.pack_into('!f', buff, 8, end.timestamp())
+    struct.pack_into('!I', buff, 12, parent)
+    struct.pack_into('!?', buff, 16, packed)
+    struct.pack_into('!I', buff, 20, bstart)
+    struct.pack_into('!h', buff, 24, offset)
+    return buff
+
+
+def unpack_snapshot_record(bytestr):
+    buff = array('B', bytestr)
+    rid = struct.unpack_from('!I', buff, 0)[0]
+    start = datetime.fromtimestamp(
+        struct.unpack_from('!f', buff, 4)[0],
+        tz=pytz.utc
+    )
+    end = datetime.fromtimestamp(
+        struct.unpack_from('!f', buff, 8)[0],
+        tz=pytz.utc
+    )
+    parent = struct.unpack_from('!I', buff, 12)[0]
+    packed = struct.unpack_from('!?', buff, 16)[0]
+    bstart = struct.unpack_from('!i', buff, 20)[0]
+    offset = struct.unpack_from('!h', buff, 24)[0]
+    return rid, start, end, parent, packed, bstart, offset

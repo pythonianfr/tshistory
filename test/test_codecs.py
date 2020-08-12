@@ -10,6 +10,7 @@ from tshistory.testutil import (
     utcdt
 )
 from tshistory.codecs import (
+    make_snapshot_record,
     nary_pack,
     nary_unpack,
     pack_group,
@@ -21,7 +22,8 @@ from tshistory.codecs import (
     unpack_group_history,
     unpack_history,
     unpack_many_series,
-    unpack_series
+    unpack_series,
+    unpack_snapshot_record
 )
 
 
@@ -240,3 +242,28 @@ def test_pack_tzaware_history_group():
     assert hist.keys() == unpacked.keys()
     for idate, group in hist.items():
         assert unpacked[idate].equals(hist[idate])
+
+
+def test_make_snapshot_record():
+    rec = make_snapshot_record(
+        1,
+        utcdt(2020, 1, 1),
+        utcdt(2020, 1, 2),
+        0,
+        True,
+        42,
+        155
+    )
+    assert len(rec) == 28
+    assert isinstance(rec, bytearray)
+
+    rid, start, end, parent, packed, bstart, offset = unpack_snapshot_record(
+        bytes(rec)
+    )
+    assert rid == 2
+    assert start == utcdt(2020, 1, 1)
+    assert end == utcdt(2020, 1, 2)
+    assert parent == 0
+    assert packed
+    assert bstart == 42
+    assert offset == 155
