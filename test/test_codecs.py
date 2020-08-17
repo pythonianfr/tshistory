@@ -267,3 +267,26 @@ def test_make_snapshot_record():
     assert packed
     assert bstart == 42
     assert offset == 155
+
+    rec = make_snapshot_record(
+        1,
+        datetime(2020, 1, 1),
+        datetime(2020, 1, 2),
+        0,
+        True,
+        42,
+        155
+    )
+    assert len(rec) == 28
+    assert isinstance(rec, bytearray)
+
+    rid, start, end, parent, packed, bstart, offset = unpack_snapshot_record(
+        bytes(rec)
+    )
+    assert rid == 2
+    assert start == utcdt(2020, 1, 1)
+    assert end == utcdt(2020, 1, 2)
+    assert parent == 0
+    assert packed
+    assert bstart == 42
+    assert offset == 155

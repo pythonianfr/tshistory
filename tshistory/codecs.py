@@ -391,6 +391,10 @@ def unpack_group_history(bytestring):
 # file binary serialisation
 
 def make_snapshot_record(lastid, start, end, parent, packed, bstart, offset):
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=pytz.utc)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=pytz.utc)
     # everything consumes 4 octets
     buff = bytearray(28)
     struct.pack_into('!I', buff, 0, lastid + 1)
