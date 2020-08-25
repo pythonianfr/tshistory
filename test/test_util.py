@@ -332,11 +332,9 @@ def test_pack_unpack_series():
 
     empty = pd.Series(dtype='float64')
     meta = series_metadata(series1)
-    with pytest.raises(TypeError):
-        packed = pack_series(
-            meta, empty
-        )
-    return
+    packed = pack_series(
+        meta, empty
+    )
     unpacked = unpack_series(
         'foo', packed
     )

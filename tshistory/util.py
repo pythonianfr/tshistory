@@ -153,9 +153,12 @@ def series_metadata(ts):
 
 def numpy_serialize(series, isstr=False):
     # use `view` as a workarround for "cannot include dtype 'M' in a buffer"
-    bindex = np.ascontiguousarray(
-        series.index.values
-    ).view(np.uint8).data.tobytes()
+    if len(series):
+        bindex = np.ascontiguousarray(
+            series.index.values
+        ).view(np.uint8).data.tobytes()
+    else:
+        bindex = b''
 
     if isstr:
         # string separatd by 0 and nones/nans represented as 3 (ETX)
