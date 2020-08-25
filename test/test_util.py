@@ -330,12 +330,15 @@ def test_pack_unpack_series():
         )
     ))
 
-    empty = pd.Series([], dtype='float64')
+    empty = pd.Series(dtype='float64')
     meta = series_metadata(series1)
-    unpacked = unpack_series(
-        'foo', pack_series(
+    with pytest.raises(TypeError):
+        packed = pack_series(
             meta, empty
         )
+    return
+    unpacked = unpack_series(
+        'foo', packed
     )
     assert len(unpacked) == 0
     assert meta == {
