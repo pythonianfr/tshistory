@@ -297,7 +297,7 @@ def test_pack_unpack():
     assert chunks == unpacked
 
 
-def test_pack_unpack_series(tsh, engine):
+def test_pack_unpack_series():
     series1 = pd.Series(
         [1., 2., 3.],
         pd.date_range(utcdt(2021, 1, 1), freq='D', periods=3)
@@ -347,7 +347,7 @@ def test_pack_unpack_series(tsh, engine):
     }
 
 
-def test_pack_unpack_many_series(tsh, engine):
+def test_pack_unpack_many_series():
     s1 = pd.Series(
         [1., 2., 3.],
         index=pd.date_range(utcdt(2020, 1, 1), freq='H', periods=3)
