@@ -330,6 +330,22 @@ def test_pack_unpack_series(tsh, engine):
         )
     ))
 
+    empty = pd.Series([], dtype='float64')
+    meta = series_metadata(series1)
+    unpacked = unpack_series(
+        'foo', pack_series(
+            meta, empty
+        )
+    )
+    assert len(unpacked) == 0
+    assert meta == {
+        'index_dtype': '|M8[ns]',
+        'index_type': 'datetime64[ns, UTC]',
+        'tzaware': True,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+
 
 def test_pack_unpack_many_series(tsh, engine):
     s1 = pd.Series(
