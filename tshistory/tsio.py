@@ -68,7 +68,8 @@ class timeseries:
         metadata: optional dict for changeset metadata
         """
         if not len(updatets):
-            return
+            return pd.Series(dtype=updatets.dtype)
+
         updatets = self._guard_insert(
             updatets, name, author, metadata,
             insertion_date
@@ -599,7 +600,7 @@ class timeseries:
         if not len(series_diff):
             L.info('no difference in %s by %s (for ts of size %s)',
                    name, author, len(newts))
-            return
+            return pd.Series(dtype=newts.dtype)
 
         # compute series start/end stamps
         tsstart, tsend = start_end(newts)

@@ -408,6 +408,18 @@ seriesname tablename
              revision_date=datetime.now()))
 
 
+def test_update_with_nothing(engine, tsh):
+    series = genserie(datetime(2020, 1, 1), 'D', 3)
+    diff = tsh.update(engine, series, 'ts-up-nothing', 'babar')
+    assert len(diff) == 3
+
+    diff = tsh.update(engine, pd.Series(dtype='float64'), 'ts-up-nothing', 'babar')
+    assert len(diff) == 0
+
+    diff = tsh.update(engine, series, 'ts-up-nothing', 'babar')
+    assert len(diff) == 0
+
+
 def test_serie_metadata(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
     tsh.update(engine, serie, 'ts-metadata', 'babar')
@@ -669,7 +681,7 @@ Freq: D
 
     tsh.update(engine, ts_repushed, 'ts_repushed', 'test')
     dif = tsh.update(engine, ts_repushed, 'ts_repushed', 'test')
-    assert dif is None
+    assert len(dif) == 0
 
     # there is no difference
     assert 0 == len(diff(ts_repushed, ts_repushed))
@@ -1063,7 +1075,7 @@ def test_add_na(engine, tsh):
     ts_nan = pd.concat([ts_begin, ts_nan])
 
     diff = tsh.update(engine, ts_nan, 'ts_add_na', 'test')
-    assert diff is None
+    assert len(diff) == 0
 
     result = tsh.get(engine, 'ts_add_na')
     assert len(result) == 5
@@ -1121,11 +1133,11 @@ def test_precision(engine, tsh):
 
     diff = tsh.update(engine, ts_round, 'precision', 'test')
     # the roundtriped series does not produce a diff when reinserted
-    assert diff is None
+    assert len(diff) == 0
 
     # neither does the original series
     diff = tsh.update(engine, ts, 'precision', 'test')
-    assert diff is None
+    assert len(diff) == 0
 
 
 def test_serie_deletion(engine, tsh):
