@@ -36,7 +36,7 @@ def tempdir(suffix='', prefix='tmp'):
 
 
 def get_cfg_path():
-    if 'TSHISTORYCFGPATH' is os.environ:
+    if 'TSHISTORYCFGPATH' in os.environ:
         cfgpath = Path(os.environ['TSHISTORYCFGPATH'])
         if cfgpath.exists():
             return cfgpath
