@@ -614,3 +614,39 @@ def test_formula_remote_autotrophic(mapihttp, engine):
     assert tsa.type('remote-series') == 'formula'
     assert tsa.othersources.sources[0].tsa.type('autotrophic') == 'formula'
     assert tsa.type('autotrophic') == 'formula'
+
+
+def test_conflicting_update(mapi):
+    # behaviour when a series exists locally and remotely
+    mapi.update(
+        'here-and-there',
+        pd.Series(
+            [1, 2, 3],
+            index=pd.date_range(utcdt(2020, 1, 1), periods=3, freq='D')
+        ),
+        'Babar'
+    )
+    # create a series with the same name in the other source
+    remotesource = mapi.othersources.sources[0]
+    remote = timeseries(
+        remotesource.uri,
+        namespace=remotesource.namespace
+    )
+    remote.update(
+        'here-and-there',
+        pd.Series(
+            [1, 2, 3],
+            index=pd.date_range(utcdt(2020, 1, 1), periods=3, freq='D')
+        ),
+        'Babar'
+    )
+
+    with pytest.raises(ValueError) as err:
+        mapi.update(
+            'here-and-there',
+            pd.Series(
+                [1, 2, 3, 4],
+                index=pd.date_range(utcdt(2020, 1, 1), periods=4, freq='D')
+            ),
+            'Babar'
+        )
