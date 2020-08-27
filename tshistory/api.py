@@ -101,11 +101,13 @@ class dbtimeseries:
 
         """
 
-        # give a chance to say *no*
-        self.othersources.forbidden(
-            name,
-            'not allowed to update to a secondary source'
-        )
+        # check local existence
+        if not self.tsh.exists(self.engine, name):
+            # give a chance to say *no*
+            self.othersources.forbidden(
+                name,
+                'not allowed to update to a secondary source'
+            )
 
         return self.tsh.update(
             self.engine,
