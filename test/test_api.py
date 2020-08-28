@@ -649,3 +649,14 @@ def test_conflicting_update(mapi):
         ),
         'Babar'
     )
+
+    mapi.replace(
+        'here-and-there',
+        pd.Series(
+            [1, 2, 3, 4],
+            index=pd.date_range(utcdt(2020, 1, 1), periods=4, freq='D')
+        ),
+        'Babar'
+    )
+
+    # all allowed :)
