@@ -534,7 +534,7 @@ def test_revision_date(engine, tsh):
     ts = tsh.get(engine, 'ts_through_time',
                  revision_date=datetime(2014, 1, 1, 18, 43, 23))
 
-    assert ts is None
+    assert len(ts) == 0
 
     # epilogue: back to the revdate issue
     assert_df("""

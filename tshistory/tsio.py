@@ -196,9 +196,13 @@ class timeseries:
                 f'(from "{err}")'
             )
 
-        if current is not None and not _keep_nans:
-            current.name = name
+        if current is None:
+            meta = self.metadata(cn, name)
+            return pd.Series(name=name, dtype=meta['value_type'])
+
+        if not _keep_nans:
             current = current.dropna()
+        current.name = name
         return current
 
     @tx
