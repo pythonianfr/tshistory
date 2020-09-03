@@ -105,7 +105,8 @@ class timeseries:
         """
         newts = newts.dropna()
         if not len(newts):
-            return
+            return pd.Series(dtype=newts.dtype)
+
         newts = self._guard_insert(
             newts, name, author, metadata,
             insertion_date

@@ -1780,10 +1780,12 @@ def test_replace(engine, tsh):
         index=index[1:]
     )
 
-    tsh.replace(
+    d = tsh.replace(
         engine, seriesa, 'replaceme', 'Babar',
         insertion_date=utcdt(2019, 1, 1)
     )
+    assert len(d) == 3
+
     ival = tsh.interval(engine, 'replaceme')
     assert ival.left == pd.Timestamp('2020-01-01 00:00:00+0000', tz='UTC')
     assert ival.right == pd.Timestamp('2020-01-03 00:00:00+0000', tz='UTC')
@@ -1833,6 +1835,13 @@ insertion_date             value_date
     ival = tsh.interval(engine, 'replaceme')
     assert ival.left == pd.Timestamp('2020-01-02 00:00:00+0000', tz='UTC')
     assert ival.right == pd.Timestamp('2020-01-02 00:00:00+0000', tz='UTC')
+
+    d = tsh.replace(
+        engine, pd.Series(), 'replaceme', 'Arthur',
+        insertion_date=utcdt(2019, 1, 3)
+    )
+    assert len(d) == 0
+
 
 
 def test_replace_reuse(engine, tsh):
