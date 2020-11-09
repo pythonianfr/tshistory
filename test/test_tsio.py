@@ -1837,7 +1837,7 @@ insertion_date             value_date
     assert ival.right == pd.Timestamp('2020-01-02 00:00:00+0000', tz='UTC')
 
     d = tsh.replace(
-        engine, pd.Series(), 'replaceme', 'Arthur',
+        engine, pd.Series(dtype='float64'), 'replaceme', 'Arthur',
         insertion_date=utcdt(2019, 1, 3)
     )
     assert len(d) == 0
