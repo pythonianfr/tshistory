@@ -69,7 +69,7 @@ class dbtimeseries:
                  othersources=None):
         self.uri = uri
         self.namespace = namespace
-        self.engine = create_engine(uri)
+        self.engine = create_engine(uri, max_overflow=100)
         self.tsh = tshclass(namespace, othersources)
         self.othersources = othersources
 
