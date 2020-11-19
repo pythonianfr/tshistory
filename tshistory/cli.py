@@ -48,7 +48,7 @@ def tsh():
 @click.option('--json', is_flag=True, default=False)
 @click.option('--namespace', default='tsh')
 def get(db_uri, series, json, namespace='tsh'):
-    """show a serie in its current state """
+    """show a series in its current state """
     tsa = timeseries(find_dburi(db_uri), namespace)
 
     ts = tsa.get(series)
@@ -74,7 +74,7 @@ def history(db_uri, series,
             from_value_date, to_value_date,
             diff, json,
             namespace='tsh'):
-    """show a serie full history """
+    """show a series full history """
     tsa = timeseries(find_dburi(db_uri), namespace)
     hist = tsa.history(
         series,
