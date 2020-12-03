@@ -16,6 +16,7 @@ from functools import (
 from contextlib import contextmanager
 from pathlib import Path
 from warnings import warn
+import logging
 
 import pytz
 import numpy as np
@@ -24,6 +25,13 @@ from pandas.api.types import is_datetime64tz_dtype
 from sqlalchemy.engine import url
 from sqlalchemy.engine.base import Engine
 from inireader import reader
+
+
+def logme(name, level=logging.DEBUG):
+    logger = logging.getLogger(name)
+    logger.addHandler(logging.StreamHandler())
+    logger.setLevel(level)
+    return logger
 
 
 @contextmanager
