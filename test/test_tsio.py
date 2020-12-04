@@ -85,6 +85,15 @@ def test_float32_dtype(engine, tsh):
     }
 
 
+def test_bogus_index(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=['2021-1-1', '2021-1-2', '2021-1-3'],
+    )
+    with pytest.raises(AttributeError):
+        tsh.update(engine, ts, 'badindex', 'Babar')
+
+
 def test_tzaware_vs_naive_query(engine, tsh):
     ts = pd.Series(
         [1, 2, 3],
