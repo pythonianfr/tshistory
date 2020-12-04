@@ -29,7 +29,6 @@ def utcdt(*dt):
     return pd.Timestamp(datetime(*dt), tz='UTC')
 
 
-
 def test_tzaware_non_monotonic(engine, tsh):
     ts1 = pd.Series(
         [1, 2, 3],
@@ -64,6 +63,26 @@ def test_naive_vs_tzaware_query(engine, tsh):
     )
 
     # we did not crash :)
+
+
+def test_float32_dtype(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2021, 1, 1), freq='D', periods=3),
+        dtype='float32'
+    )
+    tsh.update(engine, ts, 'float32', 'Babar')
+
+    assert tsh.metadata(
+        engine,
+        'float32'
+    ) == {
+        'index_dtype': '|M8[ns]',
+        'index_type': 'datetime64[ns, UTC]',
+        'tzaware': True,
+        'value_dtype': '<f4',
+        'value_type': 'float32'
+    }
 
 
 def test_tzaware_vs_naive_query(engine, tsh):
