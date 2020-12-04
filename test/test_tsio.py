@@ -90,7 +90,7 @@ def test_bogus_index(engine, tsh):
         [1, 2, 3],
         index=['2021-1-1', '2021-1-2', '2021-1-3'],
     )
-    with pytest.raises(AttributeError):
+    with pytest.raises(AssertionError):
         tsh.update(engine, ts, 'badindex', 'Babar')
 
 

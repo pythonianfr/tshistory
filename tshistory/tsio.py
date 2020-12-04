@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 
 from sqlhelp import sqlfile, select, insert
 
@@ -543,6 +544,7 @@ class timeseries:
                 isinstance(insertion_date, datetime)), 'Bad format for insertion date'
         assert isinstance(newts, pd.Series), 'Not a pd.Series'
         index = newts.index
+        assert isinstance(index, pd.DatetimeIndex), 'You must provide a DatetimeIndex'
         assert not index.duplicated().any(), 'There are some duplicates in the index'
 
         assert index.notna().all(), 'The index contains NaT entries'
