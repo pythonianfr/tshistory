@@ -80,8 +80,8 @@ def test_float32_dtype(engine, tsh):
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
         'tzaware': True,
-        'value_dtype': '<f4',
-        'value_type': 'float32'
+        'value_dtype': '<f8',
+        'value_type': 'float64'
     }
 
 
