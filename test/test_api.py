@@ -101,6 +101,16 @@ def test_base_universal_api(pgapi, httpapi):
 2020-01-03 00:00:00+00:00    3.0
 """, out)
 
+    out2 = httpapi.get(
+        'api-test',
+        revision_date=utcdt(2019, 1, 1)
+    )
+    assert_df("""
+2020-01-01 00:00:00+00:00    1.0
+2020-01-02 00:00:00+00:00    2.0
+2020-01-03 00:00:00+00:00    3.0
+""", out2)
+
     hist = httpapi.history(
         'api-test'
     )

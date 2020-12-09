@@ -96,6 +96,14 @@ def find_dburi(something: str) -> str:
 
 # tsio helpers
 
+def ensuretz(adate):
+    if adate is None:
+        return
+    if adate.tzinfo is None:
+        return pd.Timestamp(adate, tz='UTC')
+    return adate
+
+
 def tzaware_serie(ts):
     return is_datetime64tz_dtype(ts.index)
 

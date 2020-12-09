@@ -13,6 +13,7 @@ from collections import defaultdict
 from sqlalchemy import create_engine
 import pandas as pd
 
+from tshistory.util import ensuretz
 from tshistory.tsio import timeseries as tshclass
 
 
@@ -100,6 +101,7 @@ class dbtimeseries:
         higher than the previous `insertion_date`.
 
         """
+        insertion_date = ensuretz(insertion_date)
 
         # check local existence
         if not self.tsh.exists(self.engine, name):
@@ -139,6 +141,7 @@ class dbtimeseries:
         higher than the previous `insertion_date`.
 
         """
+        insertion_date = ensuretz(insertion_date)
 
         # check local existence
         if not self.tsh.exists(self.engine, name):
@@ -187,6 +190,7 @@ class dbtimeseries:
         If the series does not exists, a None is returned.
 
         """
+        revision_date = ensuretz(revision_date)
 
         ts = self.tsh.get(
             self.engine,
@@ -214,6 +218,9 @@ class dbtimeseries:
         """Get the list of all insertion dates.
 
         """
+        from_insertion_date = ensuretz(from_insertion_date)
+        to_insertion_date = ensuretz(to_insertion_date)
+
         if self.tsh.exists(self.engine, name):
             return self.tsh.insertion_dates(
                 self.engine,
@@ -253,6 +260,8 @@ class dbtimeseries:
         `diffmode` set to False.
 
         """
+        from_insertion_date = ensuretz(from_insertion_date)
+        to_insertion_date = ensuretz(to_insertion_date)
 
         hist = self.tsh.history(
             self.engine,
