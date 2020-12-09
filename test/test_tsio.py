@@ -10,6 +10,7 @@ from tshistory.snapshot import Snapshot
 from tshistory.util import (
     _set_cache,
     diff,
+    empty_series,
     pack_history,
     threadpool,
     unpack_history
@@ -441,7 +442,7 @@ def test_update_with_nothing(engine, tsh):
     diff = tsh.update(engine, series, 'ts-up-nothing', 'babar')
     assert len(diff) == 3
 
-    diff = tsh.update(engine, pd.Series(dtype='float64'), 'ts-up-nothing', 'babar')
+    diff = tsh.update(engine, empty_series(False), 'ts-up-nothing', 'babar')
     assert len(diff) == 0
 
     diff = tsh.update(engine, series, 'ts-up-nothing', 'babar')
@@ -1684,7 +1685,7 @@ def test_chunky_array(engine, tsh):
 
 
 def test_null_serie(engine, tsh):
-    ts = pd.Series(dtype='float64')
+    ts = empty_series(False)
 
     tsh.update(engine, ts, 'null', 'Babar')
 
@@ -1763,7 +1764,7 @@ def test_insert_errors(engine, tsh):
                    index=pd.date_range(start=utcdt(2018, 1, 1),
                                        freq='D', periods=3))
 
-    with pytest.raises(TypeError):
+    with pytest.raises(AssertionError):
         tsh.update(engine, 42, 'error', 'Babar')
 
     with pytest.raises(AssertionError):
@@ -1865,7 +1866,7 @@ insertion_date             value_date
     assert ival.right == pd.Timestamp('2020-01-02 00:00:00+0000', tz='UTC')
 
     d = tsh.replace(
-        engine, pd.Series(dtype='float64'), 'replaceme', 'Arthur',
+        engine, empty_series(True), 'replaceme', 'Arthur',
         insertion_date=utcdt(2019, 1, 3)
     )
     assert len(d) == 0

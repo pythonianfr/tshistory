@@ -15,6 +15,7 @@ from tshistory.util import (
     closed_overlaps,
     compatible_date,
     diff,
+    empty_series,
     num2float,
     patch,
     pruned_history,
@@ -68,13 +69,15 @@ class timeseries:
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
-        if not len(updatets):
-            return pd.Series(dtype=updatets.dtype)
-
         updatets = self._guard_insert(
             updatets, name, author, metadata,
             insertion_date
         )
+        if not len(updatets):
+            return empty_series(
+                updatets.index.tz is not None,
+                dtype=updatets.dtype
+            )
 
         assert ('<M8[ns]' == updatets.index.dtype or
                 'datetime' in str(updatets.index.dtype) and not
@@ -104,14 +107,17 @@ class timeseries:
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
+        # nans have no replacement semantics -> drop them
         newts = newts.dropna()
-        if not len(newts):
-            return pd.Series(dtype=newts.dtype)
-
         newts = self._guard_insert(
             newts, name, author, metadata,
             insertion_date
         )
+        if not len(newts):
+            return empty_series(
+                newts.index.tz is not None,
+                dtype=newts.dtype
+            )
 
         assert ('<M8[ns]' == newts.index.dtype or
                 'datetime' in str(newts.index.dtype) and not
@@ -200,7 +206,11 @@ class timeseries:
 
         if current is None:
             meta = self.metadata(cn, name)
-            return pd.Series(name=name, dtype=meta['value_type'])
+            return empty_series(
+                meta['tzaware'],
+                dtype=meta['value_type'],
+                name=name
+            )
 
         if not _keep_nans:
             current = current.dropna()
@@ -354,7 +364,8 @@ class timeseries:
             _keep_nans=True
         )
         if not len(base):
-            return pd.Series(name=name, dtype='float64')
+            meta = self.metadata(cn, name)
+            return empty_series(meta['tzaware'], name=name)
 
         # prepare the needed revision dates
         fromidate = base.index.min() - delta
@@ -607,7 +618,11 @@ class timeseries:
         if not len(series_diff):
             L.info('no difference in %s by %s (for ts of size %s)',
                    name, author, len(newts))
-            return pd.Series(dtype=newts.dtype)
+            meta = self.metadata(cn, name)
+            return empty_series(
+                meta['tzaware'],
+                name=name
+            )
 
         # compute series start/end stamps
         tsstart, tsend = start_end(newts)
@@ -862,7 +877,7 @@ class historycache:
             to_value_date=None):
 
         if not len(self.hist):
-            return pd.Series(name=self.name, dtype='float64')
+            return empty_series(self.tzaware, name=self.name)
 
         if revision_date is None:
             return list(self.hist.values())[-1].dropna()
@@ -873,7 +888,7 @@ class historycache:
                 from_value_date:to_value_date
             ].dropna()
 
-        return pd.Series(name=self.name, dtype='float64')
+        return empty_series(self.tzaware, name=self.name)
 
     def staircase(self, delta,
                   from_value_date=None,
@@ -899,7 +914,7 @@ class historycache:
             if ts is not None and len(ts):
                 chunks.append(ts)
 
-        ts = pd.Series(dtype='float64')
+        ts = empty_series(self.tzaware, name=self.name)
         if chunks:
             ts = pd.concat(chunks)
         ts.name = self.name

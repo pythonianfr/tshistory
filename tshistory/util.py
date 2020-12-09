@@ -34,6 +34,18 @@ def logme(name, level=logging.DEBUG):
     return logger
 
 
+def empty_series(tzaware, dtype='float64', name=None):
+    return pd.Series(
+        [],
+        index=pd.DatetimeIndex(
+            [],
+            tz='UTC' if tzaware else None
+        ),
+        dtype=dtype,
+        name=name
+    )
+
+
 @contextmanager
 def tempdir(suffix='', prefix='tmp'):
     tmp = tempfile.mkdtemp(suffix=suffix, prefix=prefix)
@@ -423,6 +435,7 @@ def fromjson(jsonb, tsname, tzaware=False):
 
 def _fromjson(jsonb, tsname):
     if jsonb == '{}':
+        # NOTE: weak (but json ...)
         return pd.Series(name=tsname)
 
     result = pd.read_json(jsonb, typ='series', dtype=False)
