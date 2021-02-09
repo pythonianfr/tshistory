@@ -22,7 +22,8 @@ class timeseries:
     def __new__(cls, uri,
                 namespace='tsh',
                 handler=tshclass,
-                sources=()):
+                sources=(),
+                clientclass=None):
         parseduri = urlparse(uri)
         if parseduri.scheme.startswith('postgres'):
             return dbtimeseries(
@@ -32,6 +33,8 @@ class timeseries:
                 othersources=altsources(handler, sources)
             )
         elif parseduri.scheme.startswith('http'):
+            if clientclass:
+                return clientclass(uri)
             try:
                 from tshistory_client.api import Client
             except ImportError:
