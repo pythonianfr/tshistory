@@ -455,6 +455,25 @@ class dbtimeseries:
         return self.tsh.delete(self.engine, name)
 
 
+    def strip(self, name: str, insertion_date: datetime) -> None:
+        """Remove revisions after a specific insertion date.
+
+        This is an irreversible operation.
+
+        """
+
+        insertion_date = ensuretz(insertion_date)
+        if not self.tsh.exists(self.engine, name):
+            raise Exception(f'no series {name} exists')
+
+        with self.engine.begin() as cn:
+            csid = self.tsh.changeset_at(
+                cn, name, insertion_date, 'after'
+            )
+            if csid is not None:
+                return self.tsh.strip(cn, name, csid)
+
+
 class source:
     __slots__ = 'uri', 'namespace', 'tsa'
 

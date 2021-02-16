@@ -1,9 +1,10 @@
 from datetime import timedelta, datetime as dt
-import pandas as pd
 import pytest
 
-from tshistory.api import timeseries
+import pandas as pd
+import numpy as np
 
+from tshistory.api import timeseries
 from tshistory.testutil import (
     assert_df,
     assert_hist,
@@ -624,6 +625,59 @@ def test_formula_remote_autotrophic(mapihttp, engine):
     assert tsa.type('remote-series') == 'formula'
     assert tsa.othersources.sources[0].tsa.type('autotrophic') == 'formula'
     assert tsa.type('autotrophic') == 'formula'
+
+
+def test_strip(pgapi):
+    tsa = pgapi
+
+    for i in range(3):
+        ts = pd.Series(
+            np.array([1, 2, 3]) + i,
+            pd.date_range(utcdt(2021, 1, 1), freq='D', periods=3)
+        )
+        tsa.update(
+            'stripme',
+            ts,
+            'Babar',
+            insertion_date=utcdt(2021, 1, 1+i)
+        )
+
+    revs = tsa.insertion_dates('stripme')
+    assert revs == [
+        pd.Timestamp('2021-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2021-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2021-01-03 00:00:00+0000', tz='UTC')
+    ]
+
+    # in the future: a noop
+    tsa.strip('stripme', utcdt(2021, 1, 31))
+    revs = tsa.insertion_dates('stripme')
+    assert len(revs) == 3
+
+    # remove two
+    tsa.strip('stripme', utcdt(2021, 1, 2))
+    revs = tsa.insertion_dates('stripme')
+    assert revs == [
+        pd.Timestamp('2021-01-01 00:00:00+0000', tz='UTC'),
+    ]
+
+    # wipe all
+    tsa.strip('stripme', utcdt(2021, 1, 1))
+    revs = tsa.insertion_dates('stripme')
+    assert revs == []
+
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2021, 1, 1), freq='D', periods=3)
+    )
+    # now this is interesting ... tsh.interval wants at least a revision
+    with pytest.raises(AttributeError):
+        tsa.update(
+            'stripme',
+            ts,
+            'Babar',
+            insertion_date=utcdt(2021, 1, 10)
+        )
 
 
 def test_conflicting_update(mapi):
