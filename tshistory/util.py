@@ -263,7 +263,7 @@ def numpy_deserialize(bindex, bvalues, metadata):
     # array is a workaround for an obscure bug with pandas.isin
     index = np.frombuffer(
         array('d', bindex),
-        metadata['index_dtype']
+        metadata['index_dtype'] # NOTE: this is not sufficient
     )
 
     if metadata['value_type'] == 'object':  # str
