@@ -181,7 +181,7 @@ class timeseries:
         if revision_date:
             csetfilter.append(
                 lambda q: q.where(
-                    f'insertion_date <= %(idate)s', idate=revision_date
+                    'insertion_date <= %(idate)s', idate=revision_date
                 )
             )
 
