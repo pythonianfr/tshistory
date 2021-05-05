@@ -131,6 +131,12 @@ insertion_date             value_date
                            2020-01-04 00:00:00+00:00    4.0
 """, hist)
 
+    empty_hist = pgapi.history(
+        'api-test',
+        from_insertion_date=pd.Timestamp('2020-1-1', tz='UTC')
+    )
+    assert empty_hist is None
+
     hist = pgapi.history(
         'api-test',
         diffmode=True
