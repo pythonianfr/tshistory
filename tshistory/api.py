@@ -277,7 +277,7 @@ class dbtimeseries:
             _keep_nans=_keep_nans
         )
 
-        if not hist:
+        if hist is None:
             hist = self.othersources.history(
                 name,
                 from_insertion_date=from_insertion_date,
