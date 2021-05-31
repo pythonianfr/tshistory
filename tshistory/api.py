@@ -17,6 +17,9 @@ from tshistory.util import ensuretz
 from tshistory.tsio import timeseries as tshclass
 
 
+NONETYPE = type(None)
+
+
 class timeseries:
 
     def __new__(cls, uri,
@@ -371,7 +374,7 @@ class dbtimeseries:
 
     def update_metadata(self,
                         name: str,
-                        metadata: dict) -> None:
+                        metadata: dict) -> NONETYPE:
         """Update a series metadata with a dictionary from strings to anything
         json-serializable.
 
@@ -426,7 +429,7 @@ class dbtimeseries:
 
     def rename(self,
                currname: str,
-               newname: str) -> None:
+               newname: str) -> NONETYPE:
         """Rename a series.
 
         The target name must be available.
@@ -455,7 +458,7 @@ class dbtimeseries:
         return self.tsh.delete(self.engine, name)
 
 
-    def strip(self, name: str, insertion_date: datetime) -> None:
+    def strip(self, name: str, insertion_date: datetime) -> NONETYPE:
         """Remove revisions after a specific insertion date.
 
         This is an irreversible operation.
