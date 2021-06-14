@@ -15,7 +15,7 @@ setup(name='tshistory',
       long_description_content_type='text/markdown',
       packages=['tshistory'],
       install_requires=[
-          'pandas ~= 1.0',
+          'pandas >= 1.0.5, < 1.2',
           'dateutils',
           'sqlalchemy',
           'sqlhelp',
