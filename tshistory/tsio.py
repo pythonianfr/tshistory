@@ -444,7 +444,8 @@ class timeseries:
         ).where(
             f'insertion_date {operators[mode]} %(revdate)s',
             revdate=revdate
-        )
+        ).order('insertion_date', 'asc'
+        ).limit(1)
         return q.do(cn).scalar()
 
     @tx
