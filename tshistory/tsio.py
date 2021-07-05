@@ -1018,6 +1018,21 @@ class timeseries:
         df = pd.concat(allseries, axis=1)
         return df.rename(columns=series_name_id)
 
+    @tx
+    def group_delete(self, cn, name):
+        if not self.group_exists(cn, name):
+            return
+
+        infos = self._group_info(cn, name)
+        sql = (
+            f'delete from "{self.namespace}".group_registry '
+            'where name = %(name)s'
+        )
+        cn.execute(sql, name=name)
+        # deletion of the orphan series
+        seriesnames = (sn for _, sn in infos)
+        for sn in seriesnames:
+            self.tsh_group.delete(cn, sn)
 
 
 class historycache:

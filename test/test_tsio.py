@@ -5,6 +5,7 @@ import pytz
 import pytest
 import numpy as np
 import pandas as pd
+from sqlalchemy.exc import IntegrityError
 
 from tshistory.snapshot import Snapshot
 from tshistory.util import (
@@ -2189,7 +2190,7 @@ def test_group_bad_data(engine, tsh):
     assert ['0', '1', '2'] == df.columns.to_list()
 
 
-def test_group_list(engine, tsh):
+def test_group_list_delete(engine, tsh):
     df = gengroup(
         n_scenarios=4,
         from_date=datetime(2021, 1, 1),
@@ -2214,3 +2215,20 @@ def test_group_list(engine, tsh):
 
     for name in names:
         assert tsh.tsh_group.exists(engine, name)
+
+    # if someone tries to delete a group item, an error is raised as
+    # it should be -- this is handled by the referential integrity constraint
+    # on group <-> series
+    with pytest.raises(IntegrityError):
+        tsh.tsh_group.delete(engine, names[0])
+
+    # delete the group
+    tsh.group_delete(engine, 'third_group')
+
+    lgroups = tsh.list_groups(engine)
+    # the group disapeared
+    assert 'third_group' not in lgroups
+
+    # and the associated series do not exist anymore
+    for name in names:
+        assert not tsh.tsh_group.exists(engine, name)
