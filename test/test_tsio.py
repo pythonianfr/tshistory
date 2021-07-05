@@ -20,6 +20,7 @@ from tshistory.testutil import (
     assert_df,
     assert_hist,
     assert_hist_equals,
+    gengroup,
     genserie
 )
 
@@ -1987,3 +1988,57 @@ def test_group_namespace(engine, tsh):
     ).scalar()
 
     assert ns in ('tsh.group', 'tsh-upstream.group', 'z-z.group')
+
+
+def test_primary_group(engine, tsh):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=datetime(2021, 1, 1),
+        length=5,
+        freq='D',
+        seed=2
+    )
+
+    colnames = ['a', 'b', 'c']
+    df.columns = colnames
+
+    assert_df("""
+            a  b  c
+2021-01-01  2  3  4
+2021-01-02  3  4  5
+2021-01-03  4  5  6
+2021-01-04  5  6  7
+2021-01-05  6  7  8
+""", df)
+
+    # first insert
+    tsh.group_replace(
+        engine,
+        df,
+        'first_group',
+        author='Babar',
+        insertion_date=pd.Timestamp('2021-01-01', tz='UTC')
+    )
+
+    infos = tsh._group_info(engine, 'first_group')
+    assert ['a', 'b', 'c'] == [col for col, _name in infos]
+    infonames = [sid for name, sid in infos]
+
+    # the seriesname are randomly generated uids
+    # let's take one and gather the series
+    # that correpond to the first column of the dataframe
+    name = infos[0][1]
+    tsh_group = timeseries(namespace=f'{tsh.namespace}.group')
+
+    names = list(tsh_group.list_series(engine).keys())
+    assert names == infonames
+
+    ts = tsh_group.get(engine, name)
+
+    assert_df("""
+2021-01-01    2.0
+2021-01-02    3.0
+2021-01-03    4.0
+2021-01-04    5.0
+2021-01-05    6.0
+    """, ts)

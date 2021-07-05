@@ -4,7 +4,8 @@ from pathlib import Path
 from sqlhelp import sqlfile
 
 
-CREATEFILE = Path(__file__).parent / 'schema.sql'
+SERIES = Path(__file__).parent / 'schema.sql'
+GROUP = Path(__file__).parent / 'group.sql'
 
 
 class tsschema(object):
@@ -14,13 +15,30 @@ class tsschema(object):
         self.namespace = ns
 
     def create(self, engine):
+        self._create_series(engine, self.namespace)
+        self._create_group(engine)
+
+    def _create_series(self, engine, namespace):
         with engine.begin() as cn:
-            cn.execute(f'drop schema if exists "{self.namespace}" cascade')
-            cn.execute(f'drop schema if exists "{self.namespace}.revision" cascade')
-            cn.execute(f'drop schema if exists "{self.namespace}.snapshot" cascade')
+            # cleanup
+            cn.execute(f'drop schema if exists "{namespace}" cascade')
+            cn.execute(f'drop schema if exists "{namespace}.revision" cascade')
+            cn.execute(f'drop schema if exists "{namespace}.snapshot" cascade')
+            cn.execute(f'create schema "{namespace}"')
+            cn.execute(f'create schema "{namespace}.revision"')
+            cn.execute(f'create schema "{namespace}.snapshot"')
+            # creation
+            cn.execute(sqlfile(SERIES, ns=namespace))
+
+    def _create_group(self, engine):
+        # cleanup
+        with engine.begin() as cn:
             cn.execute(f'drop schema if exists "{self.namespace}.group" cascade')
-            cn.execute(f'create schema "{self.namespace}"')
-            cn.execute(f'create schema "{self.namespace}.revision"')
-            cn.execute(f'create schema "{self.namespace}.snapshot"')
-            cn.execute(f'create schema "{self.namespace}.group"')
-            cn.execute(sqlfile(CREATEFILE, ns=self.namespace))
+
+        # creation
+        # dedicated time series store for the groups
+        self._create_series(engine, f'{self.namespace}.group')
+
+        # group registry & mapping
+        with engine.begin() as cn:
+            cn.execute(sqlfile(GROUP, ns=self.namespace))

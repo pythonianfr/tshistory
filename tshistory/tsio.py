@@ -856,6 +856,92 @@ class timeseries:
             q.limit(limit)
         return q
 
+    # groups
+
+    @tx
+    def group_type(self, _cn, name):
+        return 'primary'
+
+    @tx
+    def group_exists(self, cn, name):
+        return cn.execute(
+            f'select id from "{self.namespace}".group_registry '
+            'where name = %(name)s',
+            name=name
+        ).scalar()
+
+    def _group_info(self, cn, name):
+        ns = self.namespace
+        sql = (
+            f'select gm.name, sr.seriesname '
+            f'from "{ns}".groupmap as gm '
+            f'join "{ns}".group_registry as gr on gr.id = gm.groupid '
+            f'join "{ns}.group".registry as sr on sr.id = gm.seriesid '
+            f'where gr.name = %(name)s'
+        )
+        return cn.execute(sql, name=name).fetchall()
+
+    def _create_group_item(self, cn, group_id, colname,
+                           series, author, insertion_date):
+        # create unique id for groupmap series
+        seriename = str(uuid.uuid4())
+        # insert series
+        self.tsh_group.replace(
+            cn, series, seriename, author,
+            insertion_date=insertion_date
+        )
+
+        # get registry id of inserted series
+        sql = (
+            f'select id from "{self.namespace}.group".registry '
+            'where seriesname = %(sn)s'
+        )
+        registry_id = cn.execute(sql, sn=seriename).scalar()
+
+        # insert infos in groupmap table
+        sql = (
+            f'insert into "{self.namespace}".groupmap (name, groupid, seriesid) '
+            'values (%(colname)s, %(group_id)s, %(registry_id)s)'
+        )
+        cn.execute(
+            sql,
+            colname=colname,
+            group_id=group_id,
+            registry_id=registry_id
+        )
+
+    @tx
+    def group_replace(self, cn, df, name, author,
+                      insertion_date=None):
+        assert isinstance(df, pd.DataFrame), (
+            f'group `{name}` must be updated with a dataframe'
+        )
+        gtype = self.group_type(cn, name)
+        if df.columns.dtype != np.dtype('O'):
+            df.columns = df.columns.astype('str')
+        if insertion_date is None:
+            insertion_date = pd.Timestamp(datetime.utcnow(), tz='UTC')
+
+        infos = self._group_info(cn, name)
+
+        if not len(infos):
+            # first insertion -> register group
+            sql = (
+                f'insert into "{self.namespace}".group_registry (name)'
+                'values (%(name)s)'
+                'returning id'
+            )
+            group_id = cn.execute(sql, name=name).scalar()
+            for colname in df.columns:
+                self._create_group_item(
+                    cn,
+                    group_id,
+                    colname,
+                    df[colname],
+                    author,
+                    insertion_date
+                )
+
 
 class historycache:
 

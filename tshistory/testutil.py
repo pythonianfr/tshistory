@@ -72,6 +72,29 @@ def genserie(start, freq, repeat, initval=None, tz=None, name=None):
                                              periods=repeat,
                                              tz=tz))
 
+
+def gengroup(n_scenarios, from_date, length, freq, seed=0):
+    """ Return a dataframe with ncol = n_scenarios, nrow = length, the
+    seed is the value in the upper-left corner wich increases by one by
+    going to the right and the bottom
+
+    """
+    index = pd.date_range(
+        start=from_date,
+        freq=freq,
+        periods=length
+    )
+    mat = []
+    for irow in range(length):
+        mat.append(
+            [
+                nb + seed + irow
+                for nb in range(n_scenarios)
+            ]
+        )
+    return pd.DataFrame(mat, index=index)
+
+
 @contextmanager
 def tempattr(obj, attr, value):
     oldvalue = getattr(obj, attr)
