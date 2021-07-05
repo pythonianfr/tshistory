@@ -2042,3 +2042,65 @@ def test_primary_group(engine, tsh):
 2021-01-04    5.0
 2021-01-05    6.0
     """, ts)
+
+    # as a whole group
+    df = tsh.group_get(engine, 'first_group')
+    assert_df("""
+              a    b    c
+2021-01-01  2.0  3.0  4.0
+2021-01-02  3.0  4.0  5.0
+2021-01-03  4.0  5.0  6.0
+2021-01-04  5.0  6.0  7.0
+2021-01-05  6.0  7.0  8.0
+    """, df)
+
+    # first update
+    df = gengroup(
+        n_scenarios=3,
+        from_date=datetime(2021, 1, 2),
+        length=5,
+        freq='D',
+        seed=-1
+    )
+    df.columns = colnames
+
+    assert_df("""
+            a  b  c
+2021-01-02 -1  0  1
+2021-01-03  0  1  2
+2021-01-04  1  2  3
+2021-01-05  2  3  4
+2021-01-06  3  4  5
+    """, df)
+
+    tsh.group_replace(
+        engine,
+        df,
+        'first_group',
+        author='Babar'
+    )
+    df = tsh.group_get(engine, 'first_group')
+
+    assert_df("""
+              a    b    c
+2021-01-02 -1.0  0.0  1.0
+2021-01-03  0.0  1.0  2.0
+2021-01-04  1.0  2.0  3.0
+2021-01-05  2.0  3.0  4.0
+2021-01-06  3.0  4.0  5.0
+    """, df)
+
+    # let's load the previous version
+    df = tsh.group_get(
+        engine,
+        'first_group',
+        revision_date=pd.Timestamp('2021-01-02', tz='UTC')
+    )
+    assert_df("""
+              a    b    c
+2021-01-01  2.0  3.0  4.0
+2021-01-02  3.0  4.0  5.0
+2021-01-03  4.0  5.0  6.0
+2021-01-04  5.0  6.0  7.0
+2021-01-05  6.0  7.0  8.0
+    """, df)

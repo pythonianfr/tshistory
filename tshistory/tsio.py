@@ -941,6 +941,46 @@ class timeseries:
                     author,
                     insertion_date
                 )
+            return
+
+        # update
+        for colname, itemname in infos:
+            ts = df[colname]
+            self.tsh_group.replace(
+                cn,
+                ts,
+                itemname,
+                author,
+                insertion_date=insertion_date
+            )
+
+
+    @tx
+    def group_get(self, cn, name,
+                  revision_date=None,
+                  from_value_date=None,
+                  to_value_date=None):
+        if not self.group_exists(cn, name):
+            return None
+
+        series_name_id = {
+            seriesname: sid
+            for sid, seriesname in self._group_info(cn, name)
+        }
+        allseries = []
+        for name in series_name_id:
+            allseries.append(
+                self.tsh_group.get(
+                    cn,
+                    name,
+                    revision_date=revision_date,
+                    from_value_date=from_value_date,
+                    to_value_date=to_value_date
+                )
+            )
+        df = pd.concat(allseries, axis=1)
+        return df.rename(columns=series_name_id)
+
 
 
 class historycache:
