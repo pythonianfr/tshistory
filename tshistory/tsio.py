@@ -910,6 +910,32 @@ class timeseries:
             registry_id=registry_id
         )
 
+    def _check_group_columns(self, name, infos, df):
+        colnames = df.columns
+        colrefs = [col for col, _ in infos]
+
+        dupes = colnames.duplicated()
+        if dupes.any():
+            duplicated = colnames[dupes]
+            str_dupes = ', '.join(duplicated)
+            raise Exception(
+                f'group update error for `{name}`: `{str_dupes}` columns are duplicated'
+            )
+
+        col_plus = set(colnames) - set(colrefs)
+        if len(col_plus):
+            str_plus = ', '.join(col_plus)
+            raise Exception(
+                f'group update error for `{name}`: `{str_plus}` columns are in excess'
+            )
+
+        col_minus = set(colrefs) - (set(colnames))
+        if len(col_minus):
+            str_minus = ', '.join(col_minus)
+            raise Exception(
+                f'group update error for `{name}`: `{str_minus}` columns are missing'
+            )
+
     @tx
     def group_replace(self, cn, df, name, author,
                       insertion_date=None):
@@ -944,6 +970,7 @@ class timeseries:
             return
 
         # update
+        self._check_group_columns(name, infos, df)
         for colname, itemname in infos:
             ts = df[colname]
             self.tsh_group.replace(

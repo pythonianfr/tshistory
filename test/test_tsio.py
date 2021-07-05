@@ -2104,3 +2104,86 @@ def test_primary_group(engine, tsh):
 2021-01-04  5.0  6.0  7.0
 2021-01-05  6.0  7.0  8.0
     """, df)
+
+
+def test_group_bad_data(engine, tsh):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=datetime(2021, 1, 2),
+        length=5,
+        freq='D',
+        seed=-1
+    )
+    df.columns = ['a', 'b', 'c']
+
+    tsh.group_replace(
+        engine,
+        df,
+        'bad_group',
+        author='Babar'
+    )
+
+    # let's insert data with wrong format
+    df2 = df[['a', 'b', 'c', 'a']]
+    df2.columns = ['a', 'b', 'c', 'd']
+
+    with pytest.raises(Exception) as excinfo:
+        tsh.group_replace(
+            engine,
+            df['a'],
+            'bad_group',
+            author='Celeste'
+        )
+    assert str(excinfo.value) == (
+        'group `bad_group` must be updated with a dataframe'
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsh.group_replace(
+            engine,
+            df[['a', 'b']],
+            'bad_group',
+            author='Celeste'
+        )
+    assert str(excinfo.value) == (
+        'group update error for `bad_group`: `c` columns are missing'
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsh.group_replace(
+            engine,
+            df[['a', 'b', 'c', 'a']],
+            'bad_group',
+            author='Celeste'
+        )
+    assert str(excinfo.value) == (
+        'group update error for `bad_group`: `a` columns are duplicated'
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsh.group_replace(
+            engine,
+            df2,
+            'bad_group',
+            author='Celeste'
+        )
+    assert str(excinfo.value) == (
+        'group update error for `bad_group`: `d` columns are in excess'
+    )
+
+    # when dataframes columns are indexed with ints
+    df = gengroup(
+        n_scenarios=3,
+        from_date=datetime(2021, 1, 1),
+        length=5,
+        freq='D',
+        seed=2
+    )
+
+    assert [0, 1, 2] == df.columns.to_list()
+    tsh.group_replace(engine, df, 'group_with_int', 'Arthur')
+    tsh.group_replace(engine, df, 'group_with_int', 'Arthur')
+    df = tsh.group_get(engine, 'group_with_int')
+
+    # the integer are coreced into string
+    assert ['0', '1', '2'] == df.columns.to_list()
