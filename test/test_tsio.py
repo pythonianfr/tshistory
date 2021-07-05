@@ -1875,7 +1875,6 @@ insertion_date             value_date
     assert len(d) == 0
 
 
-
 def test_replace_reuse(engine, tsh):
     index = pd.date_range(
         start=utcdt(2020, 1, 1),
@@ -1977,3 +1976,14 @@ def test_revisions_callback(engine, tsh):
     assert [rid for rid, _ in goodstatus] == [1, 4]
     assert [rid for rid, _ in coldstatus] == [2]
     assert [rid for rid, _ in nosuchstatus] == []
+
+
+# groups
+
+def test_group_namespace(engine, tsh):
+    ns = engine.execute(
+        "select schema_name from information_schema.schemata "
+        "where schema_name like '%%group'"
+    ).scalar()
+
+    assert ns in ('tsh.group', 'tsh-upstream.group', 'z-z.group')

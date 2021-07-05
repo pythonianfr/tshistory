@@ -43,11 +43,19 @@ class timeseries:
     create_lock_id = None
     delete_lock_id = None
 
-    def __init__(self, namespace='tsh', othersources=None):
+    def __init__(self, namespace='tsh', othersources=None,
+                 _groups=True):
         self.namespace = namespace
         self.create_lock_id = sum(ord(c) for c in namespace)
         self.delete_lock_id = sum(ord(c) for c in namespace)
         self.othersources = othersources
+        # primary series for groups in a simple timeseries store
+        # in its own namespace
+        if _groups:
+            self.tsh_group = timeseries(
+                namespace=f'{self.namespace}.group',
+                _groups=False
+            )
 
     def __repr__(self):
         return (
