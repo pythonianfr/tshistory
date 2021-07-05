@@ -2187,3 +2187,30 @@ def test_group_bad_data(engine, tsh):
 
     # the integer are coreced into string
     assert ['0', '1', '2'] == df.columns.to_list()
+
+
+def test_group_list(engine, tsh):
+    df = gengroup(
+        n_scenarios=4,
+        from_date=datetime(2021, 1, 1),
+        length=4,
+        freq='D',
+        seed=4
+    )
+
+    tsh.group_replace(
+        engine,
+        df,
+        'third_group',
+        author='Arthur',
+        insertion_date=pd.Timestamp('2021-01-01', tz='UTC')
+    )
+
+    lgroups = tsh.list_groups(engine)
+    assert 'third_group' in lgroups
+
+    infos = tsh._group_info(engine, 'third_group')
+    names = [name for _, name in infos]
+
+    for name in names:
+        assert tsh.tsh_group.exists(engine, name)

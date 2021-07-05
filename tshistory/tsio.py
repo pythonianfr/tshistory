@@ -870,6 +870,16 @@ class timeseries:
             name=name
         ).scalar()
 
+    @tx
+    def list_groups(self, cn):
+        cat = {
+            name: 'primary'
+            for name, in cn.execute(
+                f'select name from "{self.namespace}".group_registry'
+            ).fetchall()
+        }
+        return cat
+
     def _group_info(self, cn, name):
         ns = self.namespace
         sql = (
