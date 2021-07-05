@@ -1386,9 +1386,9 @@ insertion_date             value_date
 
 def test_staircase_2_tzaware(engine, tsh):
     # maybe a more interesting example, each days we insert 7 data points
-    for idx, idate in enumerate(pd.date_range(start=utcdt(2015, 1, 1),
-                                              end=utcdt(2015, 1, 4),
-                                              freq='D')):
+    for idate in pd.date_range(start=utcdt(2015, 1, 1),
+                               end=utcdt(2015, 1, 4),
+                               freq='D'):
         ts = genserie(start=idate, freq='H', repeat=7)
         tsh.update(engine, ts, 'repu2', 'test', insertion_date=idate)
 
@@ -1448,9 +1448,9 @@ def test_staircase_2_tzaware(engine, tsh):
 
 def test_staircase_2_tznaive(engine, tsh):
     # same as above, with naive dates
-    for idx, idate in enumerate(pd.date_range(start=utcdt(2015, 1, 1),
-                                              end=utcdt(2015, 1, 4),
-                                              freq='D')):
+    for idate in pd.date_range(start=utcdt(2015, 1, 1),
+                               end=utcdt(2015, 1, 4),
+                               freq='D'):
         ts = genserie(start=idate.replace(tzinfo=None), freq='H', repeat=7)
         tsh.update(engine, ts, 'repu-tz-naive', 'test', insertion_date=idate)
 
@@ -1510,9 +1510,9 @@ def test_staircase_2_tznaive(engine, tsh):
 
 def test_staircase_tzaware_funny_bug(engine, tsh):
     # naive first
-    for idx, idate in enumerate(pd.date_range(start=utcdt(2015, 1, 1),
-                                              end=utcdt(2015, 1, 4),
-                                              freq='D')):
+    for idate in pd.date_range(start=utcdt(2015, 1, 1),
+                               end=utcdt(2015, 1, 4),
+                               freq='D'):
         ts = genserie(start=idate.tz_convert(None), freq='H', repeat=7)
         tsh.update(
             engine, ts, 'funny-staircase-naive', 'test', insertion_date=idate
