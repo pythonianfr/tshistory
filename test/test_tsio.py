@@ -2190,7 +2190,7 @@ def test_group_bad_data(engine, tsh):
     assert ['0', '1', '2'] == df.columns.to_list()
 
 
-def test_group_list_delete(engine, tsh):
+def test_group_other_operations(engine, tsh):
     df = gengroup(
         n_scenarios=4,
         from_date=datetime(2021, 1, 1),
@@ -2222,6 +2222,10 @@ def test_group_list_delete(engine, tsh):
     with pytest.raises(IntegrityError):
         tsh.tsh_group.delete(engine, names[0])
 
+    assert tsh.group_metadata(engine, 'third_group') == {}
+    tsh.update_group_metadata(engine, 'third_group', {'foo': 'bar'})
+    assert tsh.group_metadata(engine, 'third_group') == {'foo': 'bar'}
+
     # delete the group
     tsh.group_delete(engine, 'third_group')
 
@@ -2232,3 +2236,7 @@ def test_group_list_delete(engine, tsh):
     # and the associated series do not exist anymore
     for name in names:
         assert not tsh.tsh_group.exists(engine, name)
+
+    assert tsh.group_metadata(engine, 'third_group') is None
+    with pytest.raises(AssertionError):
+        tsh.update_group_metadata(engine, 'third_group', {'foo': 'bar'})

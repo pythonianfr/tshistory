@@ -880,6 +880,31 @@ class timeseries:
         }
         return cat
 
+    @tx
+    def group_metadata(self, cn, name):
+        if not self.group_exists(cn, name):
+            return
+
+        return cn.execute(
+            f'select metadata from "{self.namespace}".group_registry '
+            'where name = %(name)s',
+            name=name
+        ).scalar() or {}
+
+    @tx
+    def update_group_metadata(self, cn, name, meta):
+        assert self.group_exists(cn, name), 'attempt to update non existing group `{name}`'
+        sql = (
+            f'update "{self.namespace}".group_registry '
+            'set metadata = %(metadata)s '
+            f'where name = %(name)s'
+        )
+        cn.execute(
+            sql,
+            metadata=json.dumps(meta),
+            name=name
+        )
+
     def _group_info(self, cn, name):
         ns = self.namespace
         sql = (
