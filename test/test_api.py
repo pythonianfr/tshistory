@@ -766,6 +766,12 @@ def test_primary_group(tsx):
     assert tsx.group_type('first_group_api') == 'primary'
     assert tsx.group_exists('first_group_api')
 
+    meta = tsx.group_metadata('first_group_api')
+    assert meta == {}
+    tsx.update_group_metadata('first_group_api', {'name': 'babar'})
+    meta = tsx.group_metadata('first_group_api')
+    assert meta == {'name': 'babar'}
+
     df = tsx.group_get('first_group_api')
     assert_df("""
               a    b    c
