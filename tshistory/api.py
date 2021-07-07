@@ -573,6 +573,18 @@ class dbtimeseries:
         with self.engine.begin() as cn:
             self.tsh.update_group_metadata(cn, name, meta)
 
+    def group_catalog(self) -> Dict[str,List[Tuple[str,str]]]:
+        """Produces a catalog of all groups in the form of a mapping from
+        source to a list of (name, kind) pair.
+
+        """
+        parsed = urlparse(self.uri)
+        instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
+        cat = defaultdict(list)
+        for name, kind in self.tsh.list_groups(self.engine).items():
+            cat[(instancename, self.namespace)].append((name, kind))
+        return cat
+
 
 class source:
     __slots__ = 'uri', 'namespace', 'tsa'

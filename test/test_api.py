@@ -912,3 +912,37 @@ def test_group_errors(tsx):
 
     # the integers are coerced into strings
     assert ['0', '1', '2'] == df.columns.to_list()
+
+
+def test_group_catalog(tsx):
+    # cleanup
+    cat = list(tsx.group_catalog().values())
+    if cat:
+        for name, _ in cat[0]:
+            tsx.group_delete(name)
+
+    df = gengroup(
+        n_scenarios=4,
+        from_date=dt(2021, 1, 1),
+        length=4,
+        freq='D',
+        seed=4
+    )
+
+    tsx.group_replace(
+        'list-me',
+        df,
+        author='Babar',
+        insertion_date=utcdt(2021, 1, 1)
+    )
+
+    lgroups = tsx.group_catalog()
+
+    assert list(lgroups.values())[0] == [
+        ('list-me', 'primary')
+    ]
+
+    tsx.group_delete('list-me')
+
+    # the group disapeared
+    assert len(list(tsx.group_catalog().values())) == 0
