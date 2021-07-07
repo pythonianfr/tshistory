@@ -476,6 +476,89 @@ class dbtimeseries:
             if csid is not None:
                 return self.tsh.strip(cn, name, csid)
 
+    # groups
+
+    def group_exists(self, name: str) -> bool:
+        """Checks the existence of a group with a given name.
+
+        """
+        with self.engine.begin() as cn:
+            return self.tsh.group_exists(cn, name)
+
+    def group_type(self, name: str) -> str:
+        """Return the type of a group, for instance 'primary', 'formula' or
+        'bound'
+
+        """
+        with self.engine.begin() as cn:
+            return self.tsh.group_type(cn, name)
+
+    def group_get(self,
+                  name: str,
+                  revision_date: Optional[pd.Timestamp]=None,
+                  from_value_date: Optional[pd.Timestamp]=None,
+                  to_value_date=None
+    ) -> Optional[pd.DataFrame]:
+        """Get a group by name.
+
+        By default one gets the latest version.
+
+        By specifying `revision_date` one can get the closest version
+        matching the given date.
+
+        The `from_value_date` and `to_value_date` parameters permit to
+        specify a narrower date range (by default all points are
+        provided).
+
+        If the group does not exists, a None is returned.
+
+        """
+        with self.engine.begin() as cn:
+            return self.tsh.group_get(
+                cn,
+                name,
+                revision_date,
+                from_value_date,
+                to_value_date
+            )
+
+    def group_replace(self,
+                      name: str,
+                      df: pd.DataFrame,
+                      author: str,
+                      insertion_date: Optional[pd.Timestamp]=None) -> NONETYPE:
+        """Replace a group named by <name> with the input dataframe.
+
+        This creates a new version of the group. The group is completely
+        replaced with the provided values.
+
+        The `author` is mandatory.
+        The `metadata` dictionary allows to associate any metadata
+        with the new group revision.
+
+        It is possible to force an `insertion_date`, which can only be
+        higher than the previous `insertion_date`.
+
+        """
+        with self.engine.begin() as cn:
+            self.tsh.group_replace(
+                cn,
+                df,
+                name,
+                author,
+                insertion_date
+            )
+
+    def group_delete(self, name: str) -> NONETYPE:
+        """Delete a group.
+
+        This is an irreversible operation.
+
+        """
+        with self.engine.begin() as cn:
+            self.tsh.group_delete(cn, name)
+
+
 
 class source:
     __slots__ = 'uri', 'namespace', 'tsa'

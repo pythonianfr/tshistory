@@ -53,6 +53,15 @@ def pgapi(engine):
     schema.tsschema('tsh-upstream').create(engine)
     return tsh_api.timeseries(str(engine.url), 'tsh')
 
+
+@pytest.fixture(scope='session')
+def tsx(request, engine):
+    return tsh_api.timeseries(
+        str(engine.url),
+        handler=tsio.timeseries
+    )
+
+
 # multi-source
 
 @pytest.fixture(scope='session')

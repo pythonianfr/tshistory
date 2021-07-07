@@ -8,6 +8,7 @@ from tshistory.api import timeseries
 from tshistory.testutil import (
     assert_df,
     assert_hist,
+    gengroup,
     genserie,
     utcdt
 )
@@ -730,3 +731,178 @@ def test_conflicting_update(mapi):
     )
 
     # all allowed :)
+
+
+# groups
+
+def test_primary_group(tsx):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=dt(2021, 1, 1),
+        length=5,
+        freq='D',
+        seed=2
+    )
+
+    colnames = ['a', 'b', 'c']
+    df.columns = colnames
+
+    assert_df("""
+            a  b  c
+2021-01-01  2  3  4
+2021-01-02  3  4  5
+2021-01-03  4  5  6
+2021-01-04  5  6  7
+2021-01-05  6  7  8
+    """, df)
+
+    # first insert
+    tsx.group_replace(
+        'first_group_api',
+        df,
+        author='Babar',
+        insertion_date=utcdt(2021, 1, 1)
+    )
+    assert tsx.group_type('first_group_api') == 'primary'
+    assert tsx.group_exists('first_group_api')
+
+    df = tsx.group_get('first_group_api')
+    assert_df("""
+              a    b    c
+2021-01-01  2.0  3.0  4.0
+2021-01-02  3.0  4.0  5.0
+2021-01-03  4.0  5.0  6.0
+2021-01-04  5.0  6.0  7.0
+2021-01-05  6.0  7.0  8.0
+    """, df)
+
+    # update
+    df = gengroup(
+        n_scenarios=3,
+        from_date=dt(2021, 1, 2),
+        length=5,
+        freq='D',
+        seed=-1
+    )
+    df.columns = colnames
+
+    assert_df("""
+            a  b  c
+2021-01-02 -1  0  1
+2021-01-03  0  1  2
+2021-01-04  1  2  3
+2021-01-05  2  3  4
+2021-01-06  3  4  5
+    """, df)
+
+    tsx.group_replace('first_group_api', df, author='Babar')
+    df = tsx.group_get('first_group_api')
+    assert_df("""
+              a    b    c
+2021-01-02 -1.0  0.0  1.0
+2021-01-03  0.0  1.0  2.0
+2021-01-04  1.0  2.0  3.0
+2021-01-05  2.0  3.0  4.0
+2021-01-06  3.0  4.0  5.0
+    """, df)
+
+    # the update did work
+    # let's load the previous version  (inserted in 2021-01-01)
+    df = tsx.group_get(
+        'first_group_api',
+        revision_date=utcdt(2021, 1, 2)
+    )
+    assert_df("""
+              a    b    c
+2021-01-01  2.0  3.0  4.0
+2021-01-02  3.0  4.0  5.0
+2021-01-03  4.0  5.0  6.0
+2021-01-04  5.0  6.0  7.0
+2021-01-05  6.0  7.0  8.0
+""", df)
+
+
+def test_group_errors(tsx):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=dt(2021, 1, 1),
+        length=5,
+        freq='D',
+        seed=2
+    )
+
+    df.columns = ['a', 'b', 'c']
+    tsx.group_replace(
+        'group_error',
+        df,
+        author='Babar',
+        insertion_date=utcdt(2021, 1, 1)
+    )
+
+    assert_df("""
+            a  b  c
+2021-01-01  2  3  4
+2021-01-02  3  4  5
+2021-01-03  4  5  6
+2021-01-04  5  6  7
+2021-01-05  6  7  8
+    """, df)
+
+    df2 = df[['a', 'b', 'c', 'a']]
+    df2.columns = ['a', 'b', 'c', 'd']
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.group_replace(
+            'group_error',
+            df['a'],
+            author='Celeste'
+        )
+    assert str(excinfo.value) == (
+        'group `group_error` must be updated with a dataframe'
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.group_replace(
+            'group_error',
+            df[['a', 'b']],
+            author='Celeste'
+        )
+    assert str(excinfo.value) == (
+        'group update error for `group_error`: `c` columns are missing'
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.group_replace(
+            'group_error',
+            df[['a', 'b', 'c', 'a']],
+            author='Celeste'
+        )
+    assert 'duplicated' in str(excinfo.value) or 'redundant' in str(excinfo.value)
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.group_replace(
+            'group_error',
+            df2,
+            author='Celeste'
+        )
+    assert str(excinfo.value) == (
+        'group update error for `group_error`: `d` columns are in excess'
+    )
+
+    # when dataframes columns are indexed with integer
+
+    df = gengroup(
+        n_scenarios=3,
+        from_date=dt(2021, 1, 1),
+        length=5,
+        freq='D',
+        seed=2
+    )
+
+    assert [0, 1, 2] == df.columns.to_list()
+    tsx.group_replace('group_with_int_api', df, 'test')
+    tsx.group_replace('group_with_int_api', df, 'test')
+    df = tsx.group_get('group_with_int_api')
+
+    # the integers are coerced into strings
+    assert ['0', '1', '2'] == df.columns.to_list()
