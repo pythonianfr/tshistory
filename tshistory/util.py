@@ -451,6 +451,74 @@ def _fromjson(jsonb, tsname):
     result = num2float(result)
     return result
 
+# groups
+
+def serialize_index(df):
+    dtype = df.index.dtype.str.encode('utf-8')
+    if len(df):
+        return dtype, np.ascontiguousarray(
+            df.index.values
+        ).view(np.uint8).data.tobytes()
+    return dtype, b''
+
+
+def serialize_values(df):
+    """ convert each values of a dataframe into a list
+    a series takes 3 list entries, for:
+    * the dtype
+    * the name
+    * the values
+    """
+    byteslist = []
+    if df.columns.dtype.name != 'object':
+        df.columns = [str(col) for col in df.columns]
+    for col in df.columns:
+        series = df[col]
+        byteslist.append(
+            series.dtype.name.encode('utf-8')
+        )
+        byteslist.append(
+            series.name.encode('utf-8')
+        )
+        byteslist.append(
+            series.values.data.tobytes()
+        )
+    return byteslist
+
+
+def pack_group(df):
+    bidtype, bindex = serialize_index(df)
+    out = [bidtype, bindex]
+    out += serialize_values(df)
+    return zlib.compress(nary_pack(*out))
+
+
+def unpack_group(bytestr):
+    byteslist = nary_unpack(zlib.decompress(bytestr))
+    bidtype, bindex = byteslist[0:2]
+    if len(bindex):
+        index = np.frombuffer(
+            array('d', bindex),
+            bidtype
+        )
+    else:
+        return pd.DataFrame()
+
+    values = {}
+    iterbseries = zip(*[iter(byteslist[2:])] * 3)
+    for bdtype, bname, bvalues in iterbseries:
+        name = bname.decode('utf-8')
+        values[name] = np.frombuffer(
+            bvalues,
+            bdtype.decode('utf-8')
+        )
+
+    df = pd.DataFrame(values, index=index)
+    if bidtype.startswith(b'|'):
+        df.index = df.index.tz_localize('UTC')
+
+    return df
+
 
 # diff/patch utilities
 

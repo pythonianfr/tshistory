@@ -10,18 +10,21 @@ from tshistory.util import (
     fromjson,
     nary_pack,
     nary_unpack,
+    pack_group,
     pack_history,
     pack_many_series,
     pack_series,
     patch,
     patchmany,
     series_metadata,
+    unpack_group,
     unpack_history,
     unpack_many_series,
     unpack_series
 )
 from tshistory.testutil import (
     assert_df,
+    gengroup,
     genserie,
     utcdt
 )
@@ -412,6 +415,33 @@ def test_pack_unpack_history(tsh, engine):
     assert meta2 == meta
     for idate, series in hist.items():
         assert hist2[idate].equals(series)
+
+# group
+
+def test_pack_unpack_naive_group():
+    df = gengroup(3, pd.Timestamp('2021-1-1'), 5, 'D', 2)
+    packed = pack_group(df)
+    unpacked = unpack_group(packed)
+
+    assert unpacked.equals(df)
+
+    packed = pack_group(df)
+    unpacked = unpack_group(packed)
+
+    assert unpacked.equals(df)
+
+
+def test_pack_unpack_tzaware_group():
+    df = gengroup(3, pd.Timestamp('2021-1-1', tz='UTC'), 5, 'D', 2)
+    packed = pack_group(df)
+    unpacked = unpack_group(packed)
+
+    assert unpacked.equals(df)
+
+    packed = pack_group(df)
+    unpacked = unpack_group(packed)
+
+    assert unpacked.equals(df)
 
 
 def test_in_tx(tsh, engine):
