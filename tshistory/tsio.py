@@ -65,7 +65,8 @@ class timeseries:
     @tx
     def update(self, cn, updatets, name, author,
                metadata=None,
-               insertion_date=None):
+               insertion_date=None,
+               **k):
         """Create a new revision of a given time series
         with update semantics:
         * new points will be added to the existing series
