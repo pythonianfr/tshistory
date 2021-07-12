@@ -512,15 +512,13 @@ def test_local_formula_remote_series(mapihttp, engine):
     )
 
     cat = mapi.catalog(allsources=True)
-    assert dict(cat) == {
-        ('db://localhost:5433/postgres', 'ns-test-local'): [
-            ('local-series', 'primary'),
-            ('autotrophic-idates', 'formula')
-        ],
-        ('db://localhost:5433/postgres', 'ns-test-remote'): [
-            ['remote-series', 'primary']
-        ]
-    }
+    s1 = cat[('db://localhost:5433/postgres', 'ns-test-local')]
+
+    assert ('local-series', 'primary') in s1
+
+    s2 = list(cat[('db://localhost:5433/postgres', 'ns-test-remote')])
+    assert ['remote-series', 'primary'] in s2
+
     mapi.register_formula(
         'test-localformula-remoteseries',
         '(+ 1 (series "remote-series"))'
@@ -736,6 +734,9 @@ def test_conflicting_update(mapi):
 # groups
 
 def test_primary_group(tsx):
+    for name in ('first_group_api',):
+        tsx.group_delete(name)
+
     df = gengroup(
         n_scenarios=3,
         from_date=dt(2021, 1, 1),

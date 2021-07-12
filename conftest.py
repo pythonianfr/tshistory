@@ -54,14 +54,6 @@ def pgapi(engine):
     return tsh_api.timeseries(str(engine.url), 'tsh')
 
 
-@pytest.fixture(scope='session')
-def tsx(request, engine):
-    return tsh_api.timeseries(
-        str(engine.url),
-        handler=tsio.timeseries
-    )
-
-
 # multi-source
 
 @pytest.fixture(scope='session')
@@ -158,7 +150,9 @@ class WebTester(webtest.TestApp):
         url = self._remove_fragment(url)
         req = self.RequestClass.blank(url, environ)
 
-        req.environ['wsgi.input'] = io.BytesIO(params.encode('utf-8'))
+        if isinstance(params, str):
+            params = params.encode('utf-8')
+        req.environ['wsgi.input'] = io.BytesIO(params)
         req.content_length = len(params)
         if headers:
             req.headers.update(headers)
@@ -187,6 +181,31 @@ URI = 'http://test-uri'
 def with_tester(uri, resp, wsgitester):
     resp.add_callback(
         responses.GET, uri + '/series/state',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.PUT, uri + '/series/state',
+        callback=write_request_bridge(wsgitester.put)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/series/supervision',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.DELETE, uri + '/series/state',
+        callback=write_request_bridge(wsgitester.delete)
+    )
+
+    resp.add_callback(
+        responses.PUT, uri + '/series/strip',
+        callback=write_request_bridge(wsgitester.put)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/series/insertion_dates',
         callback=partial(read_request_bridge, wsgitester)
     )
 
@@ -221,9 +240,98 @@ def with_tester(uri, resp, wsgitester):
     )
 
     resp.add_callback(
-        responses.GET, uri + '/series/insertion_dates',
+        responses.GET, uri + '/series/log',
         callback=partial(read_request_bridge, wsgitester)
     )
+
+    resp.add_callback(
+        responses.GET, uri + '/series/formula',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.PATCH, uri + '/series/formula',
+        callback=write_request_bridge(wsgitester.patch)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/series/formula_components',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/group/state',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.PATCH, uri + '/group/state',
+        callback=write_request_bridge(wsgitester.patch)
+    )
+
+    resp.add_callback(
+        responses.DELETE, uri + '/group/state',
+        callback=write_request_bridge(wsgitester.delete)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/group/metadata',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.PUT, uri + '/group/metadata',
+        callback=write_request_bridge(wsgitester.put)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/group/catalog',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/group/formula',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.PUT, uri + '/group/formula',
+        callback=write_request_bridge(wsgitester.put)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/group/boundformula',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.PUT, uri + '/group/boundformula',
+        callback=write_request_bridge(wsgitester.put)
+    )
+
+
+@pytest.fixture(params=['pg', 'http'])
+def tsx(request, engine):
+    if request.param == 'pg':
+
+        yield tsh_api.timeseries(
+            str(engine.url),
+            handler=tsio.timeseries
+        )
+
+    else:
+
+        from tshistory_rest import app
+        from tshistory_formula.http import formula_httpapi
+        wsgitester = WebTester(
+            app.make_app(
+                tsh_api.timeseries(str(engine.url)),
+                formula_httpapi
+            )
+        )
+        with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
+            with_tester(URI, resp, wsgitester)
+            yield tsh_api.timeseries(URI, 'tsh')
 
 
 @pytest.fixture(scope='session')
@@ -250,17 +358,20 @@ URI2 = 'http://test-uri2'
 def mapihttp(engine):
     from tshistory_rest import app
     from tshistory_formula import tsio
+    from tshistory_formula.http import formula_httpapi
     schema.tsschema('ns-test-local').create(engine)
     fschema.formula_schema('ns-test-local').create(engine)
     schema.tsschema('ns-test-remote').create(engine)
     fschema.formula_schema('ns-test-remote').create(engine)
+
     wsgitester = WebTester(
         app.make_app(
             tsh_api.timeseries(
                 DBURI,
                 namespace='ns-test-remote',
                 handler=tsio.timeseries
-            )
+            ),
+            formula_httpapi
         )
     )
     with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
