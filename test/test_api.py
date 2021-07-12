@@ -228,81 +228,15 @@ def test_autotrophic_idates(mapihttp):
 
 
 @pytest.mark.skipif(
-    not formula_class() or not supervision_class(),
-    reason='need formula and supervision plugins to be available'
-)
-def test_alternative_handler(pgapi):
-    api = pgapi
-    sapi = timeseries(api.uri, api.namespace, formula_class())
-    sapi.update(
-        'test-features',
-        genserie(utcdt(2020, 1, 1), 'D', 3),
-        'Babar',
-    )
-    sapi.tsh.register_formula(
-        sapi.engine,
-        'test-formula',
-        '(+ 1 (series "test-features"))'
-    )
-    tsa = sapi.get('test-features')
-    assert_df("""
-2020-01-01 00:00:00+00:00    0.0
-2020-01-02 00:00:00+00:00    1.0
-2020-01-03 00:00:00+00:00    2.0
-""", tsa)
-
-    tsb = sapi.get('test-formula')
-    assert_df("""
-2020-01-01 00:00:00+00:00    1.0
-2020-01-02 00:00:00+00:00    2.0
-2020-01-03 00:00:00+00:00    3.0
-""", tsb)
-
-    idates = sapi.insertion_dates('test-formula')
-    assert len(idates) == 1
-
-    class supervision_and_formula(supervision_class(),
-                                  formula_class()):
-        pass
-
-    sapi = timeseries(api.uri, api.namespace, supervision_and_formula)
-    tsa = sapi.get('test-features')
-    assert_df("""
-2020-01-01 00:00:00+00:00    0.0
-2020-01-02 00:00:00+00:00    1.0
-2020-01-03 00:00:00+00:00    2.0
-""", tsa)
-
-    tsb = sapi.get('test-formula')
-    assert_df("""
-2020-01-01 00:00:00+00:00    1.0
-2020-01-02 00:00:00+00:00    2.0
-2020-01-03 00:00:00+00:00    3.0
-""", tsb)
-
-    sapi.update(
-        'test-features',
-        genserie(utcdt(2020, 1, 2), 'D', 3),
-        'Babar',
-        manual=True
-    )
-
-    tsb = sapi.get('test-formula')
-    assert_df("""
-2020-01-01 00:00:00+00:00    1.0
-2020-01-02 00:00:00+00:00    1.0
-2020-01-03 00:00:00+00:00    2.0
-2020-01-04 00:00:00+00:00    3.0
-""", tsb)
-
-
-@pytest.mark.skipif(
     not formula_class(),
     reason='need formula plugin to be available'
 )
-def test_log(pgapi):
+def test_log(tsx):
+    for name in ('log-me',):
+        tsx.delete(name)
+
     series = genserie(utcdt(2020, 1, 1), 'D', 3, initval=[1])
-    pgapi.update(
+    tsx.update(
         'log-me',
         series,
         'Babar',
@@ -310,7 +244,7 @@ def test_log(pgapi):
         insertion_date=utcdt(2020, 1, 1)
     )
 
-    log = pgapi.log('log-me')
+    log = tsx.log('log-me')
     assert log == [{
         'rev': 1,
         'author': 'Babar',
@@ -319,13 +253,13 @@ def test_log(pgapi):
     }]
 
     series[1] = 42
-    pgapi.update(
+    tsx.update(
         'log-me',
         series,
         'Babar',
         insertion_date=utcdt(2020, 1, 2)
     )
-    log = pgapi.log('log-me', limit=1)
+    log = tsx.log('log-me', limit=1)
     assert len(log) == 1
 
 
