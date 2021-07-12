@@ -312,6 +312,8 @@ def with_tester(uri, resp, wsgitester):
 
 @pytest.fixture(params=['pg', 'http'])
 def tsx(request, engine):
+    sch = schema.tsschema()
+    sch.create(engine)
     if request.param == 'pg':
 
         yield tsh_api.timeseries(

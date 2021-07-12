@@ -34,7 +34,10 @@ def supervision_class():
     not formula_class(),
     reason='need formula plugin to be available'
 )
-def test_base_universal_api(pgapi, httpapi):
+def test_base_universal_api(tsx):
+    for name in ('api-test',):
+        tsx.delete(name)
+
     series = pd.Series(
         [1, 2, 3],
         index=pd.date_range(
@@ -42,14 +45,15 @@ def test_base_universal_api(pgapi, httpapi):
         )
     )
 
-    pgapi.update(
+    tsx.update(
         'api-test',
         series,
         'Babar',
         insertion_date=utcdt(2019, 1, 1),
         metadata={'about': 'test'}
     )
-    out = httpapi.get('api-test')
+
+    out = tsx.get('api-test')
     assert_df("""
 2020-01-01 00:00:00+00:00    1.0
 2020-01-02 00:00:00+00:00    2.0
@@ -57,13 +61,13 @@ def test_base_universal_api(pgapi, httpapi):
 """, out)
 
     series[utcdt(2020, 1, 4)] = 4
-    pgapi.update(
+    tsx.update(
         'api-test',
         series,
         'Babar',
         insertion_date=utcdt(2019, 1, 2)
     )
-    out = pgapi.get(
+    out = tsx.get(
         'api-test',
         from_value_date=utcdt(2020, 1, 2),
         to_value_date=utcdt(2020, 1, 3)
@@ -74,14 +78,14 @@ def test_base_universal_api(pgapi, httpapi):
 """, out)
 
     series[utcdt(2019, 12, 31)] = 0
-    pgapi.replace(
+    tsx.replace(
         'api-test',
         series,
         'Babar',
         insertion_date=utcdt(2019, 1, 3)
     )
 
-    out = httpapi.get('api-test')
+    out = tsx.get('api-test')
     assert_df("""
 2019-12-31 00:00:00+00:00    0.0
 2020-01-01 00:00:00+00:00    1.0
@@ -90,10 +94,14 @@ def test_base_universal_api(pgapi, httpapi):
 2020-01-04 00:00:00+00:00    4.0
 """, out)
 
-    assert httpapi.type('api-test') == pgapi.type('api-test')
-    assert httpapi.interval('api-test') == pgapi.interval('api-test')
+    assert tsx.type('api-test') == 'primary'
+    assert tsx.interval('api-test') == pd.Interval(
+        pd.Timestamp('2019-12-31', tz='UTC'),
+        pd.Timestamp('2020-01-04', tz='UTC'),
+        closed='both'
+    )
 
-    out = httpapi.get(
+    out = tsx.get(
         'api-test',
         revision_date=utcdt(2019, 1, 1)
     )
@@ -103,17 +111,7 @@ def test_base_universal_api(pgapi, httpapi):
 2020-01-03 00:00:00+00:00    3.0
 """, out)
 
-    out2 = httpapi.get(
-        'api-test',
-        revision_date=utcdt(2019, 1, 1)
-    )
-    assert_df("""
-2020-01-01 00:00:00+00:00    1.0
-2020-01-02 00:00:00+00:00    2.0
-2020-01-03 00:00:00+00:00    3.0
-""", out2)
-
-    hist = httpapi.history(
+    hist = tsx.history(
         'api-test'
     )
     assert_hist("""
@@ -132,13 +130,13 @@ insertion_date             value_date
                            2020-01-04 00:00:00+00:00    4.0
 """, hist)
 
-    empty_hist = pgapi.history(
+    empty_hist = tsx.history(
         'api-test',
         from_insertion_date=pd.Timestamp('2020-1-1', tz='UTC')
     )
     assert empty_hist == {}
 
-    hist = pgapi.history(
+    hist = tsx.history(
         'api-test',
         diffmode=True
     )
@@ -151,23 +149,17 @@ insertion_date             value_date
 2019-01-03 00:00:00+00:00  2019-12-31 00:00:00+00:00    0.0
 """, hist)
 
-    assert pgapi.exists('api-test')
-    assert not pgapi.exists('i-dont-exist')
-    assert httpapi.exists('api-test')
-    assert not httpapi.exists('i-dont-exist')
+    assert tsx.exists('api-test')
+    assert not tsx.exists('i-dont-exist')
 
-    ival = pgapi.interval('api-test')
-    assert ival.left == pd.Timestamp('2019-12-31 00:00:00+0000', tz='UTC')
-    assert ival.right == pd.Timestamp('2020-01-04 00:00:00+0000', tz='UTC')
-
-    idates = httpapi.insertion_dates('api-test')
+    idates = tsx.insertion_dates('api-test')
     assert idates == [
         pd.Timestamp('2019-01-01 00:00:00+0000', tz='UTC'),
         pd.Timestamp('2019-01-02 00:00:00+0000', tz='UTC'),
         pd.Timestamp('2019-01-03 00:00:00+0000', tz='UTC')
     ]
 
-    meta = pgapi.metadata('api-test', all=True)
+    meta = tsx.metadata('api-test', all=True)
     assert meta == {
         'tzaware': True,
         'index_type': 'datetime64[ns, UTC]',
@@ -175,36 +167,34 @@ insertion_date             value_date
         'index_dtype': '|M8[ns]',
         'value_dtype': '<f8'
     }
-    meta = httpapi.metadata('api-test')
+    meta = tsx.metadata('api-test')
     assert meta == {}
 
-    pgapi.update_metadata('api-test', {
+    tsx.update_metadata('api-test', {
         'desc': 'a metadata test'
     })
-    meta = pgapi.metadata('api-test')
+    meta = tsx.metadata('api-test')
     assert meta == {
         'desc': 'a metadata test'
     }
 
-    assert pgapi.type('api-test') == 'primary'
+    assert tsx.type('api-test') == 'primary'
 
-    st = pgapi.staircase('api-test', delta=timedelta(days=366))
+    st = tsx.staircase('api-test', delta=timedelta(days=366))
     assert_df("""
 2020-01-02 00:00:00+00:00    2.0
 2020-01-03 00:00:00+00:00    3.0
 2020-01-04 00:00:00+00:00    4.0
 """, st)
 
-    pgapi.rename('api-test', 'api-test2')
-    assert pgapi.exists('api-test2')
-    assert not pgapi.exists('api-test')
-    assert httpapi.exists('api-test2')
-    assert not httpapi.exists('api-test')
+    tsx.rename('api-test', 'api-test2')
+    assert tsx.exists('api-test2')
+    assert not tsx.exists('api-test')
 
-    pgapi.delete('api-test2')
-    assert not pgapi.exists('api-test')
-    assert not httpapi.exists('api-test')
-    pgapi.delete('api-test2')
+    tsx.delete('api-test2')
+    assert not tsx.exists('api-test')
+    tsx.delete('api-test2')
+    assert not tsx.exists('api-test2')
 
 
 @pytest.mark.skipif(

@@ -106,7 +106,8 @@ class timeseries:
     @tx
     def replace(self, cn, newts, name, author,
                 metadata=None,
-                insertion_date=None):
+                insertion_date=None,
+                **k):
         """Create a new revision of a given time series
         and do a wholesale replacement of the series
         with the provided one (no update semantics)

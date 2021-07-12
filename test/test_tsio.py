@@ -1982,14 +1982,6 @@ def test_revisions_callback(engine, tsh):
 
 # groups
 
-def test_group_namespace(engine, tsh):
-    ns = engine.execute(
-        "select schema_name from information_schema.schemata "
-        "where schema_name like '%%group'"
-    ).scalar()
-
-    assert ns in ('tsh.group', 'tsh-upstream.group', 'z-z.group')
-
 
 def test_primary_group(engine, tsh):
     df = gengroup(
