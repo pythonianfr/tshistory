@@ -556,22 +556,23 @@ def test_formula_remote_autotrophic(mapihttp, engine):
     assert tsa.type('autotrophic') == 'formula'
 
 
-def test_strip(pgapi):
-    tsa = pgapi
+def test_strip(tsx):
+    for name in ('stripme',):
+        tsx.delete(name)
 
     for i in range(3):
         ts = pd.Series(
             np.array([1, 2, 3]) + i,
             pd.date_range(utcdt(2021, 1, 1), freq='D', periods=3)
         )
-        tsa.update(
+        tsx.update(
             'stripme',
             ts,
             'Babar',
             insertion_date=utcdt(2021, 1, 1+i)
         )
 
-    revs = tsa.insertion_dates('stripme')
+    revs = tsx.insertion_dates('stripme')
     assert revs == [
         pd.Timestamp('2021-01-01 00:00:00+0000', tz='UTC'),
         pd.Timestamp('2021-01-02 00:00:00+0000', tz='UTC'),
@@ -579,20 +580,20 @@ def test_strip(pgapi):
     ]
 
     # in the future: a noop
-    tsa.strip('stripme', utcdt(2021, 1, 31))
-    revs = tsa.insertion_dates('stripme')
+    tsx.strip('stripme', utcdt(2021, 1, 31))
+    revs = tsx.insertion_dates('stripme')
     assert len(revs) == 3
 
     # remove two
-    tsa.strip('stripme', utcdt(2021, 1, 2))
-    revs = tsa.insertion_dates('stripme')
+    tsx.strip('stripme', utcdt(2021, 1, 2))
+    revs = tsx.insertion_dates('stripme')
     assert revs == [
         pd.Timestamp('2021-01-01 00:00:00+0000', tz='UTC'),
     ]
 
     # wipe all
-    tsa.strip('stripme', utcdt(2021, 1, 1))
-    revs = tsa.insertion_dates('stripme')
+    tsx.strip('stripme', utcdt(2021, 1, 1))
+    revs = tsx.insertion_dates('stripme')
     assert revs == []
 
     ts = pd.Series(
@@ -600,8 +601,8 @@ def test_strip(pgapi):
         pd.date_range(utcdt(2021, 1, 1), freq='D', periods=3)
     )
     # now this is interesting ... tsh.interval wants at least a revision
-    with pytest.raises(AttributeError):
-        tsa.update(
+    with pytest.raises(Exception):
+        tsx.update(
             'stripme',
             ts,
             'Babar',

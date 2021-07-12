@@ -45,15 +45,6 @@ def engine(db):
 
 
 # api fixtures
-
-@pytest.fixture(scope='session')
-def pgapi(engine):
-    schema.tsschema('tsh').create(engine)
-    fschema.formula_schema('tsh').create(engine)
-    schema.tsschema('tsh-upstream').create(engine)
-    return tsh_api.timeseries(str(engine.url), 'tsh')
-
-
 # multi-source
 
 @pytest.fixture(scope='session')
@@ -334,23 +325,6 @@ def tsx(request, engine):
         with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
             with_tester(URI, resp, wsgitester)
             yield tsh_api.timeseries(URI, 'tsh')
-
-
-@pytest.fixture(scope='session')
-def httpapi(engine):
-    from tshistory_rest import app
-    wsgitester = WebTester(
-        app.make_app(
-            tsh_api.timeseries(
-                str(engine.url),
-                sources=[(DBURI, 'ns-test-mapi-2')]
-            )
-        )
-    )
-    with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
-        with_tester(URI, resp, wsgitester)
-        # yields local-tsh + http ns-test-mapi-2
-        yield tsh_api.timeseries(URI, 'tsh')
 
 
 # formula test
