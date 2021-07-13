@@ -13,7 +13,10 @@ from collections import defaultdict
 from sqlalchemy import create_engine
 import pandas as pd
 
-from tshistory.util import ensuretz
+from tshistory.util import (
+    ensuretz,
+    threadpool
+)
 from tshistory.tsio import timeseries as tshclass
 
 
@@ -707,11 +710,19 @@ class altsources:
             raise ValueError(msg)
 
     def catalog(self, allsources=False):
-        cat = {}
-        for source in self.sources:
+        cats = []
+        pool = threadpool(len(self.sources))
+        def getcat(source):
             try:
-                cat.update(source.tsa.catalog(allsources))
+                cats.append(
+                    source.tsa.catalog(allsources)
+                )
             except:
                 import traceback as tb; tb.print_exc()
                 print(f'source {source} temporarily unavailable')
+
+        pool(getcat, [(s,) for s in self.sources])
+        cat = {}
+        for c in cats:
+            cat.update(c)
         return cat
