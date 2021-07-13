@@ -303,8 +303,11 @@ def with_tester(uri, resp, wsgitester):
 
 @pytest.fixture(params=['pg', 'http'])
 def tsx(request, engine):
-    sch = schema.tsschema()
-    sch.create(engine)
+    schema.tsschema().create(engine)
+    fschema.formula_schema().create(engine)
+
+    from tshistory_formula import tsio
+
     if request.param == 'pg':
 
         yield tsh_api.timeseries(
@@ -318,13 +321,16 @@ def tsx(request, engine):
         from tshistory_formula.http import formula_httpapi
         wsgitester = WebTester(
             app.make_app(
-                tsh_api.timeseries(str(engine.url)),
+                tsh_api.timeseries(
+                    str(engine.url),
+                    handler=tsio.timeseries
+                ),
                 formula_httpapi
             )
         )
         with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
             with_tester(URI, resp, wsgitester)
-            yield tsh_api.timeseries(URI, 'tsh')
+            yield tsh_api.timeseries(URI, 'tsh', handler=tsio.timeseries)
 
 
 # formula test

@@ -866,11 +866,13 @@ class timeseries:
 
     @tx
     def group_exists(self, cn, name):
-        return cn.execute(
-            f'select id from "{self.namespace}".group_registry '
-            'where name = %(name)s',
-            name=name
-        ).scalar()
+        return bool(
+            cn.execute(
+                f'select id from "{self.namespace}".group_registry '
+                'where name = %(name)s',
+                name=name
+            ).scalar()
+        )
 
     @tx
     def list_groups(self, cn):
@@ -980,6 +982,11 @@ class timeseries:
             f'group `{name}` must be updated with a dataframe'
         )
         gtype = self.group_type(cn, name)
+        if gtype != 'primary' and self.group_exists(cn, name):
+            raise ValueError(
+                f'cannot group-replace `{name}`: '
+                f'this name has type `{gtype}`'
+            )
         if df.columns.dtype != np.dtype('O'):
             df.columns = df.columns.astype('str')
         if insertion_date is None:

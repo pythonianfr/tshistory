@@ -872,3 +872,106 @@ def test_group_catalog(tsx):
 
     # the group disapeared
     assert len(list(tsx.group_catalog().values())) == 0
+
+
+def test_more_group_errors(tsx):
+    tsx.delete('toto')
+    tsx.delete('tata')
+
+    df = gengroup(
+        n_scenarios=3,
+        from_date=dt(2015, 1, 1),
+        length=5,
+        freq='D',
+        seed=2
+    )
+
+    tsx.group_replace('conflict-name-primary', df, 'toto')
+    tsx.register_group_formula('conflict-name-formula', '(group "toto")')
+
+    # toto does not exist: for homogneity purposes an error should be raised
+
+    # bad bindings
+    with pytest.raises(Exception) as excinfo:
+        tsx.register_formula_bindings(
+            'conflict-name-binding',
+            'toto',
+            pd.DataFrame()
+        )
+    assert str(excinfo.value) == 'bindings must have `series` `groups` and `family` columns'
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.register_formula_bindings(
+            'conflict-name-binding',
+            'toto',
+            pd.DataFrame([['a', 'b', 'c']], columns=('series', 'group', 'family'))
+        )
+    assert str(excinfo.value) == '`toto` is not a formula'
+
+    tsx.register_formula(
+        'toto',
+        '(constant 42.5 (date "1900-1-1") (date "2039-12-31") "D" (date "1900-1-1"))'
+    )
+
+    tsx.register_formula_bindings(
+        'conflict-name-binding',
+        'toto',
+        pd.DataFrame([['a', 'b', 'c']], columns=('series', 'group', 'family'))
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.group_replace('conflict-name-formula', df, 'toto')
+    assert str(excinfo.value) == (
+        'cannot group-replace `conflict-name-formula`: this name has type `formula`'
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.group_replace('conflict-name-binding', df, 'toto')
+    assert str(excinfo.value) == (
+        'cannot group-replace `conflict-name-binding`: this name has type `bound`'
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.register_group_formula('conflict-name-primary', '(group "toto")')
+    assert str(excinfo.value) == (
+        'cannot register formula `conflict-name-primary`: already a `primary`'
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.register_group_formula('conflict-name-binding', '(group "toto")')
+    assert str(excinfo.value) == (
+        'cannot register formula `conflict-name-binding`: already a `bound`'
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.register_formula_bindings(
+            'conflict-name-primary',
+            'toto',
+            pd.DataFrame([['a', 'b', 'c']], columns=('series', 'group', 'family'))
+        )
+    assert str(excinfo.value) == (
+        'cannot bind `conflict-name-primary`: already a primary'
+    )
+    with pytest.raises(Exception) as excinfo:
+        tsx.register_formula_bindings(
+            'conflict-name-formula',
+            'toto',
+            pd.DataFrame([['a', 'b', 'c']], columns=('series', 'group', 'family'))
+        )
+    assert str(excinfo.value) == (
+        'cannot bind `conflict-name-formula`: already a formula'
+    )
+
+    # overrides
+    tsx.register_group_formula('conflict-name-formula', '(group "tata")')
+
+    # goes smoothly
+    tsx.register_formula(
+        'tata',
+        '(constant 42.5 (date "1900-1-1") (date "2039-12-31") "D" (date "1900-1-1"))'
+    )
+    tsx.register_formula_bindings(
+        'conflict-name-binding',
+        'tata',
+        pd.DataFrame([['a', 'b', 'c']], columns=('series', 'group', 'family'))
+    )
