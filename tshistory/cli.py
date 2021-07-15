@@ -7,8 +7,6 @@ import click
 from sqlalchemy import create_engine
 from dateutil.parser import parse as temporal
 import pandas as pd
-from tqdm import tqdm
-from sqlhelp import select, update
 
 from tshistory.api import timeseries
 from tshistory.util import find_dburi
@@ -151,7 +149,7 @@ def migrate_to_groups(db_uri, namespace='tsh'):
 @tsh.command(name='init-db')
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
-def init_db(db_uri, reset=False, namespace='tsh'):
+def init_db(db_uri, namespace='tsh'):
     """initialize an new db."""
     engine = create_engine(find_dburi(db_uri))
     schem = tsschema(namespace)

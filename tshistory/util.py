@@ -16,7 +16,6 @@ from functools import (
 from contextlib import contextmanager
 from pathlib import Path
 from warnings import warn
-import logging
 
 import pytz
 import numpy as np

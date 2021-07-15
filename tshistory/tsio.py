@@ -21,10 +21,10 @@ from tshistory.util import (
     pruned_history,
     series_metadata,
     start_end,
-    tx,
-    tzaware_serie
+    tx
 )
 from tshistory.snapshot import Snapshot
+
 
 L = logging.getLogger('tshistory.tsio')
 SERIESSCHEMA = Path(__file__).parent / 'series.sql'
@@ -100,7 +100,7 @@ class timeseries:
             return self._create(cn, updatets, name, author, seriesmeta,
                                 metadata, insertion_date)
 
-        return self._update(cn, tablename, updatets, name, author,
+        return self._update(cn, updatets, name, author,
                             metadata, insertion_date)
 
     @tx
@@ -378,7 +378,6 @@ class timeseries:
             return empty_series(meta['tzaware'], name=name)
 
         # prepare the needed revision dates
-        fromidate = base.index.min() - delta
         toidate = base.index.max() - delta
 
         hist = self.history(
@@ -617,7 +616,7 @@ class timeseries:
                name, len(newts), author)
         return newts
 
-    def _update(self, cn, tablename, newts, name, author,
+    def _update(self, cn, newts, name, author,
                 metadata=None, insertion_date=None):
         self._validate(cn, newts, name)
         snapshot = Snapshot(cn, self, name)
@@ -735,7 +734,7 @@ class timeseries:
         )
         cn.execute(table)
 
-    def _series_initial_meta(self, cn, name, ts):
+    def _series_initial_meta(self, _cn, _name, ts):
         return series_metadata(ts)
 
     def _register_serie(self, cn, name, seriesmeta):
@@ -744,7 +743,7 @@ class timeseries:
                'values (%s, %s, %s) '
                'returning id')
         tablename = self._series_to_tablename(cn, name)
-        regid = cn.execute(
+        cn.execute(
             sql,
             name,
             tablename,
@@ -861,7 +860,7 @@ class timeseries:
     # groups
 
     @tx
-    def group_type(self, _cn, name):
+    def group_type(self, _cn, _name):
         return 'primary'
 
     @tx
