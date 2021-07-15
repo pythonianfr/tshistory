@@ -12,8 +12,7 @@ from sqlhelp import select, update
 
 from tshistory.api import timeseries
 from tshistory.util import find_dburi
-
-import tshistory.schema
+from tshistory.schema import tsschema
 
 
 # Override points
@@ -136,6 +135,17 @@ def info(db_uri, namespace='tsh'):
     print(INFOFMT.format(**info))
 
 
+# migration
+
+@tsh.command(name='migrate-to-groups')
+@click.argument('db-uri')
+@click.option('--namespace', default='tsh')
+def migrate_to_groups(db_uri, namespace='tsh'):
+    engine = create_engine(find_dburi(db_uri))
+    sch = tsschema(namespace)
+    sch._create_group(engine)
+
+
 # db maintenance
 
 @tsh.command(name='init-db')
@@ -144,7 +154,7 @@ def info(db_uri, namespace='tsh'):
 def init_db(db_uri, reset=False, namespace='tsh'):
     """initialize an new db."""
     engine = create_engine(find_dburi(db_uri))
-    schem = tshistory.schema.tsschema(namespace)
+    schem = tsschema(namespace)
     schem.create(engine)
 
 
