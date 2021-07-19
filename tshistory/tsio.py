@@ -647,10 +647,8 @@ class timeseries:
             patched = patch(last, series_diff).dropna()
             if not len(patched):
                 raise ValueError('complete erasure of a series is forbidden')
-            if pd.isnull(series_diff[0]):
-                start = patched.index[0]
-            if pd.isnull(series_diff[-1]):
-                end = patched.index[-1]
+            start = patched.index[0]
+            end = patched.index[-1]
 
         head = snapshot.update(series_diff)
         self._new_revision(
