@@ -28,7 +28,8 @@ setup(name='tshistory',
       ],
       package_data={'tshistory': [
           'schema.sql',
-          'series.sql'
+          'series.sql',
+          'group.sql'
       ]},
       entry_points={
           'console_scripts': [
