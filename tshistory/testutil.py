@@ -79,6 +79,13 @@ def genserie(start, freq, repeat, initval=None, tz=None, name=None):
                                              tz=tz))
 
 
+def genhist(insertion_dates, freq, repeat, tz):
+    hist = {}
+    for j, i_date in enumerate(insertion_dates):
+        hist[i_date] = genserie(i_date, freq=freq, repeat=repeat, tz=tz) / (j+1)
+    return hist
+
+
 def gengroup(n_scenarios, from_date, length, freq, seed=0):
     """ Return a dataframe with ncol = n_scenarios, nrow = length, the
     seed is the value in the upper-left corner wich increases by one by

@@ -22,6 +22,7 @@ from tshistory.testutil import (
     assert_hist,
     assert_hist_equals,
     gengroup,
+    genhist,
     genserie
 )
 
@@ -1597,6 +1598,68 @@ def test_staircase_tzaware_funny_bug(engine, tsh):
 2015-01-04 05:00:00+00:00    5.0
 2015-01-04 06:00:00+00:00    6.0
 """, deltas)
+
+from collections import namedtuple
+
+@pytest.fixture
+def insertion_dates():
+    insert_start = pd.Timestamp("2021-10-29", tz="Europe/Brussels")
+    inserts_at_00 = pd.date_range(insert_start.replace(hour=0), periods=5, freq="D")
+    inserts_at_08 = pd.date_range(insert_start.replace(hour=8), periods=5, freq="D")
+    inserts_at_16 = pd.date_range(insert_start.replace(hour=16), periods=5, freq="D")
+    return namedtuple("Insertions", "tz, at_00, at_08, at_16, all")(
+        tz=str(insert_start.tz),
+        at_00=inserts_at_00.to_list(),
+        at_08=inserts_at_08.to_list(),
+        at_16=inserts_at_16.to_list(),
+        all=sorted([*inserts_at_00, *inserts_at_08, *inserts_at_16]),
+    )
+
+
+def test_block_staircase_no_series(engine, tsh, insertion_dates):
+    assert tsh.block_staircase(
+        engine, "no-such-series",
+        insert_start=insertion_dates.all[0],
+        insert_end=insertion_dates.all[-1],
+        insert_freq="D",
+        from_value_delta="24h",
+        to_value_delta="48h",
+    ) is None
+
+
+def test_block_staircase_tz_aware(engine, tsh, insertion_dates):
+    # Load history on db
+    hist = genhist(insertion_dates.all, freq="H", repeat=72, tz=insertion_dates.tz)
+    for idate, ts in hist.items():
+        tsh.update(engine, ts, "tz_aware_hist", "test", insertion_date=idate)
+
+    # Run a 9am day-ahead staircase with daily frequency
+    insert_start = insertion_dates.at_08[0].replace(hour=9)
+    insert_end = insertion_dates.at_08[-1].replace(hour=9)
+    sc_ts = tsh.block_staircase(
+        engine,
+        "tz_aware_hist",
+        insert_start=insert_start,
+        insert_end=insert_end,
+        insert_freq="D",
+        from_value_delta="15h",
+        to_value_delta="39h",
+    )
+
+    # Check datetime index of output series
+    expected_idx = pd.date_range(
+        insert_start + pd.Timedelta("15h"), insert_end + pd.Timedelta("39h"), freq="H"
+    ).tz_convert(sc_ts.index.tz)
+    pd.testing.assert_index_equal(sc_ts.index, expected_idx)
+
+    # Check values of output series
+    for i_date in insertion_dates.at_08:
+        from_v_date = i_date + pd.Timedelta("16h")
+        to_v_date = from_v_date.replace(hour=23)
+        value_dates = pd.date_range(from_v_date, to_v_date, freq="H")
+        pd.testing.assert_series_equal(
+            hist[i_date].loc[value_dates], sc_ts.loc[value_dates], check_freq=False
+        )
 
 
 def test_rename(engine, tsh):

@@ -400,6 +400,45 @@ class timeseries:
             to_value_date
         )
 
+
+    @tx
+    def block_staircase(
+        self,
+        cn,
+        name,
+        insert_start,
+        insert_end,
+        insert_freq,
+        from_value_delta,
+        to_value_delta,
+    ):
+        """Staircase series by block
+
+        Computes a series with insertion dates given by `insert_start`, `insert_end`,
+        `insert_freq` and value interval of each insertion are taken as insertion date
+        shifted by `from_value_delta` and `to_value_delta`
+        """
+        if not self.exists(cn, name):
+            return
+        self._guard_query_dates(insert_start, insert_end)
+        hist = self.history(
+            cn, name,
+            from_value_date = insert_start + pd.Timedelta(from_value_delta),
+            to_insertion_date = insert_end,
+            _keep_nans = True
+        )
+        hcache = historycache(
+            name, hist, tzaware=self.metadata(cn, name).get('tzaware')
+        )
+        return hcache.block_staircase(
+            insert_start=insert_start,
+            insert_end=insert_end,
+            insert_freq=insert_freq,
+            from_value_delta=from_value_delta,
+            to_value_delta=to_value_delta,
+        )
+
+
     @tx
     def exists(self, cn, name):
         return self._series_to_tablename(cn, name) is not None
@@ -1132,3 +1171,43 @@ class historycache:
             ts = pd.concat(chunks)
         ts.name = self.name
         return ts
+
+    def block_staircase(
+        self,
+        insert_start,
+        insert_end,
+        insert_freq,
+        from_value_delta,
+        to_value_delta,
+    ):
+        """Staircase series by block
+
+        Computes a series with insertion dates given by `insert_start`, `insert_end`,
+        `insert_freq` and value interval of each insertion are taken as insertion date
+        shifted by `from_value_delta` and `to_value_delta`
+        """
+        insert_dates = pd.date_range(insert_start, insert_end, freq=insert_freq)
+        n_insert = len(insert_dates)
+
+        def get_value_dates(delta):
+            value_start = insert_start + pd.Timedelta(delta)
+            if not self.tzaware:
+                value_start = pd.Timestamp(value_start).tz_localize(None)
+            return pd.date_range(value_start, freq=insert_freq, periods=n_insert)
+
+        from_value_dates = get_value_dates(from_value_delta)
+        to_value_dates = get_value_dates(to_value_delta)
+
+        ts_values = {}
+        for dates in zip(insert_dates, from_value_dates, to_value_dates):
+            i_date, from_v_date, to_v_date = dates
+            chunk = self.get(
+                revision_date=i_date,
+                from_value_date=from_v_date,
+                to_value_date=to_v_date
+            )
+            if chunk is not None and len(chunk):
+                ts_values.update(chunk.to_dict())
+        if not ts_values:
+            return empty_series(self.tzaware, name=self.name)
+        return pd.Series(ts_values, name=self.name)
