@@ -16,6 +16,7 @@ from tshistory.util import (
     compatible_date,
     diff,
     empty_series,
+    ensuretz,
     num2float,
     patch,
     pruned_history,
@@ -1073,16 +1074,9 @@ class historycache:
         self.tzaware = tzaware
         self.hist = hist
         self.idates = list(self.hist.keys())
-        self.naive_idates = [
-            dt.replace(tzinfo=None)
-            for dt in self.idates
-        ]
 
     def _find_nearest_idate(self, revision_date):
-        if self.tzaware:
-            idates = self.idates
-        else:
-            idates = self.naive_idates
+        idates = self.idates
         idx = bisect_search(idates, revision_date)
         if idx == -1:
             return None
@@ -1093,6 +1087,7 @@ class historycache:
     def get(self, revision_date=None,
             from_value_date=None,
             to_value_date=None):
+        revision_date = ensuretz(revision_date)
 
         if not len(self.hist):
             return empty_series(self.tzaware, name=self.name)
