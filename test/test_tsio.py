@@ -1662,6 +1662,40 @@ def test_block_staircase_tz_aware(engine, tsh, insertion_dates):
         )
 
 
+def test_block_staircase_tz_naive(engine, tsh, insertion_dates):
+    # Load history on db
+    hist = genhist(insertion_dates.all, freq="D", repeat=3, tz=None)
+    for idate, ts in hist.items():
+        tsh.update(engine, ts, "tz_naive_hist", "test", insertion_date=idate)
+
+    # Run a 9am day-ahead staircase with daily revision and value frequencies
+    rev_start = insertion_dates.at_08[0].replace(hour=9)
+    rev_end = insertion_dates.at_08[-1].replace(hour=9)
+    sc_ts = tsh.block_staircase(
+        engine,
+        "tz_naive_hist",
+        revision_start=rev_start,
+        revision_end=rev_end,
+        revision_freq="D",
+        from_value_delta="15h",
+        to_value_delta="39h",
+    )
+
+    # Check datetime index of output series
+    expected_idx = pd.date_range(
+        rev_start + pd.Timedelta("15h"), rev_end + pd.Timedelta("39h"), freq="D"
+    ).tz_localize(None)
+    pd.testing.assert_index_equal(sc_ts.index, expected_idx)
+
+    # Check values of output series
+    for i_date in insertion_dates.at_08:
+        v_date = i_date.floor("D") + pd.DateOffset(days=1)
+        value_dates = pd.date_range(v_date, v_date, freq="D").tz_localize(None)
+        pd.testing.assert_series_equal(
+            hist[i_date].loc[value_dates], sc_ts.loc[value_dates], check_freq=False
+        )
+
+
 def test_rename(engine, tsh):
     if tsh.namespace == 'zzz':
         return  # this test can only run once

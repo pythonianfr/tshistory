@@ -82,7 +82,10 @@ def genserie(start, freq, repeat, initval=None, tz=None, name=None):
 def genhist(insertion_dates, freq, repeat, tz):
     hist = {}
     for j, i_date in enumerate(insertion_dates):
-        hist[i_date] = genserie(i_date, freq=freq, repeat=repeat, tz=tz) / (j+1)
+        v_start_date = i_date.floor(freq)
+        ts = genserie(v_start_date, freq=freq, repeat=repeat, tz=tz)
+        ts = ts if tz else ts.tz_localize(None)  # enforce tz-naive when tz=None
+        hist[i_date] = (ts + 1) / (j+1)  # take different values at each insertion
     return hist
 
 
