@@ -1619,9 +1619,9 @@ def insertion_dates():
 def test_block_staircase_no_series(engine, tsh, insertion_dates):
     assert tsh.block_staircase(
         engine, "no-such-series",
-        insert_start=insertion_dates.all[0],
-        insert_end=insertion_dates.all[-1],
-        insert_freq="D",
+        revision_start=insertion_dates.all[0],
+        revision_end=insertion_dates.all[-1],
+        revision_freq="D",
         from_value_delta="24h",
         to_value_delta="48h",
     ) is None
@@ -1633,22 +1633,22 @@ def test_block_staircase_tz_aware(engine, tsh, insertion_dates):
     for idate, ts in hist.items():
         tsh.update(engine, ts, "tz_aware_hist", "test", insertion_date=idate)
 
-    # Run a 9am day-ahead staircase with daily frequency
-    insert_start = insertion_dates.at_08[0].replace(hour=9)
-    insert_end = insertion_dates.at_08[-1].replace(hour=9)
+    # Run a 9am day-ahead staircase with daily frequency and value hours 0-23
+    rev_start = insertion_dates.at_08[0].replace(hour=9)
+    rev_end = insertion_dates.at_08[-1].replace(hour=9)
     sc_ts = tsh.block_staircase(
         engine,
         "tz_aware_hist",
-        insert_start=insert_start,
-        insert_end=insert_end,
-        insert_freq="D",
+        revision_start=rev_start,
+        revision_end=rev_end,
+        revision_freq="D",
         from_value_delta="15h",
         to_value_delta="39h",
     )
 
     # Check datetime index of output series
     expected_idx = pd.date_range(
-        insert_start + pd.Timedelta("15h"), insert_end + pd.Timedelta("39h"), freq="H"
+        rev_start + pd.Timedelta("15h"), rev_end + pd.Timedelta("39h"), freq="H"
     ).tz_convert(sc_ts.index.tz)
     pd.testing.assert_index_equal(sc_ts.index, expected_idx)
 

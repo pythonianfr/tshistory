@@ -406,34 +406,36 @@ class timeseries:
         self,
         cn,
         name,
-        insert_start,
-        insert_end,
-        insert_freq,
+        revision_start,
+        revision_end,
+        revision_freq,
         from_value_delta,
         to_value_delta,
     ):
         """Staircase series by block
 
-        Computes a series with insertion dates given by `insert_start`, `insert_end`,
-        `insert_freq` and value interval of each insertion are taken as insertion date
+        Computes a series with revision dates given by `revision_start`, `revision_end`,
+        `revision_freq` and value intervals of each revision are taken as revision date
         shifted by `from_value_delta` and `to_value_delta`
         """
         if not self.exists(cn, name):
             return
-        self._guard_query_dates(insert_start, insert_end)
+        self._guard_query_dates(revision_start, revision_end)
         hist = self.history(
             cn, name,
-            from_value_date = insert_start + pd.Timedelta(from_value_delta),
-            to_insertion_date = insert_end,
+            from_value_date = revision_start + pd.Timedelta(from_value_delta),
+            to_insertion_date = revision_end,
             _keep_nans = True
         )
+        # NOTE: do not set from_insertion_date=revision_start here above as insertions
+        # before revision_start could be needed
         hcache = historycache(
             name, hist, tzaware=self.metadata(cn, name).get('tzaware')
         )
         return hcache.block_staircase(
-            insert_start=insert_start,
-            insert_end=insert_end,
-            insert_freq=insert_freq,
+            revision_start=revision_start,
+            revision_end=revision_end,
+            revision_freq=revision_freq,
             from_value_delta=from_value_delta,
             to_value_delta=to_value_delta,
         )
@@ -1174,35 +1176,35 @@ class historycache:
 
     def block_staircase(
         self,
-        insert_start,
-        insert_end,
-        insert_freq,
+        revision_start,
+        revision_end,
+        revision_freq,
         from_value_delta,
         to_value_delta,
     ):
         """Staircase series by block
 
-        Computes a series with insertion dates given by `insert_start`, `insert_end`,
-        `insert_freq` and value interval of each insertion are taken as insertion date
+        Computes a series with revision dates given by `revision_start`, `revision_end`,
+        `revision_freq` and value intervals of each revision are taken as revision date
         shifted by `from_value_delta` and `to_value_delta`
         """
-        insert_dates = pd.date_range(insert_start, insert_end, freq=insert_freq)
-        n_insert = len(insert_dates)
+        rev_dates = pd.date_range(revision_start, revision_end, freq=revision_freq)
+        n_rev = len(rev_dates)
 
         def get_value_dates(delta):
-            value_start = insert_start + pd.Timedelta(delta)
+            value_start = revision_start + pd.Timedelta(delta)
             if not self.tzaware:
                 value_start = pd.Timestamp(value_start).tz_localize(None)
-            return pd.date_range(value_start, freq=insert_freq, periods=n_insert)
+            return pd.date_range(value_start, freq=revision_freq, periods=n_rev)
 
         from_value_dates = get_value_dates(from_value_delta)
         to_value_dates = get_value_dates(to_value_delta)
 
         ts_values = {}
-        for dates in zip(insert_dates, from_value_dates, to_value_dates):
-            i_date, from_v_date, to_v_date = dates
+        for dates in zip(rev_dates, from_value_dates, to_value_dates):
+            r_date, from_v_date, to_v_date = dates
             chunk = self.get(
-                revision_date=i_date,
+                revision_date=r_date,
                 from_value_date=from_v_date,
                 to_value_date=to_v_date
             )
