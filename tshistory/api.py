@@ -322,6 +322,43 @@ class dbtimeseries:
             )
         return sc
 
+    def block_staircase(
+        self,
+        name: str,
+        revision_start: datetime,
+        revision_end: datetime,
+        revision_freq: str,
+        from_value_delta: timedelta,
+        to_value_delta: timedelta,
+    ) -> Optional[pd.Series]:
+        """Staircase series by block
+
+        Computes a series with revision dates given by `revision_start`,
+        `revision_end`, `revision_freq` and value intervals of each revision
+        are taken as revision date shifted by `from_value_delta` and
+        `to_value_delta`
+        """
+        bsc = self.tsh.block_staircase(
+            self.engine,
+            name,
+            revision_start=revision_start,
+            revision_end=revision_end,
+            revision_freq=revision_freq,
+            from_value_delta=from_value_delta,
+            to_value_delta=to_value_delta,
+        )
+        if bsc is None:
+            bsc = self.othersources.block_staircase(
+                name,
+                revision_start=revision_start,
+                revision_end=revision_end,
+                revision_freq=revision_freq,
+                from_value_delta=from_value_delta,
+                to_value_delta=to_value_delta,
+            )
+        return bsc
+
+
     def catalog(self, allsources: bool=True) -> Dict[str,List[Tuple[str,str]]]:
         """Produces a catalog of all series in the form of a mapping from
         source to a list of (name, kind) pair.

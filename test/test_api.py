@@ -187,6 +187,21 @@ insertion_date             value_date
 2020-01-04 00:00:00+00:00    4.0
 """, st)
 
+    bsc = tsx.block_staircase(
+        'api-test',
+        revision_start=pd.Timestamp("2019-01-02", tz="utc"),
+        revision_end=pd.Timestamp("2019-01-02", tz="utc"),
+        revision_freq="D",
+        from_value_delta=pd.Timedelta("364D"),
+        to_value_delta=pd.Timedelta("370D"),
+    )
+    assert_df("""
+2020-01-01 00:00:00+00:00    1.0
+2020-01-02 00:00:00+00:00    2.0
+2020-01-03 00:00:00+00:00    3.0
+2020-01-04 00:00:00+00:00    4.0
+""", bsc)
+
     tsx.rename('api-test', 'api-test2')
     assert tsx.exists('api-test2')
     assert not tsx.exists('api-test')
@@ -269,7 +284,7 @@ def test_log(tsx):
 )
 def test_multisource(mapi):
     for methname in ('get', 'update', 'replace', 'exists', 'type',
-                     'history', 'staircase',
+                     'history', 'staircase', 'block_staircase',
                      'catalog', 'interval',
                      'metadata', 'update_metadata',
                      'rename', 'delete'
@@ -405,7 +420,7 @@ def test_multisource(mapi):
 def test_http_api():
     tsh = timeseries('https://my.fancy.timeseries.store')
     for methname in ('get', 'update', 'replace', 'exists', 'type',
-                     'history', 'staircase',
+                     'history', 'staircase', 'block_staircase',
                      'catalog', 'interval',
                      'metadata', 'update_metadata',
                      'rename', 'delete'
