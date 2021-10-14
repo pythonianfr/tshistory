@@ -400,31 +400,92 @@ class timeseries:
             to_value_date
         )
 
+    @staticmethod
+    def _time_offset(offset):
+        if not isinstance(offset, dict):
+            raise TypeError(
+                f"Expected time offset as dict but {type(offset)} was given"
+            )
+        allowed_keys = ["year", "month", "day", "weekday", "hour", "minute", "second"]
+        for k in offset:
+            if k not in allowed_keys:
+                raise ValueError(
+                    f"Could not convert time offset from dict with key {k}, " +
+                    f"allowed keys are {allowed_keys}"
+                )
+        return pd.DateOffset(**offset)
+
+    @staticmethod
+    def _delta_offset(offset):
+        if not isinstance(offset, dict):
+            raise TypeError(
+                f"Expected delta offset as dict but {type(offset)} was given"
+            )
+        allowed_keys = [
+            "years", "months", "weeks", "days", "hours", "minutes", "seconds"
+        ]
+        for k in offset:
+            if k not in allowed_keys:
+                raise ValueError(
+                    f"Could not convert delta offset from dict with key {k}, " +
+                    f"allowed keys are {allowed_keys}"
+                )
+        return pd.DateOffset(**offset)
 
     @tx
     def block_staircase(
         self,
         cn,
         name,
-        revision_start,
-        revision_end,
-        revision_freq,
-        from_value_delta,
-        to_value_delta,
+        from_value_date: pd.Timestamp,
+        to_value_date: pd.Timestamp,
+        revision_freq: dict = None,
+        revision_time: dict = None,
+        revision_tz: str = "UTC",
+        maturity_offset: dict = None,
+        maturity_time: dict = None,
     ):
         """Staircase series by block
 
-        Computes a series with revision dates given by `revision_start`, `revision_end`,
-        `revision_freq` and value intervals of each revision are taken as revision date
-        shifted by `from_value_delta` and `to_value_delta`
+        Computes a series rebuilt from successive blocks of history, each linked to a
+        distinct revision date. The revision dates are taken at regular time intervals
+        determined by `revision_freq`, `revision_time` and `revision_tz`. The time lag
+        between revision dates and value dates of each block is determined by
+        `maturity_offset` and `maturity_time`.
+
+        name: str unique identifier of the series
+        from_value_date: pandas.Timestamp from which values are retrieved
+        to_value_date: pandas.Timestamp to which values are retrieved
+        revision_freq: dict giving revision frequency, of which keys must be taken
+            from ["years", "months", "weeks", "days", "hours", "minutes", "seconds"] and
+            values as integers. Default is daily frequency, i.e. {"days": 1}
+        revision_time: dict giving revision time, of which keys should be taken from
+            ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
+            must be integers. Default is {"hour": 12}
+        revision_tz: str giving time zone in which revision date and time are expressed
+        maturity_offset: dict giving time lag between each revision date and start time
+            of related block values. Its keys must be taken from ["years", "months",
+            "weeks", "days", "hours", "minutes", "seconds"] and values as integers.
+            Default is {"days": 1}
+        maturity_time: dict fixing start time of each block, of which keys should be
+            taken from ["year", "month", "day", "weekday", "hour", "minute", "second"]
+            and values must be integers. The start date of each block is thus obtained
+            by adding `maturity_offset` to revision date and then applying
+            `maturity_time`. Default is {"hour": 0}
         """
         if not self.exists(cn, name):
             return
-        self._guard_query_dates(revision_start, revision_end)
+
+        revision_freq = self._delta_offset(revision_freq or {"days": 1})
+        revision_time = self._time_offset(revision_time or {"hour": 12})
+        maturity_offset = self._delta_offset(maturity_offset or {"days": 1})
+        maturity_time = self._time_offset(maturity_time or {"hour": 0})
+
+        self._guard_query_dates(from_value_date, to_value_date)
         hist = self.history(
             cn, name,
-            from_value_date = revision_start + pd.Timedelta(from_value_delta),
-            to_insertion_date = revision_end,
+            from_value_date = from_value_date,
+            to_insertion_date = to_value_date,
             _keep_nans = True
         )
         # NOTE: do not set from_insertion_date=revision_start here above as insertions
@@ -433,11 +494,13 @@ class timeseries:
             name, hist, tzaware=self.metadata(cn, name).get('tzaware')
         )
         return hcache.block_staircase(
-            revision_start=revision_start,
-            revision_end=revision_end,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date,
             revision_freq=revision_freq,
-            from_value_delta=from_value_delta,
-            to_value_delta=to_value_delta,
+            revision_time=revision_time,
+            revision_tz=revision_tz,
+            maturity_offset=maturity_offset,
+            maturity_time=maturity_time,
         )
 
 
@@ -1108,6 +1171,17 @@ class timeseries:
             self.tsh_group.delete(cn, sn)
 
 
+class BlockStaircaseRevisionError(Exception):
+    def __init__(self, revision_dates, block_start_dates):
+        self.revision_dates = revision_dates
+        self.block_start_dates = block_start_dates
+        msg = "Sucessive revisions {} resulted in non-increasing block start dates {}"
+        super().__init__(msg.format(
+            [str(rd) for rd in self.revision_dates],
+            [str(bs) for bs in self.block_start_dates]
+        ))
+
+
 class historycache:
 
     def __init__(self, name, hist, tzaware=True):
@@ -1176,40 +1250,89 @@ class historycache:
 
     def block_staircase(
         self,
-        revision_start,
-        revision_end,
+        from_value_date,
+        to_value_date,
         revision_freq,
-        from_value_delta,
-        to_value_delta,
+        revision_time,
+        revision_tz,
+        maturity_offset,
+        maturity_time,
     ):
         """Staircase series by block
 
-        Computes a series with revision dates given by `revision_start`, `revision_end`,
-        `revision_freq` and value intervals of each revision are taken as revision date
-        shifted by `from_value_delta` and `to_value_delta`
+        Computes a series rebuilt from successive blocks of history, each linked to a
+        distinct revision date. The revision dates are taken at regular time intervals
+        determined by `revision_freq`, `revision_time` and `revision_tz`. The time lag
+        between revision dates and value dates of each block is determined by
+        `maturity_offset` and `maturity_time`.
+
+        name: str unique identifier of the series
+        from_value_date: pandas.Timestamp from which values are retrieved
+        to_value_date: pandas.Timestamp to which values are retrieved
+        revision_freq: dict giving revision frequency, of which keys must be taken
+            from ["years", "months", "weeks", "days", "hours", "minutes", "seconds"] and
+            values as integers. Default is daily frequency, i.e. {"days": 1}
+        revision_time: dict giving revision time, of which keys should be taken from
+            ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
+            must be integers. Default is {"hour": 12}
+        revision_tz: str giving time zone in which revision date and time are expressed
+        maturity_offset: dict giving time lag between each revision date and start time
+            of related block values. Its keys must be taken from ["years", "months",
+            "weeks", "days", "hours", "minutes", "seconds"] and values as integers.
+            Default is {"days": 1}
+        maturity_time: dict fixing start time of each block, of which keys should be
+            taken from ["year", "month", "day", "weekday", "hour", "minute", "second"]
+            and values must be integers. The start date of each block is thus obtained
+            by adding `maturity_offset` to revision date and then applying
+            `maturity_time`. Default is {"hour": 0}
         """
-        rev_dates = pd.date_range(revision_start, revision_end, freq=revision_freq)
-        n_rev = len(rev_dates)
+        from_value_date = compatible_date(self.tzaware, from_value_date)
+        to_value_date = compatible_date(self.tzaware, to_value_date)
 
-        def get_value_dates(delta):
-            value_start = revision_start + pd.Timedelta(delta)
+        def get_block_start(rev_date):
+            block_start = (rev_date + maturity_offset) + maturity_time
             if not self.tzaware:
-                value_start = pd.Timestamp(value_start).tz_localize(None)
-            return pd.date_range(value_start, freq=revision_freq, periods=n_rev)
+                block_start = block_start.tz_localize(None)
+            return block_start
 
-        from_value_dates = get_value_dates(from_value_delta)
-        to_value_dates = get_value_dates(to_value_delta)
+        if self.tzaware:
+            init_rev_date = pd.Timestamp(from_value_date).tz_convert(revision_tz)
+        else:
+            init_rev_date = pd.Timestamp(from_value_date).tz_localize(revision_tz)
 
+        # roll back to first revision date to consider in staircase series
+        init_rev_date += revision_time
+        init_block_start = get_block_start(init_rev_date)
+        while init_block_start > from_value_date:
+            prev_rev_date = (init_rev_date - revision_freq) + revision_time
+            prev_block_start = get_block_start(prev_rev_date)
+            if not (prev_block_start < init_block_start):
+                raise BlockStaircaseRevisionError(
+                    [prev_rev_date, init_rev_date], [prev_block_start, init_block_start]
+                )
+            init_rev_date = prev_rev_date
+            init_block_start = prev_block_start
+
+        rev_date = init_rev_date
+        block_start = init_block_start
         ts_values = {}
-        for dates in zip(rev_dates, from_value_dates, to_value_dates):
-            r_date, from_v_date, to_v_date = dates
+        while block_start <= to_value_date:
             chunk = self.get(
-                revision_date=r_date,
-                from_value_date=from_v_date,
-                to_value_date=to_v_date
+                revision_date=rev_date,
+                from_value_date=max(block_start, from_value_date),
+                to_value_date=to_value_date,
             )
             if chunk is not None and len(chunk):
                 ts_values.update(chunk.to_dict())
+            next_rev_date = (rev_date + revision_freq) + revision_time
+            next_block_start = get_block_start(next_rev_date)
+            if not (block_start < next_block_start):
+                raise BlockStaircaseRevisionError(
+                    [rev_date, next_rev_date], [block_start, next_block_start]
+                )
+            rev_date = next_rev_date
+            block_start = next_block_start
+
         if not ts_values:
             return empty_series(self.tzaware, name=self.name)
         return pd.Series(ts_values, name=self.name)
