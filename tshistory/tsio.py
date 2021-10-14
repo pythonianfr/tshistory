@@ -1300,7 +1300,7 @@ class historycache:
         else:
             init_rev_date = pd.Timestamp(from_value_date).tz_localize(revision_tz)
 
-        # roll back to first revision date to consider in staircase series
+        # roll back to earliest revision date to consider
         init_rev_date += revision_time
         init_block_start = get_block_start(init_rev_date)
         while init_block_start > from_value_date:
@@ -1313,24 +1313,25 @@ class historycache:
             init_rev_date = prev_rev_date
             init_block_start = prev_block_start
 
-        rev_date = init_rev_date
+        # assemble blocks by looping over successive revisions
+        revision_date = init_rev_date
         block_start = init_block_start
         ts_values = {}
         while block_start <= to_value_date:
             chunk = self.get(
-                revision_date=rev_date,
+                revision_date=revision_date,
                 from_value_date=max(block_start, from_value_date),
                 to_value_date=to_value_date,
             )
             if chunk is not None and len(chunk):
                 ts_values.update(chunk.to_dict())
-            next_rev_date = (rev_date + revision_freq) + revision_time
+            next_rev_date = (revision_date + revision_freq) + revision_time
             next_block_start = get_block_start(next_rev_date)
             if not (block_start < next_block_start):
                 raise BlockStaircaseRevisionError(
-                    [rev_date, next_rev_date], [block_start, next_block_start]
+                    [revision_date, next_rev_date], [block_start, next_block_start]
                 )
-            rev_date = next_rev_date
+            revision_date = next_rev_date
             block_start = next_block_start
 
         if not ts_values:
