@@ -79,14 +79,17 @@ def genserie(start, freq, repeat, initval=None, tz=None, name=None):
                                              tz=tz))
 
 
-def genhist(insertion_dates, freq, repeat, tz):
-    hist = {}
-    for j, i_date in enumerate(insertion_dates):
-        v_start_date = i_date.floor(freq)
-        ts = genserie(v_start_date, freq=freq, repeat=repeat, tz=tz)
-        ts = ts if tz else ts.tz_localize(None)  # enforce tz-naive when tz=None
-        hist[i_date] = (ts + 1) / (j+1)  # take different values at each insertion
-    return hist
+def ts_from_csv(csv_path, index_label="datetime"):
+    df = pd.read_csv(csv_path)
+    df[index_label] = pd.to_datetime(df[index_label])
+    return df.set_index(index_label).iloc[:, 0]
+
+
+def hist_from_csv(csv_path, index_label="datetime"):
+    df = pd.read_csv(csv_path)
+    df[index_label] = pd.to_datetime(df[index_label])
+    df = df.set_index(index_label)
+    return {pd.Timestamp(i_date): ts.dropna() for i_date, ts in df.items()}
 
 
 def gengroup(n_scenarios, from_date, length, freq, seed=0):
