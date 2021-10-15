@@ -23,6 +23,7 @@ from tshistory.testutil import (
     assert_hist_equals,
     gengroup,
     genserie,
+    gen_value_ranges,
     hist_from_csv,
     ts_from_csv,
 )
@@ -1615,43 +1616,69 @@ def test_block_staircase_no_series(engine, tsh):
     ) is None
 
 
+def run_block_staircase_value_test(
+    engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="1D"
+):
+    # Load history on db
+    hist = hist_from_csv(DATADIR / "staircase" / hist_file_name)
+    ts_name = sc_file_name[:-4]
+    for idate, ts in hist.items():
+        tsh.update(engine, ts, ts_name, "test", insertion_date=idate)
+
+    # Expected output of block_staircase function
+    sc_ts = ts_from_csv(DATADIR / "staircase" / sc_file_name)
+    sc_idx = sc_ts.index
+
+    # Compute staircase and check output values on different value ranges
+    value_ranges = gen_value_ranges(sc_idx[0], sc_idx[-1], lag=value_date_lag)
+    for from_v_date, to_v_date in value_ranges:
+        computed_ts = tsh.block_staircase(
+            engine,
+            name=ts_name,
+            from_value_date=from_v_date,
+            to_value_date=to_v_date,
+            **sc_kwargs,
+        )
+        expected_ts = sc_ts[(sc_idx >= from_v_date) & (sc_idx <= to_v_date)]
+        pd.testing.assert_series_equal(
+            computed_ts, expected_ts, check_freq=False, check_names=False
+        )
+
+
 @pytest.mark.parametrize(["hist_file_name", "sc_file_name"], [
     ("hourly_no_dst_hist.csv", "hourly_no_dst_sc_da_9am.csv"),
     ("hourly_dst_1_hist.csv", "hourly_dst_1_sc_da_9am.csv"),
     ("hourly_dst_2_hist.csv", "hourly_dst_2_sc_da_9am.csv"),
 ])
-def test_block_staircase_hourly(engine, tsh, hist_file_name, sc_file_name):
-    """Run 9am day-ahead staircase with daily frequency and value hours 0-23"""
-    hist = hist_from_csv(DATADIR / "staircase" / hist_file_name)
-    hist_name = hist_file_name[:-4]
-    for idate, ts in hist.items():
-        tsh.update(engine, ts, hist_name, "test", insertion_date=idate)
+def test_block_staircase_hourly_day_ahead(engine, tsh, hist_file_name, sc_file_name):
+    """Day-ahead staircase with 9am revision, daily frequency and value hours 0-23"""
+    sc_kwargs = dict(
+        revision_freq={"days": 1},
+        revision_time={"hour": 9},
+        revision_tz="Europe/Brussels",
+        maturity_offset={"days": 1},
+        maturity_time={"hour": 0},
+    )
+    run_block_staircase_value_test(
+        engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="36h"
+    )
 
-    # Expected output of block_staircase
-    sc_ts = ts_from_csv(DATADIR / "staircase" / sc_file_name)
-    sc_idx = sc_ts.index
-    value_ranges = [
-        (sc_idx[0], sc_idx[-1]),
-        (sc_idx[0] - pd.Timedelta("1D"), sc_idx[-1] + pd.Timedelta("1D")),
-        (sc_idx[-36], sc_idx[-1]),
-        (sc_idx[0], sc_idx[36]),
-    ]
-    for from_v_date, to_v_date in value_ranges:
-        expected_ts = sc_ts[(sc_idx >= from_v_date) & (sc_idx <= to_v_date)]
-        computed_ts = tsh.block_staircase(
-            engine,
-            name=hist_name,
-            from_value_date=from_v_date,
-            to_value_date=to_v_date,
-            revision_freq={"days": 1},
-            revision_time={"hour": 9},
-            revision_tz="Europe/Brussels",
-            maturity_offset={"days": 1},
-            maturity_time={"hour": 0},
-        )
-        pd.testing.assert_series_equal(
-            computed_ts, expected_ts, check_freq=False, check_names=False
-        )
+
+@pytest.mark.parametrize(["hist_file_name", "sc_file_name"], [
+    ("hourly_utc_hist.csv", "hourly_utc_sc_every_6h.csv"),
+])
+def test_block_staircase_hourly_intraday(engine, tsh, hist_file_name, sc_file_name):
+    """Intraday staircase with revisions every 6 hours on utc hourly input"""
+    sc_kwargs = dict(
+        revision_freq={"hours": 6},
+        revision_time={"hour": 12},
+        revision_tz="UTC",
+        maturity_offset={"days": 0},
+        maturity_time={"hour": 0},
+    )
+    run_block_staircase_value_test(
+        engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="36h"
+    )
 
 
 @pytest.mark.parametrize(["hist_file_name", "sc_file_name", "rev_hour"], [
@@ -1659,75 +1686,37 @@ def test_block_staircase_hourly(engine, tsh, hist_file_name, sc_file_name):
     ("daily_hist.csv", "daily_sc_da_9am.csv", 9),
 ])
 def test_block_staircase_daily(engine, tsh, hist_file_name, sc_file_name, rev_hour):
-    """Run 9am day-ahead staircase with daily frequency and value hours 0-23"""
-    hist = hist_from_csv(DATADIR / "staircase" / hist_file_name)
-    hist_name = hist_file_name[:-4] + f"_{rev_hour}"
-    for idate, ts in hist.items():
-        tsh.update(engine, ts, hist_name, "test", insertion_date=idate)
-
-    # Expected output of block_staircase
-    sc_ts = ts_from_csv(DATADIR / "staircase" / sc_file_name)
-    sc_idx = sc_ts.index
-    value_ranges = [
-        (sc_idx[0], sc_idx[-1]),
-        (sc_idx[0] - pd.Timedelta("1D"), sc_idx[-1] + pd.Timedelta("1D")),
-        (sc_idx[-5], sc_idx[-1]),
-        (sc_idx[0], sc_idx[5]),
-    ]
-    for from_v_date, to_v_date in value_ranges:
-        expected_ts = sc_ts[(sc_idx >= from_v_date) & (sc_idx <= to_v_date)]
-        computed_ts = tsh.block_staircase(
-            engine,
-            name=hist_name,
-            from_value_date=from_v_date,
-            to_value_date=to_v_date,
-            revision_freq={"days": 1},
-            revision_time={"hour": rev_hour},
-            revision_tz="Europe/Brussels",
-            maturity_offset={"days": 1},
-            maturity_time={"hour": 0},
-        )
-        pd.testing.assert_series_equal(
-            computed_ts, expected_ts, check_freq=False, check_names=False
-        )
+    """Day-ahead staircase with revisions at 6am and 9am on tz-naive daily data"""
+    sc_kwargs = dict(
+        revision_freq={"days": 1},
+        revision_time={"hour": rev_hour},
+        revision_tz="Europe/Brussels",
+        maturity_offset={"days": 1},
+        maturity_time={"hour": 0},
+    )
+    run_block_staircase_value_test(
+        engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="1D"
+    )
 
 
 @pytest.mark.parametrize(["hist_file_name", "sc_file_name", "rev_weekday"], [
     ("weekly_hist.csv", "weekly_sc_wa_monday_6am.csv", 0),
     ("weekly_hist.csv", "weekly_sc_wa_wednesday_6am.csv", 2),
 ])
-def test_block_staircase_weekly(engine, tsh, hist_file_name, sc_file_name, rev_weekday):
-    """Run 9am day-ahead staircase with daily frequency and value hours 0-23"""
-    hist = hist_from_csv(DATADIR / "staircase" / hist_file_name)
-    hist_name = hist_file_name[:-4] + f"_{rev_weekday}"
-    for idate, ts in hist.items():
-        tsh.update(engine, ts, hist_name, "test", insertion_date=idate)
-
-    # Expected output of block_staircase
-    sc_ts = ts_from_csv(DATADIR / "staircase" / sc_file_name)
-    sc_idx = sc_ts.index
-    value_ranges = [
-        (sc_idx[0], sc_idx[-1]),
-        (sc_idx[0] - pd.Timedelta("7D"), sc_idx[-1] + pd.Timedelta("7D")),
-        (sc_idx[-20], sc_idx[-1]),
-        (sc_idx[0], sc_idx[20]),
-    ]
-    for from_v_date, to_v_date in value_ranges:
-        expected_ts = sc_ts[(sc_idx >= from_v_date) & (sc_idx <= to_v_date)]
-        computed_ts = tsh.block_staircase(
-            engine,
-            name=hist_name,
-            from_value_date=from_v_date,
-            to_value_date=to_v_date,
-            revision_freq={"weeks": 1},
-            revision_time={"weekday": rev_weekday, "hour": 6},
-            revision_tz="Europe/Brussels",
-            maturity_offset={"weeks": 1},
-            maturity_time={"weekday": 0},
-        )
-        pd.testing.assert_series_equal(
-            computed_ts, expected_ts, check_freq=False, check_names=False
-        )
+def test_block_staircase_weekly(
+    engine, tsh, hist_file_name, sc_file_name, rev_weekday
+):
+    """Week-ahead staircase with revisions on Monday and Wednesday"""
+    sc_kwargs = dict(
+        revision_freq={"weeks": 1},
+        revision_time={"weekday": rev_weekday, "hour": 6},
+        revision_tz="Europe/Brussels",
+        maturity_offset={"weeks": 1},
+        maturity_time={"weekday": 0},
+    )
+    run_block_staircase_value_test(
+        engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="7D"
+    )
 
 
 def test_rename(engine, tsh):

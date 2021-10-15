@@ -79,6 +79,14 @@ def genserie(start, freq, repeat, initval=None, tz=None, name=None):
                                              tz=tz))
 
 
+def gen_value_ranges(start, end, lag):
+    start, end = pd.Timestamp(start), pd.Timestamp(end)
+    lag = pd.Timedelta(lag)
+    return [
+        (start, end), (start - lag, end + lag), (start + lag, end - lag)
+    ]
+
+
 def ts_from_csv(csv_path, index_label="datetime"):
     df = pd.read_csv(csv_path)
     df[index_label] = pd.to_datetime(df[index_label])
