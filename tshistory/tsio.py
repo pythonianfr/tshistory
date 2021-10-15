@@ -1214,8 +1214,9 @@ class historycache:
 
         idate = self._find_nearest_idate(revision_date)
         if idate:
-            return self.hist[idate].loc[
-                from_value_date:to_value_date
+            ts = self.hist[idate]
+            return ts.loc[
+                (ts.index >= from_value_date) & (ts.index <= to_value_date)
             ].dropna()
 
         return empty_series(self.tzaware, name=self.name)
