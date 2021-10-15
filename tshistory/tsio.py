@@ -461,7 +461,9 @@ class timeseries:
             values as integers. Default is daily frequency, i.e. {"days": 1}
         revision_time: dict giving revision time, of which keys should be taken from
             ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
-            must be integers. Default is {"hour": 12}
+            must be integers. It is only used for revision date initialisation. The next
+            revision dates are then obtained by successively adding `revision_freq`.
+            Default is {"hour": 12}
         revision_tz: str giving time zone in which revision date and time are expressed
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ["years", "months",
@@ -1274,7 +1276,9 @@ class historycache:
             values as integers. Default is daily frequency, i.e. {"days": 1}
         revision_time: dict giving revision time, of which keys should be taken from
             ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
-            must be integers. Default is {"hour": 12}
+            must be integers. It is only used for revision date initialisation. The next
+            revision dates are then obtained by successively adding `revision_freq`.
+            Default is {"hour": 12}
         revision_tz: str giving time zone in which revision date and time are expressed
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ["years", "months",
@@ -1304,7 +1308,7 @@ class historycache:
         init_rev_date += revision_time
         init_block_start = get_block_start(init_rev_date)
         while init_block_start > from_value_date:
-            prev_rev_date = (init_rev_date - revision_freq) + revision_time
+            prev_rev_date = init_rev_date - revision_freq
             prev_block_start = get_block_start(prev_rev_date)
             if not (prev_block_start < init_block_start):
                 raise BlockStaircaseRevisionError(
@@ -1325,7 +1329,7 @@ class historycache:
             )
             if chunk is not None and len(chunk):
                 ts_values.update(chunk.to_dict())
-            next_rev_date = (revision_date + revision_freq) + revision_time
+            next_rev_date = revision_date + revision_freq
             next_block_start = get_block_start(next_rev_date)
             if not (block_start < next_block_start):
                 raise BlockStaircaseRevisionError(
