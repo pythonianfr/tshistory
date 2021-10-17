@@ -475,25 +475,26 @@ class timeseries:
             ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
             must be integers. It is only used for revision date initialisation. The next
             revision dates are then obtained by successively adding `revision_freq`.
-            Default is {"hour": 12}
+            Default is {"hours": 0}
         revision_tz: str giving time zone in which revision date and time are expressed
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ["years", "months",
             "weeks", "bdays", "days", "hours", "minutes", "seconds"] and values as
-            integers. Default is {"days": 1}
+            integers. Default is {}, i.e. the revision date is the block start date
         maturity_time: dict fixing start time of each block, of which keys should be
             taken from ["year", "month", "day", "weekday", "hour", "minute", "second"]
             and values must be integers. The start date of each block is thus obtained
             by adding `maturity_offset` to revision date and then applying
-            `maturity_time`. Default is {"hour": 0}
+            `maturity_time`. Default is {}, i.e. block start date is just the revision
+            date shifted by `maturity_offset`
         """
         if not self.exists(cn, name):
             return
 
         revision_freq = self._shift_offset(revision_freq or {"days": 1})
-        revision_time = self._replacement_offset(revision_time or {"hour": 12})
-        maturity_offset = self._shift_offset(maturity_offset or {"days": 1})
-        maturity_time = self._replacement_offset(maturity_time or {"hour": 0})
+        revision_time = self._replacement_offset(revision_time or {"hour": 0})
+        maturity_offset = self._shift_offset(maturity_offset or {})
+        maturity_time = self._replacement_offset(maturity_time or {})
 
         self._guard_query_dates(from_value_date, to_value_date)
         hist = self.history(
@@ -1291,17 +1292,18 @@ class historycache:
             ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
             must be integers. It is only used for revision date initialisation. The next
             revision dates are then obtained by successively adding `revision_freq`.
-            Default is {"hour": 12}
+            Default is {"hours": 0}
         revision_tz: str giving time zone in which revision date and time are expressed
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ["years", "months",
             "weeks", "bdays", "days", "hours", "minutes", "seconds"] and values as
-            integers. Default is {"days": 1}
+            integers. Default is {}, i.e. the revision date is the block start date
         maturity_time: dict fixing start time of each block, of which keys should be
             taken from ["year", "month", "day", "weekday", "hour", "minute", "second"]
             and values must be integers. The start date of each block is thus obtained
             by adding `maturity_offset` to revision date and then applying
-            `maturity_time`. Default is {"hour": 0}
+            `maturity_time`. Default is {}, i.e. block start date is just the revision
+            date shifted by `maturity_offset`
         """
         from_value_date = compatible_date(self.tzaware, from_value_date)
         to_value_date = compatible_date(self.tzaware, to_value_date)

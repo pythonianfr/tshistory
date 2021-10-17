@@ -1673,8 +1673,6 @@ def test_block_staircase_hourly_intraday(engine, tsh, hist_file_name, sc_file_na
         revision_freq={"hours": 6},
         revision_time={"hour": 12},
         revision_tz="UTC",
-        maturity_offset={"days": 0},
-        maturity_time={"hour": 0},
     )
     run_block_staircase_value_test(
         engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="36h"
