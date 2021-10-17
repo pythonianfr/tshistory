@@ -16,7 +16,7 @@ from tshistory.util import (
     threadpool,
     unpack_history
 )
-from tshistory.tsio import timeseries
+from tshistory.tsio import timeseries, BlockStaircaseRevisionError
 from tshistory.testutil import (
     assert_df,
     assert_hist,
@@ -1657,6 +1657,42 @@ def test_block_staircase_empty_series(engine, tsh):
         maturity_offset={"days": 3},
     )
     assert ts.empty
+
+
+def test_block_staircase_revision_error(engine, tsh):
+    """Test exception BlockStaircaseRevisionError
+
+    Test that the appropriate exception is raised when block start dates of successive
+    revisions are non increasing in time"""
+    start_date = pd.Timestamp("2021-10-15", tz="Europe/Brussels")
+    ts = genserie(start=start_date, freq='H', repeat=24)
+    tsh.update(
+        engine, ts, "staircase-revision-error", "test", insertion_date=start_date
+    )
+    with pytest.raises(BlockStaircaseRevisionError):
+        # revisions with null frequency
+        _ = tsh.block_staircase(
+            engine,
+            name="staircase-revision-error",
+            from_value_date=start_date,
+            to_value_date=start_date + pd.Timedelta(1, "D"),
+            revision_freq={"days": 0},
+            revision_time={"hour": 9},
+            revision_tz="Europe/Brussels",
+        )
+    with pytest.raises(BlockStaircaseRevisionError):
+        # revisions with identical block starts fixed on Monday
+        _ = tsh.block_staircase(
+            engine,
+            name="staircase-revision-error",
+            from_value_date=start_date,
+            to_value_date=start_date + pd.Timedelta(1, "D"),
+            revision_freq={"days": 1},
+            revision_time={"hour": 9},
+            revision_tz="Europe/Brussels",
+            maturity_time={"weekday": 0},
+            maturity_offset={"days": 0},
+        )
 
 
 def run_block_staircase_value_test(
