@@ -507,8 +507,6 @@ class timeseries:
             to_insertion_date = to_value_date,
             _keep_nans = True
         )
-        # NOTE: do not set from_insertion_date=revision_start here above as insertions
-        # before revision_start could be needed
         hcache = historycache(
             name, hist, tzaware=self.metadata(cn, name).get('tzaware')
         )
