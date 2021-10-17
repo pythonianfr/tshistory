@@ -1608,12 +1608,55 @@ def test_block_staircase_no_series(engine, tsh):
         name="no-such-series",
         from_value_date=pd.Timestamp("2021-10-29", tz="Europe/Brussels"),
         to_value_date=pd.Timestamp("2021-10-30", tz="Europe/Brussels"),
+    ) is None
+
+
+def test_block_staircase_empty_series(engine, tsh):
+    insert_date = pd.Timestamp("2021-10-15", tz="Europe/Brussels")
+    value_start_date = insert_date + pd.Timedelta(1, "D")
+    ts = genserie(start=value_start_date, freq='H', repeat=24)
+    tsh.update(
+        engine, ts, "staircase-missed-insertion", "test", insertion_date=insert_date
+    )
+
+    # some data should be retrieved with 1-day-ahead revision
+    ts = tsh.block_staircase(
+        engine,
+        name="staircase-missed-insertion",
+        from_value_date=value_start_date,
+        to_value_date=value_start_date + pd.Timedelta(1, "D"),
         revision_freq={"days": 1},
         revision_time={"hour": 9},
         revision_tz="Europe/Brussels",
         maturity_offset={"days": 1},
-        maturity_time={"hour": 0},
-    ) is None
+    )
+    assert not ts.empty
+
+    # not data should be retrieved outside value range
+    ts = tsh.block_staircase(
+        engine,
+        name="staircase-missed-insertion",
+        from_value_date=value_start_date + pd.Timedelta(2, "D"),
+        to_value_date=value_start_date + pd.Timedelta(3, "D"),
+        revision_freq={"days": 1},
+        revision_time={"hour": 9},
+        revision_tz="Europe/Brussels",
+        maturity_offset={"days": 1},
+    )
+    assert ts.empty
+
+    # not data should be retrieved outside revision range
+    ts = tsh.block_staircase(
+        engine,
+        name="staircase-missed-insertion",
+        from_value_date=value_start_date,
+        to_value_date=value_start_date + pd.Timedelta(1, "D"),
+        revision_freq={"days": 1},
+        revision_time={"hour": 9},
+        revision_tz="Europe/Brussels",
+        maturity_offset={"days": 3},
+    )
+    assert ts.empty
 
 
 def run_block_staircase_value_test(
