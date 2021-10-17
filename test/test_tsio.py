@@ -1685,13 +1685,32 @@ def test_block_staircase_hourly_intraday(engine, tsh, hist_file_name, sc_file_na
     ("daily_hist.csv", "daily_sc_da_6am.csv", 6),
     ("daily_hist.csv", "daily_sc_da_9am.csv", 9),
 ])
-def test_block_staircase_daily(engine, tsh, hist_file_name, sc_file_name, rev_hour):
-    """Day-ahead staircase with revisions at 6am and 9am on tz-naive daily data"""
+def test_block_staircase_daily_calendar(
+    engine, tsh, hist_file_name, sc_file_name, rev_hour
+):
+    """Calendar-day-ahead staircase, revisions at 6 and 9am, on tz-naive daily data"""
     sc_kwargs = dict(
         revision_freq={"days": 1},
         revision_time={"hour": rev_hour},
         revision_tz="Europe/Brussels",
         maturity_offset={"days": 1},
+        maturity_time={"hour": 0},
+    )
+    run_block_staircase_value_test(
+        engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="1D"
+    )
+
+
+@pytest.mark.parametrize(["hist_file_name", "sc_file_name"], [
+    ("daily_hist.csv", "daily_sc_bda_9am.csv"),
+])
+def test_block_staircase_daily_business(engine, tsh, hist_file_name, sc_file_name):
+    """Business-day-ahead staircase, revisions at 9am, on tz-naive daily data"""
+    sc_kwargs = dict(
+        revision_freq={"bdays": 1},
+        revision_time={"hour": 9},
+        revision_tz="Europe/Brussels",
+        maturity_offset={"bdays": 1},
         maturity_time={"hour": 0},
     )
     run_block_staircase_value_test(
