@@ -87,16 +87,20 @@ def gen_value_ranges(start, end, lag):
     ]
 
 
-def ts_from_csv(csv_path, index_label="datetime"):
+def _dt_indexed_df_from_csv(csv_path, index_label="datetime"):
     df = pd.read_csv(csv_path)
-    df[index_label] = pd.to_datetime(df[index_label])
-    return df.set_index(index_label).iloc[:, 0]
+    tz_info = pd.to_datetime(df[index_label].iloc[0]).tzinfo
+    df.index = pd.to_datetime(df[index_label], utc=bool(tz_info))
+    df.index.name = index_label
+    return df.drop(columns=index_label)
+
+
+def ts_from_csv(csv_path, index_label="datetime"):
+    return _dt_indexed_df_from_csv(csv_path, index_label).iloc[:, 0]
 
 
 def hist_from_csv(csv_path, index_label="datetime"):
-    df = pd.read_csv(csv_path)
-    df[index_label] = pd.to_datetime(df[index_label])
-    df = df.set_index(index_label)
+    df = _dt_indexed_df_from_csv(csv_path, index_label)
     return {pd.Timestamp(i_date): ts.dropna() for i_date, ts in df.items()}
 
 
