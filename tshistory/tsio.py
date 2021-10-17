@@ -401,36 +401,48 @@ class timeseries:
         )
 
     @staticmethod
-    def _time_offset(offset):
+    def _replacement_offset(offset):
+        """pandas.DateOffset that replaces datetime parameters"""
         if not isinstance(offset, dict):
             raise TypeError(
-                f"Expected time offset as dict but {type(offset)} was given"
+                f"Expected replacement offset as dict but {type(offset)} was given"
             )
+        if not offset:  # return null offset
+            return pd.DateOffset(hours=0)
         allowed_keys = ["year", "month", "day", "weekday", "hour", "minute", "second"]
         for k in offset:
             if k not in allowed_keys:
                 raise ValueError(
-                    f"Could not convert time offset from dict with key {k}, " +
+                    f"Could not convert replacement offset from dict with key {k}, " +
                     f"allowed keys are {allowed_keys}"
                 )
         return pd.DateOffset(**offset)
 
     @staticmethod
-    def _delta_offset(offset):
+    def _shift_offset(offset):
+        """pandas.DateOffset that shifts datetime parameters"""
         if not isinstance(offset, dict):
             raise TypeError(
-                f"Expected delta offset as dict but {type(offset)} was given"
+                f"Expected shift offset as dict but {type(offset)} was given"
             )
+        if not offset:  # return null offset
+            return pd.DateOffset(hours=0)
         allowed_keys = [
-            "years", "months", "weeks", "days", "hours", "minutes", "seconds"
+            "years", "months", "weeks", "bdays", "days", "hours", "minutes", "seconds"
         ]
         for k in offset:
             if k not in allowed_keys:
                 raise ValueError(
-                    f"Could not convert delta offset from dict with key {k}, " +
+                    f"Could not convert shift offset from dict with key {k}, " +
                     f"allowed keys are {allowed_keys}"
                 )
-        return pd.DateOffset(**offset)
+        if "bdays" in offset:
+            if len(offset) > 1:
+                msg = f"Shift offset cannot combine \"bdays\" with other offset units"
+                raise ValueError(msg)
+            return pd.offsets.BusinessDay(offset["bdays"])
+        else:
+            return pd.DateOffset(**offset)
 
     @tx
     def block_staircase(
@@ -456,9 +468,9 @@ class timeseries:
         name: str unique identifier of the series
         from_value_date: pandas.Timestamp from which values are retrieved
         to_value_date: pandas.Timestamp to which values are retrieved
-        revision_freq: dict giving revision frequency, of which keys must be taken
-            from ["years", "months", "weeks", "days", "hours", "minutes", "seconds"] and
-            values as integers. Default is daily frequency, i.e. {"days": 1}
+        revision_freq: dict giving revision frequency, of which keys must be taken from
+            ["years", "months", "weeks", "bdays", "days", "hours", "minutes", "seconds"]
+            and values as integers. Default is daily frequency, i.e. {"days": 1}
         revision_time: dict giving revision time, of which keys should be taken from
             ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
             must be integers. It is only used for revision date initialisation. The next
@@ -467,8 +479,8 @@ class timeseries:
         revision_tz: str giving time zone in which revision date and time are expressed
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ["years", "months",
-            "weeks", "days", "hours", "minutes", "seconds"] and values as integers.
-            Default is {"days": 1}
+            "weeks", "bdays", "days", "hours", "minutes", "seconds"] and values as
+            integers. Default is {"days": 1}
         maturity_time: dict fixing start time of each block, of which keys should be
             taken from ["year", "month", "day", "weekday", "hour", "minute", "second"]
             and values must be integers. The start date of each block is thus obtained
@@ -478,10 +490,10 @@ class timeseries:
         if not self.exists(cn, name):
             return
 
-        revision_freq = self._delta_offset(revision_freq or {"days": 1})
-        revision_time = self._time_offset(revision_time or {"hour": 12})
-        maturity_offset = self._delta_offset(maturity_offset or {"days": 1})
-        maturity_time = self._time_offset(maturity_time or {"hour": 0})
+        revision_freq = self._shift_offset(revision_freq or {"days": 1})
+        revision_time = self._replacement_offset(revision_time or {"hour": 12})
+        maturity_offset = self._shift_offset(maturity_offset or {"days": 1})
+        maturity_time = self._replacement_offset(maturity_time or {"hour": 0})
 
         self._guard_query_dates(from_value_date, to_value_date)
         hist = self.history(
@@ -1272,9 +1284,9 @@ class historycache:
         name: str unique identifier of the series
         from_value_date: pandas.Timestamp from which values are retrieved
         to_value_date: pandas.Timestamp to which values are retrieved
-        revision_freq: dict giving revision frequency, of which keys must be taken
-            from ["years", "months", "weeks", "days", "hours", "minutes", "seconds"] and
-            values as integers. Default is daily frequency, i.e. {"days": 1}
+        revision_freq: dict giving revision frequency, of which keys must be taken from
+            ["years", "months", "weeks", "bdays", "days", "hours", "minutes", "seconds"]
+            and values as integers. Default is daily frequency, i.e. {"days": 1}
         revision_time: dict giving revision time, of which keys should be taken from
             ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
             must be integers. It is only used for revision date initialisation. The next
@@ -1283,8 +1295,8 @@ class historycache:
         revision_tz: str giving time zone in which revision date and time are expressed
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ["years", "months",
-            "weeks", "days", "hours", "minutes", "seconds"] and values as integers.
-            Default is {"days": 1}
+            "weeks", "bdays", "days", "hours", "minutes", "seconds"] and values as
+            integers. Default is {"days": 1}
         maturity_time: dict fixing start time of each block, of which keys should be
             taken from ["year", "month", "day", "weekday", "hour", "minute", "second"]
             and values must be integers. The start date of each block is thus obtained
@@ -1301,12 +1313,14 @@ class historycache:
             return block_start
 
         if self.tzaware:
-            init_rev_date = pd.Timestamp(from_value_date).tz_convert(revision_tz)
+            from_v_date_aware = pd.Timestamp(from_value_date).tz_convert(revision_tz)
         else:
-            init_rev_date = pd.Timestamp(from_value_date).tz_localize(revision_tz)
+            from_v_date_aware = pd.Timestamp(from_value_date).tz_localize(revision_tz)
 
         # roll back to earliest revision date to consider
-        init_rev_date += revision_time
+        init_rev_date = (
+            ((from_v_date_aware + maturity_time) - maturity_offset) + revision_time
+        )
         init_block_start = get_block_start(init_rev_date)
         while init_block_start > from_value_date:
             prev_rev_date = init_rev_date - revision_freq
