@@ -1681,7 +1681,7 @@ def test_block_staircase_revision_error(engine, tsh):
             revision_tz="Europe/Brussels",
         )
     with pytest.raises(BlockStaircaseRevisionError):
-        # revisions with identical block starts fixed on Monday
+        # revisions with identical block starts fixed on 1st of month
         _ = tsh.block_staircase(
             engine,
             name="staircase-revision-error",
@@ -1690,7 +1690,7 @@ def test_block_staircase_revision_error(engine, tsh):
             revision_freq={"days": 1},
             revision_time={"hour": 9},
             revision_tz="Europe/Brussels",
-            maturity_time={"weekday": 0},
+            maturity_time={"day": 1},
             maturity_offset={"days": 0},
         )
 
@@ -1807,8 +1807,8 @@ def test_block_staircase_weekly(
         revision_freq={"weeks": 1},
         revision_time={"weekday": rev_weekday, "hour": 6},
         revision_tz="Europe/Brussels",
-        maturity_offset={"weeks": 1},
-        maturity_time={"weekday": 0},
+        maturity_offset={"days": 7-rev_weekday},
+        maturity_time={"hour": 0},
     )
     run_block_staircase_value_test(
         engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="7D"

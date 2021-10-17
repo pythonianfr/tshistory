@@ -482,11 +482,11 @@ class timeseries:
             "weeks", "bdays", "days", "hours", "minutes", "seconds"] and values as
             integers. Default is {}, i.e. the revision date is the block start date
         maturity_time: dict fixing start time of each block, of which keys should be
-            taken from ["year", "month", "day", "weekday", "hour", "minute", "second"]
-            and values must be integers. The start date of each block is thus obtained
-            by adding `maturity_offset` to revision date and then applying
-            `maturity_time`. Default is {}, i.e. block start date is just the revision
-            date shifted by `maturity_offset`
+            taken from ["year", "month", "day", "hour", "minute", "second"] and values
+            must be integers. The start date of each block is thus obtained by adding
+            `maturity_offset` to revision date and then applying `maturity_time`.
+            Default is {}, i.e. block start date is just the revision date shifted by
+            `maturity_offset`
         """
         if not self.exists(cn, name):
             return
@@ -495,6 +495,10 @@ class timeseries:
         revision_time = self._replacement_offset(revision_time or {"hour": 0})
         maturity_offset = self._shift_offset(maturity_offset or {})
         maturity_time = self._replacement_offset(maturity_time or {})
+        if hasattr(maturity_time, "weekday"):
+            # do not use weekday on maturity time becasue pd.DateOffset(weekday=n) does
+            # not preserve week number
+            raise ValueError("Parameter \"weekday\" cannot be used for `maturity_time`")
 
         self._guard_query_dates(from_value_date, to_value_date)
         hist = self.history(
@@ -1299,11 +1303,11 @@ class historycache:
             "weeks", "bdays", "days", "hours", "minutes", "seconds"] and values as
             integers. Default is {}, i.e. the revision date is the block start date
         maturity_time: dict fixing start time of each block, of which keys should be
-            taken from ["year", "month", "day", "weekday", "hour", "minute", "second"]
-            and values must be integers. The start date of each block is thus obtained
-            by adding `maturity_offset` to revision date and then applying
-            `maturity_time`. Default is {}, i.e. block start date is just the revision
-            date shifted by `maturity_offset`
+            taken from ["year", "month", "day", "hour", "minute", "second"] and values
+            must be integers. The start date of each block is thus obtained by adding
+            `maturity_offset` to revision date and then applying `maturity_time`.
+            Default is {}, i.e. block start date is just the revision date shifted by
+            `maturity_offset`
         """
         from_value_date = compatible_date(self.tzaware, from_value_date)
         to_value_date = compatible_date(self.tzaware, to_value_date)
