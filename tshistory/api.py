@@ -324,37 +324,67 @@ class dbtimeseries:
 
     def block_staircase(
         self,
-        name: str,
-        revision_start: datetime,
-        revision_end: datetime,
-        revision_freq: str,
-        from_value_delta: timedelta,
-        to_value_delta: timedelta,
-    ) -> Optional[pd.Series]:
+        name,
+        from_value_date: datetime,
+        to_value_date: datetime,
+        revision_freq: dict = None,
+        revision_time: dict = None,
+        revision_tz: str = "UTC",
+        maturity_offset: dict = None,
+        maturity_time: dict = None,
+    ):
         """Staircase series by block
 
-        Computes a series with revision dates given by `revision_start`,
-        `revision_end`, `revision_freq` and value intervals of each revision
-        are taken as revision date shifted by `from_value_delta` and
-        `to_value_delta`
+        Computes a series rebuilt from successive blocks of history, each linked to a
+        distinct revision date. The revision dates are taken at regular time intervals
+        determined by `revision_freq`, `revision_time` and `revision_tz`. The time lag
+        between revision dates and value dates of each block is determined by
+        `maturity_offset` and `maturity_time`.
+
+        name: str unique identifier of the series
+        from_value_date: pandas.Timestamp from which values are retrieved
+        to_value_date: pandas.Timestamp to which values are retrieved
+        revision_freq: dict giving revision frequency, of which keys must be taken from
+            ["years", "months", "weeks", "bdays", "days", "hours", "minutes", "seconds"]
+            and values as integers. Default is daily frequency, i.e. {"days": 1}
+        revision_time: dict giving revision time, of which keys should be taken from
+            ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
+            must be integers. It is only used for revision date initialisation. The next
+            revision dates are then obtained by successively adding `revision_freq`.
+            Default is {"hours": 0}
+        revision_tz: str giving time zone in which revision date and time are expressed
+        maturity_offset: dict giving time lag between each revision date and start time
+            of related block values. Its keys must be taken from ["years", "months",
+            "weeks", "bdays", "days", "hours", "minutes", "seconds"] and values as
+            integers. Default is {}, i.e. the revision date is the block start date
+        maturity_time: dict fixing start time of each block, of which keys should be
+            taken from ["year", "month", "day", "hour", "minute", "second"] and values
+            must be integers. The start date of each block is thus obtained by adding
+            `maturity_offset` to revision date and then applying `maturity_time`.
+            Default is {}, i.e. block start date is just the revision date shifted by
+            `maturity_offset`
         """
         bsc = self.tsh.block_staircase(
             self.engine,
             name,
-            revision_start=revision_start,
-            revision_end=revision_end,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date,
             revision_freq=revision_freq,
-            from_value_delta=from_value_delta,
-            to_value_delta=to_value_delta,
+            revision_time=revision_time,
+            revision_tz=revision_tz,
+            maturity_offset=maturity_offset,
+            maturity_time=maturity_time,
         )
         if bsc is None:
             bsc = self.othersources.block_staircase(
                 name,
-                revision_start=revision_start,
-                revision_end=revision_end,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
                 revision_freq=revision_freq,
-                from_value_delta=from_value_delta,
-                to_value_delta=to_value_delta,
+                revision_time=revision_time,
+                revision_tz=revision_tz,
+                maturity_offset=maturity_offset,
+                maturity_time=maturity_time,
             )
         return bsc
 

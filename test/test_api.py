@@ -189,17 +189,18 @@ insertion_date             value_date
 
     bsc = tsx.block_staircase(
         'api-test',
-        revision_start=pd.Timestamp("2019-01-02", tz="utc"),
-        revision_end=pd.Timestamp("2019-01-02", tz="utc"),
-        revision_freq="D",
-        from_value_delta=pd.Timedelta("364D"),
-        to_value_delta=pd.Timedelta("370D"),
+        from_value_date=pd.Timestamp("2020-01-01", tz="utc"),
+        to_value_date=pd.Timestamp("2020-01-03", tz="utc"),
+        revision_freq={"years": 1},
+        revision_time={"hour": 0},
+        revision_tz="UTC",
+        maturity_offset={"years": 1},
+        maturity_time={"month": 1, "day": 1, "hour": 0},
     )
     assert_df("""
 2020-01-01 00:00:00+00:00    1.0
 2020-01-02 00:00:00+00:00    2.0
 2020-01-03 00:00:00+00:00    3.0
-2020-01-04 00:00:00+00:00    4.0
 """, bsc)
 
     tsx.rename('api-test', 'api-test2')
