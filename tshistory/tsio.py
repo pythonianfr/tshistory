@@ -400,50 +400,6 @@ class timeseries:
             to_value_date
         )
 
-    @staticmethod
-    def _replacement_offset(offset):
-        """pandas.DateOffset that replaces datetime parameters"""
-        if not isinstance(offset, dict):
-            raise TypeError(
-                f"Expected replacement offset as dict but {type(offset)} was given"
-            )
-        if not offset:  # return null offset
-            return pd.DateOffset(hours=0)
-        allowed_keys = ["year", "month", "day", "weekday", "hour", "minute", "second"]
-        for k in offset:
-            if k not in allowed_keys:
-                raise ValueError(
-                    f"Could not convert replacement offset from dict with key {k}, " +
-                    f"allowed keys are {allowed_keys}"
-                )
-        return pd.DateOffset(**offset)
-
-    @staticmethod
-    def _shift_offset(offset):
-        """pandas.DateOffset that shifts datetime parameters"""
-        if not isinstance(offset, dict):
-            raise TypeError(
-                f"Expected shift offset as dict but {type(offset)} was given"
-            )
-        if not offset:  # return null offset
-            return pd.DateOffset(hours=0)
-        allowed_keys = [
-            "years", "months", "weeks", "bdays", "days", "hours", "minutes", "seconds"
-        ]
-        for k in offset:
-            if k not in allowed_keys:
-                raise ValueError(
-                    f"Could not convert shift offset from dict with key {k}, " +
-                    f"allowed keys are {allowed_keys}"
-                )
-        if "bdays" in offset:
-            if len(offset) > 1:
-                msg = f"Shift offset cannot combine \"bdays\" with other offset units"
-                raise ValueError(msg)
-            return pd.offsets.BusinessDay(offset["bdays"])
-        else:
-            return pd.DateOffset(**offset)
-
     @tx
     def block_staircase(
         self,
@@ -490,16 +446,6 @@ class timeseries:
         """
         if not self.exists(cn, name):
             return
-
-        revision_freq = self._shift_offset(revision_freq or {"days": 1})
-        revision_time = self._replacement_offset(revision_time or {"hour": 0})
-        maturity_offset = self._shift_offset(maturity_offset or {})
-        maturity_time = self._replacement_offset(maturity_time or {})
-        if hasattr(maturity_time, "weekday"):
-            # do not use weekday on maturity time becasue pd.DateOffset(weekday=n) does
-            # not preserve week number
-            raise ValueError("Parameter \"weekday\" cannot be used for `maturity_time`")
-
         self._guard_query_dates(from_value_date, to_value_date)
         hist = self.history(
             cn, name,
@@ -1266,6 +1212,50 @@ class historycache:
         ts.name = self.name
         return ts
 
+    @staticmethod
+    def _replacement_offset(offset):
+        """pandas.DateOffset that replaces datetime parameters"""
+        if not isinstance(offset, dict):
+            raise TypeError(
+                f"Expected replacement offset as dict but {type(offset)} was given"
+            )
+        if not offset:  # return null offset
+            return pd.DateOffset(hours=0)
+        allowed_keys = ["year", "month", "day", "weekday", "hour", "minute", "second"]
+        for k in offset:
+            if k not in allowed_keys:
+                raise ValueError(
+                    f"Could not convert replacement offset from dict with key {k}, " +
+                    f"allowed keys are {allowed_keys}"
+                )
+        return pd.DateOffset(**offset)
+
+    @staticmethod
+    def _shift_offset(offset):
+        """pandas.DateOffset that shifts datetime parameters"""
+        if not isinstance(offset, dict):
+            raise TypeError(
+                f"Expected shift offset as dict but {type(offset)} was given"
+            )
+        if not offset:  # return null offset
+            return pd.DateOffset(hours=0)
+        allowed_keys = [
+            "years", "months", "weeks", "bdays", "days", "hours", "minutes", "seconds"
+        ]
+        for k in offset:
+            if k not in allowed_keys:
+                raise ValueError(
+                    f"Could not convert shift offset from dict with key {k}, " +
+                    f"allowed keys are {allowed_keys}"
+                )
+        if "bdays" in offset:
+            if len(offset) > 1:
+                msg = f"Shift offset cannot combine \"bdays\" with other offset units"
+                raise ValueError(msg)
+            return pd.offsets.BusinessDay(offset["bdays"])
+        else:
+            return pd.DateOffset(**offset)
+
     def block_staircase(
         self,
         from_value_date,
@@ -1309,6 +1299,15 @@ class historycache:
         """
         from_value_date = compatible_date(self.tzaware, from_value_date)
         to_value_date = compatible_date(self.tzaware, to_value_date)
+
+        revision_freq = self._shift_offset(revision_freq or {"days": 1})
+        revision_time = self._replacement_offset(revision_time or {"hour": 0})
+        maturity_offset = self._shift_offset(maturity_offset or {})
+        maturity_time = self._replacement_offset(maturity_time or {})
+        if hasattr(maturity_time, "weekday"):
+            # do not use weekday on maturity time because pd.DateOffset(weekday=n) does
+            # not preserve week number
+            raise ValueError("Parameter \"weekday\" cannot be used for `maturity_time`")
 
         def get_block_start(rev_date):
             block_start = (rev_date + maturity_offset) + maturity_time
