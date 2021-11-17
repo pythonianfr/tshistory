@@ -269,6 +269,8 @@ For now we only provide a list of supported methods.
 
 * staircase
 
+* block_staircase
+
 * type
 
 
