@@ -1890,6 +1890,38 @@ def test_block_staircase_weekly(
     )
 
 
+def test_block_staircase_maturity_time_before_revision_time(engine, tsh):
+    hist = io.StringIO("""
+datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00+0
+2020-01-01 00:00+00:00, 1.0,                10.0,               100.0
+2020-01-01 04:00+00:00, 2.0,                20.0,               200.0
+2020-01-01 08:00+00:00, 3.0,                30.0,               300.0
+2020-01-01 16:00+00:00, 4.0,                40.0,               400.0
+2020-01-02 00:00+00:00, 5.0,                50.0,               500.0
+2020-01-02 04:00+00:00, 6.0,                60.0,               600.0
+2020-01-02 08:00+00:00, 7.0,                70.0,               700.0
+2020-01-02 16:00+00:00, 8.0,                80.0,               800.0
+""")
+    sc_kwargs = dict(
+        revision_freq={"days": 1},
+        revision_time={"hour": 9},
+        revision_tz="UTC",
+        maturity_time={"hour": 8},
+    )
+    expected_sc = io.StringIO("""
+datetime,               value
+2020-01-01 08:00+00:00, 3.0
+2020-01-01 16:00+00:00, 4.0
+2020-01-02 00:00+00:00, 5.0
+2020-01-02 04:00+00:00, 6.0
+2020-01-02 08:00+00:00, 70.0
+2020-01-02 16:00+00:00, 80.0
+""")
+    run_block_staircase_value_test(
+        engine, tsh, "maturity_time_before_revision_time", hist, expected_sc, sc_kwargs
+    )
+
+
 def test_rename(engine, tsh):
     if tsh.namespace == 'zzz':
         return  # this test can only run once
