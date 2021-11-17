@@ -1,3 +1,4 @@
+import io
 from datetime import datetime, timedelta
 from pathlib import Path
 import pytz
@@ -1696,16 +1697,14 @@ def test_block_staircase_revision_error(engine, tsh):
 
 
 def run_block_staircase_value_test(
-    engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="1D"
+    engine, tsh, ts_name, hist_csv, staircase_csv, sc_kwargs, value_date_lag="1D"
 ):
     # Load history on db
-    hist = hist_from_csv(DATADIR / "staircase" / hist_file_name)
-    ts_name = sc_file_name[:-4]
-    for idate, ts in hist.items():
+    for idate, ts in hist_from_csv(hist_csv).items():
         tsh.update(engine, ts, ts_name, "test", insertion_date=idate)
 
     # Expected output of block_staircase function
-    sc_ts = ts_from_csv(DATADIR / "staircase" / sc_file_name)
+    sc_ts = ts_from_csv(staircase_csv)
     sc_idx = sc_ts.index
 
     # Compute staircase and check output values on different value ranges
@@ -1724,6 +1723,72 @@ def run_block_staircase_value_test(
         )
 
 
+def test_block_staircase_basic_daily(engine, tsh):
+    hist = io.StringIO("""
+datetime,   2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00+0
+2020-01-01, 1.0,                NA,                 NA
+2020-01-02, 2.0,                6.0,                NA
+2020-01-03, 3.0,                7.0,                11.0
+2020-01-04, 4.0,                8.0,                12.0
+2020-01-05, 5.0,                9.0,                13.0
+2020-01-06, NA,                 10.0,               14.0
+2020-01-07, NA,                 NA,                 15.0
+2020-01-08, NA,                 NA,                 NA
+""")
+    sc_kwargs = dict(
+        revision_freq={"hours": 24},
+        revision_time={"hour": 9},
+        revision_tz="UTC",
+        maturity_offset={"days": 3},
+        maturity_time={"hour": 0},
+    )
+    expected_sc = io.StringIO("""
+datetime,   value
+2020-01-04, 4.0
+2020-01-05, 9.0
+2020-01-06, 14.0
+2020-01-07, 15.0
+""")
+    run_block_staircase_value_test(
+        engine, tsh, "basic_sc_daily", hist, expected_sc, sc_kwargs
+    )
+
+
+def test_block_staircase_basic_hourly(engine, tsh):
+    hist = io.StringIO("""
+datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00+0
+2020-01-03 00:00+00:00, 1.0,                10.0,               100.0
+2020-01-03 04:00+00:00, 2.0,                20.0,               200.0
+2020-01-03 08:00+00:00, 3.0,                30.0,               300.0
+2020-01-03 16:00+00:00, 4.0,                40.0,               400.0
+2020-01-04 00:00+00:00, 5.0,                50.0,               500.0
+2020-01-04 04:00+00:00, 6.0,                60.0,               600.0
+2020-01-04 08:00+00:00, 7.0,                70.0,               700.0
+2020-01-04 16:00+00:00, 8.0,                80.0,               800.0
+""")
+    sc_kwargs = dict(
+        revision_freq={"days": 1},
+        revision_time={"hour": 10},
+        revision_tz="UTC",
+        maturity_offset={"days": 1},
+        maturity_time={"hour": 4},
+    )
+    expected_sc = io.StringIO("""
+datetime,               value
+2020-01-03 00:00+00:00, 1.0
+2020-01-03 04:00+00:00, 20.0
+2020-01-03 08:00+00:00, 30.0
+2020-01-03 16:00+00:00, 40.0
+2020-01-04 00:00+00:00, 50.0
+2020-01-04 04:00+00:00, 600.0
+2020-01-04 08:00+00:00, 700.0
+2020-01-04 16:00+00:00, 800.0
+""")
+    run_block_staircase_value_test(
+        engine, tsh, "basic_sc_hourly", hist, expected_sc, sc_kwargs
+    )
+
+
 @pytest.mark.parametrize(["hist_file_name", "sc_file_name"], [
     ("hourly_no_dst_hist.csv", "hourly_no_dst_sc_da_9am.csv"),
     ("hourly_dst_1_hist.csv", "hourly_dst_1_sc_da_9am.csv"),
@@ -1738,8 +1803,10 @@ def test_block_staircase_hourly_day_ahead(engine, tsh, hist_file_name, sc_file_n
         maturity_offset={"days": 1},
         maturity_time={"hour": 0},
     )
+    hist_csv = DATADIR / "staircase" / hist_file_name
+    sc_csv = DATADIR / "staircase" / sc_file_name
     run_block_staircase_value_test(
-        engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="36h"
+        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag="36h"
     )
 
 
@@ -1753,8 +1820,10 @@ def test_block_staircase_hourly_intraday(engine, tsh, hist_file_name, sc_file_na
         revision_time={"hour": 12},
         revision_tz="UTC",
     )
+    hist_csv = DATADIR / "staircase" / hist_file_name
+    sc_csv = DATADIR / "staircase" / sc_file_name
     run_block_staircase_value_test(
-        engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="36h"
+        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag="36h"
     )
 
 
@@ -1773,8 +1842,10 @@ def test_block_staircase_daily_calendar(
         maturity_offset={"days": 1},
         maturity_time={"hour": 0},
     )
+    hist_csv = DATADIR / "staircase" / hist_file_name
+    sc_csv = DATADIR / "staircase" / sc_file_name
     run_block_staircase_value_test(
-        engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="1D"
+        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag="1D"
     )
 
 
@@ -1790,8 +1861,10 @@ def test_block_staircase_daily_business(engine, tsh, hist_file_name, sc_file_nam
         maturity_offset={"bdays": 1},
         maturity_time={"hour": 0},
     )
+    hist_csv = DATADIR / "staircase" / hist_file_name
+    sc_csv = DATADIR / "staircase" / sc_file_name
     run_block_staircase_value_test(
-        engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="1D"
+        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag="1D"
     )
 
 
@@ -1810,8 +1883,10 @@ def test_block_staircase_weekly(
         maturity_offset={"days": 7-rev_weekday},
         maturity_time={"hour": 0},
     )
+    hist_csv = DATADIR / "staircase" / hist_file_name
+    sc_csv = DATADIR / "staircase" / sc_file_name
     run_block_staircase_value_test(
-        engine, tsh, hist_file_name, sc_file_name, sc_kwargs, value_date_lag="7D"
+        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag="7D"
     )
 
 
