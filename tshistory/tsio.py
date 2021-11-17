@@ -431,7 +431,7 @@ class timeseries:
             ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
             must be integers. It is only used for revision date initialisation. The next
             revision dates are then obtained by successively adding `revision_freq`.
-            Default is {"hours": 0}
+            Default is {"hour": 0}
         revision_tz: str giving time zone in which revision date and time are expressed
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ["years", "months",
@@ -1284,7 +1284,7 @@ class historycache:
             ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
             must be integers. It is only used for revision date initialisation. The next
             revision dates are then obtained by successively adding `revision_freq`.
-            Default is {"hours": 0}
+            Default is {"hour": 0}
         revision_tz: str giving time zone in which revision date and time are expressed
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ["years", "months",
