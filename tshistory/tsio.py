@@ -1297,6 +1297,8 @@ class historycache:
             Default is {}, i.e. block start date is just the revision date shifted by
             `maturity_offset`
         """
+        #TODO: output series tz should be revision_tz
+
         from_value_date = compatible_date(self.tzaware, from_value_date)
         to_value_date = compatible_date(self.tzaware, to_value_date)
 
