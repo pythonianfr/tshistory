@@ -1660,6 +1660,38 @@ def test_block_staircase_empty_series(engine, tsh):
     assert ts.empty
 
 
+@pytest.mark.parametrize(
+    ["ts_name", "source_ts_is_tz_aware", "revision_tz", "expected_output_tz"],
+    [
+        ("tz_test_1", False, "utc", None),
+        ("tz_test_2", False, "CET", None),
+        ("tz_test_3", True, "utc", "utc"),
+        ("tz_test_4", True, "CET", "CET"),
+    ]
+)
+def test_block_staircase_output_timezone(
+    engine, tsh, ts_name, source_ts_is_tz_aware, revision_tz, expected_output_tz
+):
+    insert_date = pd.Timestamp("2021-10-15", tz="utc")
+    value_start_date = insert_date + pd.Timedelta(1, "D")
+    ts = genserie(start=value_start_date, freq='H', repeat=24)
+    ts = ts if source_ts_is_tz_aware else ts.tz_localize(None)
+    tsh.update(engine, ts, ts_name, "test", insertion_date=insert_date)
+    ts = tsh.block_staircase(
+        engine,
+        ts_name,
+        from_value_date=value_start_date,
+        to_value_date=value_start_date + pd.Timedelta(1, "D"),
+        revision_freq={"days": 1},
+        revision_time={"hour": 9},
+        maturity_offset={"days": 1},
+        revision_tz=revision_tz,
+    )
+    if expected_output_tz:
+        expected_output_tz = pytz.timezone(expected_output_tz)
+    assert ts.index.tz == expected_output_tz
+
+
 def test_block_staircase_revision_error(engine, tsh):
     """Test exception BlockStaircaseRevisionError
 

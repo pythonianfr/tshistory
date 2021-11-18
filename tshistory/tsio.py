@@ -1297,8 +1297,6 @@ class historycache:
             Default is {}, i.e. block start date is just the revision date shifted by
             `maturity_offset`
         """
-        #TODO: output series tz should be revision_tz
-
         from_value_date = compatible_date(self.tzaware, from_value_date)
         to_value_date = compatible_date(self.tzaware, to_value_date)
 
@@ -1358,6 +1356,10 @@ class historycache:
             revision_date = next_rev_date
             block_start = next_block_start
 
-        if not ts_values:
-            return empty_series(self.tzaware, name=self.name)
-        return pd.Series(ts_values, name=self.name)
+        if ts_values:
+            res_ts = pd.Series(ts_values, name=self.name)
+        else:
+            res_ts = empty_series(self.tzaware, name=self.name)
+        if self.tzaware:
+            res_ts = res_ts.tz_convert(revision_tz)
+        return res_ts
