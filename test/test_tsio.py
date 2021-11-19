@@ -1737,6 +1737,8 @@ def run_block_staircase_value_test(
 
     # Expected output of block_staircase function
     sc_ts = ts_from_csv(staircase_csv)
+    if sc_ts.index.tzinfo: # align expected output tz with revision_tz if tz-aware
+        sc_ts = sc_ts.tz_convert(sc_kwargs.get("revision_tz") or "utc")
     sc_idx = sc_ts.index
 
     # Compute staircase and check output values on different value ranges
