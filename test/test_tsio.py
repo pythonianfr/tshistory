@@ -1677,7 +1677,7 @@ def test_block_staircase_output_timezone(
     ts = genserie(start=value_start_date, freq='H', repeat=24)
     ts = ts if source_ts_is_tz_aware else ts.tz_localize(None)
     tsh.update(engine, ts, ts_name, "test", insertion_date=insert_date)
-    ts = tsh.block_staircase(
+    sc_ts = tsh.block_staircase(
         engine,
         ts_name,
         from_value_date=value_start_date,
@@ -1689,7 +1689,7 @@ def test_block_staircase_output_timezone(
     )
     if expected_output_tz:
         expected_output_tz = pytz.timezone(expected_output_tz)
-    assert ts.index.tz == expected_output_tz
+    assert sc_ts.index.tz == expected_output_tz
 
 
 def test_block_staircase_revision_error(engine, tsh):
