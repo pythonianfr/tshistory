@@ -407,7 +407,7 @@ insertions:
 | 2021-01-20 (Wed) |                     |                     |                     |                     | 10.5                | 12.6                |
 | 2021-01-21 (Thu) |                     |                     |                     |                     |                     | 13.6                |
 
-Then we can retrieve a business-days-ahead staircase series with revision every business
+Then we can retrieve a business-day-ahead staircase series with revision every business
 day as follows:
 ```python
  >>> tsa.block_staircase('business_day_series',
