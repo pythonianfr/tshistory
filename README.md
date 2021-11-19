@@ -257,7 +257,7 @@ Now if instead we consider an hourly forecast series, we may want to define day-
 forecast as a staircase series with a daily revision occurring at 9am, and link each
 revision to the 24 hours of the next day. More generally we may want to reconstruct a
 staircase series where successive revisions each relate to several value dates. Such
-cases should instead be handled by the `block_staircase` method described below.
+cases should instead be handled using the `block_staircase` method described below.
 
 ### Block staircase
 
@@ -302,7 +302,7 @@ Then the day-ahead forecast with revisions at 9am can be computed as follows:
 ```
 
 Note that with `revision_time={'hour': 9}`, the method ends up picking values from the
-two 6am insertions. Taking revision time after 14:00, say `revision_time={'hour': 20}`
+two 6am insertions. Taking revision time after 14:00, say `revision_time={'hour': 20}`,
 would instead select values from the 2pm insertions.
 
 In general, the arguments of `block_staircase` should be used as follows:
@@ -326,7 +326,107 @@ date shifted by `maturity_offset`
 
 ### Other use cases
 
+The `block_staircase` method covers multiple use cases, such as week-ahead revisions or
+revision by business day, as described in the following examples.
 
+#### Week-ahead staircase
+
+Consider a series named `weekly_series` with following insertions:
+
+|                  | 2021-01-05<br>(Tue) | 2021-01-07<br>(Thu) | 2021-01-12<br>(Tue) | 2021-01-14<br>(Thu) |
+|:-----------------|:-------------------:|:-------------------:|:-------------------:|:-------------------:|
+| 2021-01-11 (Mon) | 1.1                 | 1.2                 |                     |                     |
+| 2021-01-12 (Tue) | 2.1                 | 2.2                 |                     |                     |
+| 2021-01-13 (Wed) | 3.1                 | 3.2                 |                     |                     |
+| 2021-01-14 (Thu) | 4.1                 | 4.2                 |                     |                     |
+| 2021-01-15 (Fri) | 5.1                 | 5.2                 |                     |                     |
+| 2021-01-16 (Sat) | 6.1                 | 6.2                 |                     |                     |
+| 2021-01-17 (Sun) | 7.1                 | 7.2                 |                     |                     |
+| 2021-01-18 (Mon) | 8.1                 | 8.2                 | 8.3                 | 8.4                 |
+| 2021-01-19 (Tue) | 9.1                 | 9.2                 | 9.3                 | 9.4                 |
+| 2021-01-20 (Wed) | 10.1                | 10.2                | 10.3                | 10.4                |
+| 2021-01-21 (Thu) |                     |                     | 11.3                | 11.4                |
+| 2021-01-22 (Fri) |                     |                     | 12.3                | 12.4                |
+| 2021-01-23 (Sat) |                     |                     | 13.3                | 13.4                |
+| 2021-01-24 (Sun) |                     |                     | 14.3                | 14.4                |
+| 2021-01-25 (Mon) |                     |                     | 15.3                | 15.4                |
+| 2021-01-26 (Tue) |                     |                     | 16.3                | 16.4                |
+| 2021-01-27 (Wed) |                     |                     | 17.3                | 17.4                |
+
+Then the week-ahead staircase with weekly revision on Friday can be retrieved as
+follows:
+```python
+ >>> tsa.block_staircase('weekly_series',
+                         from_value_date=pd.Timestamp('2021-01-10'),
+                         to_value_date=pd.Timestamp('2021-01-30'),
+                         revision_freq={'days': 7},
+                         revision_time={'weekday': 4},
+                         revision_tz='utc',
+                         maturity_offset={'days': 3},
+                         maturity_time={'hour': 0})
+ ...
+ 2021-01-11   1.2
+ 2021-01-12   2.2
+ 2021-01-13   3.2
+ 2021-01-14   4.2
+ 2021-01-15   5.2
+ 2021-01-16   6.2
+ 2021-01-17   7.2
+ 2021-01-18   8.4
+ 2021-01-19   9.4
+ 2021-01-20   10.4
+ 2021-01-21   11.4
+ 2021-01-22   12.4
+ 2021-01-23   13.4
+ 2021-01-24   14.4
+ 2021-01-25   15.4
+ 2021-01-26   16.4
+ 2021-01-27   17.4
+ Name: weekly_series, dtype: float64
+```
+
+It is also possible to retrieve a month-ahead staircase series taking instead
+`revision_freq={'months': 1}` and, for example, `revision_time={'day': 15}` to perform
+monthly revision every 15th day of the month.
+
+#### Revision by business day
+
+The block_staircase method allows to express revision frequency and/or maturity time
+span in business days. Consider a series named `business_day_series` with these
+insertions:
+
+|                  | 2021-01-13<br>(Wed) | 2021-01-14<br>(Thu) | 2021-01-15<br>(Fri) | 2021-01-16<br>(Sat) | 2021-01-17<br>(Sun) | 2021-01-18<br>(Mon) |
+|:-----------------|:-------------------:|:-------------------:|:-------------------:|:-------------------:|:-------------------:|:-------------------:|
+| 2021-01-13 (Wed) | 3.1                 |                     |                     |                     |                     |                     |
+| 2021-01-14 (Thu) | 4.1                 | 4.2                 |                     |                     |                     |                     |
+| 2021-01-15 (Fri) | 5.1                 | 5.2                 | 5.3                 |                     |                     |                     |
+| 2021-01-16 (Sat) | 6.1                 | 6.2                 | 6.3                 | 6.4                 |                     |                     |
+| 2021-01-17 (Sun) |                     | 7.2                 | 7.3                 | 7.4                 | 7.5                 |                     |
+| 2021-01-18 (Mon) |                     |                     | 8.3                 | 8.4                 | 8.5                 | 9.6                 |
+| 2021-01-19 (Tue) |                     |                     |                     | 9.4                 | 9.5                 | 11.6                |
+| 2021-01-20 (Wed) |                     |                     |                     |                     | 10.5                | 12.6                |
+| 2021-01-21 (Thu) |                     |                     |                     |                     |                     | 13.6                |
+
+Then we can retrieve a business-days-ahead staircase series with revision every business
+day as follows:
+```python
+ >>> tsa.block_staircase('business_day_series',
+                         from_value_date=pd.Timestamp('2021-01-13'),
+                         to_value_date=pd.Timestamp('2021-01-21'),
+                         revision_freq={'bdays': 1},
+                         revision_tz='utc',
+                         maturity_offset={'bdays': 1})
+ ...
+ 2021-01-14   4.1
+ 2021-01-15   5.2
+ 2021-01-16   6.2
+ 2021-01-17   7.2
+ 2021-01-18   8.3
+ 2021-01-19   11.6
+ 2021-01-20   12.6
+ 2021-01-21   13.6
+ Name: weekly_series, dtype: float64
+```
 
 # The API object
 
