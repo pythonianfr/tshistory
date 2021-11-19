@@ -101,7 +101,13 @@ def ts_from_csv(csv_path, index_label="datetime"):
 
 def hist_from_csv(csv_path, index_label="datetime"):
     df = _dt_indexed_df_from_csv(csv_path, index_label)
-    return {pd.Timestamp(i_date): ts.dropna() for i_date, ts in df.items()}
+    hist = {}
+    for i_date, ts in df.items():
+        i_date = pd.Timestamp(i_date)
+        if not i_date.tzinfo:
+            i_date = i_date.tz_localize("utc")
+        hist[i_date] = ts.dropna()
+    return hist
 
 
 def gengroup(n_scenarios, from_date, length, freq, seed=0):

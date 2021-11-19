@@ -1956,6 +1956,45 @@ datetime,               value
     )
 
 
+def test_block_staircase_business_day_vs_week_end(engine, tsh):
+    """Staircase with business day revision and maturity
+
+    The values of the week-end of 2021-01-16 and 2021-01-17 should be coming from
+    insertion of Thursday 2021-01-14
+    """
+    hist = io.StringIO("""
+datetime,     2021-01-13, 2021-01-14, 2021-01-15, 2021-01-16, 2021-01-17, 2021-01-18
+2021-01-13,   3.1,        NA,         NA,         NA,         NA,         NA
+2021-01-14,   4.1,        4.2,        NA,         NA,         NA,         NA
+2021-01-15,   5.1,        5.2,        5.3,        NA,         NA,         NA
+2021-01-16,   6.1,        6.2,        6.3,        6.4,        NA,         NA
+2021-01-17,   NA,         7.2,        7.3,        7.4,        7.5,        NA
+2021-01-18,   NA,         NA,         8.3,        8.4,        8.5,        9.6
+2021-01-19,   NA,         NA,         NA,         9.4,        9.5,        11.6
+2021-01-20,   NA,         NA,         NA,         NA,         10.5,       12.6
+2021-01-21,   NA,         NA,         NA,         NA,         NA,         13.6
+""")
+    sc_kwargs = dict(
+        revision_freq={'bdays': 1},
+        revision_tz='utc',
+        maturity_offset={'bdays': 1}
+    )
+    expected_sc = io.StringIO("""
+datetime,       value
+2021-01-14,     4.1
+2021-01-15,     5.2
+2021-01-16,     6.2
+2021-01-17,     7.2
+2021-01-18,     8.3
+2021-01-19,     11.6
+2021-01-20,     12.6
+2021-01-21,     13.6
+""")
+    run_block_staircase_value_test(
+        engine, tsh, "business_day_vs_weekend", hist, expected_sc, sc_kwargs
+    )
+
+
 def test_rename(engine, tsh):
     if tsh.namespace == 'zzz':
         return  # this test can only run once
