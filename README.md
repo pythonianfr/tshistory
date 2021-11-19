@@ -1,5 +1,5 @@
 TSHISTORY
-===========
+=========
 
 This is a library to store/retrieve pandas timeseries to/from a
 postgres database, tracking their successive versions.
@@ -122,11 +122,8 @@ Name: my_series, dtype: float64
 ```
 
 It is important to note that the third value was *replaced*, and the two
-last values were just *appended*.
-
-As noted the point at `2017-1-2` wasn't a new information so it was
+last values were just *appended*. As noted the point at `2017-1-2` wasn't a new information so it was
 just ignored.
-
 
 ## Retrieving history
 
@@ -154,10 +151,29 @@ We can access the whole history (or parts of it) in one call:
  Name: my_series, dtype: float64
 ```
 
-Note how this shows the full serie state for each insertion date.
-Also the insertion date is timzeone aware.
+Note how this shows the full serie state for each insertion date. Also the insertion date is timzeone aware.
 
-It is possible to show the differences only:
+Specific versions of a series can be retrieved individually using the `get` method as follows:
+```python
+ >>> tsa.get('my_series', revision_date=pd.Timestamp('2018-09-26 17:11+02:00'))
+ ...
+ 2017-01-01    1.0
+ 2017-01-02    2.0
+ 2017-01-03    3.0
+ Name: my_series, dtype: float64
+ >>>
+ >>> tsa.get('my_series', revision_date=pd.Timestamp('2018-09-26 17:14+02:00'))
+ ...
+ 2017-01-01    1.0
+ 2017-01-02    2.0
+ 2017-01-03    7.0
+ 2017-01-04    8.0
+ 2017-01-05    9.0
+ Name: my_series, dtype: float64
+```
+
+
+It is possible to retrieve only the differences between successive insertions:
 
 ```python
  >>> diffs = tsa.history('my_series', diffmode=True)
@@ -188,6 +204,128 @@ You can see a series metadata:
 
 We built a series with naive time stamps, but timezone-aware
 timestamps work well (and it is advised to use them !).
+
+
+## Staircase series
+
+A staircase series can be defined as a series of which values originate from successive
+revisions with a fixed time span between revision date and value date. This is
+especially useful for backtesting.
+
+### Basic staircase
+
+Let us take an example assuming a series called `daily_series` has been created with
+insertions given by the following table (considering row indices are value dates, and
+columns indices are insertion dates):
+
+|            | 2020-01-01<br>00:00+00 | 2020-01-02<br>00:00+00 | 2020-01-03<br>00:00+00 |
+|-----------:|:----------------------:|:----------------------:|:----------------------:|
+| 2020-01-01 | 1.1                    |                        |                        |
+| 2020-01-02 | 2.1                    | 2.2                    |                        |
+| 2020-01-03 | 3.1                    | 3.2                    | 3.3                    |
+| 2020-01-04 |                        | 4.2                    | 4.3                    |
+| 2020-01-05 |                        |                        | 5.3                    |
+
+Supposing this series is a forecast published on a daily basis, we can for example
+reconstruct the day-ahead forecast series, i.e. the values such that the time span
+between revision date and value date is 1 day (or more) as follows:
+```python
+ >>> tsa.staircase('daily_series',
+                   from_value_date=pd.Timestamp('2020-01-01'),
+                   to_value_date=pd.Timestamp('2020-01-07'),
+                   delta=pd.Timedelta(days=1))
+ ...
+ 2020-01-02    2.1
+ 2020-01-03    3.2
+ 2020-01-04    4.3
+ 2020-01-05    5.3
+ Name: daily_series, dtype: float64
+```
+
+The name "staircase" refers to the way in which these values are picked from the history:
+
+|            | 2020-01-01<br>00:00+00 | 2020-01-02<br>00:00+00 | 2020-01-03<br>00:00+00 |
+|-----------:|:----------------------:|:----------------------:|:----------------------:|
+| 2020-01-01 |                        |                        |                        |
+| 2020-01-02 | **2.1**                |                        |                        |
+| 2020-01-03 |                        | **3.2**                |                        |
+| 2020-01-04 |                        |                        | **4.3**                |
+| 2020-01-05 |                        |                        | **5.3**                |
+
+
+Now if instead we consider an hourly forecast series, we may want to define day-ahead
+forecast as a staircase series with a daily revision occurring at 9am, and link each
+revision to the 24 hours of the next day. More generally we may want to reconstruct a
+staircase series where successive revisions each relate to several value dates. Such
+cases should instead be handled by the `block_staircase` method described below.
+
+### Block staircase
+
+Let us take another example considering the series `hourly_series` with following insertions:
+
+|                     | 2020-01-01<br>06:00+00 | 2020-01-01<br>14:00+00 | 2020-01-02<br>06:00+00 | 2020-01-02<br>14:00+00 |
+|--------------------:|:----------------------:|:----------------------:|:----------------------:|:----------------------:|
+| 2020-01-01 00:00+00 | 1.1                    | 1.2                    |                        |                        |
+| 2020-01-01 08:00+00 | 2.1                    | 2.2                    |                        |                        |
+| 2020-01-01 16:00+00 | 3.1                    | 3.2                    |                        |                        |
+| 2020-01-02 00:00+00 | 4.1                    | 4.2                    | 4.3                    | 4.4                    |
+| 2020-01-02 08:00+00 | 5.1                    | 5.2                    | 5.3                    | 5.4                    |
+| 2020-01-02 16:00+00 | 6.1                    | 6.2                    | 6.3                    | 6.4                    |
+| 2020-01-03 00:00+00 | 7.1                    | 7.2                    | 7.3                    | 7.4                    |
+| 2020-01-03 08:00+00 | 8.1                    | 8.2                    | 8.3                    | 8.4                    |
+| 2020-01-03 16:00+00 | 9.1                    | 9.2                    | 9.3                    | 9.4                    |
+| 2020-01-04 00:00+00 |                        |                        | 10.3                   | 10.4                   |
+| 2020-01-04 08:00+00 |                        |                        | 11.3                   | 11.4                   |
+| 2020-01-04 16:00+00 |                        |                        | 12.3                   | 12.4                   |
+
+Then the day-ahead forecast with revisions at 9am can be computed as follows:
+```python
+ >>> tsa.block_staircase('hourly_series',
+                         from_value_date=pd.Timestamp('2020-01-01', tz="utc"),
+                         to_value_date=pd.Timestamp('2020-01-05', tz="utc"),
+                         revision_freq={'days': 1},
+                         revision_time={'hour': 9},
+                         revision_tz='utc',
+                         maturity_offset={'days': 1},
+                         maturity_time={'hour': 0})
+ ...
+ 2020-01-02 00:00:00+00:00   4.1
+ 2020-01-02 08:00:00+00:00   5.1
+ 2020-01-02 16:00:00+00:00   6.1
+ 2020-01-03 00:00:00+00:00   7.3 
+ 2020-01-03 08:00:00+00:00   8.3 
+ 2020-01-03 16:00:00+00:00   9.3 
+ 2020-01-04 00:00:00+00:00   10.3
+ 2020-01-04 08:00:00+00:00   11.3
+ 2020-01-04 16:00:00+00:00   12.3
+ Name: hourly_series, dtype: float64
+```
+
+Note that with `revision_time={'hour': 9}`, the method ends up picking values from the
+two 6am insertions. Taking revision time after 14:00, say `revision_time={'hour': 20}`
+would instead select values from the 2pm insertions.
+
+In general, the arguments of `block_staircase` should be used as follows:
+* `from_value_date` and `to_value_date`: time range on which values are retrieved
+* `revision_freq`: revision frequency, as a dictionary of integers of which keys must be taken from
+`["years", "months", "weeks", "bdays", "days", "hours", "minutes", "seconds"]`
+* `revision_time`: revision time, as a dictionary of integers of which keys should be
+taken from `["year", "month", "day", "weekday", "hour", "minute", "second"]`. It is used
+for revision date initialisation. The next revision dates are then obtained by
+successively adding `revision_freq`.
+* `revision_tz`: time zone in which revision date and time are expressed
+* `maturity_offset`: time span between each revision date and start time
+of related block of values, as dictionary of integers. Its keys must be taken from
+`["years", "months", "weeks", "bdays", "days", "hours", "minutes", "seconds"]`. No lag
+is considered if it is not specified, i.e. the revision date is the block start date
+* `maturity_time`: start time of each block, as a dictionary of integers of which keys
+should be taken from `["year", "month", "day", "hour", "minute", "second"]`. The start
+date of each block is thus obtained by adding `maturity_offset` to revision date and
+then applying `maturity_time`. If not specified block start date is just the revision
+date shifted by `maturity_offset`
+
+### Other use cases
+
 
 
 # The API object
