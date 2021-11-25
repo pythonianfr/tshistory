@@ -1,0 +1,31 @@
+image: debian/bullseye
+packages:
+  - mercurial
+  - python3-pip
+  - postgresql
+  - emacs-nox
+sources:
+  - hg+https://hg.sr.ht/~pythonian/tshistory_client
+  - hg+https://hg.sr.ht/~pythonian/tshistory_rest
+  - hg+https://hg.sr.ht/~pythonian/tshistory_supervision
+  - hg+https://hg.sr.ht/~pythonian/tshistory_formula
+tasks:
+  - install: |
+      pip3 install tox wheel setuptools --quiet
+      pip3 install -e tshistory_supervision --prefer-binary
+      pip3 install -e tshistory_formula --prefer-binary
+      pip3 install -e tshistory_rest --prefer-binary
+      pip3 install -e tshistory_client --prefer-binary
+  - run-tests: |
+      export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/13/bin
+      pip3 install pytest pytest_sa_pg responses
+      cd tshistory
+      pytest
+      cd ../tshistory_client
+      pytest
+      cd ../tshistory_rest
+      pytest
+      cd ../tshistory_supervision
+      pytest
+      cd ../tshistory_formula
+      pytest
