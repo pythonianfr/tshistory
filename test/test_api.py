@@ -383,6 +383,12 @@ def test_multisource(mapi):
 
     assert not mapi.exists('renamed-api-1')
 
+    # local shadowing of api-3
+    create(mapi.uri, mapi.namespace, 'api-3')
+    create(mapi.uri, 'ns-test-mapi-2', 'api-3')
+    with pytest.raises(ValueError):
+        mapi.delete('api-3')
+
 
 @pytest.mark.skipif(
     not formula_class(),
