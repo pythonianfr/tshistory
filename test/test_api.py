@@ -386,8 +386,16 @@ def test_multisource(mapi):
     # local shadowing of api-3
     create(mapi.uri, mapi.namespace, 'api-3')
     create(mapi.uri, 'ns-test-mapi-2', 'api-3')
-    with pytest.raises(ValueError):
-        mapi.delete('api-3')
+    # delete local version
+    mapi.delete('api-3')
+    # remote version still exists
+    assert mapi.exists('api-3')
+    cat = mapi.catalog()
+    assert cat == {
+        ('db://localhost:5433/postgres', 'ns-test-mapi-2'): [
+            ('api-2', 'primary'),
+            ('api-3', 'primary')]
+    }
 
 
 @pytest.mark.skipif(

@@ -452,14 +452,15 @@ class dbtimeseries:
         This is an irreversible operation.
 
         """
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return self.tsh.delete(cn, name)
+
         # give a chance to say *no*
         self.othersources.forbidden(
             name,
             'not allowed to delete to a secondary source'
         )
-
-        return self.tsh.delete(self.engine, name)
-
 
     def strip(self, name: str, insertion_date: datetime) -> NONETYPE:
         """Remove revisions after a specific insertion date.
