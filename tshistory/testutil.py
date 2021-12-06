@@ -1,9 +1,12 @@
+import io
 from datetime import datetime
 from contextlib import contextmanager
 from functools import partial
 
 import pandas as pd
 import responses
+import pytest
+import webtest
 
 from tshistory.util import inject_in_index
 
@@ -253,3 +256,80 @@ def with_tester(uri, resp, wsgitester):
         responses.PUT, uri + '/group/boundformula',
         callback=write_request_bridge(wsgitester.put)
     )
+
+
+class WebTester(webtest.TestApp):
+
+    def _check_status(self, status, res):
+        try:
+            super(WebTester, self)._check_status(status, res)
+        except:
+            print(res.errors)
+            # raise <- default behaviour on 4xx is silly
+
+    def _gen_request(self, method, url, params,
+                     headers=None,
+                     extra_environ=None,
+                     status=None,
+                     upload_files=None,
+                     expect_errors=False,
+                     content_type=None):
+        """
+        Do a generic request.
+        PATCH: *bypass* all transformation as params comes
+               straight from a prepared (python-requests) request.
+        """
+        environ = self._make_environ(extra_environ)
+
+        environ['REQUEST_METHOD'] = str(method)
+        url = str(url)
+        url = self._remove_fragment(url)
+        req = self.RequestClass.blank(url, environ)
+
+        if isinstance(params, str):
+            params = params.encode('utf-8')
+        req.environ['wsgi.input'] = io.BytesIO(params)
+        req.content_length = len(params)
+        if headers:
+            req.headers.update(headers)
+        return self.do_request(req, status=status,
+                               expect_errors=expect_errors)
+
+
+def make_tsx(uri, initschemafunc, tsioclass, httpclass, clientclass=None):
+    from tshistory import api as tsh_api
+
+    @pytest.fixture(params=['pg', 'http'])
+    def tsx(request, engine):
+        initschemafunc(engine)
+
+        tsa = tsh_api.timeseries(
+            str(engine.url),
+            handler=tsioclass
+        )
+
+        if request.param == 'pg':
+            # direct mode
+            yield tsa
+
+        else:
+            from tshistory_rest import app
+            wsgitester = WebTester(
+                app.make_app(
+                    tsa,
+                    httpclass
+                )
+            )
+            with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
+                with_tester(uri, resp, wsgitester)
+                # will query the app created above (which in turn uses
+                # the direct mode tsa)
+                http_tsa = tsh_api.timeseries(
+                    uri,
+                    handler=tsioclass,
+                    clientclass=clientclass
+                )
+
+                yield http_tsa
+
+    return tsx

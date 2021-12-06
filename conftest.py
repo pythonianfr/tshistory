@@ -1,11 +1,9 @@
-import io
 from pathlib import Path
 
 from sqlalchemy import create_engine
 import pandas as pd
 
 import pytest
-import webtest
 import responses
 from pytest_sa_pg import db as dbsetup
 from click.testing import CliRunner
@@ -17,7 +15,12 @@ from tshistory import (
     tsio
 )
 from tshistory.snapshot import Snapshot
-from tshistory.testutil import with_tester
+from tshistory.testutil import (
+    make_tsx,
+    with_tester,
+    WebTester
+)
+
 
 try:
     from tshistory_formula import schema as fschema
@@ -111,79 +114,22 @@ def cli():
     return runner
 
 
-# http api
+# federation api (direct + http)
 
-class WebTester(webtest.TestApp):
-
-    def _check_status(self, status, res):
-        try:
-            super(WebTester, self)._check_status(status, res)
-        except:
-            print(res.errors)
-            # raise <- default behaviour on 4xx is silly
-
-    def _gen_request(self, method, url, params,
-                     headers=None,
-                     extra_environ=None,
-                     status=None,
-                     upload_files=None,
-                     expect_errors=False,
-                     content_type=None):
-        """
-        Do a generic request.
-        PATCH: *bypass* all transformation as params comes
-               straight from a prepared (python-requests) request.
-        """
-        environ = self._make_environ(extra_environ)
-
-        environ['REQUEST_METHOD'] = str(method)
-        url = str(url)
-        url = self._remove_fragment(url)
-        req = self.RequestClass.blank(url, environ)
-
-        if isinstance(params, str):
-            params = params.encode('utf-8')
-        req.environ['wsgi.input'] = io.BytesIO(params)
-        req.content_length = len(params)
-        if headers:
-            req.headers.update(headers)
-        return self.do_request(req, status=status,
-                               expect_errors=expect_errors)
-
-
-URI = 'http://test-uri'
-
-
-@pytest.fixture(params=['pg', 'http'])
-def tsx(request, engine):
+def _initschema(engine):
     schema.tsschema().create(engine)
     fschema.formula_schema().create(engine)
 
-    from tshistory_formula import tsio
+from tshistory_formula.http import formula_httpapi, FormulaClient
+from tshistory_formula.tsio import timeseries as formula_timeseries
 
-    if request.param == 'pg':
-
-        yield tsh_api.timeseries(
-            str(engine.url),
-            handler=tsio.timeseries
-        )
-
-    else:
-
-        from tshistory_rest import app
-        from tshistory_formula.http import formula_httpapi
-        wsgitester = WebTester(
-            app.make_app(
-                tsh_api.timeseries(
-                    str(engine.url),
-                    handler=tsio.timeseries
-                ),
-                formula_httpapi
-            )
-        )
-        with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
-            with_tester(URI, resp, wsgitester)
-            yield tsh_api.timeseries(URI, 'tsh', handler=tsio.timeseries)
+tsx = make_tsx(
+    'http://test-uri',
+    _initschema,
+    formula_timeseries,
+    formula_httpapi,
+    FormulaClient
+)
 
 
 # formula test
@@ -193,7 +139,6 @@ URI2 = 'http://test-uri2'
 def mapihttp(engine):
     from tshistory_rest import app
     from tshistory_formula import tsio
-    from tshistory_formula.http import formula_httpapi
     schema.tsschema('ns-test-local').create(engine)
     fschema.formula_schema('ns-test-local').create(engine)
     schema.tsschema('ns-test-remote').create(engine)
@@ -204,7 +149,7 @@ def mapihttp(engine):
             tsh_api.timeseries(
                 DBURI,
                 namespace='ns-test-remote',
-                handler=tsio.timeseries
+                handler=formula_timeseries
             ),
             formula_httpapi
         )
@@ -215,7 +160,7 @@ def mapihttp(engine):
         yield tsh_api.timeseries(
             DBURI,
             namespace='ns-test-local',
-            handler=tsio.timeseries,
+            handler=formula_timeseries,
             sources=[
                 (URI2, 'ns-test-remote'),
                 ('http://unavailable', 'ns-test-unavailable-remote')
