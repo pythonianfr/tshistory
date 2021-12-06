@@ -1,6 +1,5 @@
 import io
 from pathlib import Path
-from functools import partial
 
 from sqlalchemy import create_engine
 import pandas as pd
@@ -18,6 +17,7 @@ from tshistory import (
     tsio
 )
 from tshistory.snapshot import Snapshot
+from tshistory.testutil import with_tester
 
 try:
     from tshistory_formula import schema as fschema
@@ -151,154 +151,7 @@ class WebTester(webtest.TestApp):
                                expect_errors=expect_errors)
 
 
-def read_request_bridge(client, request):
-    resp = client.get(request.url,
-                      params=request.body,
-                      headers=request.headers)
-    return (resp.status_code, resp.headers, resp.body)
-
-
-def write_request_bridge(method):
-    def bridge(request):
-        resp = method(request.url,
-                      params=request.body,
-                      headers=request.headers)
-        return (resp.status_code, resp.headers, resp.body)
-    return bridge
-
-
 URI = 'http://test-uri'
-
-def with_tester(uri, resp, wsgitester):
-    resp.add_callback(
-        responses.GET, uri + '/series/state',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.PUT, uri + '/series/state',
-        callback=write_request_bridge(wsgitester.put)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/series/supervision',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.DELETE, uri + '/series/state',
-        callback=write_request_bridge(wsgitester.delete)
-    )
-
-    resp.add_callback(
-        responses.PUT, uri + '/series/strip',
-        callback=write_request_bridge(wsgitester.put)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/series/insertion_dates',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/series/staircase',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/series/history',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/series/catalog',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.PATCH, uri + '/series/state',
-        callback=write_request_bridge(wsgitester.patch)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/series/metadata',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.PUT, uri + '/series/metadata',
-        callback=write_request_bridge(wsgitester.put)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/series/log',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/series/formula',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.PATCH, uri + '/series/formula',
-        callback=write_request_bridge(wsgitester.patch)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/series/formula_components',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/group/state',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.PATCH, uri + '/group/state',
-        callback=write_request_bridge(wsgitester.patch)
-    )
-
-    resp.add_callback(
-        responses.DELETE, uri + '/group/state',
-        callback=write_request_bridge(wsgitester.delete)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/group/metadata',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.PUT, uri + '/group/metadata',
-        callback=write_request_bridge(wsgitester.put)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/group/catalog',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/group/formula',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.PUT, uri + '/group/formula',
-        callback=write_request_bridge(wsgitester.put)
-    )
-
-    resp.add_callback(
-        responses.GET, uri + '/group/boundformula',
-        callback=partial(read_request_bridge, wsgitester)
-    )
-
-    resp.add_callback(
-        responses.PUT, uri + '/group/boundformula',
-        callback=write_request_bridge(wsgitester.put)
-    )
 
 
 @pytest.fixture(params=['pg', 'http'])
