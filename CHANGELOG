@@ -1,0 +1,183 @@
+# Changelog
+
+## [Unreleased]
+
+## [0.13.0]
+### Added
+- api: allow to specify a custom remote client class
+- api: expose .strip
+- api/history: fix empty history
+- api: group support
+
+### Fixed
+- odd bug in .strip
+
+## [0.12.3]
+### Fixed
+- int32 series are now coerced as float64 series
+- more safety belts for odd indexes
+
+## [0.12.2]
+### Changed
+- tsio/get -> always return a series even if empty
+- api/update/replace: allow local update if series eists locally and remotely
+
+## [0.12.1]
+### Fixed
+- better errors messages on tzaware vs tznaive issues
+- better handling of tzaware vs tznaive series
+
+## [0.12.0] 2020-07-02
+### Added
+- a repr for the api object
+- docstrings for all api methods
+- pandas 1.0 support
+- api: the .log method
+- a very fast implementation of `patch` and `patchmany`
+- a faster `diff`
+- a sphinx based documentation (unpublished)
+- pack/unpack-many-series utilities (fast serializers)
+
+### Fixed
+- api/multi-source: make sure an unavailalble source does not break a
+  call
+- crash on staircase with only from_value_date on tzaware series
+- api: .get now passes _keep_nans
+
+## [0.11.0] 2020-02-04
+### Added
+- initial sphinx documentation
+- high-level fast `pack/unpack_series` helpers
+- multisources: full formula support
+- multisources: made extensible for plugins (e.g. supervision or
+  formulas)
+
+### Changed
+- the api + multisource has been deeply transformed, with an object
+  responsible of the local source and another to dispatch queries to
+  the "other" sources
+
+### Fixed
+- api: .history now passes _keep_nans
+
+## [0.10.0] 2019-11-20
+### Changed
+- the api is starting to be able to work transparently with pg or http
+  uris (using tshistory_client in the later case)
+- it is deemed complete
+- documentation switches to the new high-level api
+
+## [0.9.0] 2019-10-28
+### Added
+- a .replace method (.update does not cover everything)
+- first draft of a high-level api (in api.py) that is independant of
+  the transport and storage
+- add an early "multi-sources" capability in the api implementation
+
+### Changed
+- .insert becomes .update
+
+## [0.8.0] 2019-09-04
+### Added
+- new efficient low-level primitives to serialize series and histories
+
+### Changed
+- .history drops the items showing no difference
+- .insert now has an `insertion_date` parameter (was previously
+  `_insertion_date`)
+- the `historycache` .get operation gets some better performance
+
+### Fixed
+- packaging (sql files where not shipped)
+
+### Dropped
+- the `changeset` table allowing to group updates to different series
+  into one thing -> a great simplification
+- the internal cache system (in-memory, quite useless in practice)
+
+## [0.7.0] 2019-07-16
+### Fixed
+- .get_delta vs nans
+
+### Added
+- a decorator to ensure a transaction scope on api methods
+- a .rename method
+- a garbage collector to remove unused chunks after a .strip
+- a `historycache` object to speed up the staircase operation
+
+### Changed
+- dropping sqlalchemy core api, using plain sql instead
+- general api overhaul
+- simplification of the schema operations handling
+- .get_delta becomes .staircase
+
+## [0.6.0] 2019-01-11
+### Fixed
+- a few crashers
+
+### Added
+- .type method
+- .insertion_dates accepts fromdate/todate
+
+## [0.5.0] 2018-11-16
+### Added
+- a `shell` command
+- a basic configuration file to ease command line operations
+
+### Changed
+- internal metadata is now immutable
+
+### Fixed
+- various aspects of `nan` points handling
+
+## [0.4.0] 2018-10-05
+### Fixed
+- a deadlock at series creation time
+- crashes on .delta and .history
+
+### Changed
+- storage: switch chunks storage from json to c-array serialization
+
+## [0.3.0] 2018-07-02
+### Added
+- .delete: to delete a series
+- .metadata: critical internal metadata to describe a series
+- .get: _keep_nans parameter to keep the nans (representing point
+  deletions)
+- .history: a `delta` mode
+- .update_metadata: to update a series metadata
+
+### Changed
+- rewritten the storage, using trees of chunks (json) -> much more
+  performant, speed and space wise
+- .insert: `insertion_date` must be tz-aware
+- storage implementation extracted from the `tsio` module
+- .history: better performance
+
+### Fixed
+- an involuntary cartesian product in some queries
+- series names > 63 caracters are now accepted
+
+### Removed
+- removed the `newchangeset` and `get_group` api points
+- removed the multi-index support
+- py2 compat
+
+## [0.2.0] 2018-03-09
+### Fixed
+- incompatible indexes handling
+
+### Added
+- basic documentation
+- .get: from_value_date/to_value_date parameters
+
+## [0.1.1] 2017-11-17
+### Fixed
+- .get + revision_date
+- .get_history returning garbage
+
+## [0.1.0] 2017-11-09
+### Added
+- basic storage system for versioned time series (accepting multi
+  indexes)
+- basic timeseries API (.insert, .get, .get_history, .log, .strip)
