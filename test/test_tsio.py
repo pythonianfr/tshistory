@@ -445,7 +445,7 @@ def test_update_with_nothing(engine, tsh):
     assert len(diff) == 3
 
     with pytest.raises(AssertionError):
-        diff = tsh.update(engine, pd.Series(), 'ts-up-nothing', 'babar')
+        diff = tsh.update(engine, pd.Series(dtype='object'), 'ts-up-nothing', 'babar')
 
     diff = tsh.update(engine, empty_series(False), 'ts-up-nothing', 'babar')
     assert len(diff) == 0
