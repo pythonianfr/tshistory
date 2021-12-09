@@ -128,7 +128,7 @@ class NoRaiseWebTester(webtest.TestApp):
 
 
 @pytest.fixture(scope='session')
-def client(engine):
+def http(engine):
     schema.tsschema().create(engine)
     schema.tsschema(ns='other').create(engine)
 

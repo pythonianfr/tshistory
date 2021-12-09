@@ -19,9 +19,9 @@ DBURI = 'postgresql://localhost:5433/postgres'
 
 
 
-def test_error(client):
+def test_error(http):
     series_in = genserie(pd.Timestamp('2018-1-1'), 'H', 3)
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test-error',
         'series': util.tojson(series_in),
         'author': 'Babar',
@@ -33,7 +33,7 @@ def test_error(client):
         ['a', 'b', 'c'],
         pd.date_range(pd.Timestamp('2020-1-1'), freq='D', periods=3)
     )
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test-error',
         'series': util.tojson(v2),
         'author': 'Babar',
@@ -44,44 +44,44 @@ def test_error(client):
         b'Type error when inserting test-error, new type is object, '
         b'type in base is float64'
     )
-    res = client.delete('/series/state', params={
+    res = http.delete('/series/state', params={
         'name': 'test-error'
     })
 
     # no input validation error (nr) on the delta parameter
-    res = client.get('/series/staircase', params={
+    res = http.get('/series/staircase', params={
         'name': 'test-error',
         'delta': str(timedelta(days=2))
     })
     assert res.json == {'message': '`test-error` does not exists'}
 
 
-def test_no_series(client):
-    res = client.get('/series/state?name=no-such-series')
+def test_no_series(http):
+    res = http.get('/series/state?name=no-such-series')
     assert res.status_code == 404
     assert res.json == {
         'message': '`no-such-series` does not exists'
     }
 
-    res = client.get('/series/metadata?name=no-such-series')
+    res = http.get('/series/metadata?name=no-such-series')
     assert res.status_code == 404
     assert res.json == {
         'message': '`no-such-series` does not exists'
     }
 
-    res = client.get('/series/history?name=no-such-series')
+    res = http.get('/series/history?name=no-such-series')
     assert res.status_code == 404
     assert res.json == {
         'message': '`no-such-series` does not exists'
     }
 
-    res = client.get('/series/insertion_dates?name=no-such-series')
+    res = http.get('/series/insertion_dates?name=no-such-series')
     assert res.status_code == 404
     assert res.json == {
         'message': '`no-such-series` does not exists'
     }
 
-    res = client.get('/series/staircase', params={
+    res = http.get('/series/staircase', params={
         'name': 'no-such-series',
         'delta': pd.Timedelta(hours=3)
     })
@@ -92,9 +92,9 @@ def test_no_series(client):
     }
 
 
-def test_naive(client):
+def test_naive(http):
     series_in = genserie(pd.Timestamp('2018-1-1'), 'H', 3)
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test-naive',
         'series': util.tojson(series_in),
         'author': 'Babar',
@@ -109,7 +109,7 @@ def test_naive(client):
         b'"2018-01-01T02:00:00.000Z":2.0}'
     )
 
-    res = client.get('/series/metadata?name=test-naive&all=1')
+    res = http.get('/series/metadata?name=test-naive&all=1')
     meta = res.json
     meta.pop('supervision_status', None)
     assert meta == {
@@ -120,7 +120,7 @@ def test_naive(client):
         'value_type': 'float64'
     }
 
-    res = client.get('/series/state?name=test-naive')
+    res = http.get('/series/state?name=test-naive')
     series = util.fromjson(res.body, 'test', meta['tzaware'])
     assert_df("""
 2018-01-01 00:00:00    0.0
@@ -129,10 +129,10 @@ def test_naive(client):
 """, series)
 
 
-def test_base(client):
+def test_base(http):
     # insert
     series_in = genserie(utcdt(2018, 1, 1), 'H', 3)
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test',
         'series': util.tojson(series_in),
         'author': 'Babar',
@@ -147,7 +147,7 @@ def test_base(client):
         b'"2018-01-01T02:00:00.000Z":2.0}'
     )
 
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test',
         'series': util.tojson(series_in),
         'author': 'Babar',
@@ -158,7 +158,7 @@ def test_base(client):
     assert res.body == b'{}'
 
     # catalog
-    res = client.get('/series/catalog')
+    res = http.get('/series/catalog')
     assert res.status_code == 200
     assert res.json == {
         'db://localhost:5433/postgres!tsh': [
@@ -168,11 +168,11 @@ def test_base(client):
     }
 
     # metadata
-    res = client.get('/series/metadata?name=test')
+    res = http.get('/series/metadata?name=test')
     meta = res.json
     assert meta == {}
 
-    res = client.get('/series/metadata?name=test&all=1')
+    res = http.get('/series/metadata?name=test&all=1')
     meta = res.json
     meta.pop('supervision_status', None)
     assert meta == {
@@ -183,7 +183,7 @@ def test_base(client):
         'value_type': 'float64'
     }
 
-    res = client.put('/series/metadata', params={
+    res = http.put('/series/metadata', params={
         'metadata': json.dumps({
             'freq': 'D',
             'description': 'banana spot price'
@@ -191,7 +191,7 @@ def test_base(client):
         'name': 'test'
     })
     assert res.status_code == 200
-    res = client.get('/series/metadata?name=test')
+    res = http.get('/series/metadata?name=test')
     meta2 = res.json
     assert meta2 == {
         'freq': 'D',
@@ -199,17 +199,17 @@ def test_base(client):
     }
 
     # metadata: delete by uploading an empty dict
-    res = client.put('/series/metadata', params={
+    res = http.put('/series/metadata', params={
         'metadata': json.dumps({}),
         'name': 'test'
     })
     assert res.status_code == 200
-    res = client.get('/series/metadata?name=test')
+    res = http.get('/series/metadata?name=test')
     meta2 = res.json
     assert meta2 == {}
 
     # get
-    res = client.get('/series/state?name=test')
+    res = http.get('/series/state?name=test')
     series = util.fromjson(res.body, 'test', meta['tzaware'])
     assert_df("""
 2018-01-01 00:00:00+00:00    0.0
@@ -220,7 +220,7 @@ def test_base(client):
 
     # reinsert
     series_in = genserie(utcdt(2018, 1, 1, 3), 'H', 1, [3])
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test',
         'series': util.tojson(series_in),
         'author': 'Babar',
@@ -230,7 +230,7 @@ def test_base(client):
 
     assert res.status_code == 200
 
-    res = client.get('/series/state?name=test')
+    res = http.get('/series/state?name=test')
     series = util.fromjson(res.body, 'test', meta['tzaware'])
     assert_df("""
 2018-01-01 00:00:00+00:00    0.0
@@ -240,7 +240,7 @@ def test_base(client):
 """, series)
 
     # checkout a past state
-    res = client.get('/series/state', params={
+    res = http.get('/series/state', params={
         'name': 'test',
         'insertion_date': utcdt(2018, 1, 1, 10)
     })
@@ -252,14 +252,14 @@ def test_base(client):
 """, series)
 
     # checkout too far in the past
-    res = client.get('/series/state', params={
+    res = http.get('/series/state', params={
         'name': 'test',
         'insertion_date': utcdt(2018, 1, 1, 0)
     })
     assert res.json == {}
 
     # history
-    res = client.get('/series/history?name=test')
+    res = http.get('/series/history?name=test')
     df = pd.read_json(res.body)
 
     # we real client would need to handle timestamp
@@ -272,7 +272,7 @@ def test_base(client):
 2018-01-01 03:00:00                  NaN                    3
 """, df)
 
-    res = client.get('/series/history?name=test&format=tshpack')
+    res = http.get('/series/history?name=test&format=tshpack')
     meta, hist = util.unpack_history(res.body)
     assert_hist("""
 insertion_date             value_date               
@@ -286,7 +286,7 @@ insertion_date             value_date
 """, hist)
 
     # diff mode
-    res = client.get('/series/history', params={
+    res = http.get('/series/history', params={
         'name': 'test',
         'diffmode': True
     })
@@ -301,7 +301,7 @@ insertion_date             value_date
 """, df)
 
     # empty range
-    res = client.get('/series/history', params={
+    res = http.get('/series/history', params={
         'name': 'test',
         'from_insertion_date': utcdt(2018, 1, 1, 11),
         'to_insertion_date': utcdt(2018, 1, 1, 12),
@@ -310,7 +310,7 @@ insertion_date             value_date
     assert len(df) == 0
 
     # insertion dates subset
-    res = client.get('/series/history', params={
+    res = http.get('/series/history', params={
         'name': 'test',
         'from_insertion_date': utcdt(2018, 1, 1, 10),
         'to_insertion_date': utcdt(2018, 1, 1, 12),
@@ -325,7 +325,7 @@ insertion_date             value_date
 """, df)
 
     # value dates subset
-    res = client.get('/series/history', params={
+    res = http.get('/series/history', params={
         'name': 'test',
         'from_value_date': utcdt(2018, 1, 1, 2),
         'to_value_date': utcdt(2018, 1, 1, 3),
@@ -339,7 +339,7 @@ insertion_date             value_date
 """, df)
 
     # state/get from from/to value date restriction
-    res = client.get('/series/state', params={
+    res = http.get('/series/state', params={
         'name': 'test',
         'from_value_date': utcdt(2018, 1, 1, 1),
         'to_value_date': utcdt(2018, 1, 1, 2)
@@ -350,7 +350,7 @@ insertion_date             value_date
     }
 
     series_in = genserie(utcdt(2019, 1, 1), 'H', 3)
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test',
         'series': util.tojson(series_in),
         'author': 'Babar',
@@ -360,7 +360,7 @@ insertion_date             value_date
     })
 
     assert res.status_code == 200
-    res = client.get('/series/state', params={
+    res = http.get('/series/state', params={
         'name': 'test'
     })
     assert res.json == {
@@ -369,7 +369,7 @@ insertion_date             value_date
         '2019-01-01T02:00:00.000Z': 2.0
     }
 
-    res = client.get('/series/metadata', params={
+    res = http.get('/series/metadata', params={
         'name': 'test',
         'type': 'interval'
     })
@@ -379,13 +379,13 @@ insertion_date             value_date
         '2019-01-01T02:00:00+00:00'
     ]
 
-    res = client.get('/series/metadata', params={
+    res = http.get('/series/metadata', params={
         'name': 'test',
         'type': 'type'
     })
     assert res.json == 'primary'
 
-    res = client.get('/series/insertion_dates', params={
+    res = http.get('/series/insertion_dates', params={
         'name': 'test'
     })
     idates = [
@@ -399,9 +399,9 @@ insertion_date             value_date
     ]
 
 
-def test_delete(client):
+def test_delete(http):
     series_in = genserie(utcdt(2018, 1, 1), 'H', 3)
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test',
         'series': util.tojson(series_in),
         'author': 'Babar',
@@ -409,38 +409,38 @@ def test_delete(client):
         'tzaware': util.tzaware_serie(series_in)
     })
 
-    res = client.delete('/series/state', params={
+    res = http.delete('/series/state', params={
         'name': 'no-such-series'
     })
     assert res.status_code == 404
-    res = client.delete('/series/state', params={
+    res = http.delete('/series/state', params={
         'name': 'test'
     })
     assert res.status_code == 204
-    res = client.get('/series/catalog')
+    res = http.get('/series/catalog')
     assert 'test' not in res.json
 
 
-def test_rename(client):
+def test_rename(http):
     series_in = genserie(utcdt(2018, 1, 1), 'H', 3)
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test',
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
         'tzaware': util.tzaware_serie(series_in)
     })
-    res = client.put('/series/state', params={
+    res = http.put('/series/state', params={
         'name': 'no-such-series',
         'newname': 'no-better'
     })
     assert res.status_code == 404
-    res = client.put('/series/state', params={
+    res = http.put('/series/state', params={
         'name': 'test',
         'newname': 'test2'
     })
     assert res.status_code == 204
-    res = client.get('/series/catalog')
+    res = http.get('/series/catalog')
     assert res.json == {
         'db://localhost:5433/postgres!tsh': [
             ['test-naive', 'primary'],
@@ -450,14 +450,14 @@ def test_rename(client):
 
     assert 'test' not in res.json
 
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test3',
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
         'tzaware': util.tzaware_serie(series_in)
     })
-    res = client.put('/series/state', params={
+    res = http.put('/series/state', params={
         'name': 'test2',
         'newname': 'test3'
     })
@@ -468,9 +468,9 @@ def test_rename(client):
 
 
 
-def test_strip(client):
+def test_strip(http):
     series_in = genserie(utcdt(2021, 1, 1), 'H', 3)
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'stripme',
         'series': util.tojson(series_in),
         'author': 'Babar',
@@ -478,7 +478,7 @@ def test_strip(client):
         'tzaware': util.tzaware_serie(series_in)
     })
     series_in = genserie(utcdt(2021, 1, 2), 'H', 3)
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'stripme',
         'series': util.tojson(series_in),
         'author': 'Babar',
@@ -486,26 +486,26 @@ def test_strip(client):
         'tzaware': util.tzaware_serie(series_in)
     })
 
-    res = client.put('/series/strip', params={
+    res = http.put('/series/strip', params={
         'name': 'stripme',
         'insertion_date': utcdt(2021, 1, 2)
     })
     assert res.status_code == 204
 
-    res = client.get('/series/insertion_dates', params={
+    res = http.get('/series/insertion_dates', params={
         'name': 'stripme'
     })
     idates = json.loads(res.text)['insertion_dates']
     assert len(idates) == 1
 
 
-def test_staircase(client):
+def test_staircase(http):
     # each days we insert 7 data points
     for idate in pd.date_range(start=utcdt(2015, 1, 1),
                                end=utcdt(2015, 1, 4),
                                freq='D'):
         series = genserie(start=idate, freq='H', repeat=7)
-        client.patch('/series/state', params={
+        http.patch('/series/state', params={
             'name': 'staircase',
             'series': util.tojson(series),
             'author': 'Babar',
@@ -513,7 +513,7 @@ def test_staircase(client):
             'tzaware': util.tzaware_serie(series)
         })
 
-    res = client.get('/series/staircase', params={
+    res = http.get('/series/staircase', params={
         'name': 'staircase',
         'delta': pd.Timedelta(hours=3),
         'from_value_date': utcdt(2015, 1, 1, 4),
@@ -530,7 +530,7 @@ def test_staircase(client):
 2015-01-02 05:00:00+00:00    5.0
 """, series)
 
-    res = client.get('/series/staircase', params={
+    res = http.get('/series/staircase', params={
         'name': 'staircase',
         'delta': pd.Timedelta(hours=3),
         'from_value_date': utcdt(2015, 1, 1, 4),
@@ -553,9 +553,9 @@ def test_staircase(client):
 """, series)
 
 
-def test_get_fast_path(client):
+def test_get_fast_path(http):
     series_in = genserie(utcdt(2018, 1, 1), 'H', 3)
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test_fast',
         'series': util.tojson(series_in),
         'author': 'Babar',
@@ -565,7 +565,7 @@ def test_get_fast_path(client):
 
     assert res.status_code == 201
 
-    out = client.get('/series/state', params={
+    out = http.get('/series/state', params={
         'name': 'test_fast',
         'format': 'tshpack'
     })
@@ -591,9 +591,9 @@ def test_get_fast_path(client):
     }
 
 
-def test_multisource(client, engine):
+def test_multisource(http, engine):
     series = genserie(utcdt(2020, 1, 1), 'D', 3)
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test-multi',
         'series': util.tojson(series),
         'author': 'Babar',
@@ -611,7 +611,7 @@ def test_multisource(client, engine):
         'Babar'
     )
 
-    out = client.get('/series/state', params={
+    out = http.get('/series/state', params={
         'name': 'test-multi',
     })
     assert out.json == {
@@ -620,7 +620,7 @@ def test_multisource(client, engine):
         '2020-01-03T00:00:00.000Z': 2.0
     }
 
-    out = client.get('/series/state', params={
+    out = http.get('/series/state', params={
         'name': 'test-other-source',
     })
     assert out.json == {
@@ -629,7 +629,7 @@ def test_multisource(client, engine):
         '2020-01-03T00:00:00.000Z': 2.0
     }
 
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test-multi',
         'series': util.tojson(series),
         'author': 'Babar',
@@ -638,7 +638,7 @@ def test_multisource(client, engine):
     })
     assert res.status_code == 200
 
-    res = client.patch('/series/state', params={
+    res = http.patch('/series/state', params={
         'name': 'test-other-source',
         'series': util.tojson(series),
         'author': 'Babar',
@@ -648,7 +648,7 @@ def test_multisource(client, engine):
     assert res.status_code == 405
     assert res.json == {'message': 'not allowed to update to a secondary source'}
 
-    res = client.get('/series/metadata?name=test-other-source', params={
+    res = http.get('/series/metadata?name=test-other-source', params={
         'all': True
     })
     meta = res.json
@@ -660,7 +660,7 @@ def test_multisource(client, engine):
         'value_dtype': '<f8'
     }
 
-    res = client.put('/series/metadata', params={
+    res = http.put('/series/metadata', params={
         'metadata': json.dumps({
             'description': 'banana spot price'
         }),
@@ -671,7 +671,7 @@ def test_multisource(client, engine):
         'message': 'not allowed to update metadata to a secondary source'
     }
 
-    res = client.delete('/series/state', params={
+    res = http.delete('/series/state', params={
         'name': 'test-other-source'
     })
     assert res.status_code == 405
@@ -679,7 +679,7 @@ def test_multisource(client, engine):
         'message': 'not allowed to delete to a secondary source'
     }
 
-    res = client.delete('/series/state', params={
+    res = http.delete('/series/state', params={
         'name': 'test-other-source'
     })
     assert res.status_code == 405
@@ -687,7 +687,7 @@ def test_multisource(client, engine):
         'message': 'not allowed to delete to a secondary source'
     }
 
-    res = client.put('/series/state', params={
+    res = http.put('/series/state', params={
         'name': 'test-other-source',
         'newname': 'test2-other-source'
     })
@@ -697,7 +697,7 @@ def test_multisource(client, engine):
     }
 
     # catalog
-    res = client.get('/series/catalog')
+    res = http.get('/series/catalog')
     assert res.status_code == 200
     assert res.json == {
         'db://localhost:5433/postgres!other': [
@@ -713,7 +713,7 @@ def test_multisource(client, engine):
             ['test-multi', 'primary']
         ]
     }
-    res = client.get('/series/catalog', params={
+    res = http.get('/series/catalog', params={
         'allsources': False
     })
     assert res.status_code == 200
@@ -721,7 +721,7 @@ def test_multisource(client, engine):
     assert 'db://localhost:5433/postgres!other' not in res.json
 
 
-def test_group(client):
+def test_group(http):
     df = gengroup(
         n_scenarios=3,
         from_date=dt(2021, 1, 1),
@@ -733,7 +733,7 @@ def test_group(client):
     df.columns = ['a', 'b', 'c']
 
     bgroup = util.pack_group(df)
-    res = client.patch('/group/state', {
+    res = http.patch('/group/state', {
         'name': 'test_group',
         'author': 'Babar',
         'format': 'tshpack',
@@ -742,38 +742,38 @@ def test_group(client):
     })
     assert res.status_code == 201
 
-    res = client.get('/group/state', {'name': 'test_group'})
+    res = http.get('/group/state', {'name': 'test_group'})
     df2 = util.unpack_group(res.body)
     assert df.equals(df2)
 
-    res = client.get('/group/catalog')
+    res = http.get('/group/catalog')
     assert res.json == {
         'db://localhost:5433/postgres!tsh': [['test_group', 'primary']]
     }
 
-    res = client.get('/group/metadata', {'name': 'test_group'})
+    res = http.get('/group/metadata', {'name': 'test_group'})
     assert res.json == {}
 
-    res = client.put('/group/metadata', {
+    res = http.put('/group/metadata', {
         'name': 'test_group',
         'metadata': json.dumps({'foo': 'bar'})
     })
     assert res.status_code == 200
 
-    res = client.get('/group/metadata', {'name': 'test_group'})
+    res = http.get('/group/metadata', {'name': 'test_group'})
     assert res.json == {'foo': 'bar'}
 
-    res = client.delete('/group/state', {'name': 'test_group'})
+    res = http.delete('/group/state', {'name': 'test_group'})
     assert res.status_code == 204
 
-    res = client.get('/group/catalog')
+    res = http.get('/group/catalog')
     assert res.json == {}
 
 
-def test_log(client):
+def test_log(http):
     series = genserie(utcdt(2020, 1, 1), 'D', 5)
     for d in range(5):
-        res = client.patch('/series/state', params={
+        res = http.patch('/series/state', params={
             'name': 'test-log',
             'series': util.tojson(series),
             'author': 'Babar',
@@ -785,7 +785,7 @@ def test_log(client):
         series[d] = 42
 
 
-    out = client.get('/series/state', params={
+    out = http.get('/series/state', params={
         'name': 'test-log',
         'insertion_date': utcdt(2020, 1, 2)
         }
@@ -798,7 +798,7 @@ def test_log(client):
         '2020-01-05T00:00:00.000Z': 4.0
     }
 
-    res = client.get('/series/log', params={
+    res = http.get('/series/log', params={
         'name': 'test-log'
     })
 
@@ -825,7 +825,7 @@ def test_log(client):
          'rev': 5}
     ]
 
-    res = client.get('/series/log', params={
+    res = http.get('/series/log', params={
         'name': 'test-log',
         'limit': 2
     })
@@ -840,7 +840,7 @@ def test_log(client):
          'rev': 5}
     ]
 
-    res = client.get('/series/log', params={
+    res = http.get('/series/log', params={
         'name': 'test-log',
         'fromdate': utcdt(2020, 1, 2).isoformat(),
         'todate': utcdt(2020, 1, 3).isoformat()
