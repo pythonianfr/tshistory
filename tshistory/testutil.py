@@ -203,6 +203,11 @@ def with_tester(uri, resp, wsgitester):
     )
 
     resp.add_callback(
+        responses.GET, uri + '/series/xl',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
         responses.GET, uri + '/series/formula_components',
         callback=partial(read_request_bridge, wsgitester)
     )
