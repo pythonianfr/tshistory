@@ -8,6 +8,7 @@ import responses
 import pytest
 import webtest
 
+from tshistory.http import app
 from tshistory.util import inject_in_index
 
 
@@ -318,7 +319,6 @@ def make_tsx(uri, initschemafunc, tsioclass, httpclass, clientclass=None):
             yield tsa
 
         else:
-            from tshistory_rest import app
             wsgitester = WebTester(
                 app.make_app(
                     tsa,

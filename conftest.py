@@ -2,6 +2,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine
 import pandas as pd
+import webtest
 
 import pytest
 import responses
@@ -14,6 +15,7 @@ from tshistory import (
     schema,
     tsio
 )
+from tshistory.http import app
 from tshistory.snapshot import Snapshot
 from tshistory.testutil import (
     make_tsx,
@@ -113,12 +115,40 @@ def cli():
         return CliRunner().invoke(command.tsh, args)
     return runner
 
+# http
+
+class NoRaiseWebTester(webtest.TestApp):
+
+    def _check_status(self, status, res):
+        try:
+            super()._check_status(status, res)
+        except:
+            print('ERRORS', res.errors)
+            # raise <- default behaviour on 4xx is silly
+
+
+@pytest.fixture(scope='session')
+def client(engine):
+    schema.tsschema().create(engine)
+    schema.tsschema(ns='other').create(engine)
+
+    wsgi = app.make_app(
+        tsh_api.timeseries(
+            str(engine.url),
+            handler=tsio.timeseries,
+            namespace='tsh',
+            sources=[(DBURI, 'other')]
+        )
+    )
+    yield NoRaiseWebTester(wsgi)
+
 
 # federation api (direct + http)
 
 def _initschema(engine):
     schema.tsschema().create(engine)
     fschema.formula_schema().create(engine)
+
 
 from tshistory_formula.http import formula_httpapi, FormulaClient
 from tshistory_formula.tsio import timeseries as formula_timeseries
@@ -137,7 +167,6 @@ URI2 = 'http://test-uri2'
 
 @pytest.fixture(scope='session')
 def mapihttp(engine):
-    from tshistory_rest import app
     from tshistory_formula import tsio
     schema.tsschema('ns-test-local').create(engine)
     fschema.formula_schema('ns-test-local').create(engine)

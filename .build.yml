@@ -6,11 +6,11 @@ packages:
   - emacs-nox
 sources:
   - hg+https://hg.sr.ht/~pythonian/tshistory_client
-  - hg+https://hg.sr.ht/~pythonian/tshistory_rest
   - hg+https://hg.sr.ht/~pythonian/tshistory_supervision
   - hg+https://hg.sr.ht/~pythonian/tshistory_formula
 tasks:
   - install: |
+      export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/13/bin
       pip3 install tox wheel setuptools --quiet
       pip3 install -e tshistory_supervision --prefer-binary
       pip3 install -e tshistory_formula --prefer-binary
@@ -22,8 +22,6 @@ tasks:
       cd tshistory
       pytest
       cd ../tshistory_client
-      pytest
-      cd ../tshistory_rest
       pytest
       cd ../tshistory_supervision
       pytest

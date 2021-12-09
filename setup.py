@@ -24,7 +24,11 @@ setup(name='tshistory',
           'inireader',
           'pytz',
           'colorama',
-          'tqdm'
+          'tqdm',
+          'flask < 2.0',
+          'jinja2 < 3.0',
+          'flask-restx',
+          'requests'
       ],
       package_data={'tshistory': [
           'schema.sql',
