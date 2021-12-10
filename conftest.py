@@ -15,7 +15,10 @@ from tshistory import (
     schema,
     tsio
 )
-from tshistory.http import app
+from tshistory.http import (
+    app,
+    client as http_client
+)
 from tshistory.snapshot import Snapshot
 from tshistory.testutil import (
     make_tsx,
@@ -115,7 +118,7 @@ def cli():
         return CliRunner().invoke(command.tsh, args)
     return runner
 
-# http
+# http server
 
 class NoRaiseWebTester(webtest.TestApp):
 
@@ -141,6 +144,32 @@ def http(engine):
         )
     )
     yield NoRaiseWebTester(wsgi)
+
+
+# http client
+
+@pytest.fixture(scope='session')
+def client(engine):
+    schema.tsschema().create(engine)
+    schema.tsschema('tsh-upstream').create(engine)
+    schema.tsschema('other').create(engine)
+
+    uri = 'http://perdu.com'
+
+    from tshistory_formula.http import formula_httpapi
+    wsgitester = WebTester(
+        app.make_app(
+            tsh_api.timeseries(
+                str(engine.url),
+                handler=tsio.timeseries,
+                sources=[(DBURI, 'other')]
+            ),
+            formula_httpapi
+        )
+    )
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
+        with_tester(uri, resp, wsgitester)
+        yield http_client.Client(uri)
 
 
 # federation api (direct + http)

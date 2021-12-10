@@ -18,6 +18,7 @@ from tshistory.util import (
     threadpool
 )
 from tshistory.tsio import timeseries as tshclass
+from tshistory.http.client import Client
 
 
 NONETYPE = type(None)
@@ -41,12 +42,6 @@ class timeseries:
         elif parseduri.scheme.startswith('http'):
             if clientclass:
                 return clientclass(uri)
-            try:
-                from tshistory_client.api import Client
-            except ImportError:
-                raise NotImplementedError(
-                    f'to handle `{uri}` you should install `tshistory_client`'
-                )
             return Client(uri)  # in the default namespace !
         raise NotImplementedError(uri)
 
