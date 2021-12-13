@@ -197,9 +197,9 @@ It is possible to retrieve only the differences between successive insertions:
 You can see a series metadata:
 
 ```python
- >>> tsa.metadata('series', internal=True)
- {'tzaware': False, 'index_type': 'datetime64[ns]', 'value_type': 'float64',
- 'index_dtype': '<M8[ns]', 'value_dtype': '<f8'}
+ >>> tsa.update_metadata('series', {'foo': 42})
+ >>> tsa.metadata('series')
+ {foo: 42}
 ```
 
 We built a series with naive time stamps, but timezone-aware
