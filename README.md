@@ -441,22 +441,14 @@ shown below and proceed exactly like in the above code examples:
 
 ## Using an HTTP/REST end point
 
-For this to work, one needs to use the the
-[tshistory_rest][tshistory_rest] and
-[tshistory_client][tshistory_client] packages.
-
-The client package will be used transparently on a
-`timeseries('http://.../api')` call, nothing more needs to be done
-than install it.
-
-For the rest api, you need to build a small [flask][flask] app and set
-up the `tshistory_rest` blueprint like this (in an `app.py` module):
+For the rest api, you need to build a small [flask][flask] app like
+this (in an `app.py` module):
 
 ```python
 from flask import Flask
 
 from tshistory.api import timeseries
-from tshistory_rest.blueprint import blueprint as blueprint
+from tshistory.http.server import blueprint as blueprint
 
 
 def make_app(dburi):
@@ -613,8 +605,6 @@ For instance, the [tsview][tsview] python package provides such a
 `view` subcommand for generic time series visualisation.
 
 [tsview]: https://hg.sr.ht/~pythonian/tsview
-[tshistory_rest]: https://hg.sr.ht/~pythonian/tshistory_rest
-[tshistory_client]: https://hg.sr.ht/~pythonian/tshistory_client
 [backtesting]: https://en.wikipedia.org/wiki/Backtesting
 [cross-validation]: https://en.wikipedia.org/wiki/Cross-validation_(statistics)
 [flask]: https://www.palletsprojects.com/p/flask/
