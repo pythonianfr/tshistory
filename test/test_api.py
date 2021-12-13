@@ -187,6 +187,8 @@ insertion_date             value_date
 2020-01-04 00:00:00+00:00    4.0
 """, st)
 
+
+def _test_block_staircase():
     bsc = tsx.block_staircase(
         'api-test',
         from_value_date=pd.Timestamp("2020-01-01", tz="utc"),
@@ -285,7 +287,7 @@ def test_log(tsx):
 )
 def test_multisource(mapi):
     for methname in ('get', 'update', 'replace', 'exists', 'type',
-                     'history', 'staircase', 'block_staircase',
+                     'history', 'staircase',
                      'catalog', 'interval',
                      'metadata', 'update_metadata',
                      'rename', 'delete'
@@ -421,7 +423,7 @@ def test_multisource(mapi):
 def test_http_api():
     tsh = timeseries('https://my.fancy.timeseries.store')
     for methname in ('get', 'update', 'replace', 'exists', 'type',
-                     'history', 'staircase', 'block_staircase',
+                     'history', 'staircase',
                      'catalog', 'interval',
                      'metadata', 'update_metadata',
                      'rename', 'delete'
