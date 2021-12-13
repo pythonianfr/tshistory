@@ -202,9 +202,6 @@ You can see a series metadata:
  {foo: 42}
 ```
 
-We built a series with naive time stamps, but timezone-aware
-timestamps work well (and it is advised to use them !).
-
 
 ## Staircase series
 
