@@ -333,7 +333,12 @@ class WebTester(webtest.TestApp):
                                expect_errors=expect_errors)
 
 
-def make_tsx(uri, initschemafunc, tsioclass, httpclass, clientclass=None):
+def make_tsx(uri,
+             initschemafunc,
+             tsioclass,
+             httpclass,
+             clientclass=None,
+             passthru=None):
     from tshistory import api as tsh_api
 
     @pytest.fixture(params=['pg', 'http'])
@@ -358,6 +363,8 @@ def make_tsx(uri, initschemafunc, tsioclass, httpclass, clientclass=None):
             )
             with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
                 with_tester(uri, resp, wsgitester)
+                if passthru:
+                    passthru(resp)
                 # will query the app created above (which in turn uses
                 # the direct mode tsa)
                 http_tsa = tsh_api.timeseries(
