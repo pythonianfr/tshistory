@@ -292,15 +292,16 @@ Then the day-ahead forecast with revisions at 9am can be computed as follows:
  2020-01-03 00:00:00+00:00   7.3 
  2020-01-03 08:00:00+00:00   8.3 
  2020-01-03 16:00:00+00:00   9.3 
- 2020-01-04 00:00:00+00:00   10.3
- 2020-01-04 08:00:00+00:00   11.3
- 2020-01-04 16:00:00+00:00   12.3
+ 2020-01-04 00:00:00+00:00   10.4
+ 2020-01-04 08:00:00+00:00   11.4
+ 2020-01-04 16:00:00+00:00   12.4
  Name: hourly_series, dtype: float64
 ```
 
 Note that with `revision_time={'hour': 9}`, the method ends up picking values from the
-two 6am insertions. Taking revision time after 14:00, say `revision_time={'hour': 20}`,
-would instead select values from the 2pm insertions.
+two 6am insertions (except for the values of 2020-01-04 when latest available revision
+is 2020-01-02 14:00). Taking revision time after 2pm, say
+`revision_time={'hour': 20}`, would instead select values from the 2pm insertions only.
 
 In general, the arguments of `block_staircase` should be used as follows:
 * `from_value_date` and `to_value_date`: time range on which values are retrieved
