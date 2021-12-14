@@ -12,6 +12,7 @@ tasks:
   - install: |
       export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/13/bin
       pip3 install tox wheel setuptools webtest pytest_sa_pg --quiet
+      pip3 install -e tshistory --prefer-binary
       pip3 install -e tshistory_supervision --prefer-binary
       pip3 install -e tshistory_formula --prefer-binary
   - run-tests: |
