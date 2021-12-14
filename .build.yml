@@ -8,6 +8,8 @@ sources:
   - hg+https://hg.sr.ht/~pythonian/tshistory_client
   - hg+https://hg.sr.ht/~pythonian/tshistory_supervision
   - hg+https://hg.sr.ht/~pythonian/tshistory_formula
+  - hg+https://hg.sr.ht/~pythonian/tshistory_xl
+  - hg+https://hg.sr.ht/~pythonian/tshistory_refinery
 tasks:
   - install: |
       export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/13/bin
@@ -15,6 +17,8 @@ tasks:
       pip3 install -e tshistory --prefer-binary
       pip3 install -e tshistory_supervision --prefer-binary
       pip3 install -e tshistory_formula --prefer-binary
+      pip3 install -e tshistory_xl --prefer-binary
+      pip3 install -e tshistory_refinery --prefer-binary
   - run-tests: |
       export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/13/bin
       pip3 install pytest pytest_sa_pg responses
