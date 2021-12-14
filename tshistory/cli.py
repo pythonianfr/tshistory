@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from dateutil.parser import parse as temporal
 import pandas as pd
 
+from tshistory.tsio import timeseries as tshclass
 from tshistory.api import timeseries
 from tshistory.util import find_dburi
 from tshistory.schema import tsschema
@@ -46,7 +47,11 @@ def tsh():
 @click.option('--namespace', default='tsh')
 def get(db_uri, series, json, namespace='tsh'):
     """show a series in its current state """
-    tsa = timeseries(find_dburi(db_uri), namespace)
+    tsa = timeseries(
+        find_dburi(db_uri),
+        namespace,
+        handlerclass=tshclass
+    )
 
     ts = tsa.get(series)
     if json:
@@ -72,7 +77,11 @@ def history(db_uri, series,
             diff, json,
             namespace='tsh'):
     """show a series full history """
-    tsa = timeseries(find_dburi(db_uri), namespace)
+    tsa = timeseries(
+        find_dburi(db_uri),
+        namespace,
+        handler=tshclass
+    )
     hist = tsa.history(
         series,
         from_insertion_date, to_insertion_date,
@@ -104,7 +113,11 @@ def log(db_uri, limit, series,
         from_insertion_date=None, to_insertion_date=None,
         namespace='tsh'):
     """show revision history of entire repository or series"""
-    tsa = timeseries(find_dburi(db_uri), namespace)
+    tsa = timeseries(
+        find_dburi(db_uri),
+        namespace,
+        handler=tshclass
+    )
 
     for rev in tsa.log(
         series,
@@ -127,7 +140,11 @@ series names:    {serie names}
 @click.option('--namespace', default='tsh')
 def info(db_uri, namespace='tsh'):
     """show global statistics of the repository"""
-    tsa = timeseries(find_dburi(db_uri), namespace)
+    tsa = timeseries(
+        find_dburi(db_uri),
+        namespace,
+        handler=tshclass
+    )
     info = tsa.tsh.info(tsa.engine)
     info['serie names'] = ', '.join(info['serie names'])
     print(INFOFMT.format(**info))
@@ -162,7 +179,11 @@ def init_db(db_uri, namespace='tsh'):
 @click.option('--namespace', default='tsh')
 def check(db_uri, series=None, namespace='tsh'):
     "coherence checks of the db"
-    tsa = timeseries(find_dburi(db_uri), namespace)
+    tsa = timeseries(
+        find_dburi(db_uri),
+        namespace,
+        handler=tshclass
+    )
     if series is None:
         series = tsa.tsh.list_series(tsa.engine)
     else:
@@ -194,7 +215,11 @@ def check(db_uri, series=None, namespace='tsh'):
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
 def shell(db_uri, namespace='tsh'):
-    tsa = timeseries(find_dburi(db_uri), namespace)
+    tsa = timeseries(
+        find_dburi(db_uri),
+        namespace,
+        handler=tshclass
+    )
     import pdb; pdb.set_trace()
 
 

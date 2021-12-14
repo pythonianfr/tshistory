@@ -93,6 +93,24 @@ def find_dburi(something: str) -> str:
         )
 
 
+# find available components
+
+def find_most_specific_tshclass():
+    try:
+        from tshistory_refinery.tsio import timeseries
+    except ImportError:
+        from tshistory.tsio import timeseries
+    return timeseries
+
+
+def find_most_specific_http_client():
+    try:
+        from tshistory_refinery.http import RefineryClient as Client
+    except ImportError:
+        from tshistory.http.client import Client
+    return Client
+
+
 # tsio helpers
 
 def ensuretz(adate):

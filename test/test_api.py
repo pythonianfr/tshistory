@@ -385,7 +385,8 @@ def test_multisource(mapi):
         'index_type': 'datetime64[ns, UTC]',
         'tzaware': True,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'supervision_status': 'unsupervised'
     }
 
     mapi.rename('api-1', 'renamed-api-1')

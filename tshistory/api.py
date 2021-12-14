@@ -15,10 +15,11 @@ import pandas as pd
 
 from tshistory.util import (
     ensuretz,
+    find_most_specific_tshclass,
+    find_most_specific_http_client,
     threadpool
 )
 from tshistory.tsio import timeseries as tshclass
-from tshistory.http.client import Client
 
 
 NONETYPE = type(None)
@@ -28,11 +29,13 @@ class timeseries:
 
     def __new__(cls, uri,
                 namespace='tsh',
-                handler=tshclass,
+                handler=None,
                 sources=(),
                 clientclass=None):
         parseduri = urlparse(uri)
         if parseduri.scheme.startswith('postgres'):
+            if handler is None:
+                handler = find_most_specific_tshclass()
             return dbtimeseries(
                 uri,
                 namespace,
@@ -40,9 +43,10 @@ class timeseries:
                 othersources=altsources(handler, sources)
             )
         elif parseduri.scheme.startswith('http'):
-            if clientclass:
-                return clientclass(uri)
-            return Client(uri)  # in the default namespace !
+            if clientclass is None:
+                clientclass = find_most_specific_http_client()
+            return clientclass(uri)
+
         raise NotImplementedError(uri)
 
 
