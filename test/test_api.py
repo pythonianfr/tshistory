@@ -406,12 +406,15 @@ def test_multisource(mapi):
     create(mapi.uri, mapi.namespace, 'api-3')
     create(mapi.uri, 'ns-test-mapi-2', 'api-3')
     # update local version metadata
-    with pytest.raises(ValueError):
-        mapi.update_metadata('api-3', {'foo': 'bar'})
+    mapi.update_metadata('api-3', {'foo': 'bar'})
     # delete local version
     mapi.delete('api-3')
     # remote version still exists
     assert mapi.exists('api-3')
+    with pytest.raises(ValueError):
+        mapi.update_metadata('api-3', {'foo': 'bar'})
+    with pytest.raises(ValueError):
+        mapi.delete('api-3')
     cat = mapi.catalog()
     assert cat == {
         ('db://localhost:5433/postgres', 'ns-test-mapi-2'): [

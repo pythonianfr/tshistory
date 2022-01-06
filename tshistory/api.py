@@ -451,16 +451,13 @@ class dbtimeseries:
         will raise.
 
         """
-        # give a chance to say *no*
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return self.tsh.update_metadata(cn, name, metadata)
+
         self.othersources.forbidden(
             name,
             'not allowed to update metadata to a secondary source'
-        )
-
-        self.tsh.update_metadata(
-            self.engine,
-            name,
-            metadata
         )
 
     def type(self, name: str) -> str:
