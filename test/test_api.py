@@ -405,6 +405,9 @@ def test_multisource(mapi):
     # local shadowing of api-3
     create(mapi.uri, mapi.namespace, 'api-3')
     create(mapi.uri, 'ns-test-mapi-2', 'api-3')
+    # update local version metadata
+    with pytest.raises(ValueError):
+        mapi.update_metadata('api-3', {'foo': 'bar'})
     # delete local version
     mapi.delete('api-3')
     # remote version still exists
