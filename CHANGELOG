@@ -1,6 +1,17 @@
 # Changelog
 
-## [Unreleased]
+## [0.14.0]
+### Added
+- tsio: preliminary implementation of a new staircase "block-staircase"
+- ci: we now test all the tshistory stack
+
+### Fixed
+- api: deletion of a remotely shadowed series
+- api: update metadata of a remotely shadowed series
+
+## Changed
+- tshistory_rest and _client have been folded in tshistory under
+  http/server and http/client
 
 ## [0.13.0]
 ### Added
