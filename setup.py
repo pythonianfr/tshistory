@@ -6,7 +6,7 @@ doc = Path(__file__).parent / 'README.md'
 
 
 setup(name='tshistory',
-      version='0.13.0',
+      version='0.14.0',
       author='Pythonian',
       author_email='aurelien.campeas@pythonian.fr, arnaud.campeas@pythonian.fr',
       url='https://hg.sr.ht/~pythonian/tshistory',
