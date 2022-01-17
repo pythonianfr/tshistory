@@ -1,5 +1,5 @@
 from pathlib import Path
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 doc = Path(__file__).parent / 'README.md'
@@ -13,7 +13,7 @@ setup(name='tshistory',
       description='Timeseries store with version control',
       long_description=doc.read_text(),
       long_description_content_type='text/markdown',
-      packages=['tshistory'],
+      packages=find_packages(),
       install_requires=[
           'pandas >= 1.0.5, < 1.2',
           'dateutils',
