@@ -57,9 +57,9 @@ def engine(db):
 
 @pytest.fixture(scope='session')
 def mapi(engine):
-    schema.tsschema('ns-test-mapi').create(engine)
+    schema.tsschema('ns-test-mapi').create(engine, reset=True)
     fschema.formula_schema('ns-test-mapi').create(engine)
-    schema.tsschema('ns-test-mapi-2').create(engine)
+    schema.tsschema('ns-test-mapi-2').create(engine, reset=True)
     fschema.formula_schema('ns-test-mapi-2').create(engine)
 
     return tsh_api.timeseries(
@@ -81,8 +81,7 @@ def datadir():
                 scope='session')
 def tsh(request, engine):
     namespace = request.param
-    sch = schema.tsschema(namespace)
-    sch.create(engine)
+    schema.tsschema(namespace).create(engine, reset=True)
 
     if namespace == 'z-z':
         Snapshot._max_bucket_size = 5
@@ -91,8 +90,7 @@ def tsh(request, engine):
 
 @pytest.fixture(scope='session')
 def ptsh(engine):
-    sch = schema.tsschema()
-    sch.create(engine)
+    schema.tsschema().create(engine, reset=True)
     return tsio.timeseries()
 
 
@@ -132,8 +130,8 @@ class NoRaiseWebTester(webtest.TestApp):
 
 @pytest.fixture(scope='session')
 def http(engine):
-    schema.tsschema().create(engine)
-    schema.tsschema(ns='other').create(engine)
+    schema.tsschema().create(engine, reset=True)
+    schema.tsschema(ns='other').create(engine, reset=True)
 
     wsgi = app.make_app(
         tsh_api.timeseries(
@@ -150,9 +148,9 @@ def http(engine):
 
 @pytest.fixture(scope='session')
 def client(engine):
-    schema.tsschema().create(engine)
-    schema.tsschema('tsh-upstream').create(engine)
-    schema.tsschema('other').create(engine)
+    schema.tsschema().create(engine, reset=True)
+    schema.tsschema('tsh-upstream').create(engine, reset=True)
+    schema.tsschema('other').create(engine, reset=True)
 
     uri = 'http://perdu.com'
 
@@ -175,7 +173,7 @@ def client(engine):
 # federation api (direct + http)
 
 def _initschema(engine):
-    schema.tsschema().create(engine)
+    schema.tsschema().create(engine, reset=True)
     fschema.formula_schema().create(engine)
 
 
@@ -197,9 +195,9 @@ URI2 = 'http://test-uri2'
 @pytest.fixture(scope='session')
 def mapihttp(engine):
     from tshistory_formula import tsio
-    schema.tsschema('ns-test-local').create(engine)
+    schema.tsschema('ns-test-local').create(engine, reset=True)
     fschema.formula_schema('ns-test-local').create(engine)
-    schema.tsschema('ns-test-remote').create(engine)
+    schema.tsschema('ns-test-remote').create(engine, reset=True)
     fschema.formula_schema('ns-test-remote').create(engine)
 
     wsgitester = WebTester(

@@ -154,11 +154,12 @@ def info(db_uri, namespace='tsh'):
 
 @tsh.command(name='migrate-to-groups')
 @click.argument('db-uri')
+@click.option('--reset', is_flag=True, default=False)
 @click.option('--namespace', default='tsh')
-def migrate_to_groups(db_uri, namespace='tsh'):
+def migrate_to_groups(db_uri, reset=False, namespace='tsh'):
     engine = create_engine(find_dburi(db_uri))
     sch = tsschema(namespace)
-    sch._create_group(engine)
+    sch._create_group(engine, reset)
 
 
 # db maintenance
