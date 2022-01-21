@@ -435,7 +435,8 @@ class timeseries:
             must be integers. It is only used for revision date initialisation. The next
             revision dates are then obtained by successively adding `revision_freq`.
             Default is {"hour": 0}
-        revision_tz: str giving time zone in which revision date and time are expressed
+        revision_tz: str giving time zone in which revision date and time are expressed.
+            Default is "UTC"
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ["years", "months",
             "weeks", "bdays", "days", "hours", "minutes", "seconds"] and values as
@@ -1300,7 +1301,8 @@ class historycache:
             must be integers. It is only used for revision date initialisation. The next
             revision dates are then obtained by successively adding `revision_freq`.
             Default is {"hour": 0}
-        revision_tz: str giving time zone in which revision date and time are expressed
+        revision_tz: str giving time zone in which revision date and time are expressed.
+            Default is "UTC"
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ["years", "months",
             "weeks", "bdays", "days", "hours", "minutes", "seconds"] and values as
@@ -1315,6 +1317,7 @@ class historycache:
         from_value_date = compatible_date(self.tzaware, from_value_date)
         to_value_date = compatible_date(self.tzaware, to_value_date)
 
+        revision_tz = revision_tz or "UTC"
         revision_freq = self._shift_offset(revision_freq or {"days": 1})
         revision_time = self._replacement_offset(revision_time or {"hour": 0})
         maturity_offset = self._shift_offset(maturity_offset or {})
