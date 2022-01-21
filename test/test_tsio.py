@@ -1751,7 +1751,10 @@ def run_block_staircase_value_test(
             to_value_date=to_v_date,
             **sc_kwargs,
         )
-        expected_ts = sc_ts[(sc_idx >= from_v_date) & (sc_idx <= to_v_date)]
+        expected_ts = sc_ts[
+            (sc_idx >= (from_v_date or sc_idx[0])) &
+            (sc_idx <= (to_v_date or sc_idx[-1]))
+        ]
         pd.testing.assert_series_equal(
             computed_ts, expected_ts, check_freq=False, check_names=False
         )

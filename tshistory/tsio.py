@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 from sqlhelp import sqlfile, select, insert
-from typing import Dict
+from typing import Dict, Union
 
 from tshistory.util import (
     bisect_search,
@@ -30,6 +30,8 @@ from tshistory.snapshot import Snapshot
 
 L = logging.getLogger('tshistory.tsio')
 SERIESSCHEMA = Path(__file__).parent / 'series.sql'
+
+NONETYPE = type(None)
 
 
 class timeseries:
@@ -406,8 +408,8 @@ class timeseries:
         self,
         cn,
         name,
-        from_value_date: pd.Timestamp,
-        to_value_date: pd.Timestamp,
+        from_value_date: Union[pd.Timestamp, NONETYPE] = None,
+        to_value_date: Union[pd.Timestamp, NONETYPE] = None,
         revision_freq: Dict[str, int] = None,
         revision_time: Dict[str, int] = None,
         revision_tz: str = "UTC",
@@ -448,9 +450,21 @@ class timeseries:
         if not self.exists(cn, name):
             return
         self._guard_query_dates(from_value_date, to_value_date)
+
+        latest_ts = self.get(
+            cn, name,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date,
+            _keep_nans=True
+        )
+        if not len(latest_ts):
+            meta = self.metadata(cn, name)
+            return empty_series(meta['tzaware'], name=name)
+
         hist = self.history(
             cn, name,
             from_value_date = from_value_date,
+            to_value_date = to_value_date,
             to_insertion_date = to_value_date,
             _keep_nans = True
         )
@@ -458,8 +472,8 @@ class timeseries:
             name, hist, tzaware=self.metadata(cn, name).get('tzaware')
         )
         return hcache.block_staircase(
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
+            from_value_date=from_value_date or latest_ts.index.min(),
+            to_value_date=to_value_date or latest_ts.index.max(),
             revision_freq=revision_freq,
             revision_time=revision_time,
             revision_tz=revision_tz,
