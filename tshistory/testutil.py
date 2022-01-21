@@ -83,7 +83,12 @@ def gen_value_ranges(start, end, lag):
     start, end = pd.Timestamp(start), pd.Timestamp(end)
     lag = pd.Timedelta(lag)
     return [
-        (start, end), (start - lag, end + lag), (start + lag, end - lag)
+        (start, end),
+        (start - lag, end + lag),
+        (start + lag, end - lag),
+        (None, None),
+        (start, None),
+        (None, end),
     ]
 
 
