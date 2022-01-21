@@ -331,11 +331,11 @@ class dbtimeseries:
         name,
         from_value_date: datetime,
         to_value_date: datetime,
-        revision_freq: dict = None,
-        revision_time: dict = None,
+        revision_freq: Dict[str, int] = None,
+        revision_time: Dict[str, int] = None,
         revision_tz: str = "UTC",
-        maturity_offset: dict = None,
-        maturity_time: dict = None,
+        maturity_offset: Dict[str, int] = None,
+        maturity_time: Dict[str, int] = None,
     ):
         """Staircase series by block
 
