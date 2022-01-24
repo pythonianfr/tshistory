@@ -1,3 +1,4 @@
+import io
 import json
 import zlib
 from datetime import datetime as dt, timedelta
@@ -11,7 +12,9 @@ from tshistory.testutil import (
     assert_hist,
     utcdt,
     gengroup,
-    genserie
+    genserie,
+    hist_from_csv,
+    ts_from_csv,
 )
 
 
@@ -553,6 +556,62 @@ def test_staircase(http):
 """, series)
 
 
+def test_block_staircase(http):
+    hist = hist_from_csv(io.StringIO("""
+datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00+0
+2020-01-03 00:00+01:00, 1.0,                10.0,               100.0
+2020-01-03 04:00+01:00, 2.0,                20.0,               200.0
+2020-01-03 08:00+01:00, 3.0,                30.0,               300.0
+2020-01-03 16:00+01:00, 4.0,                40.0,               400.0
+2020-01-04 00:00+01:00, 5.0,                50.0,               500.0
+2020-01-04 04:00+01:00, 6.0,                60.0,               600.0
+2020-01-04 08:00+01:00, 7.0,                70.0,               700.0
+2020-01-04 16:00+01:00, 8.0,                80.0,               800.0
+"""))
+    for idate, ts in hist.items():
+        http.patch('/series/state', params={
+            'name': 'test_b_staircase',
+            'series': util.tojson(ts),
+            'author': 'test_http',
+            'insertion_date': idate,
+            'tzaware': util.tzaware_serie(ts)
+        })
+    sc_kwargs = dict(
+        from_value_date=pd.Timestamp('2020-01-03', tz='CET').to_pydatetime(),
+        to_value_date=pd.Timestamp('2020-01-05', tz='CET').to_pydatetime(),
+        revision_freq=json.dumps({'days': 1}),
+        revision_time=json.dumps({'hour': 10}),
+        revision_tz='CET',
+        maturity_offset=json.dumps({'hours': 24}),
+        maturity_time=json.dumps({'hour': 4}),
+    )
+    expected_ts = ts_from_csv(io.StringIO("""
+datetime,               value
+2020-01-03 00:00+01:00, 1.0
+2020-01-03 04:00+01:00, 20.0
+2020-01-03 08:00+01:00, 30.0
+2020-01-03 16:00+01:00, 40.0
+2020-01-04 00:00+01:00, 50.0
+2020-01-04 04:00+01:00, 600.0
+2020-01-04 08:00+01:00, 700.0
+2020-01-04 16:00+01:00, 800.0
+"""))
+
+    # test query with 'json' format
+    res = http.get('/series/block_staircase', params=dict(
+        name='test_b_staircase', **sc_kwargs
+    ))
+    computed_ts = util.fromjson(res.body, 'test_b_staircase', True)
+    pd.testing.assert_series_equal(computed_ts, expected_ts, check_names=False)
+
+    # test query with 'tsh_pack' format
+    res = http.get('/series/block_staircase', params=dict(
+        name='test_b_staircase', **sc_kwargs, format='tshpack'
+    ))
+    computed_ts = util.unpack_series('test_b_staircase', res.body)
+    pd.testing.assert_series_equal(computed_ts, expected_ts, check_names=False)
+
+
 def test_get_fast_path(http):
     series_in = genserie(utcdt(2018, 1, 1), 'H', 3)
     res = http.patch('/series/state', params={
@@ -709,6 +768,7 @@ def test_multisource(http, engine):
             ['test3', 'primary'],
             ['stripme', 'primary'],
             ['staircase', 'primary'],
+            ['test_b_staircase', 'primary'],
             ['test_fast', 'primary'],
             ['test-multi', 'primary']
         ]

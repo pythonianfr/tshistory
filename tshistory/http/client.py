@@ -10,6 +10,7 @@ from tshistory.util import (
     pack_group,
     pack_series,
     series_metadata,
+    tzaware_serie,
     unpack_history,
     unpack_group,
     unpack_many_series,
@@ -231,10 +232,8 @@ class Client:
         maturity_offset=None,
         maturity_time=None,
     ):
-        args = {
-            'name': name,
-            'format': 'tshpack'
-        }
+        args = {'name': name, 'format': 'tshpack'}
+
         if from_value_date is not None:
             args['from_value_date'] = strft(from_value_date)
         if to_value_date is not None:
@@ -254,7 +253,10 @@ class Client:
         if res.status_code == 404:
             return None
         if res.status_code == 200:
-            return unpack_series(name, res.content)
+            ts = unpack_series(name, res.content)
+            if tzaware_serie(ts) and revision_tz:
+                ts = ts.tz_convert(revision_tz)
+            return ts
         return res
 
 
