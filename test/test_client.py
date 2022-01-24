@@ -387,6 +387,152 @@ insertion_date             value_date
 """, hist)
 
 
+def test_block_staircase_no_series(client):
+    assert client.block_staircase(
+        name='no-such-series',
+        from_value_date=pd.Timestamp('2021-10-29', tz='Europe/Brussels'),
+        to_value_date=pd.Timestamp('2021-10-30', tz='Europe/Brussels'),
+    ) is None
+
+
+def test_block_staircase_empty_series(client):
+    insert_date = pd.Timestamp('2021-10-15', tz='Europe/Brussels')
+    value_start_date = insert_date + pd.Timedelta(1, 'D')
+    ts = genserie(start=value_start_date, freq='H', repeat=24)
+    client.update(
+        'staircase-missed-insertion', ts, 'test', insertion_date=insert_date
+    )
+
+    # some data should be retrieved with 1-day-ahead revision
+    ts = client.block_staircase(
+        name='staircase-missed-insertion',
+        from_value_date=value_start_date,
+        to_value_date=value_start_date + pd.Timedelta(1, 'D'),
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        revision_tz='Europe/Brussels',
+        maturity_offset={'days': 1},
+    )
+    assert not ts.empty
+
+    # not data should be retrieved outside value range
+    ts = client.block_staircase(
+        name='staircase-missed-insertion',
+        from_value_date=value_start_date + pd.Timedelta(2, 'D'),
+        to_value_date=value_start_date + pd.Timedelta(3, 'D'),
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        revision_tz='Europe/Brussels',
+        maturity_offset={'days': 1},
+    )
+    assert ts.empty
+
+    # not data should be retrieved outside revision range
+    ts = client.block_staircase(
+        name='staircase-missed-insertion',
+        from_value_date=value_start_date,
+        to_value_date=value_start_date + pd.Timedelta(1, 'D'),
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        revision_tz='Europe/Brussels',
+        maturity_offset={'days': 3},
+    )
+    assert ts.empty
+
+
+@pytest.mark.parametrize(
+    ['ts_name', 'source_ts_is_tz_aware', 'revision_tz', 'expected_output_tz'],
+    [
+        ('tz_test_1', False, 'utc', None),
+        ('tz_test_2', False, 'CET', None),
+        ('tz_test_3', True, 'utc', 'utc'),
+        ('tz_test_4', True, 'CET', 'CET'),
+    ]
+)
+def test_block_staircase_output_timezone(
+    client, ts_name, source_ts_is_tz_aware, revision_tz, expected_output_tz
+):
+    insert_date = pd.Timestamp('2021-10-15', tz='utc')
+    value_start_date = insert_date + pd.Timedelta(1, 'D')
+    ts = genserie(start=value_start_date, freq='H', repeat=24)
+    ts = ts if source_ts_is_tz_aware else ts.tz_localize(None)
+    client.update(ts_name, ts, 'test', insertion_date=insert_date)
+    sc_ts = client.block_staircase(
+        ts_name,
+        from_value_date=value_start_date,
+        to_value_date=value_start_date + pd.Timedelta(1, 'D'),
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        maturity_offset={'days': 1},
+        revision_tz=revision_tz,
+    )
+    if expected_output_tz:
+        expected_output_tz = pytz.timezone(expected_output_tz)
+    assert sc_ts.index.tz == expected_output_tz
+
+
+def test_block_staircase_arg_errors(client):
+    start_date = pd.Timestamp('2021-10-15', tz='Europe/Brussels')
+    ts = genserie(start=start_date, freq='H', repeat=24)
+    client.update(
+        'block-staircase-arg-error', ts, 'test', insertion_date=start_date
+    )
+
+    with pytest.raises(Exception) as exc:
+        _ = client.block_staircase(
+            name='block-staircase-arg-error',
+            from_value_date=start_date,
+            to_value_date=start_date + pd.Timedelta(1, 'D'),
+            revision_freq='WRONG_ARG_TYPE',
+        )
+    assert 'Expected shift offset `revision_freq` as dict' in str(exc)
+
+    with pytest.raises(Exception) as exc:
+        _ = client.block_staircase(
+            name='block-staircase-arg-error',
+            from_value_date=start_date,
+            to_value_date=start_date + pd.Timedelta(1, 'D'),
+            revision_time={'WRONG_KEY_NAME': 4},
+        )
+    assert 'revision_time' in str(exc)
+    assert 'WRONG_KEY_NAME' in str(exc)
+
+
+def test_block_staircase_revision_errors(client):
+    """Test errors returned by block_staircase wit wrong arguments"""
+    start_date = pd.Timestamp('2021-10-15', tz='Europe/Brussels')
+    ts = genserie(start=start_date, freq='H', repeat=24)
+    client.update(
+        'block-staircase-rev-error', ts, 'test', insertion_date=start_date
+    )
+
+    # revisions with null frequency
+    with pytest.raises(Exception) as exc:
+        _ = client.block_staircase(
+            name='block-staircase-rev-error',
+            from_value_date=start_date,
+            to_value_date=start_date + pd.Timedelta(1, 'D'),
+            revision_freq={'days': 0},
+            revision_time={'hour': 9},
+            revision_tz='Europe/Brussels',
+        )
+    assert 'non-increasing block start dates' in str(exc)
+
+    # revisions with identical block starts fixed on 1st of month
+    with pytest.raises(Exception) as exc:
+        _ = client.block_staircase(
+            name='block-staircase-rev-error',
+            from_value_date=start_date,
+            to_value_date=start_date + pd.Timedelta(1, 'D'),
+            revision_freq={'days': 1},
+            revision_time={'hour': 9},
+            revision_tz='Europe/Brussels',
+            maturity_time={'day': 1},
+            maturity_offset={'days': 0},
+        )
+    assert 'non-increasing block start dates' in str(exc)
+
+
 def test_log_strip(client):
     series = genserie(utcdt(2020, 1, 1), 'D', 5)
     for d in range(5):
@@ -478,6 +624,12 @@ def test_log_strip(client):
 
 
 def test_multisources(client, engine):
+    # cleanup the db for the catalog assertion below to hold
+    cat = client.catalog()
+    for source in cat:
+        for name, _ in cat[source]:
+            client.delete(name)
+
     series = genserie(utcdt(2020, 1, 1), 'D', 3)
     tsh = tsio.timeseries('other')
 
@@ -497,12 +649,6 @@ def test_multisources(client, engine):
             ['test-other', 'primary']
         ],
         ('db://localhost:5433/postgres', 'tsh'): [
-            ['test-naive', 'primary'],
-            ['test1', 'primary'],
-            ['test_dates', 'primary'],
-            ['staircase', 'primary'],
-            ['staircase-naive', 'primary'],
-            ['test-log', 'primary'],
             ['test-mainsource', 'primary'],
         ]
     }

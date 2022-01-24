@@ -1151,11 +1151,16 @@ class timeseries:
 
 
 class BlockStaircaseRevisionError(Exception):
-    def __init__(self, revision_dates, block_start_dates):
+    def __init__(self, sc_kwargs, revision_dates, block_start_dates):
+        self.sc_kwargs = sc_kwargs
         self.revision_dates = revision_dates
         self.block_start_dates = block_start_dates
-        msg = "Sucessive revisions {} resulted in non-increasing block start dates {}"
+        msg = (
+            "Revision and maturity arguments {} of `block_staircase` resulted in "
+            "successive revisions {} with non-increasing block start dates {}"
+        )
         super().__init__(msg.format(
+            self.sc_kwargs,
             [str(rd) for rd in self.revision_dates],
             [str(bs) for bs in self.block_start_dates]
         ))
@@ -1229,11 +1234,12 @@ class historycache:
         return ts
 
     @staticmethod
-    def _replacement_offset(offset):
+    def _replacement_offset(offset, name):
         """pandas.DateOffset that replaces datetime parameters"""
         if not isinstance(offset, dict):
             raise TypeError(
-                f"Expected replacement offset as dict but {type(offset)} was given"
+                f"Expected replacement offset `{name}` as dict but {type(offset)} was"
+                "given"
             )
         if not offset:  # return null offset
             return pd.DateOffset(hours=0)
@@ -1241,17 +1247,17 @@ class historycache:
         for k in offset:
             if k not in allowed_keys:
                 raise ValueError(
-                    f"Could not convert replacement offset from dict with key {k}, " +
-                    f"allowed keys are {allowed_keys}"
+                    f"Could not convert replacement offset `{name}` from dict with key "
+                    f"{k}, allowed keys are {allowed_keys}"
                 )
         return pd.DateOffset(**offset)
 
     @staticmethod
-    def _shift_offset(offset):
+    def _shift_offset(offset, name):
         """pandas.DateOffset that shifts datetime parameters"""
         if not isinstance(offset, dict):
             raise TypeError(
-                f"Expected shift offset as dict but {type(offset)} was given"
+                f"Expected shift offset `{name}` as dict but {type(offset)} was given"
             )
         if not offset:  # return null offset
             return pd.DateOffset(hours=0)
@@ -1261,13 +1267,15 @@ class historycache:
         for k in offset:
             if k not in allowed_keys:
                 raise ValueError(
-                    f"Could not convert shift offset from dict with key {k}, " +
+                    f"Could not convert `{name}` from dict with key {k}, " +
                     f"allowed keys are {allowed_keys}"
                 )
         if "bdays" in offset:
             if len(offset) > 1:
-                msg = f"Shift offset cannot combine \"bdays\" with other offset units"
-                raise ValueError(msg)
+                raise ValueError(
+                    f"Shift offset `{name}` cannot combine \"bdays\" with other offset"
+                    "units"
+                )
             return pd.offsets.BusinessDay(offset["bdays"])
         else:
             return pd.DateOffset(**offset)
@@ -1317,11 +1325,24 @@ class historycache:
         from_value_date = compatible_date(self.tzaware, from_value_date)
         to_value_date = compatible_date(self.tzaware, to_value_date)
 
+        revision_freq = revision_freq or {"days": 1}
+        revision_time = revision_time or {"hour": 0}
         revision_tz = revision_tz or "UTC"
-        revision_freq = self._shift_offset(revision_freq or {"days": 1})
-        revision_time = self._replacement_offset(revision_time or {"hour": 0})
-        maturity_offset = self._shift_offset(maturity_offset or {})
-        maturity_time = self._replacement_offset(maturity_time or {})
+        maturity_offset = maturity_offset or {}
+        maturity_time = maturity_time or {}
+
+        sc_kwargs = dict(
+            revision_freq=revision_freq,
+            revision_time=revision_time,
+            revision_tz=revision_tz,
+            maturity_offset=maturity_offset,
+            maturity_time=maturity_time,
+        )
+
+        revision_freq = self._shift_offset(revision_freq, name='revision_freq')
+        revision_time = self._replacement_offset(revision_time, name='revision_time')
+        maturity_offset = self._shift_offset(maturity_offset, name='maturity_offset')
+        maturity_time = self._replacement_offset(maturity_time, name='maturity_time')
         if hasattr(maturity_time, "weekday"):
             # do not use weekday on maturity time because pd.DateOffset(weekday=n) does
             # not preserve week number
@@ -1348,7 +1369,9 @@ class historycache:
             prev_block_start = get_block_start(prev_rev_date)
             if not (prev_block_start < init_block_start):
                 raise BlockStaircaseRevisionError(
-                    [prev_rev_date, init_rev_date], [prev_block_start, init_block_start]
+                    sc_kwargs=sc_kwargs,
+                    revision_dates=[prev_rev_date, init_rev_date],
+                    block_start_dates=[prev_block_start, init_block_start]
                 )
             init_rev_date = prev_rev_date
             init_block_start = prev_block_start
@@ -1369,7 +1392,9 @@ class historycache:
             next_block_start = get_block_start(next_rev_date)
             if not (block_start < next_block_start):
                 raise BlockStaircaseRevisionError(
-                    [revision_date, next_rev_date], [block_start, next_block_start]
+                    sc_kwargs=sc_kwargs,
+                    revision_dates=[revision_date, next_rev_date],
+                    block_start_dates=[block_start, next_block_start],
                 )
             revision_date = next_rev_date
             block_start = next_block_start
