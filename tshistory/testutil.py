@@ -92,7 +92,7 @@ def gen_value_ranges(start, end, lag):
     ]
 
 
-def _dt_indexed_df_from_csv(csv_path, index_label="datetime"):
+def _dt_indexed_df_from_csv(csv_path, index_label='datetime'):
     df = pd.read_csv(csv_path, skipinitialspace=True)
     tz_info = pd.to_datetime(df[index_label].iloc[0]).tzinfo
     df.index = pd.to_datetime(df[index_label], utc=bool(tz_info))
@@ -100,17 +100,17 @@ def _dt_indexed_df_from_csv(csv_path, index_label="datetime"):
     return df.drop(columns=index_label)
 
 
-def ts_from_csv(csv_path, index_label="datetime"):
+def ts_from_csv(csv_path, index_label='datetime'):
     return _dt_indexed_df_from_csv(csv_path, index_label).iloc[:, 0]
 
 
-def hist_from_csv(csv_path, index_label="datetime"):
+def hist_from_csv(csv_path, index_label='datetime'):
     df = _dt_indexed_df_from_csv(csv_path, index_label)
     hist = {}
     for i_date, ts in df.items():
         i_date = pd.Timestamp(i_date)
         if not i_date.tzinfo:
-            i_date = i_date.tz_localize("utc")
+            i_date = i_date.tz_localize('utc')
         hist[i_date] = ts.dropna()
     return hist
 

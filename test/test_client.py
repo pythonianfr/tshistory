@@ -541,16 +541,16 @@ def test_block_staircase_revision_errors(client):
 
 
 def run_block_staircase_value_test(
-    client, ts_name, hist_csv, staircase_csv, sc_kwargs, value_date_lag="1D"
+    client, ts_name, hist_csv, staircase_csv, sc_kwargs, value_date_lag='1D'
 ):
     # Load history on db
     for idate, ts in hist_from_csv(hist_csv).items():
-        client.update(ts_name, ts, "test", insertion_date=idate)
+        client.update(ts_name, ts, 'test', insertion_date=idate)
 
     # Expected output of block_staircase function
     sc_ts = ts_from_csv(staircase_csv)
     if sc_ts.index.tzinfo: # align expected output tz with revision_tz if tz-aware
-        sc_ts = sc_ts.tz_convert(sc_kwargs.get("revision_tz") or "utc")
+        sc_ts = sc_ts.tz_convert(sc_kwargs.get('revision_tz') or 'utc')
     sc_idx = sc_ts.index
 
     # Compute staircase and check output values on different value ranges
@@ -584,11 +584,11 @@ datetime,   2020-01-01 08:00+0, 2020-01-01 16:00+0, 2020-01-02 08:00+0, 2020-01-
 2020-01-08, NA,                 NA,                 NA,                 NA,                 NA
 """)
     sc_kwargs = dict(
-        revision_freq={"hours": 24},
-        revision_time={"hour": 9},
-        revision_tz="UTC",
-        maturity_offset={"days": 3},
-        maturity_time={"hour": 0},
+        revision_freq={'hours': 24},
+        revision_time={'hour': 9},
+        revision_tz='UTC',
+        maturity_offset={'days': 3},
+        maturity_time={'hour': 0},
     )
     expected_sc = io.StringIO("""
 datetime,   value
@@ -598,7 +598,7 @@ datetime,   value
 2020-01-07, 15.0
 """)
     run_block_staircase_value_test(
-        client, "basic_sc_daily", hist, expected_sc, sc_kwargs
+        client, 'basic_sc_daily', hist, expected_sc, sc_kwargs
     )
 
 
@@ -615,11 +615,11 @@ datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00
 2020-01-04 16:00+00:00, 8.0,                80.0,               800.0
 """)
     sc_kwargs = dict(
-        revision_freq={"days": 1},
-        revision_time={"hour": 10},
-        revision_tz="UTC",
-        maturity_offset={"days": 1},
-        maturity_time={"hour": 4},
+        revision_freq={'days': 1},
+        revision_time={'hour': 10},
+        revision_tz='UTC',
+        maturity_offset={'days': 1},
+        maturity_time={'hour': 4},
     )
     expected_sc = io.StringIO("""
 datetime,               value
@@ -633,28 +633,28 @@ datetime,               value
 2020-01-04 16:00+00:00, 800.0
 """)
     run_block_staircase_value_test(
-        client, "basic_sc_hourly", hist, expected_sc, sc_kwargs
+        client, 'basic_sc_hourly', hist, expected_sc, sc_kwargs
     )
 
 
-@pytest.mark.parametrize(["hist_file_name", "sc_file_name"], [
-    ("hourly_no_dst_hist.csv", "hourly_no_dst_sc_da_9am.csv"),
-    ("hourly_dst_1_hist.csv", "hourly_dst_1_sc_da_9am.csv"),
-    ("hourly_dst_2_hist.csv", "hourly_dst_2_sc_da_9am.csv"),
+@pytest.mark.parametrize(['hist_file_name', 'sc_file_name'], [
+    ('hourly_no_dst_hist.csv', 'hourly_no_dst_sc_da_9am.csv'),
+    ('hourly_dst_1_hist.csv', 'hourly_dst_1_sc_da_9am.csv'),
+    ('hourly_dst_2_hist.csv', 'hourly_dst_2_sc_da_9am.csv'),
 ])
 def test_block_staircase_hourly_day_ahead(client, hist_file_name, sc_file_name):
     """Day-ahead staircase with 9am revision, daily frequency and value hours 0-23"""
     sc_kwargs = dict(
-        revision_freq={"days": 1},
-        revision_time={"hour": 9},
-        revision_tz="Europe/Brussels",
-        maturity_offset={"days": 1},
-        maturity_time={"hour": 0},
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        revision_tz='Europe/Brussels',
+        maturity_offset={'days': 1},
+        maturity_time={'hour': 0},
     )
-    hist_csv = DATADIR / "staircase" / hist_file_name
-    sc_csv = DATADIR / "staircase" / sc_file_name
+    hist_csv = DATADIR / 'staircase' / hist_file_name
+    sc_csv = DATADIR / 'staircase' / sc_file_name
     run_block_staircase_value_test(
-        client, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag="36h"
+        client, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag='36h'
     )
 
 

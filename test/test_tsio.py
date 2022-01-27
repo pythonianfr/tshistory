@@ -1606,85 +1606,85 @@ def test_staircase_tzaware_funny_bug(engine, tsh):
 def test_block_staircase_no_series(engine, tsh):
     assert tsh.block_staircase(
         engine,
-        name="no-such-series",
-        from_value_date=pd.Timestamp("2021-10-29", tz="Europe/Brussels"),
-        to_value_date=pd.Timestamp("2021-10-30", tz="Europe/Brussels"),
+        name='no-such-series',
+        from_value_date=pd.Timestamp('2021-10-29', tz='Europe/Brussels'),
+        to_value_date=pd.Timestamp('2021-10-30', tz='Europe/Brussels'),
     ) is None
 
 
 def test_block_staircase_empty_series(engine, tsh):
-    insert_date = pd.Timestamp("2021-10-15", tz="Europe/Brussels")
-    value_start_date = insert_date + pd.Timedelta(1, "D")
+    insert_date = pd.Timestamp('2021-10-15', tz='Europe/Brussels')
+    value_start_date = insert_date + pd.Timedelta(1, 'D')
     ts = genserie(start=value_start_date, freq='H', repeat=24)
     tsh.update(
-        engine, ts, "staircase-missed-insertion", "test", insertion_date=insert_date
+        engine, ts, 'staircase-missed-insertion', 'test', insertion_date=insert_date
     )
 
     # some data should be retrieved with 1-day-ahead revision
     ts = tsh.block_staircase(
         engine,
-        name="staircase-missed-insertion",
+        name='staircase-missed-insertion',
         from_value_date=value_start_date,
-        to_value_date=value_start_date + pd.Timedelta(1, "D"),
-        revision_freq={"days": 1},
-        revision_time={"hour": 9},
-        revision_tz="Europe/Brussels",
-        maturity_offset={"days": 1},
+        to_value_date=value_start_date + pd.Timedelta(1, 'D'),
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        revision_tz='Europe/Brussels',
+        maturity_offset={'days': 1},
     )
     assert not ts.empty
 
     # not data should be retrieved outside value range
     ts = tsh.block_staircase(
         engine,
-        name="staircase-missed-insertion",
-        from_value_date=value_start_date + pd.Timedelta(2, "D"),
-        to_value_date=value_start_date + pd.Timedelta(3, "D"),
-        revision_freq={"days": 1},
-        revision_time={"hour": 9},
-        revision_tz="Europe/Brussels",
-        maturity_offset={"days": 1},
+        name='staircase-missed-insertion',
+        from_value_date=value_start_date + pd.Timedelta(2, 'D'),
+        to_value_date=value_start_date + pd.Timedelta(3, 'D'),
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        revision_tz='Europe/Brussels',
+        maturity_offset={'days': 1},
     )
     assert ts.empty
 
     # not data should be retrieved outside revision range
     ts = tsh.block_staircase(
         engine,
-        name="staircase-missed-insertion",
+        name='staircase-missed-insertion',
         from_value_date=value_start_date,
-        to_value_date=value_start_date + pd.Timedelta(1, "D"),
-        revision_freq={"days": 1},
-        revision_time={"hour": 9},
-        revision_tz="Europe/Brussels",
-        maturity_offset={"days": 3},
+        to_value_date=value_start_date + pd.Timedelta(1, 'D'),
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        revision_tz='Europe/Brussels',
+        maturity_offset={'days': 3},
     )
     assert ts.empty
 
 
 @pytest.mark.parametrize(
-    ["ts_name", "source_ts_is_tz_aware", "revision_tz", "expected_output_tz"],
+    ['ts_name', 'source_ts_is_tz_aware', 'revision_tz', 'expected_output_tz'],
     [
-        ("tz_test_1", False, "utc", None),
-        ("tz_test_2", False, "CET", None),
-        ("tz_test_3", True, "utc", "utc"),
-        ("tz_test_4", True, "CET", "CET"),
+        ('tz_test_1', False, 'utc', None),
+        ('tz_test_2', False, 'CET', None),
+        ('tz_test_3', True, 'utc', 'utc'),
+        ('tz_test_4', True, 'CET', 'CET'),
     ]
 )
 def test_block_staircase_output_timezone(
     engine, tsh, ts_name, source_ts_is_tz_aware, revision_tz, expected_output_tz
 ):
-    insert_date = pd.Timestamp("2021-10-15", tz="utc")
-    value_start_date = insert_date + pd.Timedelta(1, "D")
+    insert_date = pd.Timestamp('2021-10-15', tz='utc')
+    value_start_date = insert_date + pd.Timedelta(1, 'D')
     ts = genserie(start=value_start_date, freq='H', repeat=24)
     ts = ts if source_ts_is_tz_aware else ts.tz_localize(None)
-    tsh.update(engine, ts, ts_name, "test", insertion_date=insert_date)
+    tsh.update(engine, ts, ts_name, 'test', insertion_date=insert_date)
     sc_ts = tsh.block_staircase(
         engine,
         ts_name,
         from_value_date=value_start_date,
-        to_value_date=value_start_date + pd.Timedelta(1, "D"),
-        revision_freq={"days": 1},
-        revision_time={"hour": 9},
-        maturity_offset={"days": 1},
+        to_value_date=value_start_date + pd.Timedelta(1, 'D'),
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        maturity_offset={'days': 1},
         revision_tz=revision_tz,
     )
     if expected_output_tz:
@@ -1697,48 +1697,48 @@ def test_block_staircase_revision_error(engine, tsh):
 
     Test that the appropriate exception is raised when block start dates of successive
     revisions are non increasing in time"""
-    start_date = pd.Timestamp("2021-10-15", tz="Europe/Brussels")
+    start_date = pd.Timestamp('2021-10-15', tz='Europe/Brussels')
     ts = genserie(start=start_date, freq='H', repeat=24)
     tsh.update(
-        engine, ts, "staircase-revision-error", "test", insertion_date=start_date
+        engine, ts, 'staircase-revision-error', 'test', insertion_date=start_date
     )
     with pytest.raises(BlockStaircaseRevisionError):
         # revisions with null frequency
         _ = tsh.block_staircase(
             engine,
-            name="staircase-revision-error",
+            name='staircase-revision-error',
             from_value_date=start_date,
-            to_value_date=start_date + pd.Timedelta(1, "D"),
-            revision_freq={"days": 0},
-            revision_time={"hour": 9},
-            revision_tz="Europe/Brussels",
+            to_value_date=start_date + pd.Timedelta(1, 'D'),
+            revision_freq={'days': 0},
+            revision_time={'hour': 9},
+            revision_tz='Europe/Brussels',
         )
     with pytest.raises(BlockStaircaseRevisionError):
         # revisions with identical block starts fixed on 1st of month
         _ = tsh.block_staircase(
             engine,
-            name="staircase-revision-error",
+            name='staircase-revision-error',
             from_value_date=start_date,
-            to_value_date=start_date + pd.Timedelta(1, "D"),
-            revision_freq={"days": 1},
-            revision_time={"hour": 9},
-            revision_tz="Europe/Brussels",
-            maturity_time={"day": 1},
-            maturity_offset={"days": 0},
+            to_value_date=start_date + pd.Timedelta(1, 'D'),
+            revision_freq={'days': 1},
+            revision_time={'hour': 9},
+            revision_tz='Europe/Brussels',
+            maturity_time={'day': 1},
+            maturity_offset={'days': 0},
         )
 
 
 def run_block_staircase_value_test(
-    engine, tsh, ts_name, hist_csv, staircase_csv, sc_kwargs, value_date_lag="1D"
+    engine, tsh, ts_name, hist_csv, staircase_csv, sc_kwargs, value_date_lag='1D'
 ):
     # Load history on db
     for idate, ts in hist_from_csv(hist_csv).items():
-        tsh.update(engine, ts, ts_name, "test", insertion_date=idate)
+        tsh.update(engine, ts, ts_name, 'test', insertion_date=idate)
 
     # Expected output of block_staircase function
     sc_ts = ts_from_csv(staircase_csv)
     if sc_ts.index.tzinfo: # align expected output tz with revision_tz if tz-aware
-        sc_ts = sc_ts.tz_convert(sc_kwargs.get("revision_tz") or "utc")
+        sc_ts = sc_ts.tz_convert(sc_kwargs.get('revision_tz') or 'utc')
     sc_idx = sc_ts.index
 
     # Compute staircase and check output values on different value ranges
@@ -1773,11 +1773,11 @@ datetime,   2020-01-01 08:00+0, 2020-01-01 16:00+0, 2020-01-02 08:00+0, 2020-01-
 2020-01-08, NA,                 NA,                 NA,                 NA,                 NA
 """)
     sc_kwargs = dict(
-        revision_freq={"hours": 24},
-        revision_time={"hour": 9},
-        revision_tz="UTC",
-        maturity_offset={"days": 3},
-        maturity_time={"hour": 0},
+        revision_freq={'hours': 24},
+        revision_time={'hour': 9},
+        revision_tz='UTC',
+        maturity_offset={'days': 3},
+        maturity_time={'hour': 0},
     )
     expected_sc = io.StringIO("""
 datetime,   value
@@ -1787,7 +1787,7 @@ datetime,   value
 2020-01-07, 15.0
 """)
     run_block_staircase_value_test(
-        engine, tsh, "basic_sc_daily", hist, expected_sc, sc_kwargs
+        engine, tsh, 'basic_sc_daily', hist, expected_sc, sc_kwargs
     )
 
 
@@ -1804,11 +1804,11 @@ datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00
 2020-01-04 16:00+00:00, 8.0,                80.0,               800.0
 """)
     sc_kwargs = dict(
-        revision_freq={"days": 1},
-        revision_time={"hour": 10},
-        revision_tz="UTC",
-        maturity_offset={"days": 1},
-        maturity_time={"hour": 4},
+        revision_freq={'days': 1},
+        revision_time={'hour': 10},
+        revision_tz='UTC',
+        maturity_offset={'days': 1},
+        maturity_time={'hour': 4},
     )
     expected_sc = io.StringIO("""
 datetime,               value
@@ -1822,7 +1822,7 @@ datetime,               value
 2020-01-04 16:00+00:00, 800.0
 """)
     run_block_staircase_value_test(
-        engine, tsh, "basic_sc_hourly", hist, expected_sc, sc_kwargs
+        engine, tsh, 'basic_sc_hourly', hist, expected_sc, sc_kwargs
     )
 
 
@@ -1866,104 +1866,104 @@ datetime, value
     )
 
 
-@pytest.mark.parametrize(["hist_file_name", "sc_file_name"], [
-    ("hourly_no_dst_hist.csv", "hourly_no_dst_sc_da_9am.csv"),
-    ("hourly_dst_1_hist.csv", "hourly_dst_1_sc_da_9am.csv"),
-    ("hourly_dst_2_hist.csv", "hourly_dst_2_sc_da_9am.csv"),
+@pytest.mark.parametrize(['hist_file_name', 'sc_file_name'], [
+    ('hourly_no_dst_hist.csv', 'hourly_no_dst_sc_da_9am.csv'),
+    ('hourly_dst_1_hist.csv', 'hourly_dst_1_sc_da_9am.csv'),
+    ('hourly_dst_2_hist.csv', 'hourly_dst_2_sc_da_9am.csv'),
 ])
 def test_block_staircase_hourly_day_ahead(engine, tsh, hist_file_name, sc_file_name):
     """Day-ahead staircase with 9am revision, daily frequency and value hours 0-23"""
     sc_kwargs = dict(
-        revision_freq={"days": 1},
-        revision_time={"hour": 9},
-        revision_tz="Europe/Brussels",
-        maturity_offset={"days": 1},
-        maturity_time={"hour": 0},
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        revision_tz='Europe/Brussels',
+        maturity_offset={'days': 1},
+        maturity_time={'hour': 0},
     )
-    hist_csv = DATADIR / "staircase" / hist_file_name
-    sc_csv = DATADIR / "staircase" / sc_file_name
+    hist_csv = DATADIR / 'staircase' / hist_file_name
+    sc_csv = DATADIR / 'staircase' / sc_file_name
     run_block_staircase_value_test(
-        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag="36h"
+        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag='36h'
     )
 
 
-@pytest.mark.parametrize(["hist_file_name", "sc_file_name"], [
-    ("hourly_utc_hist.csv", "hourly_utc_sc_every_6h.csv"),
+@pytest.mark.parametrize(['hist_file_name', 'sc_file_name'], [
+    ('hourly_utc_hist.csv', 'hourly_utc_sc_every_6h.csv'),
 ])
 def test_block_staircase_hourly_intraday(engine, tsh, hist_file_name, sc_file_name):
     """Intraday staircase with revisions every 6 hours on utc hourly input"""
     sc_kwargs = dict(
-        revision_freq={"hours": 6},
-        revision_time={"hour": 12},
-        revision_tz="UTC",
+        revision_freq={'hours': 6},
+        revision_time={'hour': 12},
+        revision_tz='UTC',
     )
-    hist_csv = DATADIR / "staircase" / hist_file_name
-    sc_csv = DATADIR / "staircase" / sc_file_name
+    hist_csv = DATADIR / 'staircase' / hist_file_name
+    sc_csv = DATADIR / 'staircase' / sc_file_name
     run_block_staircase_value_test(
-        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag="36h"
+        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag='36h'
     )
 
 
-@pytest.mark.parametrize(["hist_file_name", "sc_file_name", "rev_hour"], [
-    ("daily_hist.csv", "daily_sc_da_6am.csv", 6),
-    ("daily_hist.csv", "daily_sc_da_9am.csv", 9),
+@pytest.mark.parametrize(['hist_file_name', 'sc_file_name', 'rev_hour'], [
+    ('daily_hist.csv', 'daily_sc_da_6am.csv', 6),
+    ('daily_hist.csv', 'daily_sc_da_9am.csv', 9),
 ])
 def test_block_staircase_daily_calendar(
     engine, tsh, hist_file_name, sc_file_name, rev_hour
 ):
     """Calendar-day-ahead staircase, revisions at 6 and 9am, on tz-naive daily data"""
     sc_kwargs = dict(
-        revision_freq={"days": 1},
-        revision_time={"hour": rev_hour},
-        revision_tz="Europe/Brussels",
-        maturity_offset={"days": 1},
-        maturity_time={"hour": 0},
+        revision_freq={'days': 1},
+        revision_time={'hour': rev_hour},
+        revision_tz='Europe/Brussels',
+        maturity_offset={'days': 1},
+        maturity_time={'hour': 0},
     )
-    hist_csv = DATADIR / "staircase" / hist_file_name
-    sc_csv = DATADIR / "staircase" / sc_file_name
+    hist_csv = DATADIR / 'staircase' / hist_file_name
+    sc_csv = DATADIR / 'staircase' / sc_file_name
     run_block_staircase_value_test(
-        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag="1D"
+        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag='1D'
     )
 
 
-@pytest.mark.parametrize(["hist_file_name", "sc_file_name"], [
-    ("daily_hist.csv", "daily_sc_bda_9am.csv"),
+@pytest.mark.parametrize(['hist_file_name', 'sc_file_name'], [
+    ('daily_hist.csv', 'daily_sc_bda_9am.csv'),
 ])
 def test_block_staircase_daily_business(engine, tsh, hist_file_name, sc_file_name):
     """Business-day-ahead staircase, revisions at 9am, on tz-naive daily data"""
     sc_kwargs = dict(
-        revision_freq={"bdays": 1},
-        revision_time={"hour": 9},
-        revision_tz="Europe/Brussels",
-        maturity_offset={"bdays": 1},
-        maturity_time={"hour": 0},
+        revision_freq={'bdays': 1},
+        revision_time={'hour': 9},
+        revision_tz='Europe/Brussels',
+        maturity_offset={'bdays': 1},
+        maturity_time={'hour': 0},
     )
-    hist_csv = DATADIR / "staircase" / hist_file_name
-    sc_csv = DATADIR / "staircase" / sc_file_name
+    hist_csv = DATADIR / 'staircase' / hist_file_name
+    sc_csv = DATADIR / 'staircase' / sc_file_name
     run_block_staircase_value_test(
-        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag="1D"
+        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag='1D'
     )
 
 
-@pytest.mark.parametrize(["hist_file_name", "sc_file_name", "rev_weekday"], [
-    ("weekly_hist.csv", "weekly_sc_wa_monday_6am.csv", 0),
-    ("weekly_hist.csv", "weekly_sc_wa_wednesday_6am.csv", 2),
+@pytest.mark.parametrize(['hist_file_name', 'sc_file_name', 'rev_weekday'], [
+    ('weekly_hist.csv', 'weekly_sc_wa_monday_6am.csv', 0),
+    ('weekly_hist.csv', 'weekly_sc_wa_wednesday_6am.csv', 2),
 ])
 def test_block_staircase_weekly(
     engine, tsh, hist_file_name, sc_file_name, rev_weekday
 ):
     """Week-ahead staircase with revisions on Monday and Wednesday"""
     sc_kwargs = dict(
-        revision_freq={"weeks": 1},
-        revision_time={"weekday": rev_weekday, "hour": 6},
-        revision_tz="Europe/Brussels",
-        maturity_offset={"days": 7-rev_weekday},
-        maturity_time={"hour": 0},
+        revision_freq={'weeks': 1},
+        revision_time={'weekday': rev_weekday, 'hour': 6},
+        revision_tz='Europe/Brussels',
+        maturity_offset={'days': 7-rev_weekday},
+        maturity_time={'hour': 0},
     )
-    hist_csv = DATADIR / "staircase" / hist_file_name
-    sc_csv = DATADIR / "staircase" / sc_file_name
+    hist_csv = DATADIR / 'staircase' / hist_file_name
+    sc_csv = DATADIR / 'staircase' / sc_file_name
     run_block_staircase_value_test(
-        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag="7D"
+        engine, tsh, sc_file_name, hist_csv, sc_csv, sc_kwargs, value_date_lag='7D'
     )
 
 
@@ -1980,10 +1980,10 @@ datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00
 2020-01-02 16:00+00:00, 8.0,                80.0,               800.0
 """)
     sc_kwargs = dict(
-        revision_freq={"days": 1},
-        revision_time={"hour": 9},
-        revision_tz="UTC",
-        maturity_time={"hour": 8},
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        revision_tz='UTC',
+        maturity_time={'hour': 8},
     )
     expected_sc = io.StringIO("""
 datetime,               value
@@ -1995,7 +1995,7 @@ datetime,               value
 2020-01-02 16:00+00:00, 80.0
 """)
     run_block_staircase_value_test(
-        engine, tsh, "maturity_time_before_revision_time", hist, expected_sc, sc_kwargs
+        engine, tsh, 'maturity_time_before_revision_time', hist, expected_sc, sc_kwargs
     )
 
 
@@ -2034,7 +2034,7 @@ datetime,       value
 2021-01-21,     13.6
 """)
     run_block_staircase_value_test(
-        engine, tsh, "business_day_vs_weekend", hist, expected_sc, sc_kwargs
+        engine, tsh, 'business_day_vs_weekend', hist, expected_sc, sc_kwargs
     )
 
 

@@ -349,21 +349,21 @@ class dbtimeseries:
         from_value_date: pandas.Timestamp from which values are retrieved
         to_value_date: pandas.Timestamp to which values are retrieved
         revision_freq: dict giving revision frequency, of which keys must be taken from
-            ["years", "months", "weeks", "bdays", "days", "hours", "minutes", "seconds"]
-            and values as integers. Default is daily frequency, i.e. {"days": 1}
+            ['years', 'months', 'weeks', 'bdays', 'days', 'hours', 'minutes', 'seconds']
+            and values as integers. Default is daily frequency, i.e. {'days': 1}
         revision_time: dict giving revision time, of which keys should be taken from
-            ["year", "month", "day", "weekday", "hour", "minute", "second"] and values
+            ['year', 'month', 'day', 'weekday', 'hour', 'minute', 'second'] and values
             must be integers. It is only used for revision date initialisation. The next
             revision dates are then obtained by successively adding `revision_freq`.
-            Default is {"hour": 0}
+            Default is {'hour': 0}
         revision_tz: str giving time zone in which revision date and time are expressed.
-            Default is "UTC"
+            Default is 'UTC'
         maturity_offset: dict giving time lag between each revision date and start time
-            of related block values. Its keys must be taken from ["years", "months",
-            "weeks", "bdays", "days", "hours", "minutes", "seconds"] and values as
+            of related block values. Its keys must be taken from ['years', 'months',
+            'weeks', 'bdays', 'days', 'hours', 'minutes', 'seconds'] and values as
             integers. Default is {}, i.e. the revision date is the block start date
         maturity_time: dict fixing start time of each block, of which keys should be
-            taken from ["year", "month", "day", "hour", "minute", "second"] and values
+            taken from ['year', 'month', 'day', 'hour', 'minute', 'second'] and values
             must be integers. The start date of each block is thus obtained by adding
             `maturity_offset` to revision date and then applying `maturity_time`.
             Default is {}, i.e. block start date is just the revision date shifted by
