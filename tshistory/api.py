@@ -329,8 +329,8 @@ class dbtimeseries:
     def block_staircase(
         self,
         name,
-        from_value_date: datetime,
-        to_value_date: datetime,
+        from_value_date: Optional[datetime] = None,
+        to_value_date: Optional[datetime] = None,
         revision_freq: Dict[str, int] = None,
         revision_time: Dict[str, int] = None,
         revision_tz: str = 'UTC',
