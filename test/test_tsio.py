@@ -1823,6 +1823,46 @@ datetime,               value
     )
 
 
+def test_block_staircase_readme_example(engine, tsh):
+    hist = io.StringIO("""
+datetime, 2020-01-01 06:00+0, 2020-01-01 14:00+0, 2020-01-02 06:00+0, 2020-01-02 14:00+0
+2020-01-01 00:00+00, 1.1,  1.2,  NA,   NA
+2020-01-01 08:00+00, 2.1,  2.2,  NA,   NA
+2020-01-01 16:00+00, 3.1,  3.2,  NA,   NA
+2020-01-02 00:00+00, 4.1,  4.2,  4.3,  4.4 
+2020-01-02 08:00+00, 5.1,  5.2,  5.3,  5.4 
+2020-01-02 16:00+00, 6.1,  6.2,  6.3,  6.4 
+2020-01-03 00:00+00, 7.1,  7.2,  7.3,  7.4 
+2020-01-03 08:00+00, 8.1,  8.2,  8.3,  8.4 
+2020-01-03 16:00+00, 9.1,  9.2,  9.3,  9.4 
+2020-01-04 00:00+00, NA,   NA,   10.3, 10.4
+2020-01-04 08:00+00, NA,   NA,   11.3, 11.4
+2020-01-04 16:00+00, NA,   NA,   12.3, 12.4
+""")
+    sc_kwargs = dict(
+        revision_freq={'days': 1},
+        revision_time={'hour': 9},
+        revision_tz='utc',
+        maturity_offset={'days': 1},
+        maturity_time={'hour': 0}
+    )
+    expected_sc = io.StringIO("""
+datetime, value
+2020-01-02 00:00:00+00:00, 4.1
+2020-01-02 08:00:00+00:00, 5.1
+2020-01-02 16:00:00+00:00, 6.1
+2020-01-03 00:00:00+00:00, 7.3 
+2020-01-03 08:00:00+00:00, 8.3 
+2020-01-03 16:00:00+00:00, 9.3 
+2020-01-04 00:00:00+00:00, 10.4
+2020-01-04 08:00:00+00:00, 11.4
+2020-01-04 16:00:00+00:00, 12.4
+""")
+    run_block_staircase_value_test(
+        engine, tsh, "sc_readme_example", hist, expected_sc, sc_kwargs
+    )
+
+
 @pytest.mark.parametrize(["hist_file_name", "sc_file_name"], [
     ("hourly_no_dst_hist.csv", "hourly_no_dst_sc_da_9am.csv"),
     ("hourly_dst_1_hist.csv", "hourly_dst_1_sc_da_9am.csv"),
