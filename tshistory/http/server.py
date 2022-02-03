@@ -170,6 +170,32 @@ staircase.add_argument(
     'format', type=enum('json', 'tshpack'), default='json'
 )
 
+block_staircase = base.copy()
+block_staircase.add_argument(
+    'from_value_date', type=utcdt, default=None
+)
+block_staircase.add_argument(
+    'to_value_date', type=utcdt, default=None
+)
+block_staircase.add_argument(
+    'revision_freq', type=todict, default=None
+)
+block_staircase.add_argument(
+    'revision_time', type=todict, default=None
+)
+block_staircase.add_argument(
+    'revision_tz', type=str, default='UTC'
+)
+block_staircase.add_argument(
+    'maturity_offset', type=todict, default=None
+)
+block_staircase.add_argument(
+    'maturity_time', type=todict, default=None
+)
+block_staircase.add_argument(
+    'format', type=enum('json', 'tshpack'), default='json'
+)
+
 catalog = reqparse.RequestParser()
 catalog.add_argument(
     'allsources', type=inputs.boolean, default=True
@@ -555,6 +581,44 @@ class httpapi:
                     args.name, delta=args.delta,
                     from_value_date=args.from_value_date,
                     to_value_date=args.to_value_date,
+                )
+                metadata = tsa.metadata(args.name, all=True)
+
+                if args.format == 'json':
+                    if series is not None:
+                        response = make_response(
+                            series.to_json(orient='index', date_format='iso')
+                        )
+                    else:
+                        response = make_response('null')
+                    response.headers['Content-Type'] = 'text/json'
+                    return response
+
+                response = make_response(
+                    util.pack_series(metadata, series)
+                )
+                response.headers['Content-Type'] = 'application/octet-stream'
+                return response
+
+        @nss.route('/block_staircase')
+        class timeseries_block_staircase(Resource):
+
+            @api.expect(block_staircase)
+            @onerror
+            def get(self):
+                args = block_staircase.parse_args()
+                if not tsa.exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
+                series = tsa.block_staircase(
+                    args.name,
+                    from_value_date=args.from_value_date,
+                    to_value_date=args.to_value_date,
+                    revision_freq=args.revision_freq,
+                    revision_time=args.revision_time,
+                    revision_tz=args.revision_tz,
+                    maturity_offset=args.maturity_offset,
+                    maturity_time=args.maturity_time,
                 )
                 metadata = tsa.metadata(args.name, all=True)
 

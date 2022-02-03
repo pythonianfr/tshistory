@@ -200,6 +200,11 @@ def with_tester(uri, resp, wsgitester):
     )
 
     resp.add_callback(
+        responses.GET, uri + '/series/block_staircase',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
         responses.GET, uri + '/series/history',
         callback=partial(read_request_bridge, wsgitester)
     )

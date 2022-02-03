@@ -333,7 +333,7 @@ class dbtimeseries:
         to_value_date: datetime,
         revision_freq: Dict[str, int] = None,
         revision_time: Dict[str, int] = None,
-        revision_tz: str = "UTC",
+        revision_tz: str = 'UTC',
         maturity_offset: Dict[str, int] = None,
         maturity_time: Dict[str, int] = None,
     ):
@@ -356,7 +356,8 @@ class dbtimeseries:
             must be integers. It is only used for revision date initialisation. The next
             revision dates are then obtained by successively adding `revision_freq`.
             Default is {"hour": 0}
-        revision_tz: str giving time zone in which revision date and time are expressed
+        revision_tz: str giving time zone in which revision date and time are expressed.
+            Default is "UTC"
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ["years", "months",
             "weeks", "bdays", "days", "hours", "minutes", "seconds"] and values as

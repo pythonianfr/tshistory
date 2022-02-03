@@ -218,6 +218,46 @@ class Client:
 
         return res
 
+
+    @unwraperror
+    def block_staircase(
+        self,
+        name,
+        from_value_date=None,
+        to_value_date=None,
+        revision_freq=None,
+        revision_time=None,
+        revision_tz='UTC',
+        maturity_offset=None,
+        maturity_time=None,
+    ):
+        args = {
+            'name': name,
+            'format': 'tshpack'
+        }
+        if from_value_date is not None:
+            args['from_value_date'] = strft(from_value_date)
+        if to_value_date is not None:
+            args['to_value_date'] = strft(to_value_date)
+        if revision_freq is not None:
+            args['revision_freq'] = json.dumps(revision_freq)
+        if revision_time is not None:
+            args['revision_time'] = json.dumps(revision_time)
+        if revision_tz is not None:
+            args['revision_tz'] = revision_tz
+        if maturity_offset is not None:
+            args['maturity_offset'] = json.dumps(maturity_offset)
+        if maturity_time is not None:
+            args['maturity_time'] = json.dumps(maturity_time)
+
+        res = requests.get(f'{self.uri}/series/block_staircase', params=args)
+        if res.status_code == 404:
+            return None
+        if res.status_code == 200:
+            return unpack_series(name, res.content)
+        return res
+
+
     @unwraperror
     def history(self, name,
                 from_insertion_date=None,
