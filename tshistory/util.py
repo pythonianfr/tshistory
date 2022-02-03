@@ -778,10 +778,10 @@ def extend(klass):
     e.g.
 
     .. code-block::python
-     from tshistory.api import dbtimeseries
+     from tshistory.api import mainsource
 
-     @extend(dbtimeseries)
-     def formule(name):
+     @extend(mainsource)
+     def formula(name):
          return self.tsh.formula(self.engine, name)
 
     """

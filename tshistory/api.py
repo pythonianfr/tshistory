@@ -36,7 +36,7 @@ class timeseries:
         if parseduri.scheme.startswith('postgres'):
             if handler is None:
                 handler = find_most_specific_tshclass()
-            return dbtimeseries(
+            return mainsource(
                 uri,
                 namespace,
                 tshclass=handler,
@@ -50,8 +50,8 @@ class timeseries:
         raise NotImplementedError(uri)
 
 
-class dbtimeseries:
-    """Postgres-backed implementation of the API
+class mainsource:
+    """API façade for the main source (talks directly to the storage)
 
     The api documentation is carried by this object.
     The http client provides exactly the same methods.

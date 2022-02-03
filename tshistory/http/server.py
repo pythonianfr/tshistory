@@ -306,7 +306,7 @@ class httpapi:
                  )):
 
         # warn against playing proxy games
-        assert isinstance(tsa, tsapi.dbtimeseries)
+        assert isinstance(tsa, tsapi.mainsource)
         self.tsa = tsa
 
         self.bp = Blueprint(
