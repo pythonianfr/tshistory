@@ -1342,7 +1342,7 @@ class historycache:
         # assemble blocks by looping over successive revisions
         revision_date = init_rev_date
         block_start = init_block_start
-        ts_values = {}
+        res_ts = empty_series(self.tzaware, name=self.name)
         while block_start <= to_value_date:
             chunk = self.get(
                 revision_date=revision_date,
@@ -1350,7 +1350,7 @@ class historycache:
                 to_value_date=to_value_date,
             )
             if chunk is not None and len(chunk):
-                ts_values.update(chunk.to_dict())
+                res_ts = patch(res_ts, chunk)
             next_rev_date = revision_date + revision_freq
             next_block_start = get_block_start(next_rev_date)
             if not (block_start < next_block_start):
@@ -1362,10 +1362,6 @@ class historycache:
             revision_date = next_rev_date
             block_start = next_block_start
 
-        if ts_values:
-            res_ts = pd.Series(ts_values, name=self.name)
-        else:
-            res_ts = empty_series(self.tzaware, name=self.name)
         if self.tzaware:
             res_ts = res_ts.tz_convert(revision_tz)
         return res_ts
