@@ -110,6 +110,9 @@ insertion_dates.add_argument(
 insertion_dates.add_argument(
     'to_insertion_date', type=utcdt, default=None
 )
+insertion_dates.add_argument(
+    'nocache', type=inputs.boolean, default=False
+)
 
 get = base.copy()
 get.add_argument(
@@ -121,6 +124,10 @@ get.add_argument(
 )
 get.add_argument(
     'to_value_date', type=utcdt, default=None
+)
+get.add_argument(
+    'nocache', type=inputs.boolean, default=False,
+    help='ask for the uncached series'
 )
 get.add_argument(
     '_keep_nans', type=inputs.boolean, default=False,
@@ -147,6 +154,9 @@ history.add_argument(
 )
 history.add_argument(
     'diffmode', type=inputs.boolean, default=False
+)
+history.add_argument(
+    'nocache', type=inputs.boolean, default=False
 )
 history.add_argument(
     '_keep_nans', type=inputs.boolean, default=False
@@ -465,6 +475,7 @@ class httpapi:
                     revision_date=args.insertion_date,
                     from_value_date=args.from_value_date,
                     to_value_date=args.to_value_date,
+                    nocache=args.nocache,
                     _keep_nans=args._keep_nans
                 )
                 # the fast path will need it
@@ -521,6 +532,7 @@ class httpapi:
                     args.name,
                     from_insertion_date=args.from_insertion_date,
                     to_insertion_date=args.to_insertion_date,
+                    nocache=args.nocache
                 )
                 response = make_response({'insertion_dates':
                     [
@@ -547,6 +559,7 @@ class httpapi:
                     from_value_date=args.from_value_date,
                     to_value_date=args.to_value_date,
                     diffmode=args.diffmode,
+                    nocache=args.nocache,
                     _keep_nans=args._keep_nans
                 )
                 metadata = tsa.metadata(args.name, all=True)

@@ -149,10 +149,12 @@ class Client:
             revision_date=None,
             from_value_date=None,
             to_value_date=None,
+            nocache=False,
             _keep_nans=False):
         args = {
             'name': name,
             'format': 'tshpack',
+            'nocache': nocache,
             '_keep_nans': _keep_nans
         }
         if revision_date:
@@ -174,9 +176,11 @@ class Client:
     @unwraperror
     def insertion_dates(self, name,
                         from_insertion_date=None,
-                        to_insertion_date=None):
+                        to_insertion_date=None,
+                        nocache=False):
         args = {
-            'name': name
+            'name': name,
+            'nocache': nocache
         }
         if from_insertion_date:
             args['from_insertion_date'] = strft(from_insertion_date)
@@ -267,11 +271,13 @@ class Client:
                 from_value_date=None,
                 to_value_date=None,
                 diffmode=False,
+                nocache=False,
                 _keep_nans=False):
         args = {
             'name': name,
             'format': 'tshpack',
             'diffmode': json.dumps(diffmode),
+            'nocache': json.dumps(nocache),
             '_keep_nans': json.dumps(_keep_nans)
         }
         if from_insertion_date:

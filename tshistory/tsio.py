@@ -174,7 +174,8 @@ class timeseries:
     @tx
     def get(self, cn, name, revision_date=None,
             from_value_date=None, to_value_date=None,
-            _keep_nans=False):
+            _keep_nans=False,
+            **kw):
         """Compute and return the serie of a given name
 
         revision_date: datetime filter to get previous versions of the
@@ -281,7 +282,8 @@ class timeseries:
                 from_value_date=None,
                 to_value_date=None,
                 diffmode=False,
-                _keep_nans=False):
+                _keep_nans=False,
+                **kw):
         tablename = self._series_to_tablename(cn, name)
         if tablename is None:
             return
