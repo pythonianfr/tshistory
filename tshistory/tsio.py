@@ -465,14 +465,16 @@ class timeseries:
 
     @tx
     def insertion_dates(self, cn, name,
-                        fromdate=None, todate=None):
+                        from_insertion_date=None,
+                        to_insertion_date=None,
+                        **kw):
         self._guard_query_dates(
-            fromdate, todate
+            from_insertion_date, to_insertion_date
         )
         revs = self._revisions(
             cn, name,
-            from_insertion_date=fromdate,
-            to_insertion_date=todate
+            from_insertion_date=from_insertion_date,
+            to_insertion_date=to_insertion_date
         )
 
         return [

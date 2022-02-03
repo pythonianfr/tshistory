@@ -183,7 +183,8 @@ class dbtimeseries:
             revision_date: Optional[datetime]=None,
             from_value_date: Optional[datetime]=None,
             to_value_date: Optional[datetime]=None,
-            _keep_nans: bool=False) -> Optional[pd.Series]:
+            _keep_nans: bool=False,
+            **kw) -> Optional[pd.Series]:
         """Get a series by name.
 
         By default one gets the latest version.
@@ -206,7 +207,8 @@ class dbtimeseries:
             revision_date=revision_date,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
-            _keep_nans=_keep_nans
+            _keep_nans=_keep_nans,
+            **kw
         )
 
         if ts is None:
@@ -222,7 +224,8 @@ class dbtimeseries:
     def insertion_dates(self,
                         name: str,
                         from_insertion_date: Optional[datetime]=None,
-                        to_insertion_date: Optional[datetime]=None):
+                        to_insertion_date: Optional[datetime]=None,
+                        **kw):
         """Get the list of all insertion dates.
 
         """
@@ -233,8 +236,9 @@ class dbtimeseries:
             return self.tsh.insertion_dates(
                 self.engine,
                 name,
-                from_insertion_date,
-                to_insertion_date
+                from_insertion_date=from_insertion_date,
+                to_insertion_date=to_insertion_date,
+                **kw
             )
 
         return self.othersources.insertion_dates(
@@ -250,7 +254,8 @@ class dbtimeseries:
                 from_value_date: Optional[datetime]=None,
                 to_value_date: Optional[datetime]=None,
                 diffmode: bool=False,
-                _keep_nans: bool=False) -> Dict[datetime, pd.Series]:
+                _keep_nans: bool=False,
+                **kw) -> Dict[datetime, pd.Series]:
         """Get all versions of a series in the form of a dict from insertion
         dates to series version.
 
@@ -279,7 +284,8 @@ class dbtimeseries:
             from_value_date=from_value_date,
             to_value_date=to_value_date,
             diffmode=diffmode,
-            _keep_nans=_keep_nans
+            _keep_nans=_keep_nans,
+            **kw
         )
 
         if hist is None:

@@ -147,7 +147,7 @@ def test_guard_query_dates(engine, tsh):
     with pytest.raises(AssertionError):
         tsh.insertion_dates(
             engine, 'guard-datetime',
-            todate=date(2019, 1, 1)
+            to_insertion_date=date(2019, 1, 1)
         )
 
 
@@ -969,8 +969,8 @@ insertion_date             value_date
     ]
     idates = tsh.insertion_dates(
         engine, 'smallserie',
-        fromdate=utcdt(2017, 2, 2),
-        todate=utcdt(2017, 2, 2)
+        from_insertion_date=utcdt(2017, 2, 2),
+        to_insertion_date=utcdt(2017, 2, 2)
     )
     assert idates == [
         pd.Timestamp('2017-02-02 00:00:00+0000', tz='UTC'),
