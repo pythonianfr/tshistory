@@ -2577,6 +2577,15 @@ insertion_date            value_date
                           2022-01-06  32.0  33.0  34.0
 """, hist)
 
+    idates = tsh.group_insertion_dates(engine, 'history_group')
+    assert idates == [
+        pd.Timestamp('2022-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2022-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2022-01-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2022-01-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2022-01-05 00:00:00+0000', tz='UTC'),
+    ]
+
 
 def test_group_bad_data(engine, tsh):
     df = gengroup(

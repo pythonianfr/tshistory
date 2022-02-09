@@ -1118,24 +1118,36 @@ class timeseries:
             self.tsh_group.delete(cn, sn)
 
     @tx
+    def group_insertion_dates(self, cn, name):
+        infos = self._group_info(cn, name)
+        one_series_name = infos[0][1]
+        return self.tsh_group.insertion_dates(cn, one_series_name)
+
+    @tx
     def group_history(self, cn, name, **bounds):
         infos = self._group_info(cn, name)
         # infos: list of tuples (scenario-name(external), series-name(internal))
-        map_series_history = {}
+        series_history = {}
         for scenario_name, series_name in infos:
-            map_series_history[scenario_name] = self.tsh_group.history(
+            series_history[scenario_name] = self.tsh_group.history(
                 cn,
                 series_name,
                 **bounds
             )
-        # Now we just need to invert the keys order of map_series_history
+        # Now we just need to invert the keys order of series_history
         # we have: {'scenario': {idate: {ts}}}; we want: {idate: {scenario: {ts}}}
-        idates = list(map_series_history[list(map_series_history.keys())[0]].keys())
-        scenarios = list(map_series_history.keys())
-        renaming = {id: scenario for scenario, id in infos}
+        scenarios = [name for name, _ in infos]
+        renaming = {
+            id: scenario
+            for scenario, id in infos
+        }
         history_group = {}
-        for idate in idates:
-            series = [map_series_history[scenario][idate] for scenario in scenarios]
+        # all the idates are the same for all series
+        for idate in series_history[list(series_history)[0]]:
+            series = [
+                series_history[scenario][idate]
+                for scenario in scenarios
+            ]
             history_group[idate] = pd.concat(series, axis=1).rename(columns=renaming)
 
         return history_group
