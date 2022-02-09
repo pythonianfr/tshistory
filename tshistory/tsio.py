@@ -1117,6 +1117,29 @@ class timeseries:
         for sn in seriesnames:
             self.tsh_group.delete(cn, sn)
 
+    @tx
+    def group_history(self, cn, name, **bounds):
+        infos = self._group_info(cn, name)
+        # infos: list of tuples (scenario-name(external), series-name(internal))
+        map_series_history = {}
+        for scenario_name, series_name in infos:
+            map_series_history[scenario_name] = self.tsh_group.history(
+                cn,
+                series_name,
+                **bounds
+            )
+        # Now we just need to invert the keys order of map_series_history
+        # we have: {'scenario': {idate: {ts}}}; we want: {idate: {scenario: {ts}}}
+        idates = list(map_series_history[list(map_series_history.keys())[0]].keys())
+        scenarios = list(map_series_history.keys())
+        renaming = {id: scenario for scenario, id in infos}
+        history_group = {}
+        for idate in idates:
+            series = [map_series_history[scenario][idate] for scenario in scenarios]
+            history_group[idate] = pd.concat(series, axis=1).rename(columns=renaming)
+
+        return history_group
+
 
 class BlockStaircaseRevisionError(Exception):
     def __init__(self, sc_kwargs, revision_dates, block_start_dates):

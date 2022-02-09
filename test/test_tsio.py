@@ -2540,6 +2540,44 @@ def test_primary_group(engine, tsh):
     """, df)
 
 
+def test_group_history(engine, tsh):
+    for idx, idate in enumerate(
+            pd.date_range(start=utcdt(2022, 1, 1),
+                          end=utcdt(2022, 1, 5),
+                          freq='D')
+    ):
+        df = gengroup(
+            n_scenarios=3,
+            from_date=idate.date(), #tz-naive because daily
+            length=3,
+            freq='D',
+            seed=10 * idx
+        )
+        tsh.group_replace(engine, df, 'history_group', 'test', insertion_date=idate)
+
+    hist = tsh.group_history(
+        engine,
+        'history_group',
+        from_value_date=datetime(2022, 1, 3),
+        to_value_date=datetime(2022, 1, 6),
+        from_insertion_date=utcdt(2022, 1, 2),
+        to_insertion_date=utcdt(2022, 1, 4),
+    )
+
+    assert_hist("""
+                                         0     1     2
+insertion_date            value_date                  
+2022-01-02 00:00:00+00:00 2022-01-03  11.0  12.0  13.0
+                          2022-01-04  12.0  13.0  14.0
+2022-01-03 00:00:00+00:00 2022-01-03  20.0  21.0  22.0
+                          2022-01-04  21.0  22.0  23.0
+                          2022-01-05  22.0  23.0  24.0
+2022-01-04 00:00:00+00:00 2022-01-04  30.0  31.0  32.0
+                          2022-01-05  31.0  32.0  33.0
+                          2022-01-06  32.0  33.0  34.0
+""", hist)
+
+
 def test_group_bad_data(engine, tsh):
     df = gengroup(
         n_scenarios=3,
