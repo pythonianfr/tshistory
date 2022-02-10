@@ -2586,6 +2586,10 @@ insertion_date            value_date
         pd.Timestamp('2022-01-05 00:00:00+0000', tz='UTC'),
     ]
 
+    # group does not exist
+    assert tsh.group_history(engine, 'no_such_group') is None
+    assert tsh.group_insertion_dates(engine, 'no_such_group') is None
+
 
 def test_group_bad_data(engine, tsh):
     df = gengroup(

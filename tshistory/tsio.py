@@ -1119,12 +1119,16 @@ class timeseries:
 
     @tx
     def group_insertion_dates(self, cn, name):
+        if not self.group_exists(cn, name):
+            return None
         infos = self._group_info(cn, name)
         one_series_name = infos[0][1]
         return self.tsh_group.insertion_dates(cn, one_series_name)
 
     @tx
     def group_history(self, cn, name, **bounds):
+        if not self.group_exists(cn, name):
+            return None
         infos = self._group_info(cn, name)
         # infos: list of tuples (scenario-name(external), series-name(internal))
         series_history = {}
