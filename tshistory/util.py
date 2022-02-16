@@ -172,6 +172,9 @@ def inject_in_index(serie, revdate):
 
 
 def compatible_date(tzaware, date):
+    if date is None:
+        return
+
     if not tzaware:
         return date.replace(tzinfo=None)
 
