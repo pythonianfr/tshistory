@@ -426,6 +426,72 @@ day as follows:
  Name: weekly_series, dtype: float64
 ```
 
+### Optimizing staircase computations with history cache
+
+It may be useful in some cases to compute multiple staircase series from the same source
+series. For example, given a series named `"my_forecast"`, we could reconstruct both the 
+one-day-ahead and two-days-ahead staircase series by doing
+```python
+ >>> ts_1da = tsa.block_staircase('my_forecast',
+                                  from_value_date=pd.Timestamp('2020-01-01', tz="utc"),
+                                  to_value_date=pd.Timestamp('2022-01-01', tz="utc"),
+                                  revision_freq={'days': 1},
+                                  revision_time={'hour': 9},
+                                  revision_tz='utc',
+                                  maturity_offset={'days': 1},
+                                  maturity_time={'hour': 0})
+ >>> ts_2da = tsa.block_staircase('my_forecast',
+                                  from_value_date=pd.Timestamp('2020-01-01', tz="utc"),
+                                  to_value_date=pd.Timestamp('2022-01-01', tz="utc"),
+                                  revision_freq={'days': 1},
+                                  revision_time={'hour': 9},
+                                  revision_tz='utc',
+                                  maturity_offset={'days': 2},
+                                  maturity_time={'hour': 0})
+```
+
+However, the `block_staircase` function makes use of the `history` function to
+reconstruct staircase series. For this reason, the response time may be a bit long
+depending on the time span of the staircase series and the number of insertions.
+
+To optimize the total execution time, we could retrieve the history of `"my_forecast"`
+series, store it in memory and reconstruct the staircase series from it. This can be
+done using the `historycache` object from the `tshsitory.tsio` module, as follows
+```python
+ >>> from tshistory.tsio import historycache
+ >>>
+ >>> hist = tsa.history('my_forecast'
+                        from_value_date=pd.Timestamp('2020-01-01', tz="utc"),
+                        to_value_date=pd.Timestamp('2022-01-01', tz="utc"))
+ >>> hcache = historycache('my_forecast_cache', hist=hist, tzaware=True)
+ >>>
+ >>> ts_1da = hcache.block_staircase(from_value_date=pd.Timestamp('2020-01-01', tz="utc"),
+                                     to_value_date=pd.Timestamp('2022-01-01', tz="utc"),
+                                     revision_freq={'days': 1},
+                                     revision_time={'hour': 9},
+                                     revision_tz='utc',
+                                     maturity_offset={'days': 1},
+                                     maturity_time={'hour': 0})
+ >>> ts_2da = hcache.block_staircase(from_value_date=pd.Timestamp('2020-01-01', tz="utc"),
+                                     to_value_date=pd.Timestamp('2022-01-01', tz="utc"),
+                                     revision_freq={'days': 1},
+                                     revision_time={'hour': 9},
+                                     revision_tz='utc',
+                                     maturity_offset={'days': 2},
+                                     maturity_time={'hour': 0})
+```
+
+In the example above, the `history` function of tshistory API is called once. Then the
+staircase series are computed using the history data stored in memory using the
+`historycache` object, which avoids one API call and reduce execution time.
+
+This example assumes the series `"my_forecast"` is timezone-aware. In the case of
+timezone-naive series, the `tzaware` parameter of `historycache` should be adapted
+accordingly.
+
+The `historycache` class also provides a `staircase` method, so this technique can also
+be used for basic staircase computation.
+
 # The API object
 
 In the few examples above we manipulate the time series through an
