@@ -1118,12 +1118,12 @@ class timeseries:
             self.tsh_group.delete(cn, sn)
 
     @tx
-    def group_insertion_dates(self, cn, name):
+    def group_insertion_dates(self, cn, name, **bounds):
         if not self.group_exists(cn, name):
             return None
         infos = self._group_info(cn, name)
         one_series_name = infos[0][1]
-        return self.tsh_group.insertion_dates(cn, one_series_name)
+        return self.tsh_group.insertion_dates(cn, one_series_name, **bounds)
 
     @tx
     def group_history(self, cn, name, **bounds):
