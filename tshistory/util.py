@@ -466,7 +466,8 @@ def _fromjson(jsonb, tsname):
         # NOTE: weak (but json ...)
         return pd.Series(name=tsname)
 
-    result = pd.read_json(jsonb, typ='series', dtype=False)
+    wrapped = io.StringIO(jsonb) if isinstance(jsonb, str) else io.BytesIO(jsonb)
+    result = pd.read_json(wrapped, typ='series', dtype=False)
     result.name = tsname
     result = num2float(result)
     return result

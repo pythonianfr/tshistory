@@ -263,7 +263,7 @@ def test_base(http):
 
     # history
     res = http.get('/series/history?name=test')
-    df = pd.read_json(res.body)
+    df = pd.read_json(io.BytesIO(res.body))
 
     # we real client would need to handle timestamp
     # tz-awareness
@@ -293,7 +293,7 @@ insertion_date             value_date
         'name': 'test',
         'diffmode': True
     })
-    df = pd.read_json(res.body)
+    df = pd.read_json(io.BytesIO(res.body))
 
     assert_df("""
 2018-01-01 10:00:00  2018-01-01 13:00:00
@@ -309,7 +309,7 @@ insertion_date             value_date
         'from_insertion_date': utcdt(2018, 1, 1, 11),
         'to_insertion_date': utcdt(2018, 1, 1, 12),
     })
-    df = pd.read_json(res.body)
+    df = pd.read_json(io.BytesIO(res.body))
     assert len(df) == 0
 
     # insertion dates subset
@@ -318,7 +318,7 @@ insertion_date             value_date
         'from_insertion_date': utcdt(2018, 1, 1, 10),
         'to_insertion_date': utcdt(2018, 1, 1, 12),
     })
-    df = pd.read_json(res.body)
+    df = pd.read_json(io.BytesIO(res.body))
 
     assert_df("""
                      2018-01-01 10:00:00
@@ -333,7 +333,7 @@ insertion_date             value_date
         'from_value_date': utcdt(2018, 1, 1, 2),
         'to_value_date': utcdt(2018, 1, 1, 3),
     })
-    df = pd.read_json(res.body)
+    df = pd.read_json(io.BytesIO(res.body))
 
     assert_df("""
                      2018-01-01 10:00:00  2018-01-01 13:00:00

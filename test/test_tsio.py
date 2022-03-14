@@ -2114,7 +2114,9 @@ def test_chunky_array(engine, tsh):
 
     assert ts.index.values.flags['C_CONTIGUOUS']
     ts = ts.sort_index()
-    assert not ts.index.values.flags['C_CONTIGUOUS']
+    # starting with pandas 1.3, we keep being contiguous
+    # should we keep this test ?
+    assert ts.index.values.flags['C_CONTIGUOUS']
 
     with engine.begin() as cn:
         tsh.update(cn, ts, 'chunky', 'Babar')
