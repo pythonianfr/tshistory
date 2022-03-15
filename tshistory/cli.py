@@ -10,7 +10,10 @@ import pandas as pd
 
 from tshistory.tsio import timeseries as tshclass
 from tshistory.api import timeseries
-from tshistory.util import find_dburi
+from tshistory.util import (
+    find_dburi,
+    get_cfg_path
+)
 from tshistory.schema import tsschema
 
 
@@ -148,6 +151,14 @@ def info(db_uri, namespace='tsh'):
     info = tsa.tsh.info(tsa.engine)
     info['serie names'] = ', '.join(info['serie names'])
     print(INFOFMT.format(**info))
+
+
+# technical
+
+
+@tsh.command()
+def configpath():
+    print(get_cfg_path())
 
 
 # migration

@@ -65,6 +65,12 @@ def get_cfg_path():
     cfgpath = Path('~/tshistory.cfg').expanduser()
     if cfgpath.exists():
         return cfgpath
+    cfgpath = Path(
+        os.environ.get('XDG_CONFIG_HOME', '~/.config'),
+        'tshistory.cfg'
+    ).expanduser()
+    if cfgpath.exists():
+        return cfgpath
 
 
 def find_dburi(something: str) -> str:
