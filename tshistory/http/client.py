@@ -1,16 +1,19 @@
 import json
 import zlib
 
+import inireader
 import requests
 import pandas as pd
 import numpy as np
 import pytz
 
 from tshistory.util import (
+    get_cfg_path,
     pack_group,
     pack_series,
     series_metadata,
     tzaware_serie,
+    unflatten,
     unpack_history,
     unpack_group,
     unpack_many_series,
@@ -52,11 +55,29 @@ def unwraperror(func):
     return wrapper
 
 
+def get_auth(uri, config):
+    if 'auth' not in config:
+        return ()
+    for name, items in unflatten(config['auth']).items():
+        if items['uri'] == uri:
+            return items
+
+    print(f'found no auth items for this uri: `{uri}`')
+    return ()
+
+
 class Client:
-    uri = None
+    __slots__ = 'uri', 'auth', 'session'
 
     def __init__(self, uri):
         self.uri = uri
+        self.session = requests.Session()
+        auth = get_auth(
+            uri,
+            inireader.reader(get_cfg_path())
+        )
+        if 'login' in auth:
+            self.session.auth = auth['login'], auth['password']
 
     def __repr__(self):
         return f"tshistory-http-client(uri='{self.uri}')"
@@ -86,7 +107,7 @@ class Client:
         if metadata:
             qdata['metadata'] = json.dumps(metadata)
 
-        res = requests.patch(
+        res = self.session.patch(
             f'{self.uri}/series/state',
             data=qdata,
             files={
@@ -125,7 +146,7 @@ class Client:
 
     @unwraperror
     def metadata(self, name, all=False):
-        res = requests.get(f'{self.uri}/series/metadata', params={
+        res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'all': int(all)
         })
@@ -137,7 +158,7 @@ class Client:
     @unwraperror
     def update_metadata(self, name, metadata):
         assert isinstance(metadata, dict)
-        res = requests.put(f'{self.uri}/series/metadata', data={
+        res = self.session.put(f'{self.uri}/series/metadata', data={
             'name': name,
             'metadata': json.dumps(metadata)
         })
@@ -163,7 +184,7 @@ class Client:
             args['from_value_date'] = strft(from_value_date)
         if to_value_date:
             args['to_value_date'] = strft(to_value_date)
-        res = requests.get(
+        res = self.session.get(
             f'{self.uri}/series/state', params=args
         )
         if res.status_code == 404:
@@ -187,7 +208,7 @@ class Client:
         if to_insertion_date:
             args['to_insertion_date'] = strft(to_insertion_date)
 
-        res = requests.get(
+        res = self.session.get(
             f'{self.uri}/series/insertion_dates', params=args
         )
         if res.status_code == 404:
@@ -213,7 +234,7 @@ class Client:
             args['from_value_date'] = strft(from_value_date)
         if to_value_date:
             args['to_value_date'] = strft(to_value_date)
-        res = requests.get(
+        res = self.session.get(
             f'{self.uri}/series/staircase', params=args
         )
         if res.status_code == 404:
@@ -253,7 +274,7 @@ class Client:
         if maturity_time is not None:
             args['maturity_time'] = json.dumps(maturity_time)
 
-        res = requests.get(f'{self.uri}/series/block_staircase', params=args)
+        res = self.session.get(f'{self.uri}/series/block_staircase', params=args)
         if res.status_code == 404:
             return None
         if res.status_code == 200:
@@ -288,7 +309,7 @@ class Client:
             args['from_value_date'] = strft(from_value_date)
         if to_value_date:
             args['to_value_date'] = strft(to_value_date)
-        res = requests.get(
+        res = self.session.get(
             f'{self.uri}/series/history', params=args
         )
         if res.status_code == 404:
@@ -303,7 +324,7 @@ class Client:
 
     @unwraperror
     def type(self, name):
-        res = requests.get(f'{self.uri}/series/metadata', params={
+        res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'type'
         })
@@ -316,7 +337,7 @@ class Client:
 
     @unwraperror
     def interval(self, name):
-        res = requests.get(f'{self.uri}/series/metadata', params={
+        res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'interval'
         })
@@ -343,7 +364,7 @@ class Client:
             query['fromdate'] = fromdate.isoformat()
         if todate:
             query['todate'] = todate.isoformat()
-        res = requests.get(f'{self.uri}/series/log', params=query)
+        res = self.session.get(f'{self.uri}/series/log', params=query)
         if res.status_code == 200:
             logs = []
             for item in res.json():
@@ -355,7 +376,7 @@ class Client:
 
     @unwraperror
     def catalog(self, allsources=True):
-        res = requests.get(f'{self.uri}/series/catalog', params={
+        res = self.session.get(f'{self.uri}/series/catalog', params={
             'allsources': allsources
         })
         if res.status_code == 200:
@@ -368,7 +389,7 @@ class Client:
 
     @unwraperror
     def rename(self, oldname, newname):
-        res = requests.put(
+        res = self.session.put(
             f'{self.uri}/series/state',
             data={'name': oldname, 'newname': newname}
         )
@@ -379,7 +400,7 @@ class Client:
 
     @unwraperror
     def strip(self, name, insertion_date):
-        res = requests.put(
+        res = self.session.put(
             f'{self.uri}/series/strip',
             data={'name': name,
                   'insertion_date': insertion_date}
@@ -391,7 +412,7 @@ class Client:
 
     @unwraperror
     def delete(self, name):
-        res = requests.delete(
+        res = self.session.delete(
             f'{self.uri}/series/state',
             data={'name': name}
         )
@@ -426,7 +447,7 @@ class Client:
         }
         if metadata:
             qdata['metadata'] = json.dumps(metadata)
-        res = requests.patch(
+        res = self.session.patch(
             f'{self.uri}/group/state',
             data=qdata,
             files={
@@ -455,7 +476,7 @@ class Client:
             args['from_value_date'] = strft(from_value_date)
         if to_value_date:
             args['to_value_date'] = strft(to_value_date)
-        res = requests.get(
+        res = self.session.get(
             f'{self.uri}/group/state', params=args
         )
         if res.status_code == 404:
@@ -467,7 +488,7 @@ class Client:
 
     @unwraperror
     def group_catalog(self, allsources=True):
-        res = requests.get(f'{self.uri}/group/catalog', params={
+        res = self.session.get(f'{self.uri}/group/catalog', params={
             'allsources': allsources
         })
         if res.status_code == 200:
@@ -480,7 +501,7 @@ class Client:
 
     @unwraperror
     def group_type(self, name):
-        res = requests.get(f'{self.uri}/group/metadata', params={
+        res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name,
             'type': 'type'
         })
@@ -493,7 +514,7 @@ class Client:
 
     @unwraperror
     def group_metadata(self, name):
-        res = requests.get(f'{self.uri}/group/metadata', params={
+        res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name,
             'type': 'standard'
         })
@@ -507,7 +528,7 @@ class Client:
     @unwraperror
     def update_group_metadata(self, name, meta):
         assert isinstance(meta, dict)
-        res = requests.put(f'{self.uri}/group/metadata', data={
+        res = self.session.put(f'{self.uri}/group/metadata', data={
             'name': name,
             'metadata': json.dumps(meta)
         })
@@ -522,7 +543,7 @@ class Client:
 
     @unwraperror
     def group_delete(self, name):
-        res = requests.delete(
+        res = self.session.delete(
             f'{self.uri}/group/state',
             data={'name': name}
         )
