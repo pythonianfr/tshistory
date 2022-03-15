@@ -17,6 +17,7 @@ from tshistory.util import (
     patch,
     patchmany,
     series_metadata,
+    unflatten,
     unpack_group,
     unpack_history,
     unpack_many_series,
@@ -28,6 +29,21 @@ from tshistory.testutil import (
     genserie,
     utcdt
 )
+
+
+def test_unflatten():
+    d = {
+        'a': 42,
+        'b.c': 'hello',
+        'b.d': 'world'
+    }
+    assert unflatten(d) == {
+        'a': 42,
+        'b': {
+            'c': 'hello',
+            'd': 'world'
+        }
+    }
 
 
 def test_patch():

@@ -4,6 +4,7 @@ import math
 import struct
 import json
 from array import array
+from collections import defaultdict
 import logging
 import threading
 import tempfile
@@ -52,6 +53,21 @@ def tempdir(suffix='', prefix='tmp'):
         yield Path(tmp)
     finally:
         shutil.rmtree(tmp)
+
+
+def unflatten(flattened):
+    """Build nested dictionaries from a flattened one, e.g
+    foo.bar -> {'foo': {'bar': ...}}
+    """
+    nested = defaultdict(lambda: defaultdict(dict))
+    for key, value in flattened.items():
+        try:
+            toplevel, newkey = [k.strip() for k in key.split('.')]
+        except ValueError:
+            nested[key] = value
+            continue
+        nested[toplevel][newkey] = value
+    return nested
 
 
 def get_cfg_path():
