@@ -11,6 +11,7 @@ from tshistory.util import (
     nary_pack,
     nary_unpack,
     pack_group,
+    pack_group_history,
     pack_history,
     pack_many_series,
     pack_series,
@@ -19,6 +20,7 @@ from tshistory.util import (
     series_metadata,
     unflatten,
     unpack_group,
+    unpack_group_history,
     unpack_history,
     unpack_many_series,
     unpack_series
@@ -467,6 +469,49 @@ def test_pack_unpack_tzaware_group():
     unpacked = unpack_group(packed)
 
     assert unpacked.equals(df)
+
+
+def test_pack_naive_history_group():
+    df1 = gengroup(3, pd.Timestamp('2021-1-1'), 5, 'D', 2)
+    df2 = gengroup(3, pd.Timestamp('2021-1-2'), 5, 'D', 2)
+    hist = {
+        utcdt(2021, 1, 1): df1,
+        utcdt(2021, 1, 2): df2,
+    }
+    packed = pack_group_history(hist)
+    unpacked = unpack_group_history(packed)
+    assert hist.keys() == unpacked.keys()
+    for idate, group in hist.items():
+        assert unpacked[idate].equals(hist[idate])
+
+
+def test_pack_empty_history_group():
+    df1 = gengroup(3, pd.Timestamp('2021-1-1', tz='UTC'), 5, 'D', 2)
+    df2 = pd.DataFrame()
+    hist = {
+        utcdt(2021, 1, 1): df1,
+        utcdt(2021, 1, 2): df2,
+        utcdt(2021, 1, 3): df1 * 2
+    }
+    packed = pack_group_history(hist)
+    unpacked = unpack_group_history(packed)
+    assert hist.keys() == unpacked.keys()
+    for idate, group in hist.items():
+        assert unpacked[idate].equals(hist[idate])
+
+
+def test_pack_tzaware_history_group():
+    df1 = gengroup(3, pd.Timestamp('2021-1-1', tz='UTC'), 5, 'D', 2)
+    df2 = gengroup(3, pd.Timestamp('2021-1-1', tz='UTC'), 5, 'D', 2)
+    hist = {
+        utcdt(2021, 1, 1): df1,
+        utcdt(2021, 1, 2): df2,
+    }
+    packed = pack_group_history(hist)
+    unpacked = unpack_group_history(packed)
+    assert hist.keys() == unpacked.keys()
+    for idate, group in hist.items():
+        assert unpacked[idate].equals(hist[idate])
 
 
 def test_in_tx(tsh, engine):

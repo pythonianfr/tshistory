@@ -563,6 +563,71 @@ def unpack_group(bytestr):
     return df
 
 
+def pack_group_history(hist):
+    byteslist = []
+    byteslist.append(
+        np.array(
+            [tstamp.to_datetime64() for tstamp in hist],
+            dtype='datetime64'
+        ).view(np.uint8).data.tobytes()
+    )
+    for df in hist.values():
+        bidtype, bindex = serialize_index(df)
+        out = [bidtype, bindex]
+        byteslist += out
+        values = serialize_values(df)
+        bnbvalues = str(len(values)).encode('utf-8')
+        byteslist.append(bnbvalues)
+        byteslist += values
+    stream = io.BytesIO(
+        zlib.compress(
+            nary_pack(*byteslist)
+        )
+    )
+    return stream.getvalue()
+
+
+def unpack_group_history(bytestring):
+    byteslist = nary_unpack(zlib.decompress(bytestring))
+    idates = np.frombuffer(
+        array('d', byteslist[0]),'|M8[ns]'
+    )
+    idates = [pd.Timestamp(idate, tz='utc') for idate in idates]
+
+    hist = {}
+    cursor = 1
+    dfidx = 0
+    while cursor < len(byteslist):
+        bidtype = byteslist[cursor]
+        bindex = byteslist[cursor + 1]
+        nbvalues = int(byteslist[cursor + 2].decode('utf-8'))
+        content = byteslist[cursor + 3 : cursor + 3 + nbvalues]
+        cursor = cursor + 3 + nbvalues
+        if len(bindex):
+            index = np.frombuffer(
+                array('d', bindex),
+                bidtype
+            )
+        else:
+            hist[idates[dfidx]] = pd.DataFrame()
+            dfidx += 1
+            continue
+        values = {}
+        iter_value = zip(*[iter(content)] * 3)
+        for bdtype, bname, bvalues in iter_value:
+            name = bname.decode('utf-8')
+            values[name] = np.frombuffer(
+                bvalues,
+                bdtype.decode('utf-8')
+            )
+        df = pd.DataFrame(values, index=index)
+        if bidtype.startswith(b'|'):
+            df.index = df.index.tz_localize('UTC')
+        hist[idates[dfidx]] = df
+        dfidx += 1
+    return hist
+
+
 # diff/patch utilities
 
 def _populate(index, values, outindex, outvalues):
