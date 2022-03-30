@@ -794,10 +794,16 @@ def test_stored_groups(client):
     )
     df.columns = ['a', 'b', 'c']
 
-    client.group_replace('test_group', df, 'Babar')
+    client.group_replace('test_group', df, 'Babar',
+                         insertion_date=utcdt(2022, 3, 1)
+    )
 
     df2 = client.group_get('test_group')
     assert df2.equals(df)
+
+    assert client.group_insertion_dates('test_group') == [
+        pd.Timestamp('2022-03-01 00:00:00+0000', tz='UTC')
+    ]
 
     assert client.group_exists('test_group')
     assert client.group_type('test_group') == 'primary'

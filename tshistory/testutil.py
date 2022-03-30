@@ -270,6 +270,11 @@ def with_tester(uri, resp, wsgitester):
     )
 
     resp.add_callback(
+        responses.GET, uri + '/group/insertion_dates',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
         responses.GET, uri + '/group/metadata',
         callback=partial(read_request_bridge, wsgitester)
     )

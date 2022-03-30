@@ -596,6 +596,22 @@ class mainsource:
                 to_value_date
             )
 
+    def group_insertion_dates(self,
+                              name: str,
+                              from_insertion_date: Optional[pd.Timestamp]=None,
+                              to_insertion_date:Optional[pd.Timestamp]=None
+    ) -> List[pd.Timestamp]:
+        """Get the list of all insertion dates for any given group
+        """
+        with self.engine.begin() as cn:
+            return self.tsh.group_insertion_dates(
+                cn,
+                name,
+                from_insertion_date=from_insertion_date,
+                to_insertion_date=to_insertion_date
+            )
+
+
     def group_replace(self,
                       name: str,
                       df: pd.DataFrame,

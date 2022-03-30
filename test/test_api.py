@@ -1029,3 +1029,44 @@ def test_more_group_errors(tsx):
         'tata',
         pd.DataFrame([['a', 'b', 'c']], columns=('series', 'group', 'family'))
     )
+
+
+def test_history_group(tsx):
+    for idx, idate in enumerate(
+            pd.date_range(
+                start=utcdt(2022, 1, 1),
+                end=utcdt(2022, 1, 5),
+                freq='D'
+            )
+    ):
+        df = gengroup(
+            n_scenarios=3,
+            from_date=idate.date(),  # tz-naive because daily
+            length=3,
+            freq='D',
+            seed=10 * idx
+        )
+        tsx.group_replace('history_group', df, 'test', insertion_date=idate)
+
+
+    idates = tsx.group_insertion_dates('history_group')
+    assert idates == [
+        pd.Timestamp('2022-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2022-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2022-01-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2022-01-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2022-01-05 00:00:00+0000', tz='UTC'),
+    ]
+
+    idates = tsx.group_insertion_dates(
+        'history_group',
+        from_insertion_date=utcdt(2022, 1, 2),
+        to_insertion_date=utcdt(2022, 1, 3),
+    )
+    assert idates == [
+        pd.Timestamp('2022-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2022-01-03 00:00:00+0000', tz='UTC'),
+    ]
+
+    # group does not exist
+    assert tsx.group_insertion_dates('no_such_group') is None

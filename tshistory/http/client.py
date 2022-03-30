@@ -487,6 +487,31 @@ class Client:
         return res
 
     @unwraperror
+    def group_insertion_dates(self, name,
+                        from_insertion_date=None,
+                        to_insertion_date=None):
+        args = {
+            'name': name,
+        }
+        if from_insertion_date:
+            args['from_insertion_date'] = strft(from_insertion_date)
+        if to_insertion_date:
+            args['to_insertion_date'] = strft(to_insertion_date)
+
+        res = requests.get(
+            f'{self.uri}/group/insertion_dates', params=args
+        )
+        if res.status_code == 404:
+            return None
+        if res.status_code == 200:
+            return [
+                pd.Timestamp(t, tz='UTC')
+                for t in res.json()['insertion_dates']
+            ]
+
+        return res
+
+    @unwraperror
     def group_catalog(self, allsources=True):
         res = self.session.get(f'{self.uri}/group/catalog', params={
             'allsources': allsources

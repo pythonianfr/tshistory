@@ -273,6 +273,14 @@ groupget.add_argument(
     'format', type=enum('json', 'tshpack'), default='tshpack'
 )
 
+group_insertion_dates = base.copy()
+group_insertion_dates.add_argument(
+    'from_insertion_date', type=utcdt, default=None
+)
+group_insertion_dates.add_argument(
+    'to_insertion_date', type=utcdt, default=None
+)
+
 groupcatalog = reqparse.RequestParser()
 groupcatalog.add_argument(
     'allsources', type=inputs.boolean, default=True
@@ -743,6 +751,29 @@ class httpapi:
                     raise
 
                 return no_content()
+
+        @nsg.route('/insertion_dates')
+        class timeseries_group_idates(Resource):
+
+            @api.expect(group_insertion_dates)
+            @onerror
+            def get(self):
+                args = group_insertion_dates.parse_args()
+                if not tsa.group_exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
+                idates = tsa.group_insertion_dates(
+                    args.name,
+                    from_insertion_date=args.from_insertion_date,
+                    to_insertion_date=args.to_insertion_date,
+                )
+                response = make_response({'insertion_dates':
+                    [
+                        dt.isoformat() for dt in idates
+                    ]
+                })
+                response.headers['Content-Type'] = 'text/json'
+                return response
 
         @nsg.route('/catalog')
         class timeseries_groupcatalog(Resource):
