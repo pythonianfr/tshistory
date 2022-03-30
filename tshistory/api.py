@@ -611,6 +611,31 @@ class mainsource:
                 to_insertion_date=to_insertion_date
             )
 
+    def group_history(self,
+                      name: str,
+                      from_value_date: Optional[pd.Timestamp]=None,
+                      to_value_date: Optional[pd.Timestamp]=None,
+                      from_insertion_date: Optional[pd.Timestamp]=None,
+                      to_insertion_date: Optional[pd.Timestamp]=None,
+    ) -> Dict[pd.Timestamp, pd.DataFrame]:
+        """Get all versions of a group in the form of a dict from insertion
+              dates to dataframe.
+
+              It is possible to restrict the versions range by specifying
+              `from_insertion_date` and `to_insertion_date`.
+
+              It is possible to restrict the values range by specifying
+              `from_value_date` and `to_value_date`.
+        """
+        with self.engine.begin() as cn:
+            return self.tsh.group_history(
+                cn,
+                name,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                from_insertion_date=from_insertion_date,
+                to_insertion_date=to_insertion_date,
+            )
 
     def group_replace(self,
                       name: str,

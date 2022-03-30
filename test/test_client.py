@@ -805,6 +805,9 @@ def test_stored_groups(client):
         pd.Timestamp('2022-03-01 00:00:00+0000', tz='UTC')
     ]
 
+    hist = client.group_history('test_group')
+    assert hist[utcdt(2022, 3, 1)].equals(df)
+
     assert client.group_exists('test_group')
     assert client.group_type('test_group') == 'primary'
     cat = list(client.group_catalog().values())[0]

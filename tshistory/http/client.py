@@ -15,6 +15,7 @@ from tshistory.util import (
     tzaware_serie,
     unflatten,
     unpack_history,
+    unpack_group_history,
     unpack_group,
     unpack_many_series,
     unpack_series
@@ -508,6 +509,38 @@ class Client:
                 pd.Timestamp(t, tz='UTC')
                 for t in res.json()['insertion_dates']
             ]
+
+        return res
+
+    @unwraperror
+    def group_history(self, name,
+                from_insertion_date=None,
+                to_insertion_date=None,
+                from_value_date=None,
+                to_value_date=None):
+        args = {
+            'name': name,
+            'format': 'tshpack',
+
+        }
+        if from_insertion_date:
+            args['from_insertion_date'] = strft(from_insertion_date)
+        if to_insertion_date:
+            args['to_insertion_date'] = strft(to_insertion_date)
+        if from_value_date:
+            args['from_value_date'] = strft(from_value_date)
+        if to_value_date:
+            args['to_value_date'] = strft(to_value_date)
+        res = requests.get(
+            f'{self.uri}/group/history', params=args
+        )
+        if res.status_code == 404:
+            return None
+        if res.status_code == 200:
+            hist = unpack_group_history(res.content)
+            for series in hist.values():
+                series.name = name
+            return hist
 
         return res
 

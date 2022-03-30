@@ -281,6 +281,24 @@ group_insertion_dates.add_argument(
     'to_insertion_date', type=utcdt, default=None
 )
 
+group_history = base.copy()
+group_history.add_argument(
+    'from_insertion_date', type=utcdt, default=None
+)
+group_history.add_argument(
+    'to_insertion_date', type=utcdt, default=None
+)
+group_history.add_argument(
+    'from_value_date', type=utcdt, default=None
+)
+group_history.add_argument(
+    'to_value_date', type=utcdt, default=None
+)
+group_history.add_argument(
+    'format', type=enum('json', 'tshpack'), default='json'
+)
+
+
 groupcatalog = reqparse.RequestParser()
 groupcatalog.add_argument(
     'allsources', type=inputs.boolean, default=True
@@ -773,6 +791,30 @@ class httpapi:
                     ]
                 })
                 response.headers['Content-Type'] = 'text/json'
+                return response
+
+        @nsg.route('/history')
+        class timeseries_group_history(Resource):
+
+            @api.expect(group_history)
+            @onerror
+            def get(self):
+                args = group_history.parse_args()
+                if not tsa.group_exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
+                hist = tsa.group_history(
+                    args.name,
+                    from_insertion_date=args.from_insertion_date,
+                    to_insertion_date=args.to_insertion_date,
+                    from_value_date=args.from_value_date,
+                    to_value_date=args.to_value_date,
+                )
+
+                response = make_response(
+                    util.pack_group_history(hist)
+                )
+                response.headers['Content-Type'] = 'application/octet-stream'
                 return response
 
         @nsg.route('/catalog')

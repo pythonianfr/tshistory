@@ -1048,6 +1048,26 @@ def test_history_group(tsx):
         )
         tsx.group_replace('history_group', df, 'test', insertion_date=idate)
 
+    hist = tsx.group_history(
+        'history_group',
+        from_value_date=dt(2022, 1, 3),
+        to_value_date=dt(2022, 1, 6),
+        from_insertion_date=utcdt(2022, 1, 2),
+        to_insertion_date=utcdt(2022, 1, 4),
+)
+
+    assert_hist("""
+                                         0     1     2
+insertion_date            value_date                  
+2022-01-02 00:00:00+00:00 2022-01-03  11.0  12.0  13.0
+                          2022-01-04  12.0  13.0  14.0
+2022-01-03 00:00:00+00:00 2022-01-03  20.0  21.0  22.0
+                          2022-01-04  21.0  22.0  23.0
+                          2022-01-05  22.0  23.0  24.0
+2022-01-04 00:00:00+00:00 2022-01-04  30.0  31.0  32.0
+                          2022-01-05  31.0  32.0  33.0
+                          2022-01-06  32.0  33.0  34.0
+    """, hist)
 
     idates = tsx.group_insertion_dates('history_group')
     assert idates == [
