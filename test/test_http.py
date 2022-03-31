@@ -798,6 +798,10 @@ def test_group(http):
         'author': 'Babar',
         'format': 'tshpack',
         'replace': json.dumps(True),
+        'insertion_date': str(utcdt(2022, 3, 1)),
+        # We need to send the date as an str because of a weird behavior
+        # in webtest.app.TestApp._gen_request (v 2.0.35) triggered by the type
+        # of the bgroup (binary)
         'bgroup': webtest.Upload('bgroup', bgroup)
     })
     assert res.status_code == 201
@@ -805,6 +809,40 @@ def test_group(http):
     res = http.get('/group/state', {'name': 'test_group'})
     df2 = util.unpack_group(res.body)
     assert df.equals(df2)
+
+    bgroup = util.pack_group(df*2)
+    res = http.patch('/group/state', {
+        'name': 'test_group',
+        'author': 'Babar',
+        'format': 'tshpack',
+        'replace': json.dumps(True),
+        'insertion_date': str(utcdt(2022, 3, 2)),
+        'bgroup': webtest.Upload('bgroup', bgroup)
+    })
+    assert res.status_code == 200
+
+    res = http.get('/group/state', {'name': 'test_group'})
+    df3 = util.unpack_group(res.body)
+
+    res = http.get('/group/insertion_dates', params={
+        'name': 'test_group'
+    })
+    idates = [
+        pd.Timestamp(t, tz='UTC')
+        for t in res.json['insertion_dates']
+    ]
+    assert idates == [
+        pd.Timestamp('2022-03-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2022-03-02 00:00:00+0000', tz='UTC')
+    ]
+
+    res = http.get('/group/history',params={
+        'name': 'test_group'
+    })
+    hist = util.unpack_group_history(res.body)
+
+    assert hist[idates[0]].equals(df)
+    assert hist[idates[1]].equals(df3)
 
     res = http.get('/group/catalog')
     assert res.json == {
