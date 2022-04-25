@@ -314,6 +314,31 @@ def with_tester(uri, resp, wsgitester):
         callback=write_request_bridge(wsgitester.put)
     )
 
+    resp.add_callback(
+        responses.PUT, uri + '/cache/policy',
+        callback=write_request_bridge(wsgitester.put)
+    )
+
+    resp.add_callback(
+        responses.PATCH, uri + '/cache/policy',
+        callback=write_request_bridge(wsgitester.patch)
+    )
+
+    resp.add_callback(
+        responses.DELETE, uri + '/cache/policy',
+        callback=write_request_bridge(wsgitester.delete)
+    )
+
+    resp.add_callback(
+        responses.PUT, uri + '/cache/mapping',
+        callback=write_request_bridge(wsgitester.put)
+    )
+
+    resp.add_callback(
+        responses.DELETE, uri + '/cache/mapping',
+        callback=write_request_bridge(wsgitester.delete)
+    )
+
 
 class WebTester(webtest.TestApp):
 
