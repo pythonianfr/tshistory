@@ -130,6 +130,10 @@ get.add_argument(
     help='ask for the uncached series'
 )
 get.add_argument(
+    'live', type=inputs.boolean, default=False,
+    help='patch the cached series with the freshest data'
+)
+get.add_argument(
     '_keep_nans', type=inputs.boolean, default=False,
     help='keep erasure information'
 )
@@ -502,6 +506,7 @@ class httpapi:
                     from_value_date=args.from_value_date,
                     to_value_date=args.to_value_date,
                     nocache=args.nocache,
+                    live=args.live,
                     _keep_nans=args._keep_nans
                 )
                 # the fast path will need it

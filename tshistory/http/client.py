@@ -172,11 +172,13 @@ class Client:
             from_value_date=None,
             to_value_date=None,
             nocache=False,
+            live=False,
             _keep_nans=False):
         args = {
             'name': name,
             'format': 'tshpack',
             'nocache': nocache,
+            'live': live,
             '_keep_nans': _keep_nans
         }
         if revision_date:
