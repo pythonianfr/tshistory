@@ -339,6 +339,26 @@ def with_tester(uri, resp, wsgitester):
         callback=write_request_bridge(wsgitester.delete)
     )
 
+    resp.add_callback(
+        responses.GET, uri + '/cache/cacheable',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/cache/policies',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/cache/policy-series',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/cache/series-has-cache',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
 
 class WebTester(webtest.TestApp):
 
