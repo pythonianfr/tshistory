@@ -83,11 +83,18 @@ class Client:
     def __repr__(self):
         return f"tshistory-http-client(uri='{self.uri}')"
 
+    @unwraperror
     def exists(self, name):
-        meta = self.metadata(name)
-        if 'message' in meta and meta['message'].endswith('does not exists'):
-            return False
-        return True
+        res = self.session.get(f'{self.uri}/series/metadata', params={
+            'name': name
+        })
+        if res.status_code in (200, 404):
+            meta = res.json()
+            if 'message' in meta and meta['message'].endswith('does not exists'):
+                return False
+            return True
+
+        return res
 
     @unwraperror
     def _insert(self, name, series, author,
@@ -151,8 +158,10 @@ class Client:
             'name': name,
             'all': int(all)
         })
-        if res.status_code in (200, 404):
+        if res.status_code == 200:
             return res.json()
+        if res.status_code == 404:
+            return None
 
         return res
 

@@ -36,6 +36,10 @@ def utcdt(*dt):
     return pd.Timestamp(datetime(*dt), tz='UTC')
 
 
+def test_no_series_meta(engine, tsh):
+    assert tsh.metadata(engine, 'no-such-series') is None
+
+
 def test_tzaware_non_monotonic(engine, tsh):
     ts1 = pd.Series(
         [1, 2, 3],

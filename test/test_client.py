@@ -72,9 +72,7 @@ def test_base(client):
     assert not client.exists('no-such-series')
 
     meta = client.metadata('no-such-series')
-    assert meta == {
-        'message': '`no-such-series` does not exists'
-    }
+    assert meta is None
 
     series_in = genserie(utcdt(2018, 1, 1), 'H', 3)
     diff = client.update(
