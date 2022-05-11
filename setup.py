@@ -29,7 +29,8 @@ setup(name='tshistory',
           'flask-restx',
           'jinja2 < 3.0',
           'flask-restx',
-          'requests'
+          'requests',
+          'markupsafe == 2.0.1' # pin rogue dependency of flask 1.1.4
       ],
       package_data={'tshistory': [
           'schema.sql',
