@@ -245,6 +245,11 @@ def with_tester(uri, resp, wsgitester):
     )
 
     resp.add_callback(
+        responses.POST, uri + '/series/eval_formula',
+        callback=write_request_bridge(wsgitester.post)
+    )
+
+    resp.add_callback(
         responses.GET, uri + '/series/xl',
         callback=partial(read_request_bridge, wsgitester)
     )
