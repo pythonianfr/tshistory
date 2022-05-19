@@ -364,6 +364,11 @@ def with_tester(uri, resp, wsgitester):
         callback=partial(read_request_bridge, wsgitester)
     )
 
+    resp.add_callback(
+        responses.DELETE, uri + '/cache/series-has-cache',
+        callback=write_request_bridge(wsgitester.delete)
+    )
+
 
 class WebTester(webtest.TestApp):
 
@@ -396,7 +401,7 @@ class WebTester(webtest.TestApp):
         if isinstance(params, str):
             params = params.encode('utf-8')
         req.environ['wsgi.input'] = io.BytesIO(params)
-        req.content_length = len(params)
+        req.content_length = len(params) if params else 0
         if headers:
             req.headers.update(headers)
         return self.do_request(req, status=status,
