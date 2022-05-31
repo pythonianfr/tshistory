@@ -980,6 +980,17 @@ insertion_date             value_date
         pd.Timestamp('2017-02-02 00:00:00+0000', tz='UTC'),
     ]
 
+    idates = tsh.insertion_dates(
+        engine,
+        'smallserie',
+        from_value_date=datetime(2017, 1, 2)
+    )
+    assert idates == [
+        pd.Timestamp('2017-02-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2017-02-03 00:00:00+0000', tz='UTC')
+    ]
+
+
 
 def test_delta_na(engine, tsh):
     ldates = (

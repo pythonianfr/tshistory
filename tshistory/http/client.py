@@ -210,6 +210,8 @@ class Client:
     def insertion_dates(self, name,
                         from_insertion_date=None,
                         to_insertion_date=None,
+                        from_value_date=None,
+                        to_value_date=None,
                         nocache=False):
         args = {
             'name': name,
@@ -219,6 +221,10 @@ class Client:
             args['from_insertion_date'] = strft(from_insertion_date)
         if to_insertion_date:
             args['to_insertion_date'] = strft(to_insertion_date)
+        if from_value_date:
+            args['from_value_date'] = strft(from_value_date)
+        if to_value_date:
+            args['to_value_date'] = strft(to_value_date)
 
         res = self.session.get(
             f'{self.uri}/series/insertion_dates', params=args

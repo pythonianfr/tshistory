@@ -225,6 +225,8 @@ class mainsource:
                         name: str,
                         from_insertion_date: Optional[datetime]=None,
                         to_insertion_date: Optional[datetime]=None,
+                        from_value_date: Optional[datetime]=None,
+                        to_value_date: Optional[datetime]=None,
                         **kw):
         """Get the list of all insertion dates.
 
@@ -238,13 +240,17 @@ class mainsource:
                 name,
                 from_insertion_date=from_insertion_date,
                 to_insertion_date=to_insertion_date,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
                 **kw
             )
 
         return self.othersources.insertion_dates(
             name,
             from_insertion_date,
-            to_insertion_date
+            to_insertion_date,
+            from_value_date,
+            to_value_date
         )
 
     def history(self,
@@ -810,12 +816,20 @@ class altsources:
     def insertion_dates(self,
                         name: str,
                         from_insertion_date: Optional[datetime]=None,
-                        to_insertion_date: Optional[datetime]=None):
+                        to_insertion_date: Optional[datetime]=None,
+                        from_value_date: Optional[datetime]=None,
+                        to_value_date: Optional[datetime]=None) -> List[pd.Timestamp]:
         source = self._findsourcefor(name)
         if source is None:
             # let's be nice in all cases
             return []
-        return source.tsa.insertion_dates(name)
+        return source.tsa.insertion_dates(
+            name,
+            from_insertion_date=from_insertion_date,
+            to_insertion_date=to_insertion_date,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date
+        )
 
     def forbidden(self, name, msg):
         if self.exists(name):

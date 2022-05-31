@@ -162,6 +162,16 @@ insertion_date             value_date
         pd.Timestamp('2019-01-03 00:00:00+0000', tz='UTC')
     ]
 
+    idates = tsx.insertion_dates(
+        'api-test',
+        from_value_date=pd.Timestamp('2020-1-4', tz='UTC'),
+    )
+
+    assert idates == [
+        pd.Timestamp('2019-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2019-01-03 00:00:00+0000', tz='UTC')
+    ]
+
     meta = tsx.metadata('api-test', all=True)
     assert meta == {
         'tzaware': True,

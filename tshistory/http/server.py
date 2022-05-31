@@ -111,6 +111,12 @@ insertion_dates.add_argument(
     'to_insertion_date', type=utcdt, default=None
 )
 insertion_dates.add_argument(
+    'from_value_date', type=utcdt, default=None
+)
+insertion_dates.add_argument(
+    'to_value_date', type=utcdt, default=None
+)
+insertion_dates.add_argument(
     'nocache', type=inputs.boolean, default=False
 )
 
@@ -563,6 +569,8 @@ class httpapi:
                     args.name,
                     from_insertion_date=args.from_insertion_date,
                     to_insertion_date=args.to_insertion_date,
+                    from_value_date=args.from_value_date,
+                    to_value_date=args.to_value_date,
                     nocache=args.nocache
                 )
                 response = make_response({'insertion_dates':
