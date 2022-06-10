@@ -374,6 +374,11 @@ def with_tester(uri, resp, wsgitester):
         callback=write_request_bridge(wsgitester.delete)
     )
 
+    resp.add_callback(
+        responses.PUT, uri + '/cache/refresh-policy-now',
+        callback=write_request_bridge(wsgitester.put)
+    )
+
 
 class WebTester(webtest.TestApp):
 
