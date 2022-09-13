@@ -390,15 +390,15 @@ def test_multisource(mapi):
     catalog = api.catalog()
     catalog2 = mapi.catalog()
     assert catalog == {
-        ('db://localhost:5433/postgres', 'ns-test-mapi'): [('api-1', 'primary')]
+        ('postgres@ns-test-mapi', 'ns-test-mapi'): [('api-1', 'primary')]
     }
     assert catalog2 == {
-        ('db://localhost:5433/postgres', 'ns-test-mapi'): [('api-1', 'primary')],
-        ('db://localhost:5433/postgres', 'ns-test-mapi-2'): [('api-2', 'primary')]
+        ('postgres@ns-test-mapi', 'ns-test-mapi'): [('api-1', 'primary')],
+        ('postgres@ns-test-mapi-2', 'ns-test-mapi-2'): [('api-2', 'primary')]
     }
     catalog3 = mapi.catalog(allsources=False)
     assert catalog3 == {
-        ('db://localhost:5433/postgres', 'ns-test-mapi'): [('api-1', 'primary')]
+        ('postgres@ns-test-mapi', 'ns-test-mapi'): [('api-1', 'primary')]
     }
 
     mapi.update_metadata('api-1', {'descr': 'for the mapi test'})
@@ -442,7 +442,7 @@ def test_multisource(mapi):
         mapi.delete('api-3')
     cat = mapi.catalog()
     assert cat == {
-        ('db://localhost:5433/postgres', 'ns-test-mapi-2'): [
+        ('postgres@ns-test-mapi-2', 'ns-test-mapi-2'): [
             ('api-2', 'primary'),
             ('api-3', 'primary')]
     }
@@ -500,11 +500,11 @@ def test_local_formula_remote_series(mapihttp, engine):
     )
 
     cat = mapi.catalog(allsources=True)
-    s1 = cat[('db://localhost:5433/postgres', 'ns-test-local')]
+    s1 = cat[('postgres@ns-test-local', 'ns-test-local')]
 
     assert ('local-series', 'primary') in s1
 
-    s2 = list(cat[('db://localhost:5433/postgres', 'ns-test-remote')])
+    s2 = list(cat[('postgres@ns-test-remote', 'ns-test-remote')])
     assert ['remote-series', 'primary'] in s2
 
     mapi.register_formula(

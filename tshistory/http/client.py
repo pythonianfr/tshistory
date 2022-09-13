@@ -397,9 +397,10 @@ class Client:
         res = self.session.get(f'{self.uri}/series/catalog', params={
             'allsources': allsources
         })
+        tuplify = lambda x: (x, 'tsh') if '@' not in x else (x, x.split('@')[1])
         if res.status_code == 200:
             return {
-                tuple(k.split('!')): v
+                tuplify(k): v
                 for k, v in res.json().items()
             }
 
@@ -567,8 +568,9 @@ class Client:
             'allsources': allsources
         })
         if res.status_code == 200:
+            tuplify = lambda x: (x, 'tsh') if '@' not in x else (x, x.split('@')[1])
             return {
-                tuple(k.split('!')): [(a, b) for a, b in v]
+                tuplify(k): [(a, b) for a, b in v]
                 for k, v in res.json().items()
             }
 

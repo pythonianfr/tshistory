@@ -161,8 +161,8 @@ def test_base(client):
 
     client.update('test2', series_in, 'Babar')
     series = client.catalog()
-    assert ['test1', 'primary'] in series[('db://localhost:5433/postgres', 'tsh')]
-    assert ['test2', 'primary'] in series[('db://localhost:5433/postgres', 'tsh')]
+    assert ['test1', 'primary'] in series[('postgres', 'tsh')]
+    assert ['test2', 'primary'] in series[('postgres', 'tsh')]
 
     client.replace('test2', genserie(utcdt(2020, 1, 1), 'D', 3), 'Babar')
     series = client.get('test2')
@@ -768,16 +768,16 @@ def test_multisources(client, engine):
 
     cat = client.catalog()
     assert cat == {
-        ('db://localhost:5433/postgres', 'other'): [
+        ('postgres@other', 'other'): [
             ['test-other', 'primary']
         ],
-        ('db://localhost:5433/postgres', 'tsh'): [
+        ('postgres', 'tsh'): [
             ['test-mainsource', 'primary'],
         ]
     }
     cat = client.catalog(allsources=False)
-    assert ('db://localhost:5433/postgres', 'tsh') in cat
-    assert ('db://localhost:5433/postgres', 'other') not in cat
+    assert ('postgres', 'tsh') in cat
+    assert ('postgres@other', 'other') not in cat
 
 
 # groups

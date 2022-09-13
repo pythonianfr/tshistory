@@ -698,7 +698,7 @@ class httpapi:
             def get(self):
                 args = catalog.parse_args()
                 cat = {
-                    f'{uri}!{ns}': series
+                    f'{uri}': series
                     for (uri, ns), series in tsa.catalog(allsources=args.allsources).items()
                 }
                 return cat
@@ -837,7 +837,7 @@ class httpapi:
             @onerror
             def get(self):
                 cat = {
-                    f'{uri}!{ns}': series
+                    f'{uri}': series
                     for (uri, ns), series in tsa.group_catalog().items()
                 }
                 return cat

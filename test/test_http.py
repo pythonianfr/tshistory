@@ -164,7 +164,7 @@ def test_base(http):
     res = http.get('/series/catalog')
     assert res.status_code == 200
     assert res.json == {
-        'db://localhost:5433/postgres!tsh': [
+        'postgres': [
             ['test-naive', 'primary'],
             ['test', 'primary']
         ]
@@ -445,7 +445,7 @@ def test_rename(http):
     assert res.status_code == 204
     res = http.get('/series/catalog')
     assert res.json == {
-        'db://localhost:5433/postgres!tsh': [
+        'postgres': [
             ['test-naive', 'primary'],
             ['test2', 'primary']
         ]
@@ -759,10 +759,10 @@ def test_multisource(http, engine):
     res = http.get('/series/catalog')
     assert res.status_code == 200
     assert res.json == {
-        'db://localhost:5433/postgres!other': [
+        'postgres@other': [
             ['test-other-source', 'primary']
         ],
-        'db://localhost:5433/postgres!tsh': [
+        'postgres': [
             ['test-naive', 'primary'],
             ['test2', 'primary'],
             ['test3', 'primary'],
@@ -777,8 +777,8 @@ def test_multisource(http, engine):
         'allsources': False
     })
     assert res.status_code == 200
-    assert 'db://localhost:5433/postgres!tsh' in res.json
-    assert 'db://localhost:5433/postgres!other' not in res.json
+    assert 'postgres' in res.json
+    assert 'postgres@other' not in res.json
 
 
 def test_group(http):
@@ -846,7 +846,7 @@ def test_group(http):
 
     res = http.get('/group/catalog')
     assert res.json == {
-        'db://localhost:5433/postgres!tsh': [['test_group', 'primary']]
+        'postgres': [['test_group', 'primary']]
     }
 
     res = http.get('/group/metadata', {'name': 'test_group'})

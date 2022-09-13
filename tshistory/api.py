@@ -71,6 +71,13 @@ class mainsource:
             f'sources={self.othersources or nil})'
         )
 
+    def _instancename(self):
+        parsed = urlparse(self.uri)
+        if self.tsh.namespace == 'tsh':
+            return f'{parsed.path[1:]}'
+        else:
+            return f'{parsed.path[1:]}@{self.tsh.namespace}'
+
     def __init__(self,
                  uri: str,
                  namespace: str='tsh',
@@ -415,8 +422,7 @@ class mainsource:
         If `allsources` is False, only the main source is listed.
 
         """
-        parsed = urlparse(self.uri)
-        instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
+        instancename = self._instancename()
         cat = defaultdict(list)
         for name, kind in self.tsh.list_series(self.engine).items():
             cat[(instancename, self.namespace)].append((name, kind))
@@ -699,8 +705,7 @@ class mainsource:
         source to a list of (name, kind) pair.
 
         """
-        parsed = urlparse(self.uri)
-        instancename = f'db://{parsed.netloc.split("@")[-1]}{parsed.path}'
+        instancename = self._instancename()
         cat = defaultdict(list)
         for name, kind in self.tsh.list_groups(self.engine).items():
             cat[(instancename, self.namespace)].append((name, kind))
