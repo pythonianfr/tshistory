@@ -421,7 +421,7 @@ class mainsource:
         for name, kind in self.tsh.list_series(self.engine).items():
             cat[(instancename, self.namespace)].append((name, kind))
         if allsources:
-            for key, val in self.othersources.catalog(allsources).items():
+            for key, val in self.othersources.catalog(False).items():
                 assert key not in cat, f'{key} already in {cat}'
                 cat[key] = val
         return cat
