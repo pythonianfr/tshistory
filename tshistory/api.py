@@ -257,7 +257,8 @@ class mainsource:
             from_insertion_date,
             to_insertion_date,
             from_value_date,
-            to_value_date
+            to_value_date,
+            **kw
         )
 
     def history(self,
@@ -823,7 +824,8 @@ class altsources:
                         from_insertion_date: Optional[datetime]=None,
                         to_insertion_date: Optional[datetime]=None,
                         from_value_date: Optional[datetime]=None,
-                        to_value_date: Optional[datetime]=None) -> List[pd.Timestamp]:
+                        to_value_date: Optional[datetime]=None,
+                        **kw) -> List[pd.Timestamp]:
         source = self._findsourcefor(name)
         if source is None:
             # let's be nice in all cases
@@ -833,7 +835,8 @@ class altsources:
             from_insertion_date=from_insertion_date,
             to_insertion_date=to_insertion_date,
             from_value_date=from_value_date,
-            to_value_date=to_value_date
+            to_value_date=to_value_date,
+            **kw
         )
 
     def forbidden(self, name, msg):
