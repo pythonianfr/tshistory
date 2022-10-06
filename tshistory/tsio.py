@@ -79,6 +79,8 @@ class timeseries:
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
+        assert isinstance(name, str), 'Name is not a string'
+        name = name.strip()
         updatets = self._guard_insert(
             updatets, name, author, metadata,
             insertion_date
@@ -119,6 +121,8 @@ class timeseries:
         metadata: optional dict for changeset metadata
         """
         # nans have no replacement semantics -> drop them
+        assert isinstance(name, str), 'Name is not a string'
+        name = name.strip()
         newts = newts.dropna()
         newts = self._guard_insert(
             newts, name, author, metadata,
@@ -613,7 +617,7 @@ class timeseries:
     # creation / update
 
     def _guard_insert(self, newts, name, author, metadata, insertion_date):
-        assert isinstance(name, str), 'Name not a string'
+        assert len(name), 'Name is an empty string'
         assert isinstance(author, str), 'Author not a string'
         assert metadata is None or isinstance(metadata, dict), (
             f'Bad format for metadata ({repr(metadata)})'

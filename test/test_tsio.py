@@ -40,6 +40,22 @@ def test_no_series_meta(engine, tsh):
     assert tsh.metadata(engine, 'no-such-series') is None
 
 
+def test_bad_name(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2020, 1, 1), freq='D', periods=3)
+    )
+
+    with pytest.raises(AssertionError):
+        tsh.update(engine, ts, '', 'Babar')
+    with pytest.raises(AssertionError):
+        tsh.update(engine, ts, ' ', 'Babar')
+    with pytest.raises(AssertionError):
+        tsh.replace(engine, ts, '', 'Babar')
+    with pytest.raises(AssertionError):
+        tsh.replace(engine, ts, ' ', 'Babar')
+
+
 def test_tzaware_non_monotonic(engine, tsh):
     ts1 = pd.Series(
         [1, 2, 3],
