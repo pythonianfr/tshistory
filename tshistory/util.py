@@ -685,8 +685,11 @@ def patch(base, diff):
 
 
 def patchmany(series):
-    assert len(series) > 1, 'patchmany wants at least two series'
+    assert len(series), 'patchmany wants at least one series'
     first = series[0]
+
+    if len(series) == 1:
+        return first
 
     if first.dtype == 'object':
         final = first

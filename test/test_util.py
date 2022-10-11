@@ -79,6 +79,15 @@ def test_patch():
     p = patch(s3, s3)
     assert len(p) == 0
 
+    p3 = patchmany([p2])
+    assert_df("""
+2020-01-01 00:00:00     1.0
+2020-01-01 01:00:00    12.0
+2020-01-01 02:00:00    13.0
+2020-01-01 03:00:00     NaN
+2020-01-01 04:00:00    15.0
+""", p3)
+
 
 def test_patch_tzaware():
     s1 = pd.Series(
