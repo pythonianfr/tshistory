@@ -470,6 +470,18 @@ class timeseries:
             return idate.astimezone('UTC')
 
     @tx
+    def first_insertion_date(self, cn, name):
+        tablename = self._series_to_tablename(cn, name)
+        q = select('min(insertion_date)').table(
+            f'"{self.namespace}.revision"."{tablename}"'
+        )
+        idate = pd.Timestamp(
+            q.do(cn).scalar()
+        )
+        if not pd.isnull(idate):
+            return idate.astimezone('UTC')
+
+    @tx
     def insertion_dates(self, cn, name,
                         from_insertion_date=None,
                         to_insertion_date=None,

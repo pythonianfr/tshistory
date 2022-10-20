@@ -613,6 +613,30 @@ def test_revision_date(engine, tsh):
 """, oldstate)
 
 
+def test_first_latest_insertion_date(engine, tsh):
+    name = 'test-f-l-idate'
+    for i in range(3):
+        ts = pd.Series(
+            [i] * 3,
+            index=pd.date_range(
+                utcdt(2022, 1, i+1),
+                freq='D',
+                periods=3
+            )
+        )
+        tsh.update(
+            engine,
+            ts,
+            name,
+            'Babar',
+            insertion_date=utcdt(2022, 1, i+1)
+        )
+
+    idates = tsh.insertion_dates(engine, name)
+    assert tsh.first_insertion_date(engine, name) == idates[0]
+    assert tsh.latest_insertion_date(engine, name) == idates[-1]
+
+
 def test_point_deletion(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 11)
     ts_begin.iloc[-1] = np.nan
