@@ -252,7 +252,7 @@ def test_diff_duplicated():
         index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
     )
     dupe = pd.Series([5.], index=[datetime(2020, 1, 1, 3)])
-    s1 = s1.append(dupe)
+    s1 = pd.concat([s1, dupe])
     s2 = pd.Series(
         [1., 2., 42., 4., .5],
         index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=5)
