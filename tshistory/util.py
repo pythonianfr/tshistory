@@ -442,7 +442,6 @@ def unpack_history(bytestring):
         '|M8[ns]' if metadata['tzaware'] else '<M8[ns]'
     )
     hist = {}
-    utcdt = partial(pd.Timestamp, tz='UTC')
     for idx, (bindex, bvalues) in enumerate(zip(*[iter(byteslist[2:])]*2)):
         index, values = numpy_deserialize(
             bindex, bvalues, metadata
@@ -452,7 +451,7 @@ def unpack_history(bytestring):
         )
         if metadata['tzaware']:
             series = series.tz_localize('utc')
-        hist[utcdt(idates[idx])] = series
+        hist[pd.Timestamp(idates[idx]).tz_localize('utc')] = series
     return metadata, hist
 
 
@@ -592,7 +591,10 @@ def unpack_group_history(bytestring):
     idates = np.frombuffer(
         array('d', byteslist[0]),'|M8[ns]'
     )
-    idates = [pd.Timestamp(idate, tz='utc') for idate in idates]
+    idates = [
+        pd.Timestamp(idate).tz_localize('utc')
+        for idate in idates
+    ]
 
     hist = {}
     cursor = 1
