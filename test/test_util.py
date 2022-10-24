@@ -56,9 +56,11 @@ def test_unflatten2():
     }
     u = unflatten(d)
     assert u == {
-        'a': {'uri': 'http://series.com/api'},
-        'a.pkce.clientid': '123zogzog1',
-        'a.pkce.scope': 'all.the.series'
+        'a':  {
+            'pkce.clientid': '123zogzog1',
+            'pkce.scope': 'all.the.series',
+            'uri': 'http://series.com/api'
+        }
     }
 
 

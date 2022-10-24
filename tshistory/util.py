@@ -62,8 +62,12 @@ def unflatten(flattened):
     nested = defaultdict(lambda: defaultdict(dict))
     for key, value in flattened.items():
         try:
-            toplevel, newkey = [k.strip() for k in key.split('.')]
+            toplevel, newkey = [
+                k.strip()
+                for k in key.split('.', maxsplit=1)
+            ]
         except ValueError:
+            # nothing to unflatten
             nested[key] = value
             continue
         nested[toplevel][newkey] = value
