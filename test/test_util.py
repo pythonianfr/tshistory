@@ -48,6 +48,20 @@ def test_unflatten():
     }
 
 
+def test_unflatten2():
+    d  = {
+        'a.uri': 'http://series.com/api',
+        'a.pkce.clientid': '123zogzog1',
+        'a.pkce.scope': 'all.the.series'
+    }
+    u = unflatten(d)
+    assert u == {
+        'a': {'uri': 'http://series.com/api'},
+        'a.pkce.clientid': '123zogzog1',
+        'a.pkce.scope': 'all.the.series'
+    }
+
+
 def test_patch():
     s1 = pd.Series(
         [1., 2., 3., 4.],
