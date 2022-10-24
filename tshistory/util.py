@@ -470,6 +470,8 @@ def tojson(ts, precision=1e-14):
 
 
 def fromjson(jsonb, tsname, tzaware=False):
+    if jsonb  ==  '{}':
+        return empty_series(tzaware, name=tsname)
     series = _fromjson(jsonb, tsname).fillna(value=np.nan)
     if tzaware:
         if not getattr(series.index.dtype, 'tz', None):
@@ -483,10 +485,6 @@ def fromjson(jsonb, tsname, tzaware=False):
 
 
 def _fromjson(jsonb, tsname):
-    if jsonb == '{}':
-        # NOTE: weak (but json ...)
-        return pd.Series(name=tsname)
-
     wrapped = io.StringIO(jsonb) if isinstance(jsonb, str) else io.BytesIO(jsonb)
     result = pd.read_json(wrapped, typ='series', dtype=False)
     result.name = tsname
