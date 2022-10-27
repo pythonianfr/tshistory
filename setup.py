@@ -25,12 +25,10 @@ setup(name='tshistory',
           'pytz',
           'colorama',
           'tqdm',
-          'flask < 2.0',
+          'flask < 2.2',
           'flask-restx',
-          'jinja2 < 3.0',
-          'flask-restx',
-          'requests',
-          'markupsafe == 2.0.1' # pin rogue dependency of flask 1.1.4
+          'jinja2 < 3.2',
+          'requests'
       ],
       package_data={'tshistory': [
           'schema.sql',
