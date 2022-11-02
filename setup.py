@@ -26,7 +26,7 @@ setup(name='tshistory',
           'colorama',
           'tqdm',
           'flask < 2.2',
-          'flask-restx',
+          'flask-restx >= 1.0.3, < 1.1',
           'jinja2 < 3.2',
           'requests'
       ],
