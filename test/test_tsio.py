@@ -2127,9 +2127,8 @@ def test_rename(engine, tsh):
     longname = 'longname' * 10
     tsh.update(engine, serie, longname, 'Babar')
     tsh.rename(engine, longname, 'newname')
-    # can we reuse longname ?
-    with pytest.raises(Exception):
-        tsh.update(engine, serie, longname, 'Babar')
+    # can we reuse longname ? yes
+    tsh.update(engine, serie, longname, 'Babar')
 
 
 def test_index_order(engine, tsh):

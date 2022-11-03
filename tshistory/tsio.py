@@ -773,8 +773,8 @@ class timeseries:
         # collision detection (collision can happen after a rename)
         if cn.execute(f'select tablename '
                       f'from "{self.namespace}".registry '
-                      f'where tablename = %(seriesname)s',
-                      seriesname=name).scalar():
+                      f'where tablename = %(tablename)s',
+                      tablename=tablename).scalar():
             tablename = str(uuid.uuid4())
 
         cn.cache['series_tablename'][name] = tablename
