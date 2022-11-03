@@ -2123,6 +2123,14 @@ def test_rename(engine, tsh):
 2025-01-03    2.0
 """, ts)
 
+    # test with a long name
+    longname = 'longname' * 10
+    tsh.update(engine, serie, longname, 'Babar')
+    tsh.rename(engine, longname, 'newname')
+    # can we reuse longname ?
+    with pytest.raises(Exception):
+        tsh.update(engine, serie, longname, 'Babar')
+
 
 def test_index_order(engine, tsh):
     ts = genserie(datetime(2020, 1, 1), 'D', 3)
