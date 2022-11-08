@@ -280,7 +280,7 @@ groupget.add_argument(
     help='keep erasure information'
 )
 groupget.add_argument(
-    'format', type=enum('json', 'tshpack'), default='tshpack'
+    'format', type=enum('json', 'tshpack'), default='json'
 )
 
 group_insertion_dates = base.copy()
@@ -763,6 +763,7 @@ class httpapi:
                     api.abort(404, f'`{args.name}` does not exists')
 
                 return group_response(
+                    args.format,
                     df,
                     200
                 )
@@ -849,12 +850,15 @@ class httpapi:
             @onerror
             def get(self):
                 args = groupmetadata.parse_args()
+                if not tsa.group_exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
                 if args.type == 'type':
                     stype = tsa.group_type(args.name)
                     return stype, 200
 
                 assert args.type == 'standard'
-                meta = tsa.group_metadata(args.name)
+                meta = tsa.group_metadata(args.name, all=args.all)
                 return meta, 200
 
             @api.expect(put_groupmetadata)

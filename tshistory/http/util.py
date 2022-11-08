@@ -73,7 +73,23 @@ def series_response(format, series, metadata, code):
     return response
 
 
-def group_response(df, code):
+def group_response(format, df, code):
+    if format == 'json':
+        # HACK: with naive dates in the index we have to play a bit
+        # see https://github.com/pandas-dev/pandas/issues/12997
+        # this should be fixed in pandas 1.5
+        if df.index.dtype.name == 'datetime64[ns]':
+            df.index = df.index.strftime('%Y-%m-%dT%H:%M:%S')
+            jsondf = df.to_json()
+        else:
+            jsondf = df.to_json(date_format='iso')
+        response = make_response(
+            jsondf
+        )
+        response.headers['Content-Type'] = 'text/json'
+        response.status_code = code
+        return response
+
     response = make_response(
         util.pack_group(df)
     )

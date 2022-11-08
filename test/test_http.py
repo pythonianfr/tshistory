@@ -871,7 +871,7 @@ def test_log(http):
 
 # groups
 
-def test_group(http):
+def test_naive_group(http):
     df = gengroup(
         n_scenarios=3,
         from_date=dt(2021, 1, 1),
@@ -896,9 +896,38 @@ def test_group(http):
     })
     assert res.status_code == 201
 
-    res = http.get('/group/state', {'name': 'test_group'})
+    # binary format
+    res = http.get('/group/state', {'name': 'test_group', 'format': 'tshpack'})
     df2 = util.unpack_group(res.body)
     assert df.equals(df2)
+
+    # json format
+    res = http.get('/group/state', {'name': 'test_group', 'format': 'json'})
+    assert res.json == {
+        'a': {
+            '2021-01-01T00:00:00': 2.0,
+            '2021-01-02T00:00:00': 3.0,
+            '2021-01-03T00:00:00': 4.0,
+            '2021-01-04T00:00:00': 5.0,
+            '2021-01-05T00:00:00': 6.0
+        },
+        'b': {
+            '2021-01-01T00:00:00': 3.0,
+            '2021-01-02T00:00:00': 4.0,
+            '2021-01-03T00:00:00': 5.0,
+            '2021-01-04T00:00:00': 6.0,
+            '2021-01-05T00:00:00': 7.0},
+        'c': {
+            '2021-01-01T00:00:00': 4.0,
+            '2021-01-02T00:00:00': 5.0,
+            '2021-01-03T00:00:00': 6.0,
+            '2021-01-04T00:00:00': 7.0,
+            '2021-01-05T00:00:00': 8.0
+        }
+    }
+
+    df2json = pd.read_json(io.BytesIO(res.body), dtype='float64')
+    assert df.equals(df2json)
 
     bgroup = util.pack_group(df*2)
     res = http.patch('/group/state', {
@@ -911,7 +940,7 @@ def test_group(http):
     })
     assert res.status_code == 200
 
-    res = http.get('/group/state', {'name': 'test_group'})
+    res = http.get('/group/state', {'name': 'test_group', 'format': 'tshpack'})
     df3 = util.unpack_group(res.body)
 
     res = http.get('/group/insertion_dates', params={
@@ -957,3 +986,60 @@ def test_group(http):
     res = http.get('/group/catalog')
     assert res.json == {}
 
+
+def test_tzaware_json_group(http):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=utcdt(2021, 1, 1),
+        length=5,
+        freq='D',
+        seed=2.
+    )
+
+    df.columns = ['a', 'b', 'c']
+
+    bgroup = util.pack_group(df)
+    res = http.patch('/group/state', {
+        'name': 'test_group',
+        'author': 'Babar',
+        'format': 'tshpack',
+        'replace': json.dumps(True),
+        'insertion_date': str(utcdt(2022, 3, 1)),
+        # We need to send the date as an str because of a weird behavior
+        # in webtest.app.TestApp._gen_request (v 2.0.35) triggered by the type
+        # of the bgroup (binary)
+        'bgroup': webtest.Upload('bgroup', bgroup)
+    })
+    assert res.status_code == 201
+
+    # binary format
+    res = http.get('/group/state', {'name': 'test_group', 'format': 'tshpack'})
+    df2 = util.unpack_group(res.body)
+    assert df.equals(df2)
+
+    # json format
+    res = http.get('/group/state', {'name': 'test_group', 'format': 'json'})
+    assert res.json == {
+        'a': {
+            '2021-01-01T00:00:00.000Z': 2.0,
+            '2021-01-02T00:00:00.000Z': 3.0,
+            '2021-01-03T00:00:00.000Z': 4.0,
+            '2021-01-04T00:00:00.000Z': 5.0,
+            '2021-01-05T00:00:00.000Z': 6.0},
+        'b': {
+            '2021-01-01T00:00:00.000Z': 3.0,
+            '2021-01-02T00:00:00.000Z': 4.0,
+            '2021-01-03T00:00:00.000Z': 5.0,
+            '2021-01-04T00:00:00.000Z': 6.0,
+            '2021-01-05T00:00:00.000Z': 7.0},
+        'c': {
+            '2021-01-01T00:00:00.000Z': 4.0,
+            '2021-01-02T00:00:00.000Z': 5.0,
+            '2021-01-03T00:00:00.000Z': 6.0,
+            '2021-01-04T00:00:00.000Z': 7.0,
+            '2021-01-05T00:00:00.000Z': 8.0
+        }
+    }
+
+    df2json = pd.read_json(io.BytesIO(res.body), dtype='float64')
+    assert df.equals(df2json)
