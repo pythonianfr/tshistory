@@ -21,6 +21,7 @@ from tshistory.testutil import (
 DBURI = 'postgresql://localhost:5433/postgres'
 
 
+# series
 
 def test_error(http):
     series_in = genserie(pd.Timestamp('2018-1-1'), 'H', 3)
@@ -781,6 +782,95 @@ def test_multisource(http, engine):
     assert 'postgres@other' not in res.json
 
 
+def test_log(http):
+    series = genserie(utcdt(2020, 1, 1), 'D', 5)
+    for d in range(5):
+        res = http.patch('/series/state', params={
+            'name': 'test-log',
+            'series': util.tojson(series),
+            'author': 'Babar',
+            'insertion_date': utcdt(2020, 1, d + 1).isoformat(),
+            'metadata': json.dumps({'comment': f'day {d+1}'}),
+            'tzaware': util.tzaware_serie(series)
+        })
+        assert res.status_code in (201, 200)
+        series[d] = 42
+
+
+    out = http.get('/series/state', params={
+        'name': 'test-log',
+        'insertion_date': utcdt(2020, 1, 2)
+        }
+    )
+    assert out.json == {
+        '2020-01-01T00:00:00.000Z': 42.0,
+        '2020-01-02T00:00:00.000Z': 1.0,
+        '2020-01-03T00:00:00.000Z': 2.0,
+        '2020-01-04T00:00:00.000Z': 3.0,
+        '2020-01-05T00:00:00.000Z': 4.0
+    }
+
+    res = http.get('/series/log', params={
+        'name': 'test-log'
+    })
+
+    assert res.json == [
+        {'author': 'Babar',
+         'date': '2020-01-01T00:00:00+00:00',
+         'meta': {'comment': 'day 1'},
+         'rev': 1},
+        {'author': 'Babar',
+         'date': '2020-01-02T00:00:00+00:00',
+         'meta': {'comment': 'day 2'},
+         'rev': 2},
+        {'author': 'Babar',
+         'date': '2020-01-03T00:00:00+00:00',
+         'meta': {'comment': 'day 3'},
+         'rev': 3},
+        {'author': 'Babar',
+         'date': '2020-01-04T00:00:00+00:00',
+         'meta': {'comment': 'day 4'},
+         'rev': 4},
+        {'author': 'Babar',
+         'date': '2020-01-05T00:00:00+00:00',
+         'meta': {'comment': 'day 5'},
+         'rev': 5}
+    ]
+
+    res = http.get('/series/log', params={
+        'name': 'test-log',
+        'limit': 2
+    })
+    assert res.json == [
+        {'author': 'Babar',
+         'date': '2020-01-04T00:00:00+00:00',
+         'meta': {'comment': 'day 4'},
+         'rev': 4},
+        {'author': 'Babar',
+         'date': '2020-01-05T00:00:00+00:00',
+         'meta': {'comment': 'day 5'},
+         'rev': 5}
+    ]
+
+    res = http.get('/series/log', params={
+        'name': 'test-log',
+        'fromdate': utcdt(2020, 1, 2).isoformat(),
+        'todate': utcdt(2020, 1, 3).isoformat()
+    })
+    assert res.json == [
+        {'author': 'Babar',
+         'date': '2020-01-02T00:00:00+00:00',
+         'meta': {'comment': 'day 2'},
+         'rev': 2},
+        {'author': 'Babar',
+         'date': '2020-01-03T00:00:00+00:00',
+         'meta': {'comment': 'day 3'},
+         'rev': 3}
+    ]
+
+
+# groups
+
 def test_group(http):
     df = gengroup(
         n_scenarios=3,
@@ -867,89 +957,3 @@ def test_group(http):
     res = http.get('/group/catalog')
     assert res.json == {}
 
-
-def test_log(http):
-    series = genserie(utcdt(2020, 1, 1), 'D', 5)
-    for d in range(5):
-        res = http.patch('/series/state', params={
-            'name': 'test-log',
-            'series': util.tojson(series),
-            'author': 'Babar',
-            'insertion_date': utcdt(2020, 1, d + 1).isoformat(),
-            'metadata': json.dumps({'comment': f'day {d+1}'}),
-            'tzaware': util.tzaware_serie(series)
-        })
-        assert res.status_code in (201, 200)
-        series[d] = 42
-
-
-    out = http.get('/series/state', params={
-        'name': 'test-log',
-        'insertion_date': utcdt(2020, 1, 2)
-        }
-    )
-    assert out.json == {
-        '2020-01-01T00:00:00.000Z': 42.0,
-        '2020-01-02T00:00:00.000Z': 1.0,
-        '2020-01-03T00:00:00.000Z': 2.0,
-        '2020-01-04T00:00:00.000Z': 3.0,
-        '2020-01-05T00:00:00.000Z': 4.0
-    }
-
-    res = http.get('/series/log', params={
-        'name': 'test-log'
-    })
-
-    assert res.json == [
-        {'author': 'Babar',
-         'date': '2020-01-01T00:00:00+00:00',
-         'meta': {'comment': 'day 1'},
-         'rev': 1},
-        {'author': 'Babar',
-         'date': '2020-01-02T00:00:00+00:00',
-         'meta': {'comment': 'day 2'},
-         'rev': 2},
-        {'author': 'Babar',
-         'date': '2020-01-03T00:00:00+00:00',
-         'meta': {'comment': 'day 3'},
-         'rev': 3},
-        {'author': 'Babar',
-         'date': '2020-01-04T00:00:00+00:00',
-         'meta': {'comment': 'day 4'},
-         'rev': 4},
-        {'author': 'Babar',
-         'date': '2020-01-05T00:00:00+00:00',
-         'meta': {'comment': 'day 5'},
-         'rev': 5}
-    ]
-
-    res = http.get('/series/log', params={
-        'name': 'test-log',
-        'limit': 2
-    })
-    assert res.json == [
-        {'author': 'Babar',
-         'date': '2020-01-04T00:00:00+00:00',
-         'meta': {'comment': 'day 4'},
-         'rev': 4},
-        {'author': 'Babar',
-         'date': '2020-01-05T00:00:00+00:00',
-         'meta': {'comment': 'day 5'},
-         'rev': 5}
-    ]
-
-    res = http.get('/series/log', params={
-        'name': 'test-log',
-        'fromdate': utcdt(2020, 1, 2).isoformat(),
-        'todate': utcdt(2020, 1, 3).isoformat()
-    })
-    assert res.json == [
-        {'author': 'Babar',
-         'date': '2020-01-02T00:00:00+00:00',
-         'meta': {'comment': 'day 2'},
-         'rev': 2},
-        {'author': 'Babar',
-         'date': '2020-01-03T00:00:00+00:00',
-         'meta': {'comment': 'day 3'},
-         'rev': 3}
-    ]
