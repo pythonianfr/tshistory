@@ -590,10 +590,11 @@ class Client:
             return res
 
     @unwraperror
-    def group_metadata(self, name):
+    def group_metadata(self, name, all=False):
         res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name,
-            'type': 'standard'
+            'type': 'standard',
+            'all': all
         })
         assert res.status_code in (200, 404)
         if res.status_code == 200:
@@ -616,7 +617,16 @@ class Client:
 
     @unwraperror
     def group_exists(self, name):
-        return self.group_metadata(name) is not None
+        res = self.session.get(f'{self.uri}/group/metadata', params={
+            'name': name
+        })
+        if res.status_code in (200, 404):
+            meta = res.json()
+            if 'message' in meta and meta['message'].endswith('does not exists'):
+                return False
+            return True
+
+        return res
 
     @unwraperror
     def group_delete(self, name):

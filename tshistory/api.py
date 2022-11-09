@@ -686,12 +686,18 @@ class mainsource:
         with self.engine.begin() as cn:
             self.tsh.group_delete(cn, name)
 
-    def group_metadata(self, name: str) -> Dict[str, Any]:
+    def group_metadata(self,
+                       name: str,
+                       all: bool=False) -> Dict[str, Any]:
         """Return a group metadata dictionary.
 
         """
-        with self.engine.begin() as cn:
-            return self.tsh.group_metadata(cn, name)
+        meta = self.tsh.group_metadata(self.engine, name) or {}
+        if all:
+            return meta
+        for key in self.tsh.metakeys:
+            meta.pop(key, None)
+        return meta
 
     def update_group_metadata(self, name: str, meta: Dict[str, Any]) -> NONETYPE:
         """Update a group metadata with a dictionary from strings to anything

@@ -318,6 +318,10 @@ groupdelete = groupbase.copy()
 
 groupmetadata = groupbase.copy()
 groupmetadata.add_argument(
+    'all', type=inputs.boolean, default=False,
+    help='get all metadata, including internal'
+)
+groupmetadata.add_argument(
     'type', type=enum('standard', 'type'),
     default='standard',
     help='specify the kind of needed metadata'
