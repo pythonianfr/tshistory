@@ -959,11 +959,25 @@ class timeseries:
         if not self.group_exists(cn, name):
             return
 
-        return cn.execute(
+        meta = cn.execute(
             f'select metadata from "{self.namespace}".group_registry '
             'where name = %(name)s',
             name=name
         ).scalar() or {}
+
+        tsmeta = cn.execute(
+            'select tsr.metadata '
+            f'from "{self.namespace}".group_registry as gr, '
+            f'     "{self.namespace}".groupmap as gm,'
+            f'     "{self.namespace}.group".registry as tsr '
+            'where gr.name = %(name)s and '
+            '      gr.id = gm.groupid and '
+            '      gm.seriesid = tsr.id '
+            'limit 1',
+            name=name
+        ).scalar() or {}
+        meta.update(tsmeta)
+        return meta
 
     @tx
     def update_group_metadata(self, cn, name, meta):

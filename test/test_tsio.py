@@ -2779,9 +2779,23 @@ def test_group_other_operations(engine, tsh):
     with pytest.raises(IntegrityError):
         tsh.tsh_group.delete(engine, names[0])
 
-    assert tsh.group_metadata(engine, 'third_group') == {}
+    assert tsh.group_metadata(engine, 'third_group') == {
+        'index_dtype': '<M8[ns]',
+        'index_type': 'datetime64[ns]',
+        'tzaware': False,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+
     tsh.update_group_metadata(engine, 'third_group', {'foo': 'bar'})
-    assert tsh.group_metadata(engine, 'third_group') == {'foo': 'bar'}
+    assert tsh.group_metadata(engine, 'third_group') == {
+        'foo': 'bar',
+        'index_dtype': '<M8[ns]',
+        'index_type': 'datetime64[ns]',
+        'tzaware': False,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
 
     # delete the group
     tsh.group_delete(engine, 'third_group')

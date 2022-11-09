@@ -759,8 +759,19 @@ def test_primary_group(tsx):
     meta = tsx.group_metadata('first_group_api')
     assert meta == {}
     tsx.update_group_metadata('first_group_api', {'name': 'babar'})
+
     meta = tsx.group_metadata('first_group_api')
     assert meta == {'name': 'babar'}
+
+    meta = tsx.group_metadata('first_group_api', all=True)
+    assert meta == {
+        'index_dtype': '<M8[ns]',
+        'index_type': 'datetime64[ns]',
+        'name': 'babar',
+        'tzaware': False,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
 
     df = tsx.group_get('first_group_api')
     assert_df("""
