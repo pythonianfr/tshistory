@@ -9,10 +9,10 @@ create table "{ns}".group_registry (
 create index "ix_{ns}_group_registry_idx" on "{ns}".group_registry(name);
 
 -- in the series <-> group mapping below
--- we don't give series names their scenario name
+-- we don't give series names their member name
 -- to avoid any risk of name conflict
 create table "{ns}".groupmap (
-  -- scenario name
+  -- member name
   name text not null,
   -- mapping from group (in group_registry) to individual series
   -- (in "{ns}".group)
