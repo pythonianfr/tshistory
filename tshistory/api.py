@@ -692,7 +692,9 @@ class mainsource:
         """Return a group metadata dictionary.
 
         """
-        meta = self.tsh.group_metadata(self.engine, name) or {}
+        meta = self.tsh.group_metadata(self.engine, name)
+        if meta is None:
+            return
         if all:
             return meta
         for key in self.tsh.metakeys:

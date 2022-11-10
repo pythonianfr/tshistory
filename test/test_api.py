@@ -773,6 +773,9 @@ def test_primary_group(tsx):
         'value_type': 'float64'
     }
 
+    assert tsx.group_metadata('no-such-group', all=True) is None
+    assert tsx.group_metadata('no-such-group') is None
+
     df = tsx.group_get('first_group_api')
     assert_df("""
               a    b    c
