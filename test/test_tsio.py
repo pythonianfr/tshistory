@@ -2809,5 +2809,3 @@ def test_group_other_operations(engine, tsh):
         assert not tsh.tsh_group.exists(engine, name)
 
     assert tsh.group_metadata(engine, 'third_group') is None
-    with pytest.raises(AssertionError):
-        tsh.update_group_metadata(engine, 'third_group', {'foo': 'bar'})

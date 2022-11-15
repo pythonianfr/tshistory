@@ -956,32 +956,24 @@ class timeseries:
 
     @tx
     def group_metadata(self, cn, name):
-        if not self.group_exists(cn, name):
-            return
-
-        meta = cn.execute(
+        return cn.execute(
             f'select metadata from "{self.namespace}".group_registry '
             'where name = %(name)s',
             name=name
-        ).scalar() or {}
-
-        tsmeta = cn.execute(
-            'select tsr.metadata '
-            f'from "{self.namespace}".group_registry as gr, '
-            f'     "{self.namespace}".groupmap as gm,'
-            f'     "{self.namespace}.group".registry as tsr '
-            'where gr.name = %(name)s and '
-            '      gr.id = gm.groupid and '
-            '      gm.seriesid = tsr.id '
-            'limit 1',
-            name=name
-        ).scalar() or {}
-        meta.update(tsmeta)
-        return meta
+        ).scalar()
 
     @tx
-    def update_group_metadata(self, cn, name, meta):
-        assert self.group_exists(cn, name), 'attempt to update non existing group `{name}`'
+    def update_group_metadata(self, cn, name, metadata, internal=False):
+        assert isinstance(metadata, dict)
+        assert internal or not set(metadata.keys()) & self.metakeys
+        meta = self.group_metadata(cn, name)
+        # remove al but internal stuff
+        newmeta = {
+            key: meta[key]
+            for key in self.metakeys
+            if meta.get(key) is not None
+        }
+        newmeta.update(metadata)
         sql = (
             f'update "{self.namespace}".group_registry '
             'set metadata = %(metadata)s '
@@ -989,7 +981,7 @@ class timeseries:
         )
         cn.execute(
             sql,
-            metadata=json.dumps(meta),
+            metadata=json.dumps(newmeta),
             name=name
         )
 
@@ -1071,6 +1063,7 @@ class timeseries:
                 f'cannot group-replace `{name}`: '
                 f'this name has type `{gtype}`'
             )
+
         if df.columns.dtype != np.dtype('O'):
             df.columns = df.columns.astype('str')
         if insertion_date is None:
@@ -1095,6 +1088,24 @@ class timeseries:
                     author,
                     insertion_date
                 )
+            tsmeta = cn.execute(
+                'select tsr.metadata '
+                f'from "{self.namespace}".group_registry as gr, '
+                f'     "{self.namespace}".groupmap as gm,'
+                f'     "{self.namespace}.group".registry as tsr '
+                'where gr.name = %(name)s and '
+                '      gr.id = gm.groupid and '
+                '      gm.seriesid = tsr.id '
+                'limit 1',
+                name=name
+            ).scalar()
+            cn.execute(
+                f'update "{self.namespace}".group_registry '
+                'set metadata = %(metadata)s '
+                f'where name = %(name)s',
+                metadata=json.dumps(tsmeta),
+                name=name
+            )
             return
 
         # update
@@ -1108,7 +1119,6 @@ class timeseries:
                 author,
                 insertion_date=insertion_date
             )
-
 
     @tx
     def group_get(self, cn, name,
