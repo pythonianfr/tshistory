@@ -963,6 +963,13 @@ class timeseries:
         ).scalar()
 
     @tx
+    def group_rename(self, cn, oldname, newname):
+        sql = (f'update "{self.namespace}".group_registry '
+               'set name = %(newname)s '
+               'where name = %(oldname)s')
+        cn.execute(sql, oldname=oldname, newname=newname)
+
+    @tx
     def update_group_metadata(self, cn, name, metadata, internal=False):
         assert isinstance(metadata, dict)
         assert internal or not set(metadata.keys()) & self.metakeys

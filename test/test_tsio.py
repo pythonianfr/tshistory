@@ -2601,6 +2601,22 @@ def test_primary_group(engine, tsh):
 2021-01-05  6.0  7.0  8.0
     """, df)
 
+    tsh.group_rename(
+        engine,
+        'first_group',
+        'new_group_name'
+    )
+
+    assert not tsh.group_exists(engine, 'first_group')
+    assert tsh.group_exists(engine, 'new_group_name')
+    df2 = tsh.group_get(
+        engine,
+        'new_group_name',
+        revision_date=pd.Timestamp('2021-01-02', tz='UTC')
+    )
+
+    assert df2.equals(df)
+
 
 def test_group_history(engine, tsh):
     for idx, idate in enumerate(
