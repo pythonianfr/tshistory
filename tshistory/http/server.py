@@ -263,6 +263,11 @@ groupupdate.add_argument(
     help='series group in binary format'
 )
 
+grouprename = groupbase.copy()
+grouprename.add_argument(
+    'newname', type=str, required=True,
+    help='new name of the group'
+)
 
 groupget = groupbase.copy()
 groupget.add_argument(
@@ -771,6 +776,24 @@ class httpapi:
                     df,
                     200
                 )
+
+            @api.expect(grouprename)
+            @onerror
+            def put(self):
+                args = grouprename.parse_args()
+                if not tsa.group_exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+                if tsa.group_exists(args.newname):
+                    api.abort(409, f'`{args.newname}` does exists')
+
+                try:
+                    tsa.group_rename(args.name, args.newname)
+                except ValueError as err:
+                    if err.args[0].startswith('not allowed to'):
+                        api.abort(405, err.args[0])
+                    raise
+
+                return no_content()
 
             @api.expect(groupdelete)
             @onerror

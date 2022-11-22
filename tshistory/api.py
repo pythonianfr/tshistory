@@ -580,6 +580,15 @@ class mainsource:
         with self.engine.begin() as cn:
             return self.tsh.group_type(cn, name)
 
+    def group_rename(self, oldname: str, newname: str) -> NONETYPE:
+        """Rename a group.
+
+        The target name must be available.
+
+        """
+        with self.engine.begin() as cn:
+            self.tsh.group_rename(cn, oldname, newname)
+
     def group_get(self,
                   name: str,
                   revision_date: Optional[pd.Timestamp]=None,

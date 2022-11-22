@@ -831,6 +831,16 @@ def test_primary_group(tsx):
 2021-01-05  6.0  7.0  8.0
 """, df)
 
+    tsx.group_rename('first_group_api', 'new_name_api')
+    assert not tsx.group_exists('first_group_api')
+    assert tsx.group_exists('new_name_api')
+    df2 = tsx.group_get(
+        'new_name_api',
+        revision_date=utcdt(2021, 1, 2)
+    )
+
+    assert df2.equals(df)
+
 
 def test_group_errors(tsx):
     df = gengroup(

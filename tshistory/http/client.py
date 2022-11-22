@@ -638,3 +638,14 @@ class Client:
             return
 
         return res
+
+    @unwraperror
+    def group_rename(self, oldname, newname):
+        res = self.session.put(
+            f'{self.uri}/group/state',
+            data={'name': oldname, 'newname': newname}
+        )
+        if res.status_code == 204:
+            return
+
+        return res

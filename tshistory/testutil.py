@@ -270,6 +270,11 @@ def with_tester(uri, resp, wsgitester):
     )
 
     resp.add_callback(
+        responses.PUT, uri + '/group/state',
+        callback=write_request_bridge(wsgitester.put)
+    )
+
+    resp.add_callback(
         responses.DELETE, uri + '/group/state',
         callback=write_request_bridge(wsgitester.delete)
     )
