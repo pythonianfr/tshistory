@@ -991,6 +991,29 @@ def test_more_group_errors(tsx):
         '(constant 42.5 (date "1900-1-1") (date "2039-12-31") "D" (date "1900-1-1"))'
     )
 
+    with pytest.raises(Exception) as excinfo:
+        tsx.register_formula_bindings(
+            'conflict-name-binding',
+            'toto',
+            pd.DataFrame([['a', 'b', 'c']], columns=('series', 'group', 'family'))
+        )
+    assert str(excinfo.value) == 'Group `b` does not exist.'
+
+    for name in 'abc':
+        tsx.group_replace(
+            name,
+            df,
+            'Babar'
+        )
+        tsx.update(
+            name,
+            pd.Series(
+                [1, 2, 3],
+                pd.date_range(pd.Timestamp('2021-1-1'), freq='D', periods=3)
+            ),
+            'Babar'
+        )
+
     tsx.register_formula_bindings(
         'conflict-name-binding',
         'toto',
