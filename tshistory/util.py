@@ -459,7 +459,10 @@ def unpack_history(bytestring):
     return metadata, hist
 
 
-TO64 = (np.dtype('int'), np.dtype('float32'))
+TO64 = set(
+    (np.dtype('int'), np.dtype('int32'), np.dtype('int64'), np.dtype('float32'))
+)
+
 
 def num2float(pdobj):
     # get a Series or a Dataframe column
