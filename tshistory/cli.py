@@ -163,6 +163,40 @@ def configpath():
 
 # migration
 
+@tsh.command(name='fix-primary-groups-metadata')
+@click.argument('db-uri')
+@click.option('--namespace', default='tsh')
+def fix_groups_metadata(db_uri, namespace='tsh'):
+    engine = create_engine(find_dburi(db_uri))
+    tsh = tshclass()
+
+    for name, kind in tsh.list_groups(engine).items():
+        if kind != 'primary':
+            continue
+
+        with engine.begin() as cn:
+            tsmeta = cn.execute(
+                'select tsr.metadata '
+                f'from "{namespace}".group_registry as gr, '
+                f'     "{namespace}".groupmap as gm,'
+                f'     "{namespace}.group".registry as tsr '
+                'where gr.name = %(name)s and '
+                '      gr.id = gm.groupid and '
+                '      gm.seriesid = tsr.id '
+                'limit 1',
+                name=name
+            ).scalar()
+            grmeta = tsh.group_metadata(engine, name) or {}
+            grmeta.update(tsmeta)
+            cn.execute(
+                f'update "{namespace}".group_registry '
+                'set metadata = %(metadata)s '
+                f'where name = %(name)s',
+                metadata=dumps(grmeta),
+                name=name
+            )
+        print(f'updated `{name}` with {grmeta}')
+
 
 # db maintenance
 
