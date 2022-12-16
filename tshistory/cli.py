@@ -165,14 +165,23 @@ def configpath():
 
 @tsh.command(name='fix-primary-groups-metadata')
 @click.argument('db-uri')
+@click.option('--deletebroken', default=False, is_flag=True)
 @click.option('--namespace', default='tsh')
-def fix_groups_metadata(db_uri, namespace='tsh'):
+def fix_groups_metadata(db_uri, deletebroken=False, namespace='tsh'):
     engine = create_engine(find_dburi(db_uri))
     tsh = tshclass()
 
     for name, kind in tsh.list_groups(engine).items():
         if kind != 'primary':
             continue
+
+        if deletebroken:
+            try:
+                tsh.group_get(engine, name)
+            except:
+                print('Deleting broken group', name)
+                tsh.group_delete(engine, name)
+                continue
 
         with engine.begin() as cn:
             tsmeta = cn.execute(
@@ -186,7 +195,9 @@ def fix_groups_metadata(db_uri, namespace='tsh'):
                 'limit 1',
                 name=name
             ).scalar()
+
             grmeta = tsh.group_metadata(engine, name) or {}
+            #import pdb;pdb.set_trace()
             grmeta.update(tsmeta)
             cn.execute(
                 f'update "{namespace}".group_registry '
