@@ -9,6 +9,7 @@ from typing import (
     Union
 )
 from collections import defaultdict
+import warnings
 
 from sqlalchemy import create_engine
 import pandas as pd
@@ -446,19 +447,34 @@ class mainsource:
 
     def metadata(self,
                  name: str,
-                 all: bool=False) -> Dict[str, Any]:
-        """Return a series metadata dictionary.
+                 all: bool=None) -> Dict[str, Any]:
+        """Return a series metadata dictionary."""
+        if all is not None:
+            warnings.warn(
+                'The `all` parameter is deprecated and has now no effect. '
+                'You should use .internal_metadata instead',
+                DeprecationWarning
+            )
+            imeta = self.internal_metadata(name)
 
-        If `all` is True, internal metadata will be provided.
-
-        """
         meta = self.tsh.metadata(self.engine, name)
-        if not meta:
+        if meta is None:
             meta = self.othersources.metadata(name)
+            if meta is None:
+                return
+
+        # cleanup internal stuff coming from other older instances
+        # let's remove this by the end of 2023
         if all:
-            return meta
-        for key in self.tsh.metakeys:
-            meta.pop(key, None)
+            meta.update(imeta)
+        return meta
+
+    def internal_metadata(self,
+                          name: str) -> Dict[str, Any]:
+        """Return a series internal metadata dictionary."""
+        meta = self.tsh.internal_metadata(self.engine, name)
+        if not meta:
+            meta = self.othersources.internal_metadata(name)
         return meta
 
     def update_metadata(self,
@@ -764,16 +780,17 @@ class altsources:
             try:
                 if source.tsa.exists(name):
                     return source
-            except:
-                print(f'source {source} currently unavailable')
+            except Exception as err :
+                print(f'findsource: source {source} currently unavailable (cause: {err})')
 
     def exists(self, name):
         for source in self.sources:
             try:
                 if source.tsa.exists(name):
                     return True
-            except:
-                print(f'source {source} currently unavailable')
+            except Exception as err:
+                print(f'exists: source {source} currently unavailable (cause: {err})')
+
         return False
 
     def get(self, name: str,
@@ -819,6 +836,12 @@ class altsources:
             return
         meta = source.tsa.metadata(name, all=True)
         return meta
+
+    def internal_metadata(self, name: str):
+        source = self._findsourcefor(name)
+        if source is None:
+            return
+        return source.tsa.internal_metadata(name)
 
     def type(self, name: str):
         source = self._findsourcefor(name)

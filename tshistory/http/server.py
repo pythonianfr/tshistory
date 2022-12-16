@@ -92,7 +92,7 @@ metadata.add_argument(
     help='get all metadata, including internal'
 )
 metadata.add_argument(
-    'type', type=enum('standard', 'type', 'interval'),
+    'type', type=enum('standard', 'internal', 'type', 'exists', 'interval'),
     default='standard',
     help='specify the kind of needed metadata'
 )
@@ -407,9 +407,20 @@ class httpapi:
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
 
+                if args.type == 'exists':
+                    return True, 200
+
+                imeta = tsa.internal_metadata(args.name)
                 if args.type == 'standard':
-                    meta = tsa.metadata(args.name, all=args.all)
-                    return meta, 200
+                    usermeta = tsa.metadata(args.name) or {}
+                    #  bw compat pre internal-metadata for old clients
+                    if args.all:
+                        usermeta.update(imeta)
+                    return usermeta, 200
+
+                if args.type == 'internal':
+                    return imeta, 200
+
                 if args.type == 'type':
                     stype = tsa.type(args.name)
                     return stype, 200
@@ -419,7 +430,8 @@ class httpapi:
                     ival = tsa.interval(args.name)
                 except ValueError:
                     return no_content()
-                tzaware = tsa.metadata(args.name, all=True).get('tzaware', False)
+
+                tzaware = imeta.get('tzaware')
                 return (tzaware,
                         ival.left.isoformat(),
                         ival.right.isoformat()), 200
@@ -486,7 +498,7 @@ class httpapi:
                 return series_response(
                     args.format,
                     diff,
-                    tsa.metadata(args.name, all=True),
+                    tsa.internal_metadata(args.name),
                     200 if exists else 201
                 )
 
@@ -527,9 +539,7 @@ class httpapi:
                 # the fast path will need it
                 # also it is read from a cache filled at get time
                 # so very cheap call
-                metadata = tsa.metadata(args.name, all=True)
-                assert metadata is not None, f'series {args.name} has no metadata'
-
+                metadata = tsa.internal_metadata(args.name)
                 return series_response(
                     args.format,
                     series,
@@ -610,7 +620,7 @@ class httpapi:
                     nocache=args.nocache,
                     _keep_nans=args._keep_nans
                 )
-                metadata = tsa.metadata(args.name, all=True)
+                metadata = tsa.internal_metadata(args.name)
 
                 if args.format == 'json':
                     if hist is not None:
@@ -643,7 +653,7 @@ class httpapi:
                     from_value_date=args.from_value_date,
                     to_value_date=args.to_value_date,
                 )
-                metadata = tsa.metadata(args.name, all=True)
+                metadata = tsa.internal_metadata(args.name)
 
                 if args.format == 'json':
                     if series is not None:
@@ -681,7 +691,7 @@ class httpapi:
                     maturity_offset=args.maturity_offset,
                     maturity_time=args.maturity_time,
                 )
-                metadata = tsa.metadata(args.name, all=True)
+                metadata = tsa.internal_metadata(args.name)
 
                 if args.format == 'json':
                     if series is not None:

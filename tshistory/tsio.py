@@ -201,9 +201,10 @@ class timeseries:
                 )
             )
 
+        meta = self.internal_metadata(cn, name)
         # munge query to satisfy pandas idiocy
         if from_value_date or to_value_date:
-            tzaware = self.metadata(cn, name)['tzaware']
+            tzaware = meta['tzaware']
             if from_value_date:
                 from_value_date = compatible_date(tzaware, from_value_date)
             if to_value_date:
@@ -221,7 +222,6 @@ class timeseries:
             )
 
         if current is None:
-            meta = self.metadata(cn, name)
             return empty_series(
                 meta['tzaware'],
                 dtype=meta['value_type'],
@@ -234,36 +234,47 @@ class timeseries:
         return current
 
     @tx
-    def metadata(self, cn, name):
-        """Return metadata dict of timeserie."""
-        if name in cn.cache['metadata']:
-            return cn.cache['metadata']
-        sql = (f'select metadata from "{self.namespace}".registry '
-               'where seriesname = %(name)s')
-        meta = cn.cache['metadata'][name] = cn.execute(sql, name=name).scalar()
+    def internal_metadata(self, cn, name):
+        if name in cn.cache['internal_metadata']:
+            return cn.cache['internal_metadata'][name]
+        meta = cn.cache['internal_metadata'][name] = cn.execute(
+            f'select internal_metadata '
+            f'from "{self.namespace}".registry '
+            f'where seriesname = %(name)s',
+            name=name
+        ).scalar()
         return meta
 
     @tx
-    def update_metadata(self, cn, name, metadata, internal=False):
-        assert isinstance(metadata, dict)
-        assert internal or not set(metadata.keys()) & self.metakeys
-        meta = self.metadata(cn, name)
-        # remove al but internal stuff
-        newmeta = {
-            key: meta[key]
-            for key in self.metakeys
-            if meta.get(key) is not None
-        }
-        newmeta.update(metadata)
-        sql = (f'update "{self.namespace}".registry as reg '
-               'set metadata = %(metadata)s '
-               'where reg.seriesname = %(seriesname)s')
+    def update_internal_metadata(self, cn, name, metadata):
+        imeta = self.internal_metadata(cn, name) or {}
+        imeta.update(metadata)
         cn.execute(
-            sql,
-            metadata=json.dumps(newmeta),
+            f'update "{self.namespace}".registry '
+            'set internal_metadata = %(metadata)s '
+            'where seriesname = %(seriesname)s',
+            metadata=json.dumps(imeta),
             seriesname=name
         )
-        cn.cache['metadata'][name] = meta
+
+    @tx
+    def metadata(self, cn, name):
+        return cn.execute(
+            f'select metadata from "{self.namespace}".registry '
+            'where seriesname = %(name)s',
+            name=name
+        ).scalar() or {}
+
+    @tx
+    def update_metadata(self, cn, name, metadata):
+        assert isinstance(metadata, dict)
+        cn.execute(
+            f'update "{self.namespace}".registry '
+            'set metadata = %(metadata)s '
+            'where registry.seriesname = %(seriesname)s',
+            metadata=json.dumps(metadata),
+            seriesname=name
+        )
 
     def changeset_metadata(self, cn, csid):
         assert isinstance(csid, int)
@@ -317,7 +328,7 @@ class timeseries:
 
         # careful there with naive series vs inputs
         if from_value_date or to_value_date:
-            tzaware = self.metadata(cn, name)['tzaware']
+            tzaware = self.internal_metadata(cn, name)['tzaware']
             if from_value_date:
                 from_value_date = compatible_date(tzaware, from_value_date)
             if to_value_date:
@@ -381,7 +392,7 @@ class timeseries:
             _keep_nans=True
         )
         if not len(base):
-            meta = self.metadata(cn, name)
+            meta = self.internal_metadata(cn, name)
             return empty_series(meta['tzaware'], name=name)
 
         # prepare the needed revision dates
@@ -397,7 +408,7 @@ class timeseries:
 
         hcache = historycache(
             name, hist,
-            tzaware=self.metadata(cn, name).get('tzaware')
+            tzaware=self.internal_metadata(cn, name).get('tzaware')
         )
 
         return hcache.staircase(
@@ -430,7 +441,7 @@ class timeseries:
             _keep_nans=True
         )
         if not len(latest_ts):
-            meta = self.metadata(cn, name)
+            meta = self.internal_metadata(cn, name)
             return empty_series(meta['tzaware'], name=name)
 
         hist = self.history(
@@ -441,7 +452,7 @@ class timeseries:
             _keep_nans = True
         )
         hcache = historycache(
-            name, hist, tzaware=self.metadata(cn, name).get('tzaware')
+            name, hist, tzaware=self.internal_metadata(cn, name).get('tzaware')
         )
         return hcache.block_staircase(
             from_value_date=from_value_date or latest_ts.index.min(),
@@ -618,7 +629,7 @@ class timeseries:
         res = cn.execute(sql).fetchone()
         start, end = res.tsstart, res.tsend
         tz = None
-        if self.metadata(cn, name).get('tzaware') and not notz:
+        if self.internal_metadata(cn, name).get('tzaware') and not notz:
             tz = 'UTC'
         start, end = pd.Timestamp(start, tz=tz), pd.Timestamp(end, tz=tz)
         return pd.Interval(left=start, right=end, closed='both')
@@ -701,7 +712,7 @@ class timeseries:
         if not len(series_diff):
             L.info('no difference in %s by %s (for ts of size %s)',
                    name, author, len(newts))
-            meta = self.metadata(cn, name)
+            meta = self.internal_metadata(cn, name)
             return empty_series(
                 meta['tzaware'],
                 name=name
@@ -809,13 +820,12 @@ class timeseries:
         return series_metadata(ts)
 
     def _register_serie(self, cn, name, seriesmeta):
-        sql = (f'insert into "{self.namespace}".registry '
-               '(seriesname, tablename, metadata) '
-               'values (%s, %s, %s) '
-               'returning id')
         tablename = self._series_to_tablename(cn, name)
         cn.execute(
-            sql,
+            f'insert into "{self.namespace}".registry '
+            '(seriesname, tablename, internal_metadata) '
+            'values (%s, %s, %s) '
+            'returning id',
             name,
             tablename,
             json.dumps(seriesmeta)
@@ -837,7 +847,7 @@ class timeseries:
             # ts erasure
             return
         tstype = ts.dtype
-        meta = self.metadata(cn, name)
+        meta = self.internal_metadata(cn, name)
         if tstype != meta['value_type']:
             m = (f'Type error when inserting {name}, '
                  f'new type is {tstype}, type in base is {meta["value_type"]}')
@@ -1096,7 +1106,7 @@ class timeseries:
                     insertion_date
                 )
             tsmeta = cn.execute(
-                'select tsr.metadata '
+                'select tsr.internal_metadata '
                 f'from "{self.namespace}".group_registry as gr, '
                 f'     "{self.namespace}".groupmap as gm,'
                 f'     "{self.namespace}.group".registry as tsr '

@@ -172,7 +172,7 @@ insertion_date             value_date
         pd.Timestamp('2019-01-03 00:00:00+0000', tz='UTC')
     ]
 
-    meta = tsx.metadata('api-test', all=True)
+    meta = tsx.internal_metadata('api-test')
     assert meta == {
         'tzaware': True,
         'index_type': 'datetime64[ns, UTC]',
@@ -405,13 +405,21 @@ def test_multisource(mapi):
     with pytest.raises(ValueError) as err:
         mapi.update_metadata('api-2', {'descr': 'for the mapi test'})
     assert err.value.args[0].startswith('not allowed to update metadata')
-    assert mapi.metadata('api-2', all=True) == {
+    assert mapi.internal_metadata('api-2') == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
         'tzaware': True,
         'value_dtype': '<f8',
         'value_type': 'float64',
         'supervision_status': 'unsupervised'
+    }
+    assert mapi.metadata('api-2', all=True) == {
+        'index_dtype': '|M8[ns]',
+        'index_type': 'datetime64[ns, UTC]',
+        'supervision_status': 'unsupervised',
+        'tzaware': True,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
     }
 
     mapi.rename('api-1', 'renamed-api-1')
@@ -538,7 +546,7 @@ insertion_date             value_date
 
     assert err.value.args[0] == 'no interval for series: test-localformula-remoteseries'
 
-    meta = mapi.metadata('remote-series', all=True)
+    meta = mapi.internal_metadata('remote-series')
     assert meta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
@@ -546,7 +554,7 @@ insertion_date             value_date
         'value_dtype': '<f8',
         'value_type': 'float64'
     }
-    meta = mapi.metadata('test-localformula-remoteseries', all=True)
+    meta = mapi.internal_metadata('test-localformula-remoteseries')
     assert meta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
@@ -598,6 +606,7 @@ def test_formula_remote_autotrophic(mapihttp, engine):
         '(series "autotrophic")'
     )
 
+    # bw compat
     assert tsa.metadata('remote-series', True) == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
@@ -605,6 +614,17 @@ def test_formula_remote_autotrophic(mapihttp, engine):
         'value_dtype': '<f8',
         'value_type': 'float64'
     }
+
+    assert tsa.metadata('remote-series') == {}
+
+    assert tsa.internal_metadata('remote-series') == {
+        'index_dtype': '|M8[ns]',
+        'index_type': 'datetime64[ns, UTC]',
+        'tzaware': True,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+
     assert_df("""
 2019-01-01 00:00:00+00:00    1.0
 2019-01-02 00:00:00+00:00    2.0

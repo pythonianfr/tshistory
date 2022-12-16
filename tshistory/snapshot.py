@@ -103,7 +103,9 @@ class Snapshot:
 
     @property
     def isstr(self):
-        return self.tsh.metadata(self.cn, self.name)['value_type'] == 'object'
+        return self.tsh.internal_metadata(
+            self.cn, self.name
+        )['value_type'] == 'object'
 
     def _serialize(self, ts):
         if ts is None:
@@ -117,7 +119,7 @@ class Snapshot:
         tzaware.
         """
         assert ts.name is not None
-        metadata = self.tsh.metadata(self.cn, ts.name)
+        metadata = self.tsh.internal_metadata(self.cn, ts.name)
         if metadata and metadata.get('tzaware', False):
             return ts.tz_localize('UTC')
         return ts
@@ -129,7 +131,7 @@ class Snapshot:
         )
         indexchunks, valueschunks = list(zip(*chunks))
 
-        meta = self.tsh.metadata(self.cn, self.name)
+        meta = self.tsh.internal_metadata(self.cn, self.name)
         bseparator = b'\0' if meta['value_type'] == 'object' else b''
 
         index, values = numpy_deserialize(

@@ -1,5 +1,6 @@
 import json
 import zlib
+import warnings
 
 import inireader
 import requests
@@ -7,6 +8,7 @@ import pandas as pd
 import numpy as np
 import pytz
 
+from tshistory.tsio import timeseries
 from tshistory.util import (
     get_cfg_path,
     pack_group,
@@ -86,13 +88,13 @@ class Client:
     @unwraperror
     def exists(self, name):
         res = self.session.get(f'{self.uri}/series/metadata', params={
-            'name': name
+            'name': name,
+            'type': 'exists'
         })
-        if res.status_code in (200, 404):
-            meta = res.json()
-            if 'message' in meta and meta['message'].endswith('does not exists'):
-                return False
+        if res.status_code == 200:
             return True
+        elif res.status_code == 404:
+            return False
 
         return res
 
@@ -154,14 +156,45 @@ class Client:
 
     @unwraperror
     def metadata(self, name, all=False):
+        if all is not None:
+            warnings.warn(
+                'The `all` parameter is deprecated and has now no effect. '
+                'You should use .internal_metadata instead',
+                DeprecationWarning
+            )
+
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
-            'all': int(all)
+            'all': all
         })
         if res.status_code == 200:
             return res.json()
         if res.status_code == 404:
             return None
+
+        return res
+
+    @unwraperror
+    def internal_metadata(self, name):
+        res = self.session.get(f'{self.uri}/series/internal_metadata', params={
+            'name': name
+        })
+        if res.status_code == 200:
+            return res.json()
+        if res.status_code == 404:
+            # bw compat for old servers
+            res = self.session.get(f'{self.uri}/series/metadata', params={
+                'name': name,
+                'all': True
+            })
+            if res.status_code == 404:
+                return None
+            if res.status_code == 200:
+                meta = res.json()
+                for key in meta:
+                    if key not in timeseries.metakeys:
+                        meta.pop(key, None)
+                return meta
 
         return res
 

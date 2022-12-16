@@ -37,7 +37,7 @@ def utcdt(*dt):
 
 
 def test_no_series_meta(engine, tsh):
-    assert tsh.metadata(engine, 'no-such-series') is None
+    assert tsh.internal_metadata(engine, 'no-such-series') is None
 
 
 def test_bad_name(engine, tsh):
@@ -100,7 +100,7 @@ def test_float32_dtype(engine, tsh):
     )
     tsh.update(engine, ts, 'float32', 'Babar')
 
-    assert tsh.metadata(
+    assert tsh.internal_metadata(
         engine,
         'float32'
     ) == {
@@ -482,7 +482,7 @@ def test_serie_metadata(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
     tsh.update(engine, serie, 'ts-metadata', 'babar')
 
-    initialmeta = tsh.metadata(engine, 'ts-metadata')
+    initialmeta = tsh.internal_metadata(engine, 'ts-metadata')
     assert initialmeta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
@@ -497,16 +497,10 @@ def test_serie_metadata(engine, tsh):
     )
     assert tsh.metadata(engine, 'ts-metadata')['topic'] == 'banana spot price'
 
-    with pytest.raises(AssertionError):
-        tsh.update_metadata(engine, 'ts-metadata', {'tzaware': True})
+    tsh.update_metadata(engine, 'ts-metadata', {'tzaware': True})
 
     assert tsh.metadata(engine, 'ts-metadata') == {
-        'index_dtype': '<M8[ns]',
-        'index_type': 'datetime64[ns]',
-        'topic': 'banana spot price',
-        'tzaware': False,
-        'value_dtype': '<f8',
-        'value_type': 'float64'
+        'tzaware': True,  # this is end-user (not internal) metadata
     }
 
 
@@ -706,7 +700,7 @@ def test_point_deletion(engine, tsh):
 2010-01-10    machin
 """, tsh.get(engine, 'ts_string_del'))
 
-    meta = tsh.metadata(engine, 'ts_string_del')
+    meta = tsh.internal_metadata(engine, 'ts_string_del')
     assert meta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
@@ -890,7 +884,7 @@ insertion_date             value_date
 """, histts)
 
     # pack/unpack
-    meta = tsh.metadata(engine, 'smallserie')
+    meta = tsh.internal_metadata(engine, 'smallserie')
     packed = pack_history(meta, histts)
     meta2, hist2 = unpack_history(packed)
     assert meta == meta2
@@ -1241,7 +1235,7 @@ def test_serie_deletion(engine, tsh):
     tsh.update(engine, ts, 'keepme', 'Babar')
     tsh.update(engine, ts, 'deleteme', 'Celeste')
 
-    assert tsh.metadata(engine, 'deleteme') == {
+    assert tsh.internal_metadata(engine, 'deleteme') == {
         'tzaware': False,
         'index_type': 'datetime64[ns]',
         'value_type': 'float64',
@@ -1253,7 +1247,7 @@ def test_serie_deletion(engine, tsh):
         tsh.delete(cn, 'deleteme')
 
     assert not tsh.exists(engine, 'deleteme')
-    assert tsh.metadata(engine, 'deleteme') is None
+    assert tsh.internal_metadata(engine, 'deleteme') is None
 
     ts = pd.Series(
         [1, 2, 3],
@@ -1263,7 +1257,7 @@ def test_serie_deletion(engine, tsh):
     with engine.begin() as cn:
         tsh.update(cn, ts, 'deleteme', 'Celeste')
 
-    assert tsh.metadata(engine, 'deleteme') == {
+    assert tsh.internal_metadata(engine, 'deleteme') == {
         'tzaware': True,
         'index_type': 'datetime64[ns, UTC]',
         'value_type': 'float64',

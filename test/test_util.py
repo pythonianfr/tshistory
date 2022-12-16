@@ -446,7 +446,7 @@ def test_pack_unpack_history(tsh, engine):
                        insertion_date=utcdt(2021, 2, numserie))
 
     hist = tsh.history(engine, 'small-hist-naive')
-    meta = tsh.metadata(engine, 'small-hist-naive')
+    meta = tsh.internal_metadata(engine, 'small-hist-naive')
     packed = pack_history(meta, hist)
     meta2, hist2 = unpack_history(packed)
     assert meta2 == meta
@@ -461,7 +461,7 @@ def test_pack_unpack_history(tsh, engine):
                        insertion_date=utcdt(2021, 2, numserie))
 
     hist = tsh.history(engine, 'small-hist-tzaware')
-    meta = tsh.metadata(engine, 'small-hist-tzaware')
+    meta = tsh.internal_metadata(engine, 'small-hist-tzaware')
     packed = pack_history(meta, hist)
     meta2, hist2 = unpack_history(packed)
     assert meta2 == meta
