@@ -175,6 +175,7 @@ insertion_date             value_date
     meta = tsx.internal_metadata('api-test')
     assert meta == {
         'tzaware': True,
+        'tablename': 'api-test',
         'index_type': 'datetime64[ns, UTC]',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',
@@ -408,6 +409,7 @@ def test_multisource(mapi):
     assert mapi.internal_metadata('api-2') == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
+        'tablename': 'api-2',
         'tzaware': True,
         'value_dtype': '<f8',
         'value_type': 'float64',
@@ -417,6 +419,7 @@ def test_multisource(mapi):
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
         'supervision_status': 'unsupervised',
+        'tablename': 'api-2',
         'tzaware': True,
         'value_dtype': '<f8',
         'value_type': 'float64'
@@ -550,6 +553,7 @@ insertion_date             value_date
     assert meta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
+        'tablename': 'remote-series',
         'tzaware': False,
         'value_dtype': '<f8',
         'value_type': 'float64'
@@ -784,6 +788,7 @@ def test_primary_group(tsx):
     assert meta == {'name': 'babar'}
 
     meta = tsx.group_metadata('first_group_api', all=True)
+    meta.pop('tablename')
     assert meta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',

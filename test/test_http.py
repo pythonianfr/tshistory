@@ -119,6 +119,7 @@ def test_naive(http):
     assert meta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
+        'tablename': 'test-naive',
         'tzaware': False,
         'value_dtype': '<f8',
         'value_type': 'float64'
@@ -182,6 +183,7 @@ def test_base(http):
     assert meta == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
+        'tablename': 'test',
         'tzaware': True,
         'value_dtype': '<f8',
         'value_type': 'float64'
@@ -644,6 +646,7 @@ def test_get_fast_path(http):
     meta.pop('supervision_status', None)
     assert meta == {
         'tzaware': True,
+        'tablename': 'test_fast',
         'index_type': 'datetime64[ns, UTC]',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',
@@ -714,6 +717,7 @@ def test_multisource(http, engine):
     meta = res.json
     assert meta == {
         'tzaware': True,
+        'tablename': 'test-other-source',
         'index_type': 'datetime64[ns, UTC]',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',

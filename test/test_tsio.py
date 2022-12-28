@@ -106,6 +106,7 @@ def test_float32_dtype(engine, tsh):
     ) == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
+        'tablename': 'float32',
         'tzaware': True,
         'value_dtype': '<f8',
         'value_type': 'float64'
@@ -413,9 +414,9 @@ def test_base_diff(engine, tsh):
 2010-01-04   -1.0
 2010-01-05    2.0
 2010-01-06    2.0
-    """, tsh.get(engine, 'ts_mixte',
-                 from_value_date=datetime(2010, 1, 3),
-                 to_value_date=datetime(2010, 1, 6))
+""", tsh.get(engine, 'ts_mixte',
+             from_value_date=datetime(2010, 1, 3),
+             to_value_date=datetime(2010, 1, 6))
     )
 
     assert_df("""
@@ -423,8 +424,8 @@ def test_base_diff(engine, tsh):
 2010-01-05    2.0
 2010-01-06    2.0
 2010-01-07    3.0
-        """, tsh.get(engine, 'ts_mixte',
-                     from_value_date=datetime(2010, 1, 4))
+""", tsh.get(engine, 'ts_mixte',
+             from_value_date=datetime(2010, 1, 4))
     )
 
     assert_df("""
@@ -433,34 +434,9 @@ def test_base_diff(engine, tsh):
 2010-01-03    2.0
 2010-01-04   -1.0
 2010-01-05    2.0
-            """, tsh.get(engine, 'ts_mixte',
-                         to_value_date=datetime(2010, 1, 5))
+""", tsh.get(engine, 'ts_mixte',
+             to_value_date=datetime(2010, 1, 5))
         )
-
-    with engine.begin() as cn:
-        cn.execute(
-            f'set search_path to "{tsh.namespace}.timeserie", "{tsh.namespace}", public'
-        )
-        allts = pd.read_sql("select seriesname, tablename from registry "
-                            "where seriesname in ('ts_test', 'ts_mixte')",
-                            cn)
-
-        assert_df("""
-seriesname tablename
-0    ts_test   ts_test
-1   ts_mixte  ts_mixte
-""".format(tsh.namespace), allts)
-
-        assert_df("""
-2010-01-01    2.0
-2010-01-02    2.0
-2010-01-03    2.0
-2010-01-04   -1.0
-2010-01-05    2.0
-2010-01-06    2.0
-2010-01-07    3.0
-""", tsh.get(cn, 'ts_mixte',
-             revision_date=datetime.now()))
 
 
 def test_update_with_nothing(engine, tsh):
@@ -486,6 +462,7 @@ def test_serie_metadata(engine, tsh):
     assert initialmeta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
+        'tablename': 'ts-metadata',
         'tzaware': False,
         'value_dtype': '<f8',
         'value_type': 'float64'
@@ -704,6 +681,7 @@ def test_point_deletion(engine, tsh):
     assert meta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
+        'tablename': 'ts_string_del',
         'tzaware': False,
         'value_dtype': '|O',
         'value_type': 'object'
@@ -1238,6 +1216,7 @@ def test_serie_deletion(engine, tsh):
     assert tsh.internal_metadata(engine, 'deleteme') == {
         'tzaware': False,
         'index_type': 'datetime64[ns]',
+        'tablename': 'deleteme',
         'value_type': 'float64',
         'index_dtype': '<M8[ns]',
         'value_dtype': '<f8'
@@ -1260,6 +1239,7 @@ def test_serie_deletion(engine, tsh):
     assert tsh.internal_metadata(engine, 'deleteme') == {
         'tzaware': True,
         'index_type': 'datetime64[ns, UTC]',
+        'tablename': 'deleteme',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',
         'value_dtype': '<f8'
@@ -2789,7 +2769,9 @@ def test_group_other_operations(engine, tsh):
     with pytest.raises(IntegrityError):
         tsh.tsh_group.delete(engine, names[0])
 
-    assert tsh.group_metadata(engine, 'third_group') == {
+    meta = tsh.group_metadata(engine, 'third_group')
+    meta.pop('tablename')  # make_uid output changes everytime, is not testable
+    assert meta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
         'tzaware': False,
@@ -2798,7 +2780,9 @@ def test_group_other_operations(engine, tsh):
     }
 
     tsh.update_group_metadata(engine, 'third_group', {'foo': 'bar'})
-    assert tsh.group_metadata(engine, 'third_group') == {
+    meta = tsh.group_metadata(engine, 'third_group')
+    meta.pop('tablename')
+    assert meta  == {
         'foo': 'bar',
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',

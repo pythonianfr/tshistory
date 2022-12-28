@@ -35,6 +35,7 @@ class timeseries:
     namespace = 'tsh'
     schema = None
     metakeys = {
+        'tablename',
         'tzaware',
         'index_type',
         'index_dtype',
@@ -566,11 +567,11 @@ class timeseries:
         cn.execute(
             f'select pg_advisory_xact_lock({self.delete_lock_id})'
         )
-        rid, tablename = cn.execute(
-            f'select id, tablename from "{self.namespace}".registry '
+        rid = cn.execute(
+            f'select id from "{self.namespace}".registry '
             'where seriesname = %(seriesname)s',
             seriesname=name
-        ).fetchone()
+        ).scalar()
         # drop series tables
         cn.execute(
             f'drop table "{self.namespace}.revision"."{tablename}" cascade'
@@ -578,9 +579,11 @@ class timeseries:
         cn.execute(
             f'drop table "{self.namespace}.snapshot"."{tablename}" cascade'
         )
-        cn.execute(f'delete from "{self.namespace}".registry '
-                   'where id = %(rid)s',
-                   rid=rid)
+        cn.execute(
+            f'delete from "{self.namespace}".registry '
+            'where id = %(rid)s',
+            rid=rid
+        )
 
     @tx
     def strip(self, cn, name, csid):
@@ -789,9 +792,9 @@ class timeseries:
             tablename = hashlib.sha1(name.encode('utf-8')).hexdigest()
 
         # collision detection (collision can happen after a rename)
-        if cn.execute(f'select tablename '
+        if cn.execute(f'select internal_metadata->\'tablename\' '
                       f'from "{self.namespace}".registry '
-                      f'where tablename = %(tablename)s',
+                      f'where internal_metadata->>\'tablename\' = %(tablename)s',
                       tablename=tablename).scalar():
             tablename = str(uuid.uuid4())
 
@@ -804,7 +807,8 @@ class timeseries:
             return tablename
 
         tablename = cn.execute(
-            f'select tablename from "{self.namespace}".registry '
+            f'select internal_metadata->\'tablename\' '
+            f'from "{self.namespace}".registry '
             f'where seriesname = %(seriesname)s',
             seriesname=name
         ).scalar()
@@ -828,13 +832,13 @@ class timeseries:
 
     def _register_serie(self, cn, name, seriesmeta):
         tablename = self._series_to_tablename(cn, name)
+        seriesmeta['tablename'] = tablename
         cn.execute(
             f'insert into "{self.namespace}".registry '
-            '(seriesname, tablename, internal_metadata) '
-            'values (%s, %s, %s) '
+            '(seriesname, internal_metadata) '
+            'values (%s, %s) '
             'returning id',
             name,
-            tablename,
             json.dumps(seriesmeta)
         ).scalar()
 

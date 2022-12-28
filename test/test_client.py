@@ -128,6 +128,7 @@ def test_base(client):
     meta = client.metadata('test1', all=True)
     assert meta == {
         'tzaware': True,
+        'tablename': 'test1',
         'index_type': 'datetime64[ns, UTC]',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',
