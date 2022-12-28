@@ -175,6 +175,14 @@ class timeseries:
             for row in cn.execute(sql)
         }
 
+    def tzaware(self, cn, name):
+        return cn.execute(
+            'select internal_metadata->\'tzaware\' '
+            f'from "{self.namespace}".registry '
+            'where seriesname = %(name)s',
+            name=name
+        ).scalar()
+
     @tx
     def get(self, cn, name, revision_date=None,
             from_value_date=None, to_value_date=None,
@@ -328,7 +336,7 @@ class timeseries:
 
         # careful there with naive series vs inputs
         if from_value_date or to_value_date:
-            tzaware = self.internal_metadata(cn, name)['tzaware']
+            tzaware = self.tzaware(cn, name)
             if from_value_date:
                 from_value_date = compatible_date(tzaware, from_value_date)
             if to_value_date:
@@ -391,9 +399,9 @@ class timeseries:
             to_value_date=to_value_date,
             _keep_nans=True
         )
+        tzaware = self.tzaware(cn, name)
         if not len(base):
-            meta = self.internal_metadata(cn, name)
-            return empty_series(meta['tzaware'], name=name)
+            return empty_series(tzaware, name=name)
 
         # prepare the needed revision dates
         toidate = base.index.max() - delta
@@ -408,7 +416,7 @@ class timeseries:
 
         hcache = historycache(
             name, hist,
-            tzaware=self.internal_metadata(cn, name).get('tzaware')
+            tzaware=tzaware
         )
 
         return hcache.staircase(
@@ -440,9 +448,9 @@ class timeseries:
             to_value_date=to_value_date,
             _keep_nans=True
         )
+        tzaware = self.tzaware(cn, name)
         if not len(latest_ts):
-            meta = self.internal_metadata(cn, name)
-            return empty_series(meta['tzaware'], name=name)
+            return empty_series(tzaware, name=name)
 
         hist = self.history(
             cn, name,
@@ -452,7 +460,7 @@ class timeseries:
             _keep_nans = True
         )
         hcache = historycache(
-            name, hist, tzaware=self.internal_metadata(cn, name).get('tzaware')
+            name, hist, tzaware=tzaware
         )
         return hcache.block_staircase(
             from_value_date=from_value_date or latest_ts.index.min(),
@@ -629,7 +637,7 @@ class timeseries:
         res = cn.execute(sql).fetchone()
         start, end = res.tsstart, res.tsend
         tz = None
-        if self.internal_metadata(cn, name).get('tzaware') and not notz:
+        if self.tzaware(cn, name) and not notz:
             tz = 'UTC'
         start, end = pd.Timestamp(start, tz=tz), pd.Timestamp(end, tz=tz)
         return pd.Interval(left=start, right=end, closed='both')
@@ -712,9 +720,8 @@ class timeseries:
         if not len(series_diff):
             L.info('no difference in %s by %s (for ts of size %s)',
                    name, author, len(newts))
-            meta = self.internal_metadata(cn, name)
             return empty_series(
-                meta['tzaware'],
+                self.tzaware(cn, name),
                 name=name
             )
 
