@@ -170,9 +170,9 @@ class timeseries:
 
     def list_series(self, cn):
         """Return the mapping of all series to their type"""
-        sql = f'select seriesname from "{self.namespace}".registry '
+        sql = f'select name from "{self.namespace}".registry '
         return {
-            row.seriesname: 'primary'
+            row.name: 'primary'
             for row in cn.execute(sql)
         }
 
@@ -180,7 +180,7 @@ class timeseries:
         return cn.execute(
             'select internal_metadata->\'tzaware\' '
             f'from "{self.namespace}".registry '
-            'where seriesname = %(name)s',
+            'where name = %(name)s',
             name=name
         ).scalar()
 
@@ -249,7 +249,7 @@ class timeseries:
         meta = cn.cache['internal_metadata'][name] = cn.execute(
             f'select internal_metadata '
             f'from "{self.namespace}".registry '
-            f'where seriesname = %(name)s',
+            f'where name = %(name)s',
             name=name
         ).scalar()
         return meta
@@ -261,16 +261,16 @@ class timeseries:
         cn.execute(
             f'update "{self.namespace}".registry '
             'set internal_metadata = %(metadata)s '
-            'where seriesname = %(seriesname)s',
+            'where name = %(name)s',
             metadata=json.dumps(imeta),
-            seriesname=name
+            name=name
         )
 
     @tx
     def metadata(self, cn, name):
         return cn.execute(
             f'select metadata from "{self.namespace}".registry '
-            'where seriesname = %(name)s',
+            'where name = %(name)s',
             name=name
         ).scalar() or {}
 
@@ -280,9 +280,9 @@ class timeseries:
         cn.execute(
             f'update "{self.namespace}".registry '
             'set metadata = %(metadata)s '
-            'where registry.seriesname = %(seriesname)s',
+            'where registry.name = %(name)s',
             metadata=json.dumps(metadata),
-            seriesname=name
+            name=name
         )
 
     def changeset_metadata(self, cn, csid):
@@ -553,8 +553,8 @@ class timeseries:
     @tx
     def rename(self, cn, oldname, newname):
         sql = (f'update "{self.namespace}".registry '
-               'set seriesname = %(newname)s '
-               'where seriesname = %(oldname)s')
+               'set name = %(newname)s '
+               'where name = %(oldname)s')
         cn.execute(sql, oldname=oldname, newname=newname)
 
     @tx
@@ -569,8 +569,8 @@ class timeseries:
         )
         rid = cn.execute(
             f'select id from "{self.namespace}".registry '
-            'where seriesname = %(seriesname)s',
-            seriesname=name
+            'where name = %(name)s',
+            name=name
         ).scalar()
         # drop series tables
         cn.execute(
@@ -600,8 +600,8 @@ class timeseries:
         """
         sql = f'select count(*) from "{self.namespace}".registry'
         stats = {'series count': cn.execute(sql).scalar()}
-        sql = (f'select distinct seriesname from "{self.namespace}".registry '
-               'order by seriesname')
+        sql = (f'select distinct name from "{self.namespace}".registry '
+               'order by name')
         stats['serie names'] = [row for row, in cn.execute(sql).fetchall()]
         return stats
 
@@ -809,8 +809,8 @@ class timeseries:
         tablename = cn.execute(
             f'select internal_metadata->\'tablename\' '
             f'from "{self.namespace}".registry '
-            f'where seriesname = %(seriesname)s',
-            seriesname=name
+            f'where name = %(name)s',
+            name=name
         ).scalar()
         if tablename is None:
             # bogus series name
@@ -835,7 +835,7 @@ class timeseries:
         seriesmeta['tablename'] = tablename
         cn.execute(
             f'insert into "{self.namespace}".registry '
-            '(seriesname, internal_metadata) '
+            '(name, internal_metadata) '
             'values (%s, %s) '
             'returning id',
             name,
@@ -1016,7 +1016,7 @@ class timeseries:
     def _group_info(self, cn, name):
         ns = self.namespace
         sql = (
-            f'select gm.name, sr.seriesname '
+            f'select gm.name, sr.name '
             f'from "{ns}".groupmap as gm '
             f'join "{ns}".group_registry as gr on gr.id = gm.groupid '
             f'join "{ns}.group".registry as sr on sr.id = gm.seriesid '
@@ -1037,7 +1037,7 @@ class timeseries:
         # get registry id of inserted series
         sql = (
             f'select id from "{self.namespace}.group".registry '
-            'where seriesname = %(sn)s'
+            'where name = %(sn)s'
         )
         registry_id = cn.execute(sql, sn=seriename).scalar()
 

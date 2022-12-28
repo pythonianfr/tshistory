@@ -191,7 +191,9 @@ class Client:
                 return None
             if res.status_code == 200:
                 meta = res.json()
-                for key in meta:
+                for key in list(meta):
+                    # list call above to help against a weird
+                    # `dictionary changed size during iteration`
                     if key not in timeseries.metakeys:
                         meta.pop(key, None)
                 return meta

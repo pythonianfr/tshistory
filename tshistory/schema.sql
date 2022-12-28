@@ -2,10 +2,10 @@
 
 create table "{ns}".registry (
   id serial primary key,
-  seriesname text not null,
+  name text not null,
   internal_metadata jsonb,
   metadata jsonb,
-  unique(seriesname)
+  unique(name)
 );
 
 create index on "{ns}".registry using gin(internal_metadata);
