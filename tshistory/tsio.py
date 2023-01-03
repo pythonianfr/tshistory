@@ -1208,17 +1208,8 @@ class timeseries:
         cn.execute(sql, oldname=oldname, newname=newname)
 
     @tx
-    def update_group_metadata(self, cn, name, metadata, internal=False):
+    def update_group_metadata(self, cn, name, metadata):
         assert isinstance(metadata, dict)
-        assert internal or not set(metadata.keys()) & self.metakeys
-        meta = self.group_metadata(cn, name)
-        # remove al but internal stuff
-        newmeta = {
-            key: meta[key]
-            for key in self.metakeys
-            if meta.get(key) is not None
-        }
-        newmeta.update(metadata)
         sql = (
             f'update "{self.namespace}".group_registry '
             'set metadata = %(metadata)s '
@@ -1226,7 +1217,7 @@ class timeseries:
         )
         cn.execute(
             sql,
-            metadata=json.dumps(newmeta),
+            metadata=json.dumps(metadata),
             name=name
         )
 
