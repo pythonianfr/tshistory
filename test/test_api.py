@@ -560,6 +560,8 @@ insertion_date             value_date
     }
     meta = mapi.internal_metadata('test-localformula-remoteseries')
     assert meta == {
+        'contenthash': '0ba95fba3fdaef0254bd0d52790454075aa6bb93',
+        'formula': '(+ 1 (series "remote-series"))',
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
         'tzaware': False,
@@ -612,6 +614,8 @@ def test_formula_remote_autotrophic(mapihttp, engine):
 
     # bw compat
     assert tsa.metadata('remote-series', True) == {
+        'contenthash': 'e74bac3752e17245340a7d0cbeb2bdfccdbf3953',
+        'formula': '(series "autotrophic")',
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
         'tzaware': True,
@@ -622,6 +626,8 @@ def test_formula_remote_autotrophic(mapihttp, engine):
     assert tsa.metadata('remote-series') == {}
 
     assert tsa.internal_metadata('remote-series') == {
+        'contenthash': 'e74bac3752e17245340a7d0cbeb2bdfccdbf3953',
+        'formula': '(series "autotrophic")',
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
         'tzaware': True,
