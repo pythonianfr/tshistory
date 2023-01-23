@@ -2457,6 +2457,38 @@ def test_revisions_callback(engine, tsh):
     assert [rid for rid, _ in nosuchstatus] == []
 
 
+def test_find(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+    )
+    tsh.update(
+        engine,
+        ts,
+        'find.me.1',
+        'Babar'
+    )
+    tsh.update(
+        engine,
+        ts,
+        'find.me.2',
+        'Celeste'
+    )
+
+    from tshistory import search
+    r = tsh.find(engine, search.byname('nop'))
+    assert r == []
+
+    r = tsh.find(engine, search.byname('find.me.1'))
+    assert r == ['find.me.1']
+
+    r = tsh.find(engine, search.byname('.me.'))
+    assert len(r) == 2
+
+    r = tsh.find(engine, search.byname('find 1'))
+    assert r == ['find.me.1']
+
+
 # groups
 
 

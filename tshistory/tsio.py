@@ -645,6 +645,21 @@ class timeseries:
         start, end = pd.Timestamp(start, tz=tz), pd.Timestamp(end, tz=tz)
         return pd.Interval(left=start, right=end, closed='both')
 
+    @tx
+    def find(self, cn, query):
+        q = select(
+            'name'
+        ).table(
+            f'"{self.namespace}".registry'
+        )
+        query.sql(q)
+        return sorted(
+            [
+                name
+                for name, in q.do(cn).fetchall()
+            ]
+        )
+
     # /API
     # Helpers
 
