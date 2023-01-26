@@ -2541,6 +2541,16 @@ def test_find(engine, tsh):
     r = tsh.find(engine, search.tzaware())
     assert 'find.me.1' in r and 'find.me.2' in r
 
+    # and combination
+    r = tsh.find(
+        engine,
+        search.and_(
+            search.bymetaitem('foo', 43),
+            search.bymetaitem('bar', 'Hello')
+        )
+    )
+    assert r == ['find.me.2']
+
 
 # groups
 
