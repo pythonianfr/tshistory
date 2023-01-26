@@ -1,4 +1,12 @@
 
+class tzaware:
+
+    def sql(self, sqlquery):
+        sqlquery.where(
+            'internal_metadata @> \'{"tzaware":true}\'::jsonb'
+        )
+
+
 class byname:
     __slots__ = ('query',)
 

@@ -2515,6 +2515,21 @@ def test_find(engine, tsh):
     r = tsh.find(engine, search.bymetakey('bar'))
     assert r == ['find.me.2']
 
+    # tzaware
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(datetime(2023, 1, 1), freq='D', periods=3)
+    )
+    tsh.update(
+        engine,
+        ts,
+        'find.me.tznaive',
+        'Babar'
+    )
+
+    r = tsh.find(engine, search.tzaware())
+    assert 'find.me.1' in r and 'find.me.2' in r
+
 
 # groups
 
