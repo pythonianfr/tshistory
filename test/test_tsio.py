@@ -2476,6 +2476,7 @@ def test_find(engine, tsh):
     )
 
     from tshistory import search
+    # by name
     r = tsh.find(engine, search.byname('nop'))
     assert r == []
 
@@ -2487,6 +2488,32 @@ def test_find(engine, tsh):
 
     r = tsh.find(engine, search.byname('find 1'))
     assert r == ['find.me.1']
+
+    tsh.update_metadata(
+        engine,
+        'find.me.1',
+        {
+            'foo': 42
+        }
+    )
+    tsh.update_metadata(
+        engine,
+        'find.me.2',
+        {
+            'bar': 'Hello',
+            'foo': 43
+        }
+    )
+
+    # by metadata key
+    r = tsh.find(engine, search.bymetakey('foo'))
+    assert r == ['find.me.1', 'find.me.2']
+
+    r = tsh.find(engine, search.bymetakey('nope'))
+    assert r == []
+
+    r = tsh.find(engine, search.bymetakey('bar'))
+    assert r == ['find.me.2']
 
 
 # groups
