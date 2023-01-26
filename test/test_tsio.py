@@ -2515,6 +2515,17 @@ def test_find(engine, tsh):
     r = tsh.find(engine, search.bymetakey('bar'))
     assert r == ['find.me.2']
 
+    # by metadata items
+
+    r = tsh.find(engine, search.bymetaitem('foo', 43))
+    assert r == ['find.me.2']
+
+    r = tsh.find(engine, search.bymetaitem('foo', 42))
+    assert r == ['find.me.1']
+
+    r = tsh.find(engine, search.bymetaitem('bar', 'Hello'))
+    assert r == ['find.me.2']
+
     # tzaware
     ts = pd.Series(
         [1, 2, 3],
