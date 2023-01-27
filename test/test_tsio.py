@@ -2589,6 +2589,29 @@ def test_find(engine, tsh):
     )
     assert r == ['find.me.1']
 
+    # or
+
+    r = tsh.find(
+        engine,
+        search.or_(
+            search.bymetaitem('foo', 43),
+            search.bymetaitem('foo', 42),
+        )
+    )
+    assert r == ['find.me.1', 'find.me.2', 'find.me.tznaive']
+
+    r = tsh.find(
+        engine,
+        search.and_(
+            search.or_(
+                search.bymetakey('bar'),
+                search.bymetaitem('foo', 42),
+            ),
+            search.tzaware()
+        )
+    )
+    assert r == ['find.me.1', 'find.me.2']
+
 
 # groups
 

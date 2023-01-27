@@ -21,6 +21,21 @@ class and_:
         return ' and '.join(self.sqls), self.kw
 
 
+class or_:
+    __slots__ = ('sqls', 'kw')
+
+    def __init__(self, *clauses):
+        self.sqls = []
+        self.kw = {}
+        for clause in clauses:
+            sql, kw = clause.sql()
+            self.sqls.append(sql)
+            self.kw.update(kw)
+
+    def sql(self):
+        return ' or '.join(self.sqls), self.kw
+
+
 class not_:
     __slots__ = ('clause',)
 
