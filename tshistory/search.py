@@ -7,35 +7,24 @@ def usym(basename):
 
 
 class and_:
-    __slots__ = ('clauses', 'compiled')
+    __slots__ = ('sqls', 'kw')
 
     def __init__(self, *clauses):
-        self.compiled = [
-            clause.sql(self)
-            for clause in clauses
-        ]
+        self.sqls = []
+        self.kw = {}
+        for clause in clauses:
+            sql, kw = clause.sql()
+            self.sqls.append(sql)
+            self.kw.update(kw)
 
-    def where(self, clause, **kw):
-        return clause, kw
-
-    def sql(self, sqlquery):
-        sqls = []
-        kws = {}
-        for sql, kw in self.compiled:
-            sqls.append(sql)
-            kws.update(kw)
-        sqlquery.where(
-            ' and '.join(sqls),
-            **kws
-        )
+    def sql(self):
+        return ' and '.join(self.sqls), self.kw
 
 
 class tzaware:
 
-    def sql(self, sqlquery):
-        return sqlquery.where(
-            'internal_metadata @> \'{"tzaware":true}\'::jsonb'
-        )
+    def sql(self):
+        return 'internal_metadata @> \'{"tzaware":true}\'::jsonb', {}
 
 
 class byname:
@@ -44,12 +33,9 @@ class byname:
     def __init__(self, query: str):
         self.query = query.replace(' ', '%%')
 
-    def sql(self, sqlquery):
+    def sql(self):
         vid = usym('name')
-        return sqlquery.where(
-            f'name like %({vid})s',
-            **{vid: f'%%{self.query}%%'}
-        )
+        return f'name like %({vid})s', {vid: f'%%{self.query}%%'}
 
 
 class bymetakey:
@@ -58,12 +44,9 @@ class bymetakey:
     def __init__(self, key: str):
         self.key = key
 
-    def sql(self, sqlquery):
+    def sql(self):
         vid = usym('key')
-        return sqlquery.where(
-            f'metadata ? %({vid})s',
-            **{vid: self.key}
-        )
+        return f'metadata ? %({vid})s', {vid: self.key}
 
 
 class bymetaitem:
@@ -73,17 +56,15 @@ class bymetaitem:
         self.key = key
         self.value = value
 
-    def sql(self, sqlquery):
+    def sql(self):
         # NOTE: this is weak and injection prone
         # we need to find a robust workaround for
         # psycopg2 bugs
         vid = usym('value')
         if not isinstance(self.value, str):
-            return sqlquery.where(
+            return (
                 f'metadata @> \'{{"{self.key}":%({vid})s}}\'::jsonb',
-                **{vid: self.value}
+                {vid: self.value}
             )
 
-        return sqlquery.where(
-            f'metadata @> \'{{"{self.key}":"{self.value}"}}\'::jsonb'
-        )
+        return f'metadata @> \'{{"{self.key}":"{self.value}"}}\'::jsonb', {}

@@ -652,7 +652,8 @@ class timeseries:
         ).table(
             f'"{self.namespace}".registry'
         )
-        query.sql(q)
+        sql, kw = query.sql()
+        q.where(sql, **kw)
         return sorted(
             [
                 name
