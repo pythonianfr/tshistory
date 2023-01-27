@@ -21,6 +21,7 @@ from tshistory.util import (
     threadpool
 )
 from tshistory.tsio import timeseries as tshclass
+from tshistory.search import query
 
 
 NONETYPE = type(None)
@@ -414,7 +415,6 @@ class mainsource:
             )
         return bsc
 
-
     def catalog(self, allsources: bool=True) -> Dict[str,List[Tuple[str,str]]]:
         """Produces a catalog of all series in the form of a mapping from
         source to a list of (name, kind) pair.
@@ -433,6 +433,12 @@ class mainsource:
                 assert key not in cat, f'{key} already in {cat}'
                 cat[key] = val
         return cat
+
+    def find(self, q: query) -> List[str]:
+        """Return a list of series matching the query.
+        """
+        with self.engine.begin() as cn:
+            return self.tsh.find(cn, q)
 
     def interval(self, name: str) -> pd.Interval:
         """Return a pandas interval object which provides the smallest and

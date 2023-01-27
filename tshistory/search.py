@@ -1,12 +1,24 @@
 import uuid
 
 
+__all__ = [
+    'query', 'and_', 'or_', 'not_', 'tzaware',
+    'byname', 'bymetakey', 'bymetaitems'
+]
+
+
 def usym(basename):
     " produce a unique symbol "
     return f'{basename}{uuid.uuid4().hex}'
 
 
-class and_:
+class query:
+
+    def sql(self):
+        raise NotImplementedError
+
+
+class and_(query):
     __slots__ = ('sqls', 'kw')
 
     def __init__(self, *clauses):
@@ -21,7 +33,7 @@ class and_:
         return ' and '.join(self.sqls), self.kw
 
 
-class or_:
+class or_(query):
     __slots__ = ('sqls', 'kw')
 
     def __init__(self, *clauses):
@@ -36,7 +48,7 @@ class or_:
         return ' or '.join(self.sqls), self.kw
 
 
-class not_:
+class not_(query):
     __slots__ = ('clause',)
 
     def __init__(self, clause):
@@ -47,13 +59,13 @@ class not_:
         return f'not {sql}', kw
 
 
-class tzaware:
+class tzaware(query):
 
     def sql(self):
         return 'internal_metadata @> \'{"tzaware":true}\'::jsonb', {}
 
 
-class byname:
+class byname(query):
     __slots__ = ('query',)
 
     def __init__(self, query: str):
@@ -64,7 +76,7 @@ class byname:
         return f'name like %({vid})s', {vid: f'%%{self.query}%%'}
 
 
-class bymetakey:
+class bymetakey(query):
     __slots__ = ('key',)
 
     def __init__(self, key: str):
@@ -75,7 +87,7 @@ class bymetakey:
         return f'metadata ? %({vid})s', {vid: self.key}
 
 
-class bymetaitem:
+class bymetaitem(query):
     __slots__ = ('key', 'value')
 
     def __init__(self, key: str, value: str):

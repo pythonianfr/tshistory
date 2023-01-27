@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 
 from tshistory.api import timeseries
+from tshistory import search
 from tshistory.testutil import (
     assert_df,
     assert_hist,
@@ -748,6 +749,153 @@ def test_conflicting_update(mapi):
     )
 
     # all allowed :)
+
+
+def test_find(tsx):
+    if not tsx.uri.startswith('postgres'):
+        return
+
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+    )
+    tsx.update(
+        'find.me.1',
+        ts,
+        'Babar'
+    )
+    tsx.update(
+        'find.me.2',
+        ts,
+        'Celeste'
+    )
+
+    # by name
+    r = tsx.find(search.byname('nop'))
+    assert r == []
+
+    r = tsx.find(search.byname('find.me.1'))
+    assert r == ['find.me.1']
+
+    r = tsx.find(search.byname('.me.'))
+    assert len(r) == 2
+
+    r = tsx.find(search.byname('find 1'))
+    assert r == ['find.me.1']
+
+    tsx.update_metadata(
+        'find.me.1',
+        {
+            'foo': 42
+        }
+    )
+    tsx.update_metadata(
+        'find.me.2',
+        {
+            'bar': 'Hello',
+            'foo': 43
+        }
+    )
+
+    # by metadata key
+    r = tsx.find(search.bymetakey('foo'))
+    assert r == ['find.me.1', 'find.me.2']
+
+    r = tsx.find(search.bymetakey('nope'))
+    assert r == []
+
+    r = tsx.find(search.bymetakey('bar'))
+    assert r == ['find.me.2']
+
+    # by metadata items
+
+    r = tsx.find(search.bymetaitem('foo', 43))
+    assert r == ['find.me.2']
+
+    r = tsx.find(search.bymetaitem('foo', 42))
+    assert r == ['find.me.1']
+
+    r = tsx.find(search.bymetaitem('bar', 'Hello'))
+    assert r == ['find.me.2']
+
+    # tzaware
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(dt(2023, 1, 1), freq='D', periods=3)
+    )
+    tsx.update(
+        'find.me.tznaive',
+        ts,
+        'Babar'
+    )
+    tsx.update_metadata(
+        'find.me.tznaive',
+        {
+            'foo': 43
+        }
+    )
+
+    r = tsx.find(search.tzaware())
+    assert 'find.me.1' in r and 'find.me.2' in r
+
+    # and combination
+    r = tsx.find(
+        search.and_(
+            search.bymetaitem('foo', 43),
+            search.bymetaitem('bar', 'Hello')
+        )
+    )
+    assert r == ['find.me.2']
+
+    # negation
+    r = tsx.find(
+        search.not_(
+            search.tzaware()
+        )
+    )
+    assert 'find.me.tznaive' in r and 'find.me.1' not in r and 'find.me.2' not in r
+
+    r = tsx.find(
+        search.and_(
+            search.bymetaitem('foo', 43),
+            search.not_(
+                search.tzaware()
+            )
+        )
+    )
+    assert r == ['find.me.tznaive']
+
+    r = tsx.find(
+        search.and_(
+            search.not_(
+                search.bymetaitem('foo', 43)
+            ),
+            search.tzaware()
+        )
+    )
+    assert r == ['find.me.1']
+
+    # or
+
+    r = tsx.find(
+        search.or_(
+            search.bymetaitem('foo', 43),
+            search.bymetaitem('foo', 42),
+        )
+    )
+    assert r == ['find.me.1', 'find.me.2', 'find.me.tznaive']
+
+    r = tsx.find(
+        search.and_(
+            search.or_(
+                search.bymetakey('bar'),
+                search.bymetaitem('foo', 42),
+            ),
+            search.tzaware()
+        )
+    )
+    assert r == ['find.me.1', 'find.me.2']
+
 
 
 # groups
