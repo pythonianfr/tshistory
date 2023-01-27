@@ -436,6 +436,56 @@ class mainsource:
 
     def find(self, q: query) -> List[str]:
         """Return a list of series matching the query.
+
+        A query is built with objects in the `tshistory.search` module.
+
+        Here is an example:
+
+        .. highlight:: python
+        .. code-block:: python
+
+         from tshistory import search as s
+         query = s.and_(
+             s.tzaware(),
+             s.byname('power capacity'),
+             s.bymetakey('plant'),
+             s.not_(
+                 s.or_(
+                     s.bymetaitem('plant_type', 'oil'),
+                     s.bymetaitem('plant_type', 'coal')
+                 )
+             ),
+             s.bymetaitem('unit', 'mwh'),
+             s.bymetaitem('country', 'fr')
+         )
+         tsa.find(query)
+
+        This builds a query for timezone aware series about french
+        power plants (in mwh) which are not of the coal or oil fuel
+        type.
+
+        The following filters can be used from the search module:
+
+        * tzaware(): no parameter, yields time zone aware series names
+
+        * byname(str): takes a space separated string of word, yields
+          series names containing the substrings (in order)
+
+        * bymetakey(str): takes a string, strictly matches all series
+          having this metadata key
+
+        * bymetaitems(str, str or number): takes a string (key) and an
+          str (or numerical) value and yields all series strictly
+          matching this metadata item
+
+        * and_(*clauses): takes a variable number of filters as above
+          to combine them
+
+        * or_(*clauses): takes a variable number of filters as above
+          to combine them
+
+        * not_(clause): produce the negation of a filter
+
         """
         with self.engine.begin() as cn:
             return self.tsh.find(cn, q)
