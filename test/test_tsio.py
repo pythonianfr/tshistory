@@ -2537,6 +2537,13 @@ def test_find(engine, tsh):
         'find.me.tznaive',
         'Babar'
     )
+    tsh.update_metadata(
+        engine,
+        'find.me.tznaive',
+        {
+            'foo': 43
+        }
+    )
 
     r = tsh.find(engine, search.tzaware())
     assert 'find.me.1' in r and 'find.me.2' in r
@@ -2550,6 +2557,37 @@ def test_find(engine, tsh):
         )
     )
     assert r == ['find.me.2']
+
+    # negation
+    r = tsh.find(
+        engine,
+        search.not_(
+            search.tzaware()
+        )
+    )
+    assert 'find.me.tznaive' in r and 'find.me.1' not in r and 'find.me.2' not in r
+
+    r = tsh.find(
+        engine,
+        search.and_(
+            search.bymetaitem('foo', 43),
+            search.not_(
+                search.tzaware()
+            )
+        )
+    )
+    assert r == ['find.me.tznaive']
+
+    r = tsh.find(
+        engine,
+        search.and_(
+            search.not_(
+                search.bymetaitem('foo', 43)
+            ),
+            search.tzaware()
+        )
+    )
+    assert r == ['find.me.1']
 
 
 # groups

@@ -21,6 +21,17 @@ class and_:
         return ' and '.join(self.sqls), self.kw
 
 
+class not_:
+    __slots__ = ('clause',)
+
+    def __init__(self, clause):
+        self.clause = clause
+
+    def sql(self):
+        sql, kw = self.clause.sql()
+        return f'not {sql}', kw
+
+
 class tzaware:
 
     def sql(self):
