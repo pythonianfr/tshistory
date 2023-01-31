@@ -4,6 +4,7 @@ import pytest
 import pandas as pd
 import numpy as np
 
+from tshistory import search
 from tshistory.util import (
     bisect_search,
     diff,
@@ -554,3 +555,41 @@ def test_in_tx(tsh, engine):
 
 def test_timeseries_repr(tsh):
     assert repr(tsh) == f'tsio.timeseries({tsh.namespace},othersources=None)'
+
+
+def _serialize_roundtrip(searchobj):
+    return search.query.fromexpr(searchobj.expr()).expr() == searchobj.expr()
+
+
+def test_search():
+    s0 = search.tzaware()
+    assert s0.expr() == '(tzaware)'
+    assert _serialize_roundtrip(s0)
+
+    s1 = search.byname('foo bar')
+    assert s1.expr() == '(byname "foo bar")'
+    assert _serialize_roundtrip(s1)
+
+    s2 = search.or_(s0, s1)
+    assert s2.expr() == '(or (tzaware) (byname "foo bar"))'
+    assert _serialize_roundtrip(s2)
+
+    s3 = search.and_(s0, s1)
+    assert s3.expr() == '(and (tzaware) (byname "foo bar"))'
+    assert _serialize_roundtrip(s3)
+
+    s4 = search.not_(s3)
+    assert s4.expr() == '(not (and (tzaware) (byname "foo bar")))'
+    assert _serialize_roundtrip(s4)
+
+    s5 = search.bymetakey('key')
+    assert s5.expr() == '(bymetakey "key")'
+    assert _serialize_roundtrip(s5)
+
+    s6 = search.bymetaitem('key', 'value')
+    assert s6.expr() == '(bymetaitem "key" "value")'
+    assert _serialize_roundtrip(s6)
+
+    s7 = search.bymetaitem('key', 42)
+    assert s7.expr() == '(bymetaitem "key" 42)'
+    assert _serialize_roundtrip(s7)

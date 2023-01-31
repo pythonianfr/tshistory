@@ -16,6 +16,7 @@ setup(name='tshistory',
       packages=find_packages(),
       install_requires=[
           'pandas >= 1.0.5, < 1.5',
+          'psyl',
           'dateutils',
           'sqlalchemy < 2',
           'sqlhelp',

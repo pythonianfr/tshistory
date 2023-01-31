@@ -1,4 +1,5 @@
 import uuid
+from psyl.lisp import parse
 
 
 __all__ = [
@@ -12,10 +13,31 @@ def usym(basename):
     return f'{basename}{uuid.uuid4().hex}'
 
 
+_OPMAP = {
+    'and': 'and_',
+    'or': 'or_',
+    'not': 'not_'
+}
+
+
 class query:
 
     def sql(self):
         raise NotImplementedError
+
+    def expr(self):
+        return self.__expr__()
+
+    @staticmethod
+    def fromexpr(expr):
+        tree = parse(expr)
+        return query._fromtree(tree)
+
+    @staticmethod
+    def _fromtree(tree):
+        op = tree[0]
+        klass = globals()[_OPMAP.get(op, op)]
+        return klass._fromtree(tree)
 
 
 class and_(query):
@@ -24,6 +46,16 @@ class and_(query):
     def __init__(self, *items):
         self.items = items
 
+    def __expr__(self):
+        return f'(and {" ".join(x.expr() for x in self.items)})'
+
+    @classmethod
+    def _fromtree(cls, tree):
+        items = [
+            query._fromtree(subtree)
+            for subtree in tree[1:]
+        ]
+        return cls(*items)
 
     def sql(self):
         sqls = []
@@ -41,6 +73,16 @@ class or_(query):
     def __init__(self, *items):
         self.items = items
 
+    def __expr__(self):
+        return f'(or {" ".join(x.expr() for x in self.items)})'
+
+    @classmethod
+    def _fromtree(cls, tree):
+        items = [
+            query._fromtree(subtree)
+            for subtree in tree[1:]
+        ]
+        return cls(*items)
 
     def sql(self):
         sqls = []
@@ -58,12 +100,26 @@ class not_(query):
     def __init__(self, item):
         self.item = item
 
+    def __expr__(self):
+        return f'(not {self.item.expr()})'
+
+    @classmethod
+    def _fromtree(cls, tree):
+        return cls(query._fromtree(tree[1]))
+
     def sql(self):
         sql, kw = self.item.sql()
         return f'not {sql}', kw
 
 
 class tzaware(query):
+
+    def __expr__(self):
+        return '(tzaware)'
+
+    @classmethod
+    def _fromtree(cls, _):
+        return cls()
 
     def sql(self):
         return 'internal_metadata @> \'{"tzaware":true}\'::jsonb', {}
@@ -73,11 +129,19 @@ class byname(query):
     __slots__ = ('query',)
 
     def __init__(self, query: str):
-        self.query = query.replace(' ', '%%')
+        self.query = query
+
+    def __expr__(self):
+        return f'(byname "{self.query}")'
+
+    @classmethod
+    def _fromtree(cls, tree):
+        return cls(tree[1])
 
     def sql(self):
         vid = usym('name')
-        return f'name like %({vid})s', {vid: f'%%{self.query}%%'}
+        query = self.query.replace(' ', '%%')
+        return f'name like %({vid})s', {vid: f'%%{query}%%'}
 
 
 class bymetakey(query):
@@ -85,6 +149,13 @@ class bymetakey(query):
 
     def __init__(self, key: str):
         self.key = key
+
+    def __expr__(self):
+        return f'(bymetakey "{self.key}")'
+
+    @classmethod
+    def _fromtree(cls, tree):
+        return cls(tree[1])
 
     def sql(self):
         vid = usym('key')
@@ -97,6 +168,15 @@ class bymetaitem(query):
     def __init__(self, key: str, value: str):
         self.key = key
         self.value = value
+
+    def __expr__(self):
+        if isinstance(self.value, str):
+            return f'(bymetaitem "{self.key}" "{self.value}")'
+        return f'(bymetaitem "{self.key}" {self.value})'
+
+    @classmethod
+    def _fromtree(cls, tree):
+        return cls(*tree[1:])
 
     def sql(self):
         # NOTE: this is weak and injection prone
