@@ -19,43 +19,47 @@ class query:
 
 
 class and_(query):
-    __slots__ = ('sqls', 'kw')
+    __slots__ = ('items',)
 
-    def __init__(self, *clauses):
-        self.sqls = []
-        self.kw = {}
-        for clause in clauses:
-            sql, kw = clause.sql()
-            self.sqls.append(sql)
-            self.kw.update(kw)
+    def __init__(self, *items):
+        self.items = items
+
 
     def sql(self):
-        return ' and '.join(self.sqls), self.kw
+        sqls = []
+        kws = {}
+        for item in self.items:
+            sql, kw = item.sql()
+            sqls.append(sql)
+            kws.update(kw)
+        return ' and '.join(sqls), kws
 
 
 class or_(query):
-    __slots__ = ('sqls', 'kw')
+    __slots__ = ('items',)
 
-    def __init__(self, *clauses):
-        self.sqls = []
-        self.kw = {}
-        for clause in clauses:
-            sql, kw = clause.sql()
-            self.sqls.append(sql)
-            self.kw.update(kw)
+    def __init__(self, *items):
+        self.items = items
+
 
     def sql(self):
-        return ' or '.join(self.sqls), self.kw
+        sqls = []
+        kws = {}
+        for item in self.items:
+            sql, kw = item.sql()
+            sqls.append(sql)
+            kws.update(kw)
+        return ' or '.join(sqls), kws
 
 
 class not_(query):
-    __slots__ = ('clause',)
+    __slots__ = ('item',)
 
-    def __init__(self, clause):
-        self.clause = clause
+    def __init__(self, item):
+        self.item = item
 
     def sql(self):
-        sql, kw = self.clause.sql()
+        sql, kw = self.item.sql()
         return f'not {sql}', kw
 
 
