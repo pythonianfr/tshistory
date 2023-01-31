@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import pytz
 
+from tshistory.search import query
 from tshistory.tsio import timeseries
 from tshistory.util import (
     get_cfg_path,
@@ -438,6 +439,18 @@ class Client:
                 tuplify(k): v
                 for k, v in res.json().items()
             }
+
+        return res
+
+    @unwraperror
+    def find(self, q):
+        assert isinstance(q, query)
+        res = self.session.get(f'{self.uri}/series/find', params={
+            'query': q.expr()
+        })
+
+        if res.status_code == 200:
+            return res.json()
 
         return res
 

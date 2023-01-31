@@ -215,6 +215,11 @@ def with_tester(uri, resp, wsgitester):
     )
 
     resp.add_callback(
+        responses.GET, uri + '/series/find',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
         responses.PATCH, uri + '/series/state',
         callback=write_request_bridge(wsgitester.patch)
     )

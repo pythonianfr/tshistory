@@ -487,6 +487,7 @@ class mainsource:
         * not_(clause): produce the negation of a filter
 
         """
+        assert isinstance(q, query)
         with self.engine.begin() as cn:
             return self.tsh.find(cn, q)
 

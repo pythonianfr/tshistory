@@ -14,7 +14,11 @@ from flask_restx import (
     reqparse
 )
 
-from tshistory import api as tsapi, util
+from tshistory import (
+    api as tsapi,
+    search,
+    util
+)
 
 from tshistory.http.util import (
     enum,
@@ -219,6 +223,11 @@ block_staircase.add_argument(
 catalog = reqparse.RequestParser()
 catalog.add_argument(
     'allsources', type=inputs.boolean, default=True
+)
+
+find = reqparse.RequestParser()
+find.add_argument(
+    'query', type=str
 )
 
 strip = base.copy()
@@ -721,6 +730,19 @@ class httpapi:
                     for (uri, ns), series in tsa.catalog(allsources=args.allsources).items()
                 }
                 return cat
+
+        @nss.route('/find')
+        class timeseries_find(Resource):
+
+            @api.expect(find)
+            @onerror
+            def get(self):
+                args = find.parse_args()
+                return tsa.find(
+                    search.query.fromexpr(
+                        args.query
+                    )
+                )
 
         @nss.route('/log')
         class series_log(Resource):

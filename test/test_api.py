@@ -752,9 +752,6 @@ def test_conflicting_update(mapi):
 
 
 def test_find(tsx):
-    if not tsx.uri.startswith('postgres'):
-        return
-
     ts = pd.Series(
         [1, 2, 3],
         pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
