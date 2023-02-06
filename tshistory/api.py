@@ -117,6 +117,25 @@ class mainsource:
         It is possible to force an `insertion_date`, which can only be
         higher than the previous `insertion_date`.
 
+        .. highlight:: python
+        .. code-block:: python
+
+         >>> import pandas as pd
+         >>> from tshistory.api import timeseries
+         >>>
+         >>> tsa = timeseries('postgres://me:password@localhost/mydb')
+         >>>
+         >>> series = pd.Series([1, 2, 3],
+         ...                    pd.date_range(start=pd.Timestamp(2017, 1, 1),
+         ...                                  freq='D', periods=3))
+         # db insertion
+         >>> tsa.update('my_series', series, 'babar@pythonian.fr')
+         ...
+         2017-01-01    1.0
+         2017-01-02    2.0
+         2017-01-03    3.0
+         Freq: D, Name: my_series, dtype: float64
+
         """
         insertion_date = ensuretz(insertion_date)
 
