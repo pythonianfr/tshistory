@@ -28,6 +28,9 @@ class query:
     def expr(self):
         return self.__expr__()
 
+    def __repr__(self):
+        return f'<query: {self.expr()}>'
+
     @staticmethod
     def fromexpr(expr):
         tree = parse(expr)

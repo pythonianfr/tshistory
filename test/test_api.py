@@ -893,6 +893,10 @@ def test_find(tsx):
     )
     assert r == ['find.me.1', 'find.me.2']
 
+    r = tsx.find(
+        '(and (or (bymetakey "bar") (bymetakey "foo")) (tzaware))'
+    )
+    assert r == ['find.me.1', 'find.me.2']
 
 
 # groups

@@ -444,9 +444,10 @@ class Client:
 
     @unwraperror
     def find(self, q):
-        assert isinstance(q, query)
+        if isinstance(q, query):
+            q = q.expr()
         res = self.session.get(f'{self.uri}/series/find', params={
-            'query': q.expr()
+            'query': q
         })
 
         if res.status_code == 200:

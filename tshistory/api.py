@@ -21,7 +21,7 @@ from tshistory.util import (
     threadpool
 )
 from tshistory.tsio import timeseries as tshclass
-from tshistory.search import query
+from tshistory import search
 
 
 NONETYPE = type(None)
@@ -434,7 +434,7 @@ class mainsource:
                 cat[key] = val
         return cat
 
-    def find(self, q: query) -> List[str]:
+    def find(self, query: str) -> List[str]:
         """Return a list of series matching the query.
 
         A query is built with objects in the `tshistory.search` module.
@@ -459,6 +459,23 @@ class mainsource:
              s.bymetaitem('country', 'fr')
          )
          tsa.find(query)
+
+        Another equivalent way is to build a query string, like this:
+
+        .. highlight:: python
+        .. code-block:: python
+
+         tsa.find(
+            '(and '
+            '  (tzaware)'
+            '  (byname "power capacity") '
+            '  (bymeetakey "plant")'
+            '  (not (or '
+            '    (bymetaitem "plant_type" "oil")'
+            '    (bymetaitem "plant_type" "coal")))'
+            '  (bymetaitem "unit" "mwh")'
+            '  (bymetaitem "country" "fr"))'
+         )
 
         This builds a query for timezone aware series about french
         power plants (in mwh) which are not of the coal or oil fuel
@@ -487,7 +504,11 @@ class mainsource:
         * not_(clause): produce the negation of a filter
 
         """
-        assert isinstance(q, query)
+        if isinstance(query, str):
+            q = search.query.fromexpr(query)
+        else:
+            q = query
+        assert isinstance(q, search.query)
         with self.engine.begin() as cn:
             return self.tsh.find(cn, q)
 

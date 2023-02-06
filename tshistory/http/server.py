@@ -739,9 +739,7 @@ class httpapi:
             def get(self):
                 args = find.parse_args()
                 return tsa.find(
-                    search.query.fromexpr(
-                        args.query
-                    )
+                    args.query
                 )
 
         @nss.route('/log')
