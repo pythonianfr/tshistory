@@ -10,6 +10,7 @@ import numpy as np
 
 from sqlhelp import sqlfile, select, insert
 
+from tshistory import search
 from tshistory.util import (
     bisect_search,
     closed_overlaps,
@@ -659,6 +660,45 @@ class timeseries:
                 name
                 for name, in q.do(cn).fetchall()
             ]
+        )
+
+    @tx
+    def register_basket(self, cn, name, query):
+        q = insert(
+            f'"{self.namespace}".basket'
+        ).values(
+            name=name,
+            query=query
+        ).do(cn)
+
+    @tx
+    def basket(self, cn, name):
+        query = select(
+            'query'
+        ).table(
+            f'"{self.namespace}".basket'
+        ).where(
+            name=name
+        ).do(cn).scalar()
+
+        if query is None:
+            return
+
+        return self.find(cn, search.query.fromexpr(query))
+
+    @tx
+    def list_baskets(self, cn):
+        q = select('name').table(f'"{self.namespace}".basket').order('name')
+        return [
+            name for name, in
+            q.do(cn).fetchall()
+        ]
+
+    @tx
+    def delete_basket(self, cn, name):
+        cn.execute(
+            f'delete from "{self.namespace}".basket where name=%(name)s',
+            name=name
         )
 
     # /API

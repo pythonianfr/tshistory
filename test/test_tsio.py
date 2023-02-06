@@ -17,6 +17,7 @@ from tshistory.util import (
     threadpool,
     unpack_history
 )
+from tshistory import search
 from tshistory.tsio import timeseries, BlockStaircaseRevisionError
 from tshistory.testutil import (
     assert_df,
@@ -2475,7 +2476,6 @@ def test_find(engine, tsh):
         'Celeste'
     )
 
-    from tshistory import search
     # by name
     r = tsh.find(engine, search.byname('nop'))
     assert r == []
@@ -2611,6 +2611,45 @@ def test_find(engine, tsh):
         )
     )
     assert r == ['find.me.1', 'find.me.2']
+
+
+def test_basket(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+    )
+    tsh.update(
+        engine,
+        ts,
+        'basket.1',
+        'Babar'
+    )
+    tsh.update(
+        engine,
+        ts,
+        'basket.2',
+        'Celeste'
+    )
+
+    tsh.register_basket(
+        engine,
+        'b1',
+        '(byname "t.1")'
+    )
+    assert tsh.list_baskets(engine) == ['b1']
+
+    tsh.register_basket(
+        engine,
+        'b2',
+        '(byname "basket.")'
+    )
+    assert tsh.list_baskets(engine) == ['b1', 'b2']
+
+    assert tsh.basket(engine, 'b1') == ['basket.1']
+    assert tsh.basket(engine, 'b2') == ['basket.1', 'basket.2']
+
+    tsh.delete_basket(engine, 'b1')
+    assert tsh.list_baskets(engine) == ['b2']
 
 
 # groups

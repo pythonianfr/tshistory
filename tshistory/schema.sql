@@ -10,3 +10,11 @@ create table "{ns}".registry (
 
 create index on "{ns}".registry using gin(internal_metadata);
 create index on "{ns}".registry using gin(metadata);
+
+
+create table "{ns}".basket (
+  id serial primary key,
+  name text not null,
+  "query" text not null,
+  unique(name)
+);
