@@ -899,6 +899,41 @@ def test_find(tsx):
     assert r == ['find.me.1', 'find.me.2']
 
 
+def test_basket(tsx):
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+    )
+    tsx.update(
+        'basket.1',
+        ts,
+        'Babar'
+    )
+    tsx.update(
+        'basket.2',
+        ts,
+        'Celeste'
+    )
+
+    tsx.register_basket(
+        'b1',
+        '(byname "t.1")'
+    )
+    assert tsx.list_baskets() == ['b1']
+
+    tsx.register_basket(
+        'b2',
+        '(byname "basket.")'
+    )
+    assert tsx.list_baskets() == ['b1', 'b2']
+
+    assert tsx.basket('b1') == ['basket.1']
+    assert tsx.basket('b2') == ['basket.1', 'basket.2']
+
+    tsx.delete_basket('b1')
+    assert tsx.list_baskets() == ['b2']
+
+
 # groups
 
 def test_primary_group(tsx):

@@ -230,6 +230,22 @@ find.add_argument(
     'query', type=str
 )
 
+basket = reqparse.RequestParser()
+basket.add_argument(
+    'name', type=str
+)
+
+register_basket = reqparse.RequestParser()
+register_basket.add_argument(
+    'name', type=str
+)
+register_basket.add_argument(
+    'query', type=str
+)
+
+nothing = reqparse.RequestParser()
+
+
 strip = base.copy()
 strip.add_argument(
     'insertion_date', type=utcdt, default=None
@@ -741,6 +757,43 @@ class httpapi:
                 return tsa.find(
                     args.query
                 )
+
+        @nss.route('/basket')
+        class timeseries_basket(Resource):
+
+            @api.expect(basket)
+            @onerror
+            def get(self):
+                args = basket.parse_args()
+                return tsa.basket(
+                    args.name
+                )
+
+            @api.expect(register_basket)
+            @onerror
+            def put(self):
+                args = register_basket.parse_args()
+                tsa.register_basket(
+                    name=args.name,
+                    query=args.query
+                )
+                return '', 200
+
+            @api.expect(basket)
+            @onerror
+            def delete(self):
+                args = basket.parse_args()
+                return tsa.delete_basket(
+                    args.name
+                )
+
+        @nss.route('/baskets')
+        class timeseries_basket(Resource):
+
+            @api.expect(nothing)
+            @onerror
+            def get(self):
+                return tsa.list_baskets()
 
         @nss.route('/log')
         class series_log(Resource):

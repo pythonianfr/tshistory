@@ -220,6 +220,26 @@ def with_tester(uri, resp, wsgitester):
     )
 
     resp.add_callback(
+        responses.GET, uri + '/series/baskets',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
+        responses.PUT, uri + '/series/basket',
+        callback=write_request_bridge(wsgitester.put)
+    )
+
+    resp.add_callback(
+        responses.DELETE, uri + '/series/basket',
+        callback=write_request_bridge(wsgitester.delete)
+    )
+
+    resp.add_callback(
+        responses.GET, uri + '/series/basket',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
         responses.PATCH, uri + '/series/state',
         callback=write_request_bridge(wsgitester.patch)
     )

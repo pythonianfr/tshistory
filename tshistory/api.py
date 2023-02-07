@@ -676,6 +676,34 @@ class mainsource:
             if csid is not None:
                 return self.tsh.strip(cn, name, csid)
 
+    def register_basket(self, name: str, query: str) -> NONETYPE:
+        """Register a dynamic series basket using a search query.
+
+        The search query has the same specification as the .find(...,
+        query) api call.
+
+        """
+        with self.engine.begin() as cn:
+            # noop, catch malformed query
+            search.query.fromexpr(query)
+            self.tsh.register_basket(cn, name, query)
+
+    def basket(self, name: str) -> List[str]:
+        """Returns the list of series names associated with a basket.
+        """
+        with self.engine.begin() as cn:
+            return self.tsh.basket(cn, name)
+
+    def list_baskets(self) -> List[str]:
+        """Return the list of available basket names."""
+        with self.engine.begin() as cn:
+            return self.tsh.list_baskets(cn)
+
+    def delete_basket(self, name):
+        """Delete a basket."""
+        with self.engine.begin() as cn:
+            return self.tsh.delete_basket(cn, name)
+
     # groups
 
     def group_exists(self, name: str) -> bool:

@@ -489,6 +489,54 @@ class Client:
 
         return res
 
+    # basket
+
+    @unwraperror
+    def register_basket(self, name, query):
+        res = self.session.put(
+            f'{self.uri}/series/basket',
+            data={
+                'name': name,
+                'query': query
+            }
+        )
+        if res.status_code == 200:
+            return
+
+        return res
+
+    @unwraperror
+    def basket(self, name):
+        res = self.session.get(
+            f'{self.uri}/series/basket',
+            params={'name': name}
+        )
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
+    def list_baskets(self):
+        res = self.session.get(
+            f'{self.uri}/series/baskets'
+        )
+        if res.status_code == 200:
+            return res.json()
+
+    @unwraperror
+    def delete_basket(self, name):
+        res = self.session.delete(
+            f'{self.uri}/series/basket',
+            data={
+                'name': name,
+            }
+        )
+        if res.status_code == 200:
+            return
+
+        return res
+
     # groups
 
     @unwraperror
