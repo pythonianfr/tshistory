@@ -17,7 +17,7 @@ setup(name='tshistory',
       install_requires=[
           'pandas >= 1.0.5, < 1.5',
           'dateutils',
-          'sqlalchemy',
+          'sqlalchemy < 2',
           'sqlhelp',
           'click',
           'mock',
