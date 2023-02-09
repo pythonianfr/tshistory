@@ -673,6 +673,11 @@ class timeseries:
 
     @tx
     def basket(self, cn, name):
+        query = self.basket_definition(cn, name)
+        return self.find(cn, search.query.fromexpr(query))
+
+    @tx
+    def basket_definition(self, cn, name):
         query = select(
             'query'
         ).table(
@@ -681,10 +686,8 @@ class timeseries:
             name=name
         ).do(cn).scalar()
 
-        if query is None:
-            return
+        return query
 
-        return self.find(cn, search.query.fromexpr(query))
 
     @tx
     def list_baskets(self, cn):
