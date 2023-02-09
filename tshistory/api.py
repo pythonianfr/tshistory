@@ -226,6 +226,16 @@ class mainsource:
 
         If the series does not exists, a None is returned.
 
+        .. highlight:: python
+        .. code-block:: python
+
+         >>> tsa.get('my_series')
+         ...
+         2017-01-01    1.0
+         2017-01-02    2.0
+         2017-01-03    3.0
+         Name: my_series, dtype: float64
+
         """
         revision_date = ensuretz(revision_date)
 
@@ -579,9 +589,6 @@ class mainsource:
                         metadata: dict) -> NONETYPE:
         """Update a series metadata with a dictionary from strings to anything
         json-serializable.
-
-        Internal keys are not allowed and any attempt to update them
-        will raise.
 
         """
         with self.engine.begin() as cn:
