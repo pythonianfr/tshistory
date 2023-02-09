@@ -696,10 +696,14 @@ class mainsource:
             self.tsh.register_basket(cn, name, query)
 
     def basket(self, name: str) -> List[str]:
-        """Returns the list of series names associated with a basket.
-        """
+        """Returns the list of series names associated with a basket."""
         with self.engine.begin() as cn:
             return self.tsh.basket(cn, name)
+
+    def basket_definition(self, name: str) -> str:
+        """Returns the query string associated with a basket."""
+        with self.engine.begin() as cn:
+            return self.tsh.basket_definition(cn, name)
 
     def list_baskets(self) -> List[str]:
         """Return the list of available basket names."""

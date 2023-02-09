@@ -795,6 +795,17 @@ class httpapi:
             def get(self):
                 return tsa.list_baskets()
 
+        @nss.route('/basket-definition')
+        class timeseries_basket(Resource):
+
+            @api.expect(basket)
+            @onerror
+            def get(self):
+                args = basket.parse_args()
+                return tsa.basket_definition(
+                    args.name
+                )
+
         @nss.route('/log')
         class series_log(Resource):
 

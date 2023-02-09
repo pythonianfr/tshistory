@@ -517,6 +517,17 @@ class Client:
         return res
 
     @unwraperror
+    def basket_definition(self, name):
+        res = self.session.get(
+            f'{self.uri}/series/basket-definition',
+            params={'name': name}
+        )
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
     def list_baskets(self):
         res = self.session.get(
             f'{self.uri}/series/baskets'

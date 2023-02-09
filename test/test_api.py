@@ -928,6 +928,7 @@ def test_basket(tsx):
     assert tsx.list_baskets() == ['b1', 'b2']
 
     assert tsx.basket('b1') == ['basket.1']
+    assert tsx.basket_definition('b1') == '(byname "t.1")'
     assert tsx.basket('b2') == ['basket.1', 'basket.2']
 
     tsx.delete_basket('b1')
