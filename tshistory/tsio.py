@@ -652,15 +652,13 @@ class timeseries:
             'name'
         ).table(
             f'"{self.namespace}".registry'
-        )
+        ).order('name', 'asc')
         sql, kw = query.sql()
         q.where(sql, **kw)
-        return sorted(
-            [
-                name
-                for name, in q.do(cn).fetchall()
-            ]
-        )
+        return [
+            name
+            for name, in q.do(cn).fetchall()
+        ]
 
     @tx
     def register_basket(self, cn, name, query):
