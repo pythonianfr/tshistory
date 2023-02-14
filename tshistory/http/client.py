@@ -177,8 +177,9 @@ class Client:
 
     @unwraperror
     def internal_metadata(self, name):
-        res = self.session.get(f'{self.uri}/series/internal_metadata', params={
-            'name': name
+        res = self.session.get(f'{self.uri}/series/metadata', params={
+            'name': name,
+            'type': 'internal'
         })
         if res.status_code == 200:
             return res.json()
