@@ -2613,6 +2613,67 @@ def test_find(engine, tsh):
     assert r == ['find.me.1', 'find.me.2']
 
 
+def test_search_inequalities(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+    )
+    tsh.update(
+        engine,
+        ts,
+        'find.me.A',
+        'Babar'
+    )
+    tsh.update_metadata(engine, 'find.me.A', {'weight': 42})
+    tsh.update(
+        engine,
+        ts,
+        'find.me.B',
+        'Celeste'
+    )
+    tsh.update_metadata(engine, 'find.me.B', {'weight': 43})
+
+    # lt
+    names = tsh.find(
+        engine,
+        search.query.fromexpr('(< "weight" 99)')
+    )
+    assert names == ['find.me.A', 'find.me.B']
+
+    names = tsh.find(
+        engine,
+        search.query.fromexpr('(< "weight" 43)')
+    )
+    assert names == ['find.me.A']
+
+    names = tsh.find(
+        engine,
+        search.query.fromexpr('(< "weight" 42)')
+    )
+    assert names == []
+
+    # lte
+    names = tsh.find(
+        engine,
+        search.query.fromexpr('(<= "weight" 42)')
+    )
+    assert names == ['find.me.A']
+
+    # gt
+    names = tsh.find(
+        engine,
+        search.query.fromexpr('(> "weight" 42)')
+    )
+    assert names == ['find.me.B']
+
+    # gte
+    names = tsh.find(
+        engine,
+        search.query.fromexpr('(>= "weight" 43)')
+    )
+    assert names == ['find.me.B']
+
+
 def test_basket(engine, tsh):
     ts = pd.Series(
         [1, 2, 3],

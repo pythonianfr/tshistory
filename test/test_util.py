@@ -593,3 +593,19 @@ def test_search():
     s7 = search.bymetaitem('key', 42)
     assert s7.expr() == '(bymetaitem "key" 42)'
     assert _serialize_roundtrip(s7)
+
+    s8 = search.lt('key', 42)
+    assert s8.expr() == '(< "key" 42)'
+    assert _serialize_roundtrip(s8)
+
+    s9 = search.lte('key', 42)
+    assert s9.expr() == '(<= "key" 42)'
+    assert _serialize_roundtrip(s9)
+
+    s10 = search.gt('key', 42)
+    assert s10.expr() == '(> "key" 42)'
+    assert _serialize_roundtrip(s10)
+
+    s11 = search.gte('key', 42)
+    assert s11.expr() == '(>= "key" 42)'
+    assert _serialize_roundtrip(s11)

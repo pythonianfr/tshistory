@@ -532,6 +532,12 @@ class mainsource:
 
         * not_(clause): produce the negation of a filter
 
+        Also inequalities on metadata values can be used:
+
+        * lt, lte, gt, gte: take a string key, a value (str or num)
+
+        As in `(lte "max_capacity" 900)`
+
         """
         if isinstance(query, str):
             q = search.query.fromexpr(query)

@@ -4,7 +4,8 @@ from psyl.lisp import parse
 
 __all__ = [
     'query', 'and_', 'or_', 'not_', 'tzaware',
-    'byname', 'bymetakey', 'bymetaitems'
+    'byname', 'bymetakey', 'bymetaitems',
+    'lt', 'lte', 'gt', 'gte'
 ]
 
 
@@ -16,7 +17,11 @@ def usym(basename):
 _OPMAP = {
     'and': 'and_',
     'or': 'or_',
-    'not': 'not_'
+    'not': 'not_',
+    '<': 'lt',
+    '<=': 'lte',
+    '>': 'gt',
+    '>=': 'gte'
 }
 
 
@@ -193,3 +198,48 @@ class bymetaitem(query):
             )
 
         return f'metadata @> \'{{"{self.key}":"{self.value}"}}\'::jsonb', {}
+
+
+class _comparator(query):
+    __slots__ = ('key', 'value')
+    _op = None
+
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+
+    def __expr__(self):
+        if isinstance(self.value, str):
+            return f'({self._op} "{self.key}" "{self.value}")'
+        return f'({self._op} "{self.key}" {self.value})'
+
+    @classmethod
+    def _fromtree(cls, tree):
+        return cls(*tree[1:])
+
+    def sql(self):
+        vid = usym('value')
+        return (
+            f'jsonb_path_match(metadata, \'$.{self.key} {self._op} %({vid})s\')',
+            {vid: self.value}
+        )
+
+
+class lt(_comparator):
+    __slots__ = ('key', 'value')
+    _op = '<'
+
+
+class lte(_comparator):
+    __slots__ = ('key', 'value')
+    _op = '<='
+
+
+class gt(_comparator):
+    __slots__ = ('key', 'value')
+    _op = '>'
+
+
+class gte(_comparator):
+    __slots__ = ('key', 'value')
+    _op = '>='
