@@ -431,9 +431,13 @@ class Client:
 
     @unwraperror
     def catalog(self, allsources=True):
-        res = self.session.get(f'{self.uri}/series/catalog', params={
-            'allsources': allsources
-        })
+        res = self.session.get(
+            f'{self.uri}/series/catalog',
+            params={
+                'allsources': allsources
+            },
+            timeout=(2, 3)
+        )
         tuplify = lambda x: (x, 'tsh') if '@' not in x else (x, x.split('@')[1])
         if res.status_code == 200:
             return {
