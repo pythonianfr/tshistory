@@ -135,6 +135,7 @@ class Client:
 
         return res
 
+    @unwraperror
     def update(self, name, series, author,
                metadata=None, insertion_date=None, manual=False):
         return self._insert(

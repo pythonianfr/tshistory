@@ -70,7 +70,7 @@ class mainsource:
             f'timeseries('
             f'uri={self.uri},'
             f'ns={self.namespace},'
-            f'sources={self.othersources or nil})'
+            f'sources={self.othersources or "nil"})'
         )
 
     def _instancename(self):
@@ -300,7 +300,7 @@ class mainsource:
                 to_value_date: Optional[datetime]=None,
                 diffmode: bool=False,
                 _keep_nans: bool=False,
-                **kw) -> Dict[datetime, pd.Series]:
+                **kw) -> Optional[Dict[datetime, pd.Series]]:
         """Get all versions of a series in the form of a dict from insertion
         dates to series version.
 
@@ -382,11 +382,11 @@ class mainsource:
         name,
         from_value_date: Optional[datetime] = None,
         to_value_date: Optional[datetime] = None,
-        revision_freq: Dict[str, int] = None,
-        revision_time: Dict[str, int] = None,
+        revision_freq: Optional[Dict[str, int]] = None,
+        revision_time: Optional[Dict[str, int]] = None,
         revision_tz: str = 'UTC',
-        maturity_offset: Dict[str, int] = None,
-        maturity_time: Dict[str, int] = None,
+        maturity_offset: Optional[Dict[str, int]] = None,
+        maturity_time: Optional[Dict[str, int]] = None,
     ):
         """Staircase series by block
 
@@ -444,7 +444,7 @@ class mainsource:
             )
         return bsc
 
-    def catalog(self, allsources: bool=True) -> Dict[str,List[Tuple[str,str]]]:
+    def catalog(self, allsources: bool=True) -> Dict[Tuple[str, str], List[Tuple[str,str]]]:
         """Produces a catalog of all series in the form of a mapping from
         source to a list of (name, kind) pair.
 
@@ -461,7 +461,7 @@ class mainsource:
             for key, val in self.othersources.catalog(False).items():
                 assert key not in cat, f'{key} already in {cat}'
                 cat[key] = val
-        return cat
+        return dict(cat)
 
     def find(self, query: str) -> List[str]:
         """Return a list of series matching the query.
@@ -560,7 +560,7 @@ class mainsource:
 
     def metadata(self,
                  name: str,
-                 all: bool=None) -> Dict[str, Any]:
+                 all: bool=None) -> Optional[Dict[str, Any]]:
         """Return a series metadata dictionary."""
         if all is not None:
             warnings.warn(
@@ -855,7 +855,7 @@ class mainsource:
 
     def group_metadata(self,
                        name: str,
-                       all: bool=False) -> Dict[str, Any]:
+                       all: bool=False) -> Optional[Dict[str, Any]]:
         """Return a group metadata dictionary.
 
         """
@@ -876,7 +876,7 @@ class mainsource:
         with self.engine.begin() as cn:
             self.tsh.update_group_metadata(cn, name, meta)
 
-    def group_catalog(self) -> Dict[str,List[Tuple[str,str]]]:
+    def group_catalog(self) -> Dict[Tuple[str, str], List[Tuple[str,str]]]:
         """Produces a catalog of all groups in the form of a mapping from
         source to a list of (name, kind) pair.
 
@@ -885,7 +885,7 @@ class mainsource:
         cat = defaultdict(list)
         for name, kind in self.tsh.list_groups(self.engine).items():
             cat[(instancename, self.namespace)].append((name, kind))
-        return cat
+        return dict(cat)
 
 
 class source:
@@ -958,7 +958,7 @@ class altsources:
                 from_value_date: Optional[datetime]=None,
                 to_value_date: Optional[datetime]=None,
                 diffmode: bool=False,
-                _keep_nans: bool=False) -> Dict[datetime, pd.Series]:
+                _keep_nans: bool=False) -> Optional[Dict[datetime, pd.Series]]:
         source = self._findsourcefor(name)
         if source is None:
             return

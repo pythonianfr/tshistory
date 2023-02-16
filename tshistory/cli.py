@@ -53,7 +53,7 @@ def get(db_uri, series, json, namespace='tsh'):
     tsa = timeseries(
         find_dburi(db_uri),
         namespace,
-        handlerclass=tshclass
+        handler=tshclass
     )
 
     ts = tsa.get(series)

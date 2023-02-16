@@ -30,6 +30,9 @@ class query:
     def sql(self):
         raise NotImplementedError
 
+    def __expr__(self):
+        raise NotImplementedError
+
     def expr(self):
         return self.__expr__()
 
