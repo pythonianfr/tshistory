@@ -609,3 +609,7 @@ def test_search():
     s11 = search.gte('key', 42)
     assert s11.expr() == '(>= "key" 42)'
     assert _serialize_roundtrip(s11)
+
+    s12 = search.eq('key', 42)
+    assert s12.expr() == '(= "key" 42)'
+    assert _serialize_roundtrip(s12)

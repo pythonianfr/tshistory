@@ -2673,6 +2673,14 @@ def test_search_inequalities(engine, tsh):
     )
     assert names == ['find.me.B']
 
+    # eq
+    names = tsh.find(
+        engine,
+        search.query.fromexpr('(= "weight" 43)')
+    )
+    assert names == ['find.me.B']
+
+
 
 def test_basket(engine, tsh):
     ts = pd.Series(

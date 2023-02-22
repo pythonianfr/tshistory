@@ -21,7 +21,8 @@ _OPMAP = {
     '<': 'lt',
     '<=': 'lte',
     '>': 'gt',
-    '>=': 'gte'
+    '>=': 'gte',
+    '=': 'eq'
 }
 
 
@@ -206,6 +207,7 @@ class bymetaitem(query):
 class _comparator(query):
     __slots__ = ('key', 'value')
     _op = None
+    _lispop = None
 
     def __init__(self, key, value):
         self.key = key
@@ -214,7 +216,7 @@ class _comparator(query):
     def __expr__(self):
         if isinstance(self.value, str):
             return f'({self._op} "{self.key}" "{self.value}")'
-        return f'({self._op} "{self.key}" {self.value})'
+        return f'({self._lispop or self._op} "{self.key}" {self.value})'
 
     @classmethod
     def _fromtree(cls, tree):
@@ -246,3 +248,9 @@ class gt(_comparator):
 class gte(_comparator):
     __slots__ = ('key', 'value')
     _op = '>='
+
+
+class eq(_comparator):
+    __slots__ = ('key', 'value')
+    _op = '=='
+    _lispop = '='
