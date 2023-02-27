@@ -613,3 +613,7 @@ def test_search():
     s12 = search.eq('key', 42)
     assert s12.expr() == '(= "key" 42)'
     assert _serialize_roundtrip(s12)
+
+    s13 = search.eq('key', "Hello")
+    assert s13.expr() == '(= "key" "Hello")'
+    assert _serialize_roundtrip(s13)

@@ -215,7 +215,7 @@ class _comparator(query):
 
     def __expr__(self):
         if isinstance(self.value, str):
-            return f'({self._op} "{self.key}" "{self.value}")'
+            return f'({self._lispop or self._op} "{self.key}" "{self.value}")'
         return f'({self._lispop or self._op} "{self.key}" {self.value})'
 
     @classmethod
@@ -224,6 +224,12 @@ class _comparator(query):
 
     def sql(self):
         vid = usym('value')
+        if isinstance(self.value, str):
+            # NOTE: this is weak and injection prone
+            return (
+                f'jsonb_path_match(metadata, \'$.{self.key} {self._op} "{self.value}"\')', {}
+            )
+
         return (
             f'jsonb_path_match(metadata, \'$.{self.key} {self._op} %({vid})s\')',
             {vid: self.value}

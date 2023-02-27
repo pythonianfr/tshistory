@@ -2624,14 +2624,14 @@ def test_search_inequalities(engine, tsh):
         'find.me.A',
         'Babar'
     )
-    tsh.update_metadata(engine, 'find.me.A', {'weight': 42})
+    tsh.update_metadata(engine, 'find.me.A', {'weight': 42, 'birthdate': '1973-5-20'})
     tsh.update(
         engine,
         ts,
         'find.me.B',
         'Celeste'
     )
-    tsh.update_metadata(engine, 'find.me.B', {'weight': 43})
+    tsh.update_metadata(engine, 'find.me.B', {'weight': 43, 'birthdate': '1978-7-15'})
 
     # lt
     names = tsh.find(
@@ -2672,11 +2672,21 @@ def test_search_inequalities(engine, tsh):
         search.query.fromexpr('(>= "weight" 43)')
     )
     assert names == ['find.me.B']
+    names = tsh.find(
+        engine,
+        search.query.fromexpr('(>= "birthdate" "1975-1-1")')
+    )
+    assert names == ['find.me.B']
 
     # eq
     names = tsh.find(
         engine,
         search.query.fromexpr('(= "weight" 43)')
+    )
+    assert names == ['find.me.B']
+    names = tsh.find(
+        engine,
+        search.query.fromexpr('(= "birthdate" "1978-7-15")')
     )
     assert names == ['find.me.B']
 
