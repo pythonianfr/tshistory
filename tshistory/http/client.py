@@ -631,7 +631,7 @@ class Client:
         if to_insertion_date:
             args['to_insertion_date'] = strft(to_insertion_date)
 
-        res = requests.get(
+        res = self.session.get(
             f'{self.uri}/group/insertion_dates', params=args
         )
         if res.status_code == 404:
@@ -663,7 +663,7 @@ class Client:
             args['from_value_date'] = strft(from_value_date)
         if to_value_date:
             args['to_value_date'] = strft(to_value_date)
-        res = requests.get(
+        res = self.session.get(
             f'{self.uri}/group/history', params=args
         )
         if res.status_code == 404:
