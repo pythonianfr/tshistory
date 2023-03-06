@@ -54,6 +54,8 @@ def unwraperror(func):
                 raise Exception('404 - please check your base uri')
             if res.status_code == 400:
                 raise Exception(f'Bad Query: {res.text}')
+            if res.status_code == 401:
+                raise Exception('401 - Unauthorized. Check your tshistory.cfg file')
         return res
 
     return wrapper
