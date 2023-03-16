@@ -207,7 +207,7 @@ def compatible_date(tzaware, date):
     if tzaware and date.tzinfo is None:
         return date.replace(tzinfo=pytz.utc)
 
-    return date
+    return date.tz_convert('utc')
 
 
 # metadata
