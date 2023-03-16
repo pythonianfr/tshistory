@@ -89,8 +89,22 @@ def test_naive_vs_tzaware_query(engine, tsh):
         engine, 'naive-tzaware-query',
         from_value_date=utcdt(2019, 1, 1)
     )
-
     # we did not crash :)
+
+
+def test_tzaware_vs_tzaware_query(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+    )
+    tsh.update(engine, ts, 'tzaware-tzaware-query', 'Babar')
+
+    with pytest.raises(ValueError):
+        tsh.get(
+            engine, 'tzaware-tzaware-query',
+            from_value_date=utcdt(2019, 1, 1),
+            to_value_date=pd.Timestamp('2023-1-1', tz='cet')
+        )
 
 
 def test_float32_dtype(engine, tsh):
