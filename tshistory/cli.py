@@ -219,6 +219,24 @@ def migrate_to_groups(db_uri, reset=False, namespace='tsh'):
     sch._create_group(engine, reset)
 
 
+@tsh.command(name='migrate-to-baskets')
+@click.argument('db-uri')
+@click.option('--namespace', default='tsh')
+def migrate_to_baskets(db_uri, namespace='tsh'):
+    engine = create_engine(find_dburi(db_uri))
+    sql = f"""
+    create table "{namespace}".basket (
+      id serial primary key,
+      name text not null,
+      "query" text not null,
+      unique(name)
+    );
+    """
+    with engine.begin() as cn:
+        cn.execute(sql)
+
+
+
 @tsh.command(name='migrate-metadata')
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
