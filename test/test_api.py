@@ -965,6 +965,32 @@ def test_federated_basket(mapi):
     ]
 
 
+def test_federated_find(mapi):
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+    )
+    mapi.update(
+        'local.basket.fed',
+        ts,
+        'Babar'
+    )
+
+    remoteapi = timeseries(mapi.uri, 'ns-test-mapi-2')
+    remoteapi.update(
+        'remote.basket.fed',
+        ts,
+        'Celeste'
+    )
+
+
+    names = mapi.find('(byname "basket.fed")')
+    assert names == [
+        'local.basket.fed',
+        'remote.basket.fed'
+    ]
+
+
 # groups
 
 def test_primary_group(tsx):

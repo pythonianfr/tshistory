@@ -541,12 +541,15 @@ class mainsource:
 
         """
         if isinstance(query, str):
-            q = search.query.fromexpr(query)
+            qexpr = search.query.fromexpr(query)
         else:
-            q = query
-        assert isinstance(q, search.query)
+            qexpr = query
         with self.engine.begin() as cn:
-            return self.tsh.find(cn, q)
+            localnames = self.tsh.find(cn, qexpr)
+        remotenames = self.othersources.find(query)
+        return sorted(
+            localnames + remotenames
+        )
 
     def interval(self, name: str) -> pd.Interval:
         """Return a pandas interval object which provides the smallest and
@@ -706,7 +709,7 @@ class mainsource:
         """Returns the list of series names associated with a basket."""
         with self.engine.begin() as cn:
             localnames = self.tsh.basket(cn, name)
-        remotenames = self.othersources.baskets(
+        remotenames = self.othersources.find(
             self.basket_definition(name)
         )
         return sorted(
@@ -1050,13 +1053,13 @@ class altsources:
             cat.update(c)
         return cat
 
-    def baskets(self, query):
-        baskets = []
+    def find(self, query):
+        nameslist = []
         pool = threadpool(len(self.sources))
 
         def readbasket(source):
             try:
-                baskets.append(
+                nameslist.append(
                     source.tsa.find(query)
                 )
             except:
@@ -1065,5 +1068,5 @@ class altsources:
 
         pool(readbasket, [(s,) for s in self.sources])
         return list(
-            itertools.chain.from_iterable(baskets)
+            itertools.chain.from_iterable(nameslist)
         )
