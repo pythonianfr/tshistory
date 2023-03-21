@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import itertools
 from urllib.parse import urlparse
 from typing import (
     Any,
@@ -704,7 +705,13 @@ class mainsource:
     def basket(self, name: str) -> List[str]:
         """Returns the list of series names associated with a basket."""
         with self.engine.begin() as cn:
-            return self.tsh.basket(cn, name)
+            localnames = self.tsh.basket(cn, name)
+        remotenames = self.othersources.baskets(
+            self.basket_definition(name)
+        )
+        return sorted(
+            localnames + remotenames
+        )
 
     def basket_definition(self, name: str) -> str:
         """Returns the query string associated with a basket."""
@@ -1042,3 +1049,21 @@ class altsources:
         for c in cats:
             cat.update(c)
         return cat
+
+    def baskets(self, query):
+        baskets = []
+        pool = threadpool(len(self.sources))
+
+        def readbasket(source):
+            try:
+                baskets.append(
+                    source.tsa.find(query)
+                )
+            except:
+                import traceback as tb; tb.print_exc()
+                print(f'source {source} temporarily unavailable')
+
+        pool(readbasket, [(s,) for s in self.sources])
+        return list(
+            itertools.chain.from_iterable(baskets)
+        )
