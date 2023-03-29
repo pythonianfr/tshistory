@@ -206,6 +206,21 @@ class Client:
         return res
 
     @unwraperror
+    def update_metadata(self, name, metadata):
+        assert isinstance(metadata, dict)
+        existing_metadata = self.metadata(name)
+        if existing_metadata is None:
+            return
+        existing_metadata.update(metadata)
+
+        res = self.session.patch(f'{self.uri}/series/metadata', data={
+            'name': name,
+            'metadata': json.dumps(existing_metadata)
+        })
+
+        return res
+
+    @unwraperror
     def replace_metadata(self, name, metadata):
         assert isinstance(metadata, dict)
         res = self.session.put(f'{self.uri}/series/metadata', data={

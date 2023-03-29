@@ -478,6 +478,23 @@ class httpapi:
 
                 return '', 200
 
+            @api.expect(put_metadata)
+            @onerror
+            def patch(self):
+                args = put_metadata.parse_args()
+                if not tsa.exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
+                metadata = json.loads(args.metadata)
+                try:
+                    tsa.update_metadata(args.name, metadata)
+                except ValueError as err:
+                    if err.args[0].startswith('not allowed to'):
+                        api.abort(405, err.args[0])
+                    raise
+
+                return '', 200
+
 
         @nss.route('/state')
         class timeseries_state(Resource):

@@ -143,6 +143,22 @@ def test_base(client):
         'desc': 'banana spot price',
     }
 
+    client.update_metadata('test1', {'info': 'banana spot price'})
+
+    meta = client.metadata('test1', all=False)
+    assert meta == {
+        'desc': 'banana spot price',
+        'info': 'banana spot price',
+    }
+
+    # replace
+    client.replace_metadata('test1', {'unit': 'price'})
+
+    meta = client.metadata('test1', all=False)
+    assert meta == {
+        'unit': 'price',
+    }
+
     # check the insertion_date
     series_in = genserie(utcdt(2018, 1, 2), 'H', 3)
     client.update('test1', series_in, 'Babar',

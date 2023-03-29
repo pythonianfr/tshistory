@@ -489,10 +489,17 @@ def test_serie_metadata(engine, tsh):
     )
     assert tsh.metadata(engine, 'ts-metadata')['topic'] == 'banana spot price'
 
-    tsh.replace_metadata(engine, 'ts-metadata', {'tzaware': True})
+    tsh.update_metadata(engine, 'ts-metadata', {'unit': 'euro'})
 
     assert tsh.metadata(engine, 'ts-metadata') == {
-        'tzaware': True,  # this is end-user (not internal) metadata
+            'unit': 'euro',
+            'topic': 'banana spot price'
+    }
+
+    tsh.replace_metadata(engine, 'ts-metadata', {'unit': 'euro'})
+
+    assert tsh.metadata(engine, 'ts-metadata') == {
+            'unit': 'euro'
     }
 
 

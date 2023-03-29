@@ -277,6 +277,20 @@ class timeseries:
         ).scalar() or {}
 
     @tx
+    def update_metadata(self, cn, name, metadata):
+        assert isinstance(metadata, dict)
+        existing_metadata = self.metadata(cn, name)
+
+        existing_metadata.update(metadata)
+        cn.execute(
+            f'update "{self.namespace}".registry '
+            'set metadata = %(metadata)s '
+            'where registry.name = %(name)s',
+            metadata=json.dumps(existing_metadata),
+            name=name
+        )
+
+    @tx
     def replace_metadata(self, cn, name, metadata):
         assert isinstance(metadata, dict)
         cn.execute(

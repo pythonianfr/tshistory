@@ -185,12 +185,29 @@ insertion_date             value_date
     meta = tsx.metadata('api-test')
     assert meta == {}
 
-    tsx.replace_metadata('api-test', {
+    tsx.update_metadata('api-test', {
         'desc': 'a metadata test'
     })
     meta = tsx.metadata('api-test')
     assert meta == {
         'desc': 'a metadata test'
+    }
+
+    tsx.update_metadata('api-test', {
+        'asc': 'a new entry'
+    })
+    meta = tsx.metadata('api-test')
+    assert meta == {
+        'asc': 'a new entry',
+        'desc': 'a metadata test'
+    }
+
+    tsx.replace_metadata('api-test', {
+        'replace all': 'a metadata test'
+    })
+    meta = tsx.metadata('api-test')
+    assert meta == {
+        'replace all': 'a metadata test'
     }
 
     assert tsx.type('api-test') == 'primary'
@@ -316,7 +333,7 @@ def test_multisource(mapi):
     for methname in ('get', 'update', 'replace', 'exists', 'type',
                      'history', 'staircase',
                      'catalog', 'interval',
-                     'metadata', 'replace_metadata',
+                     'metadata', 'update_metadata', 'replace_metadata',
                      'rename', 'delete'
     ):
         assert getattr(mapi, methname, False), methname
@@ -469,7 +486,7 @@ def test_http_api():
     for methname in ('get', 'update', 'replace', 'exists', 'type',
                      'history', 'staircase',
                      'catalog', 'interval',
-                     'metadata', 'replace_metadata',
+                     'metadata', 'update_metadata', 'replace_metadata',
                      'rename', 'delete'
     ):
         assert getattr(tsh, methname, False), methname
