@@ -206,7 +206,7 @@ class Client:
         return res
 
     @unwraperror
-    def update_metadata(self, name, metadata):
+    def replace_metadata(self, name, metadata):
         assert isinstance(metadata, dict)
         res = self.session.put(f'{self.uri}/series/metadata', data={
             'name': name,

@@ -483,13 +483,13 @@ def test_serie_metadata(engine, tsh):
         'value_type': 'float64'
     }
 
-    tsh.update_metadata(
+    tsh.replace_metadata(
         engine, 'ts-metadata',
         {'topic': 'banana spot price'}
     )
     assert tsh.metadata(engine, 'ts-metadata')['topic'] == 'banana spot price'
 
-    tsh.update_metadata(engine, 'ts-metadata', {'tzaware': True})
+    tsh.replace_metadata(engine, 'ts-metadata', {'tzaware': True})
 
     assert tsh.metadata(engine, 'ts-metadata') == {
         'tzaware': True,  # this is end-user (not internal) metadata
@@ -2503,14 +2503,14 @@ def test_find(engine, tsh):
     r = tsh.find(engine, search.byname('find 1'))
     assert r == ['find.me.1']
 
-    tsh.update_metadata(
+    tsh.replace_metadata(
         engine,
         'find.me.1',
         {
             'foo': 42
         }
     )
-    tsh.update_metadata(
+    tsh.replace_metadata(
         engine,
         'find.me.2',
         {
@@ -2551,7 +2551,7 @@ def test_find(engine, tsh):
         'find.me.tznaive',
         'Babar'
     )
-    tsh.update_metadata(
+    tsh.replace_metadata(
         engine,
         'find.me.tznaive',
         {
@@ -2638,14 +2638,14 @@ def test_search_inequalities(engine, tsh):
         'find.me.A',
         'Babar'
     )
-    tsh.update_metadata(engine, 'find.me.A', {'weight': 42, 'birthdate': '1973-5-20'})
+    tsh.replace_metadata(engine, 'find.me.A', {'weight': 42, 'birthdate': '1973-5-20'})
     tsh.update(
         engine,
         ts,
         'find.me.B',
         'Celeste'
     )
-    tsh.update_metadata(engine, 'find.me.B', {'weight': 43, 'birthdate': '1978-7-15'})
+    tsh.replace_metadata(engine, 'find.me.B', {'weight': 43, 'birthdate': '1978-7-15'})
 
     # lt
     names = tsh.find(

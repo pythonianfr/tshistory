@@ -136,7 +136,7 @@ def test_base(client):
     }
 
     # update
-    client.update_metadata('test1', {'desc': 'banana spot price'})
+    client.replace_metadata('test1', {'desc': 'banana spot price'})
 
     meta = client.metadata('test1', all=False)
     assert meta == {

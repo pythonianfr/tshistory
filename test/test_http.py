@@ -732,7 +732,7 @@ def test_multisource(http, engine):
     })
     assert res.status_code == 405
     assert res.json == {
-        'message': 'not allowed to update metadata to a secondary source'
+        'message': 'not allowed to replace metadata to a secondary source'
     }
 
     res = http.delete('/series/state', params={

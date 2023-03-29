@@ -185,7 +185,7 @@ insertion_date             value_date
     meta = tsx.metadata('api-test')
     assert meta == {}
 
-    tsx.update_metadata('api-test', {
+    tsx.replace_metadata('api-test', {
         'desc': 'a metadata test'
     })
     meta = tsx.metadata('api-test')
@@ -316,7 +316,7 @@ def test_multisource(mapi):
     for methname in ('get', 'update', 'replace', 'exists', 'type',
                      'history', 'staircase',
                      'catalog', 'interval',
-                     'metadata', 'update_metadata',
+                     'metadata', 'replace_metadata',
                      'rename', 'delete'
     ):
         assert getattr(mapi, methname, False), methname
@@ -403,10 +403,10 @@ def test_multisource(mapi):
         ('postgres@ns-test-mapi', 'ns-test-mapi'): [('api-1', 'primary')]
     }
 
-    mapi.update_metadata('api-1', {'descr': 'for the mapi test'})
+    mapi.replace_metadata('api-1', {'descr': 'for the mapi test'})
     with pytest.raises(ValueError) as err:
-        mapi.update_metadata('api-2', {'descr': 'for the mapi test'})
-    assert err.value.args[0].startswith('not allowed to update metadata')
+        mapi.replace_metadata('api-2', {'descr': 'for the mapi test'})
+    assert err.value.args[0].startswith('not allowed to replace metadata')
     assert mapi.internal_metadata('api-2') == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
@@ -443,13 +443,13 @@ def test_multisource(mapi):
     create(mapi.uri, mapi.namespace, 'api-3')
     create(mapi.uri, 'ns-test-mapi-2', 'api-3')
     # update local version metadata
-    mapi.update_metadata('api-3', {'foo': 'bar'})
+    mapi.replace_metadata('api-3', {'foo': 'bar'})
     # delete local version
     mapi.delete('api-3')
     # remote version still exists
     assert mapi.exists('api-3')
     with pytest.raises(ValueError):
-        mapi.update_metadata('api-3', {'foo': 'bar'})
+        mapi.replace_metadata('api-3', {'foo': 'bar'})
     with pytest.raises(ValueError):
         mapi.delete('api-3')
     cat = mapi.catalog()
@@ -469,7 +469,7 @@ def test_http_api():
     for methname in ('get', 'update', 'replace', 'exists', 'type',
                      'history', 'staircase',
                      'catalog', 'interval',
-                     'metadata', 'update_metadata',
+                     'metadata', 'replace_metadata',
                      'rename', 'delete'
     ):
         assert getattr(tsh, methname, False), methname
@@ -780,13 +780,13 @@ def test_find(tsx):
     r = tsx.find(search.byname('find 1'))
     assert r == ['find.me.1']
 
-    tsx.update_metadata(
+    tsx.replace_metadata(
         'find.me.1',
         {
             'foo': 42
         }
     )
-    tsx.update_metadata(
+    tsx.replace_metadata(
         'find.me.2',
         {
             'bar': 'Hello',
@@ -825,7 +825,7 @@ def test_find(tsx):
         ts,
         'Babar'
     )
-    tsx.update_metadata(
+    tsx.replace_metadata(
         'find.me.tznaive',
         {
             'foo': 43

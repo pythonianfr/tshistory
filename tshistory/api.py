@@ -594,20 +594,20 @@ class mainsource:
             meta = self.othersources.internal_metadata(name)
         return meta
 
-    def update_metadata(self,
+    def replace_metadata(self,
                         name: str,
                         metadata: dict) -> NONETYPE:
-        """Update a series metadata with a dictionary from strings to anything
+        """Replace a series metadata with a dictionary from strings to anything
         json-serializable.
 
         """
         with self.engine.begin() as cn:
             if self.tsh.exists(cn, name):
-                return self.tsh.update_metadata(cn, name, metadata)
+                return self.tsh.replace_metadata(cn, name, metadata)
 
         self.othersources.forbidden(
             name,
-            'not allowed to update metadata to a secondary source'
+            'not allowed to replace metadata to a secondary source'
         )
 
     def type(self, name: str) -> str:

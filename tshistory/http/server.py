@@ -470,7 +470,7 @@ class httpapi:
 
                 metadata = json.loads(args.metadata)
                 try:
-                    tsa.update_metadata(args.name, metadata)
+                    tsa.replace_metadata(args.name, metadata)
                 except ValueError as err:
                     if err.args[0].startswith('not allowed to'):
                         api.abort(405, err.args[0])
