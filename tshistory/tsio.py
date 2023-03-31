@@ -774,6 +774,10 @@ class timeseries:
         self._validate(cn, newts, name)
 
         snapshot = self.storageclass(cn, self, name)
+        # NOTE: there is a potential for a small i/o optimisation
+        # there as we get a bunch of chunks, and in .update we will
+        # get _mostly_ the same chunks: some reads might be avoided by
+        # being clever.
         series_diff = diff(
             snapshot.last(newts.index.min(),
                           newts.index.max()),
