@@ -786,7 +786,7 @@ class timeseries:
             )
 
         # compute series start/end stamps
-        tsstart, tsend = start_end(newts)
+        tsstart, tsend = start_end(series_diff)
         ival = self.interval(cn, name, notz=True)
         start = min(tsstart or ival.left, ival.left)
         end = max(tsend or ival.right, ival.right)
