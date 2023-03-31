@@ -13,7 +13,7 @@ from tshistory.util import (
 )
 
 
-class Snapshot:
+class Postgres:
     """Here's what's happening when we create a series with 3 insertions
     in a scenario representative of real world situations.
 

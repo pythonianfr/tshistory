@@ -10,7 +10,7 @@ from tshistory.util import (
     diff,
     patch
 )
-from tshistory.snapshot import Snapshot
+from tshistory.storage import Postgres
 from tshistory.testutil import (
     genserie,
     utcdt,
@@ -83,7 +83,7 @@ def test_hourly_forecast(engine, tracker, ptsh):
                      for _ in range(5000)]
 
     def create(name, bsize, limit=None):
-        with tempattr(Snapshot, '_max_bucket_size', bsize):
+        with tempattr(Postgres, '_max_bucket_size', bsize):
             for idx, idate in enumerate(forecasts):
                 dr = pd.date_range(start=idate, freq='H', periods=48)
                 perturbation = perturbations[idx]

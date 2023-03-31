@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy.exc import IntegrityError
 
-from tshistory.snapshot import Snapshot
+from tshistory.storage import Postgres
 from tshistory.util import (
     _set_cache,
     diff,
@@ -628,7 +628,7 @@ def test_point_deletion(engine, tsh):
     ts_begin.iloc[-1] = np.nan
     tsh.update(engine, ts_begin, 'ts_del', 'test')
 
-    _, ts = Snapshot(engine, tsh, 'ts_del').find()
+    _, ts = Postgres(engine, tsh, 'ts_del').find()
     assert ts.iloc[-2] == 8.0
 
     ts_begin.iloc[0] = np.nan
@@ -1315,7 +1315,7 @@ insertion_date             value_date
                            2017-01-10 04:00:00    4.0
 """, h)
 
-    snap = Snapshot(engine, tsh, 'xserie')
+    snap = Postgres(engine, tsh, 'xserie')
     assert snap.garbage() == set()
 
     csid = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3))
@@ -2383,7 +2383,7 @@ def test_replace_reuse(engine, tsh):
         engine, seriesa, 'replace-reuse', 'Babar',
         insertion_date=utcdt(2019, 1, 1)
     )
-    snap = Snapshot(_set_cache(engine), tsh, 'replace-reuse')
+    snap = Postgres(_set_cache(engine), tsh, 'replace-reuse')
     chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(1)]
     assert chunks == [(1, None)]
 

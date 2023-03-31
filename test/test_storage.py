@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 from tshistory.util import _set_cache
-from tshistory.snapshot import Snapshot
+from tshistory.storage import Postgres
 from tshistory.testutil import (
     assert_df,
     assert_hist,
@@ -26,7 +26,7 @@ def chunksize(snap, head, from_value_date=None):
 
 def test_chunks(engine, tsh):
     _set_cache(engine)
-    with tempattr(Snapshot, '_max_bucket_size', 2):
+    with tempattr(Postgres, '_max_bucket_size', 2):
         ts = genserie(datetime(2010, 1, 1), 'D', 5)
         tsh.update(engine, ts, 'chunks', 'test')
 
@@ -47,7 +47,7 @@ def test_chunks(engine, tsh):
         assert chunks[0].parent is None
         assert chunks[1].parent == 1
         assert chunks[2].parent == 2
-        snap = Snapshot(engine, tsh, 'chunks')
+        snap = Postgres(engine, tsh, 'chunks')
         ts0 = snap._chunks_to_ts([chunks[0].chunk])
         ts1 = snap._chunks_to_ts([chunks[1].chunk])
         ts2 = snap._chunks_to_ts([chunks[2].chunk])
@@ -102,7 +102,7 @@ def test_chunks(engine, tsh):
             chunk.id: chunk.parent for chunk in chunks
         }
 
-        snap = Snapshot(engine, tsh, 'chunks')
+        snap = Postgres(engine, tsh, 'chunks')
         ts0 = snap._chunks_to_ts([chunks[0].chunk])
         ts1 = snap._chunks_to_ts([chunks[1].chunk])
         ts2 = snap._chunks_to_ts([chunks[2].chunk])
@@ -182,7 +182,7 @@ def test_chunks(engine, tsh):
         }
 
         # 2nd commit chunks without filtering
-        snap = Snapshot(engine, tsh, 'chunks')
+        snap = Postgres(engine, tsh, 'chunks')
         chunks = chunksize(snap, 5)
         assert chunks == {
             None: 2,
@@ -268,7 +268,7 @@ def test_get_from_to(engine, tsh):
     ts = genserie(datetime(2015, 1, 1), 'D', 365)
     tsh.update(engine, ts, 'quitelong', 'aurelien.campeas@pythonian.fr')
 
-    snap = Snapshot(engine, tsh, 'quitelong')
+    snap = Postgres(engine, tsh, 'quitelong')
     if tsh.namespace == 'z-z':
         sql = 'select id, parent from "z-z.snapshot".quitelong order by id'
         chunks = engine.execute(sql).fetchall()
@@ -279,7 +279,7 @@ def test_get_from_to(engine, tsh):
         chunks.pop(1)
         assert all(k == v+1 for k, v in chunks.items())
 
-        snap = Snapshot(engine, tsh, 'quitelong')
+        snap = Postgres(engine, tsh, 'quitelong')
         chunks = chunksize(snap, 73)
         assert chunks == {None: 5, 1: 5, 2: 5, 3: 5, 4: 5, 5: 5, 6: 5, 7: 5,
                           8: 5, 9: 5, 10: 5, 11: 5, 12: 5, 13: 5, 14: 5, 15: 5,

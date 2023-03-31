@@ -19,7 +19,7 @@ from tshistory.http import (
     app,
     client as http_client
 )
-from tshistory.snapshot import Snapshot
+from tshistory.storage import Postgres
 from tshistory.testutil import (
     make_tsx,
     with_tester,
@@ -84,7 +84,7 @@ def tsh(request, engine):
     schema.tsschema(namespace).create(engine, reset=True)
 
     if namespace == 'z-z':
-        Snapshot._max_bucket_size = 5
+        Postgres._max_bucket_size = 5
     yield tsio.timeseries(namespace)
 
 

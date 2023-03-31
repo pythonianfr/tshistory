@@ -25,7 +25,7 @@ from tshistory.util import (
     start_end,
     tx
 )
-from tshistory.snapshot import Snapshot
+from tshistory.storage import Postgres
 
 
 L = logging.getLogger('tshistory.tsio')
@@ -45,6 +45,7 @@ class timeseries:
     }
     create_lock_id = None
     delete_lock_id = None
+    storageclass = Postgres
 
     def __init__(self, namespace='tsh', othersources=None,
                  _groups=True):
@@ -159,7 +160,7 @@ class timeseries:
 
         # compute series start/end stamps
         start, end = start_end(newts)
-        head = Snapshot(cn, self, name).create(newts)
+        head = self.storageclass(cn, self, name).create(newts)
         self._new_revision(
             cn, name, head, start, end,
             author, insertion_date, metadata
@@ -220,7 +221,7 @@ class timeseries:
             if to_value_date:
                 to_value_date = compatible_date(tzaware, to_value_date)
 
-        snap = Snapshot(cn, self, name)
+        snap = self.storageclass(cn, self, name)
         try:
             _, current = snap.find(csetfilter=csetfilter,
                                    from_value_date=from_value_date,
@@ -334,7 +335,7 @@ class timeseries:
             previous_csid = self._previous_cset(cn, name, first_csid)
             revs.insert(0, (previous_csid, None))
 
-        snapshot = Snapshot(cn, self, name)
+        snapshot = self.storageclass(cn, self, name)
 
         # careful there with naive series vs inputs
         if from_value_date or to_value_date:
@@ -528,7 +529,7 @@ class timeseries:
 
     @tx
     def last_id(self, cn, name):
-        snapshot = Snapshot(cn, self, name)
+        snapshot = self.storageclass(cn, self, name)
         return snapshot.last_id()
 
     @tx
@@ -593,7 +594,7 @@ class timeseries:
         sql = (f'delete from "{self.namespace}.revision"."{tablename}" '
                'where id >= %(csid)s')
         cn.execute(sql, csid=csid)
-        snapshot = Snapshot(cn, self, name)
+        snapshot = self.storageclass(cn, self, name)
         snapshot.reclaim()
 
     def info(self, cn):
@@ -755,7 +756,7 @@ class timeseries:
         self._make_ts_table(cn, name)
         self._register_serie(cn, name, seriesmeta)
 
-        snapshot = Snapshot(cn, self, name)
+        snapshot = self.storageclass(cn, self, name)
         head = snapshot.create(newts)
         start, end = start_end(newts)
 
@@ -771,7 +772,8 @@ class timeseries:
     def _update(self, cn, newts, name, author,
                 metadata=None, insertion_date=None):
         self._validate(cn, newts, name)
-        snapshot = Snapshot(cn, self, name)
+
+        snapshot = self.storageclass(cn, self, name)
         series_diff = diff(
             snapshot.last(newts.index.min(),
                           newts.index.max()),
@@ -802,6 +804,7 @@ class timeseries:
             end = patched.index[-1]
 
         head = snapshot.update(series_diff)
+
         self._new_revision(
             cn, name, head, start, end,
             author, insertion_date, metadata
