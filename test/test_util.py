@@ -285,9 +285,9 @@ def test_json():
     )
     jsonseries = series.to_json(date_format='iso')
     assert jsonseries == (
-        '{"2020-01-01T00:00:00.000Z":1.0,'
-        '"2020-01-01T01:00:00.000Z":2.0,'
-        '"2020-01-01T02:00:00.000Z":3.0}'
+        '{"2020-01-01T00:00:00.000":1.0,'
+        '"2020-01-01T01:00:00.000":2.0,'
+        '"2020-01-01T02:00:00.000":3.0}'
     )
 
     series2 = pd.read_json(jsonseries, typ='series', dtype=False)
