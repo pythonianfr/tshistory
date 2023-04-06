@@ -1,6 +1,52 @@
 # Changelog
 
-## [0.14.0]
+## [0.18.0]
+### Added
+- api/internal_metadata: to easily separate it from regular metadata
+- api/find: allow filtering series names using filters
+- api/basket: allow to register a .find filter query
+
+### Changed
+- split internal metadata from user metadata
+- catalog: have a relatively fast timeout of remote sources
+
+## [0.17.0] 2022-12-26
+### Added
+- tsio/first_insertion_date: a convenience internal api point
+
+### Fixed
+- api/rename: fix issue with series with a long name
+- api/group_metadata: show the internal metadata
+
+## [0.16.0] 2022-10-11
+### Changed
+- api/catalog: do not expose secondary sources of a remote source
+- api/catalog: better source names
+
+## Fixed
+- api/insertion_dates: propagate the keywords to all the layers
+
+## [0.15.0] 2022-06-23
+### Added
+- api: full http transport for block_staircase
+- compatibility with pandas 1.4
+- basic auth support for the http client
+- api/groups: add .history
+- api/groups: add .insertion_dates
+- api/insertion_dates: accept {from/to}_insertion_date parameters (like .history)
+
+### Fixed
+- cli: better migration command for groups
+- api/block_staircase: better typing
+
+### Changed
+- api/doc: better documentation for the block_staircase
+
+## [0.14.1] 2022-01-17
+### Fixed
+- fixed packaging issue
+
+## [0.14.0] 2022-01-13
 ### Added
 - tsio: preliminary implementation of a new staircase "block-staircase"
 - ci: we now test all the tshistory stack
@@ -9,11 +55,11 @@
 - api: deletion of a remotely shadowed series
 - api: update metadata of a remotely shadowed series
 
-## Changed
+### Changed
 - tshistory_rest and _client have been folded in tshistory under
   http/server and http/client
 
-## [0.13.0]
+## [0.13.0] 2021-08-09
 ### Added
 - api: allow to specify a custom remote client class
 - api: expose .strip
@@ -23,17 +69,17 @@
 ### Fixed
 - odd bug in .strip
 
-## [0.12.3]
+## [0.12.3] 2020-12-11
 ### Fixed
 - int32 series are now coerced as float64 series
 - more safety belts for odd indexes
 
-## [0.12.2]
+## [0.12.2] 2020-09-03
 ### Changed
 - tsio/get -> always return a series even if empty
 - api/update/replace: allow local update if series eists locally and remotely
 
-## [0.12.1]
+## [0.12.1] 2020-07-03
 ### Fixed
 - better errors messages on tzaware vs tznaive issues
 - better handling of tzaware vs tznaive series
