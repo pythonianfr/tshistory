@@ -451,7 +451,7 @@ def test_multisource(mapi):
 
     assert mapi.source('nope') is None
     assert mapi.source('renamed-api-1') == 'local'
-    assert mapi.source('api-2') == 'ns-test-mapi-2'
+    assert mapi.source('api-2') == 'remote'
 
     mapi.delete('renamed-api-1')
     with pytest.raises(ValueError) as err:
@@ -507,8 +507,8 @@ def test_local_formula_remote_series(mapihttp, engine):
     assert repr(mapi) == (
         'timeseries(uri=postgresql://localhost:5433/postgres,'
         'ns=ns-test-local,'
-        'sources=[source(uri=http://test-uri2,ns=ns-test-remote), '
-        'source(uri=http://unavailable,ns=ns-test-unavailable-remote)])'
+        'sources=[source(name=remote,uri=http://test-uri2,ns=ns-test-remote), '
+        'source(name=nope,uri=http://unavailable,ns=ns-test-unavailable-remote)])'
     )
 
     assert len(mapi.othersources.sources) == 2

@@ -33,7 +33,7 @@ class timeseries:
     def __new__(cls, uri,
                 namespace='tsh',
                 handler=None,
-                sources=(),
+                sources={},
                 clientclass=None):
         parseduri = urlparse(uri)
         if parseduri.scheme.startswith('postgres'):
@@ -217,7 +217,7 @@ class mainsource:
 
         for source in self.othersources.sources:
             if source.tsa.exists(name):
-                return source.namespace
+                return source.name
 
 
     def get(self, name: str,
@@ -927,29 +927,31 @@ class mainsource:
 
 
 class source:
-    __slots__ = 'uri', 'namespace', 'tsa'
+    __slots__ = 'name', 'uri', 'namespace', 'tsa'
 
-    def __init__(self, uri, namespace, tshclass):
+    def __init__(self, name, uri, namespace, tshclass):
+        self.name = name
         self.uri = uri
         self.namespace = namespace
         self.tsa = timeseries(uri, namespace, tshclass)
 
     def __repr__(self):
-        return f'source(uri={self.uri},ns={self.namespace})'
+        return f'source(name={self.name},uri={self.uri},ns={self.namespace})'
 
 
 class altsources:
     " Class to handle some operations allowed on secondary sources "
     __slots__ = ('sources',)
 
-    def __init__(self, tshclass, sources=()):
+    def __init__(self, tshclass, sources={}):
         self.sources = [
             source(
+                name,
                 src_uri,
                 src_namespace,
                 tshclass
             )
-            for src_uri, src_namespace in sources
+            for name, (src_uri, src_namespace) in sources.items()
         ]
 
     def __repr__(self):

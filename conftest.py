@@ -66,9 +66,7 @@ def mapi(engine):
         DBURI,
         namespace='ns-test-mapi',
         handler=tsio.timeseries,
-        sources=[
-            (DBURI, 'ns-test-mapi-2')
-        ]
+        sources={'remote': (DBURI, 'ns-test-mapi-2')}
     )
 
 
@@ -138,7 +136,7 @@ def http(engine):
             str(engine.url),
             handler=tsio.timeseries,
             namespace='tsh',
-            sources=[(DBURI, 'other')]
+            sources={'other': (DBURI, 'other')}
         )
     )
     yield NoRaiseWebTester(wsgi)
@@ -160,7 +158,7 @@ def client(engine):
             tsh_api.timeseries(
                 str(engine.url),
                 handler=tsio.timeseries,
-                sources=[(DBURI, 'other')]
+                sources={'other': (DBURI, 'other')}
             ),
             formula_httpapi
         )
@@ -217,8 +215,8 @@ def mapihttp(engine):
             DBURI,
             namespace='ns-test-local',
             handler=formula_timeseries,
-            sources=[
-                (URI2, 'ns-test-remote'),
-                ('http://unavailable', 'ns-test-unavailable-remote')
-            ]
+            sources={
+                'remote': (URI2, 'ns-test-remote'),
+                'nope': ('http://unavailable', 'ns-test-unavailable-remote')
+            }
         )
