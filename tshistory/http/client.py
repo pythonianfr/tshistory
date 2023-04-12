@@ -159,6 +159,19 @@ class Client:
         )
 
     @unwraperror
+    def source(self, name):
+        res = self.session.get(f'{self.uri}/series/source', params={
+            'name': name
+        })
+
+        if res.status_code == 200:
+            return res.json()
+        elif res.status_code == 404:
+            return None
+
+        return res
+
+    @unwraperror
     def metadata(self, name, all=False):
         if all is not None:
             warnings.warn(

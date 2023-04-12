@@ -449,6 +449,10 @@ def test_multisource(mapi):
         mapi.rename('api-2', 'renamed-api-2')
     assert err.value.args[0].startswith('not allowed to rename')
 
+    assert mapi.source('nope') is None
+    assert mapi.source('renamed-api-1') == 'local'
+    assert mapi.source('api-2') == 'ns-test-mapi-2'
+
     mapi.delete('renamed-api-1')
     with pytest.raises(ValueError) as err:
         mapi.delete('api-2')
@@ -783,6 +787,8 @@ def test_find(tsx):
         ts,
         'Celeste'
     )
+
+    assert tsx.source('find.me.1') == 'local'
 
     # by name
     r = tsx.find(search.byname('nop'))

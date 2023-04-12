@@ -208,6 +208,18 @@ class mainsource:
 
         return True
 
+    def source(self, name: str) -> Optional[str]:
+        """Provide the source name of a series.
+
+        """
+        if self.tsh.exists(self.engine, name):
+            return 'local'
+
+        for source in self.othersources.sources:
+            if source.tsa.exists(name):
+                return source.namespace
+
+
     def get(self, name: str,
             revision_date: Optional[datetime]=None,
             from_value_date: Optional[datetime]=None,

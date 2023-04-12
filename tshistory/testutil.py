@@ -250,6 +250,11 @@ def with_tester(uri, resp, wsgitester):
     )
 
     resp.add_callback(
+        responses.GET, uri + '/series/source',
+        callback=partial(read_request_bridge, wsgitester)
+    )
+
+    resp.add_callback(
         responses.GET, uri + '/series/metadata',
         callback=partial(read_request_bridge, wsgitester)
     )

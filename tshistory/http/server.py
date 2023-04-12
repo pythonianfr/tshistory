@@ -90,6 +90,8 @@ rename.add_argument(
     help='new name of the series'
 )
 
+source = base.copy()
+
 metadata = base.copy()
 metadata.add_argument(
     'all', type=inputs.boolean, default=False,
@@ -421,6 +423,18 @@ class httpapi:
         api = self.api
         nss = self.nss
         nsg = self.nsg
+
+        @nss.route('/source')
+        class timeseries_source(Resource):
+
+            @api.expect(source)
+            @onerror
+            def get(self):
+                args = source.parse_args()
+                if not tsa.exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
+                return tsa.source(args.name), 200
 
         @nss.route('/metadata')
         class timeseries_metadata(Resource):
