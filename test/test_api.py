@@ -382,6 +382,8 @@ def test_multisource(mapi):
     create(mapi.uri, mapi.namespace, 'api-1')
     create(mapi.uri, 'ns-test-mapi-2', 'api-2')
 
+    assert mapi.namespace == 'ns-test-mapi'
+
     assert not mapi.exists('i-dont-exist')
     assert mapi.exists('api-1')
     assert mapi.exists('api-2')
@@ -433,6 +435,7 @@ def test_multisource(mapi):
         'value_type': 'float64',
         'supervision_status': 'unsupervised'
     }
+
     assert mapi.metadata('api-2', all=True) == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
@@ -442,6 +445,15 @@ def test_multisource(mapi):
         'value_dtype': '<f8',
         'value_type': 'float64'
     }
+
+
+    assert mapi.metadata('api-1') == {'descr': 'for the mapi test'}
+
+    api2 = timeseries(mapi.uri, 'ns-test-mapi-2')
+    api2.update_metadata('api-2', {'othersouces': 'from other ns'})
+    assert api2.metadata('api-2') == {'othersouces': 'from other ns'}
+
+    assert not mapi.metadata('api-2') == {'othersouces': 'from other ns'}
 
     mapi.rename('api-1', 'renamed-api-1')
     assert not mapi.exists('api-1')
