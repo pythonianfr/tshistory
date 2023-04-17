@@ -662,6 +662,8 @@ class mainsource:
         * meta: the revision metadata
 
         """
+        if not self.tsh.exists(self.engine, name):
+            return self.othersources.log(name)
 
         return self.tsh.log(
             self.engine,
@@ -1100,3 +1102,15 @@ class altsources:
         return list(
             itertools.chain.from_iterable(nameslist)
         )
+
+    def log(self, name, limit=None, fromdate=None, todate=None):
+        source = self._findsourcefor(name)
+        if source:
+            return source.tsa.log(
+                name,
+                limit=limit,
+                fromdate=fromdate,
+                todate=todate
+            )
+
+        return []

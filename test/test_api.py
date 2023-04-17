@@ -453,7 +453,7 @@ def test_multisource(mapi):
 
     # log
     assert len(mapi.log('api-1')) == 4
-    assert len(mapi.log('api-2')) == 0
+    assert len(mapi.log('api-2')) == 2
 
     mapi.rename('api-1', 'renamed-api-1')
     assert not mapi.exists('api-1')
