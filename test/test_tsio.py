@@ -2479,7 +2479,7 @@ def test_revisions_callback(engine, tsh):
     assert [rid for rid, _ in nosuchstatus] == []
 
 
-def test_find(engine, tsh):
+def test_find(engine, cleanup, tsh):
     ts = pd.Series(
         [1, 2, 3],
         pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)

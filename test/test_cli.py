@@ -28,17 +28,28 @@ def test_log(engine, cli, tsh):
     assert r.output.count('revision:') == 2
 
 
-def test_history(engine, cli, tsh):
-    serie = genserie(datetime(2020, 1, 1), 'D', 3)
-    tsh.update(engine, serie, 'some_history', 'Babar',
-               insertion_date=utcdt(2019, 1, 1))
-    serie = genserie(datetime(2020, 1, 2), 'D', 3)
-    tsh.update(engine, serie, 'some_history', 'Babar',
-               insertion_date=utcdt(2019, 1, 2))
+def test_history(cli, tsx):
+    series = genserie(datetime(2020, 1, 1), 'D', 3)
+    tsx.update(
+        'some_history',
+        series,
+        'Babar',
+        insertion_date=utcdt(2019, 1, 1)
+    )
+    series = genserie(datetime(2020, 1, 2), 'D', 3)
+    tsx.update(
+        'some_history',
+        series,
+        'Babar',
+        insertion_date=utcdt(2019, 1, 2)
+    )
 
-    r = cli('history', engine.url,
-            'some_history',
-            json=True)
+    r = cli(
+        'history',
+        'postgresql://localhost:5433/postgres',
+        'some_history',
+        json=True
+    )
 
     assert r.output == (
         '{"2019-01-01 00:00:00+00:00": {"2020-01-01 00:00:00": 0.0, "2020-01-02 00:00:00": 1.0, "2020-01-03 00:00:00": 2.0}, "2019-01-02 00:00:00+00:00": {"2020-01-02 00:00:00": 0.0, "2020-01-03 00:00:00": 1.0, "2020-01-04 00:00:00": 2.0}}\n'

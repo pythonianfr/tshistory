@@ -274,12 +274,12 @@ class timeseries:
             f'select metadata from "{self.namespace}".registry '
             'where name = %(name)s',
             name=name
-        ).scalar() or {}
+        ).scalar()
 
     @tx
     def update_metadata(self, cn, name, metadata):
         assert isinstance(metadata, dict)
-        existing_metadata = self.metadata(cn, name)
+        existing_metadata = self.metadata(cn, name) or {}
 
         existing_metadata.update(metadata)
         cn.execute(
@@ -913,11 +913,12 @@ class timeseries:
         seriesmeta['tablename'] = tablename
         cn.execute(
             f'insert into "{self.namespace}".registry '
-            '(name, internal_metadata) '
-            'values (%s, %s) '
+            '(name, internal_metadata, metadata) '
+            'values (%s, %s, %s) '
             'returning id',
             name,
-            json.dumps(seriesmeta)
+            json.dumps(seriesmeta),
+            json.dumps({})
         ).scalar()
 
     # changeset handling

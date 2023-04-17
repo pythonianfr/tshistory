@@ -1016,7 +1016,7 @@ class altsources:
         source = self._findsourcefor(name)
         if source is None:
             return
-        meta = source.tsa.metadata(name, all=True)
+        meta = source.tsa.metadata(name)
         return meta
 
     def internal_metadata(self, name: str):

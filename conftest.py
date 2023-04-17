@@ -87,6 +87,13 @@ def tsh(request, engine):
 
 
 @pytest.fixture(scope='session')
+def cleanup(engine, tsh):
+    with engine.begin() as cn:
+        for name in tsh.list_series(engine):
+            tsh.delete(cn, name)
+
+
+@pytest.fixture(scope='session')
 def ptsh(engine):
     schema.tsschema().create(engine, reset=True)
     return tsio.timeseries()

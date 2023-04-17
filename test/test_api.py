@@ -453,7 +453,7 @@ def test_multisource(mapi):
     api2.update_metadata('api-2', {'othersouces': 'from other ns'})
     assert api2.metadata('api-2') == {'othersouces': 'from other ns'}
 
-    assert not mapi.metadata('api-2') == {'othersouces': 'from other ns'}
+    assert mapi.metadata('api-2') == {'othersouces': 'from other ns'}
 
     mapi.rename('api-1', 'renamed-api-1')
     assert not mapi.exists('api-1')
