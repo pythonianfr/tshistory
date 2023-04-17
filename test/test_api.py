@@ -289,10 +289,6 @@ def test_autotrophic_idates(mapihttp):
     assert idates == []
 
 
-@pytest.mark.skipif(
-    not formula_class(),
-    reason='need formula plugin to be available'
-)
 def test_log(tsx):
     for name in ('log-me',):
         tsx.delete(name)
@@ -422,6 +418,7 @@ def test_multisource(mapi):
         ('postgres@ns-test-mapi', 'ns-test-mapi'): [('api-1', 'primary')]
     }
 
+    # metadata
     mapi.replace_metadata('api-1', {'descr': 'for the mapi test'})
     with pytest.raises(ValueError) as err:
         mapi.replace_metadata('api-2', {'descr': 'for the mapi test'})
@@ -446,7 +443,6 @@ def test_multisource(mapi):
         'value_type': 'float64'
     }
 
-
     assert mapi.metadata('api-1') == {'descr': 'for the mapi test'}
 
     api2 = timeseries(mapi.uri, 'ns-test-mapi-2')
@@ -454,6 +450,10 @@ def test_multisource(mapi):
     assert api2.metadata('api-2') == {'othersouces': 'from other ns'}
 
     assert mapi.metadata('api-2') == {'othersouces': 'from other ns'}
+
+    # log
+    assert len(mapi.log('api-1')) == 4
+    assert len(mapi.log('api-2')) == 0
 
     mapi.rename('api-1', 'renamed-api-1')
     assert not mapi.exists('api-1')
