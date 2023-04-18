@@ -17,7 +17,8 @@ from tshistory import (
 )
 from tshistory.http import (
     app,
-    client as http_client
+    client as http_client,
+    server as http_server
 )
 from tshistory.storage import Postgres
 from tshistory.testutil import (
@@ -159,7 +160,6 @@ def client(engine):
 
     uri = 'http://perdu.com'
 
-    from tshistory_formula.http import formula_httpapi
     wsgitester = WebTester(
         app.make_app(
             tsh_api.timeseries(
@@ -167,7 +167,7 @@ def client(engine):
                 handler=tsio.timeseries,
                 sources={'other': (DBURI, 'other')}
             ),
-            formula_httpapi
+            http_server.httpapi
         )
     )
     with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
