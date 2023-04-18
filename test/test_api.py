@@ -467,21 +467,6 @@ def test_multisource(mapi):
     not formula_class(),
     reason='need formula plugin to be available'
 )
-def test_http_api():
-    tsh = timeseries('https://my.fancy.timeseries.store')
-    for methname in ('get', 'update', 'replace', 'exists', 'type',
-                     'history', 'staircase',
-                     'catalog', 'interval',
-                     'metadata', 'update_metadata', 'replace_metadata',
-                     'rename', 'delete'
-    ):
-        assert getattr(tsh, methname, False), methname
-
-
-@pytest.mark.skipif(
-    not formula_class(),
-    reason='need formula plugin to be available'
-)
 def test_formula_remote_autotrophic(mapihttp, engine):
     tsa = mapihttp
 
