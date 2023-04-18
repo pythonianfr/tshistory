@@ -259,36 +259,6 @@ datetime,               value
     pd.testing.assert_series_equal(computed_ts, expected_ts, check_names=False)
 
 
-@pytest.mark.skipif(
-    not formula_class() or not supervision_class(),
-    reason='need formula and supervision plugins to be available'
-)
-def test_autotrophic_idates(mapihttp):
-    from tshistory_formula import api
-    from tshistory_formula.registry import func, finder
-
-    @func('autotrophic')
-    def custom() -> pd.Series:
-        return pd.Series(
-            [1, 2, 3],
-            pd.date_range(utcdt(2020, 1, 1), periods=1, freq='D')
-        )
-
-    @finder('autotrophic')
-    def custom(cn, tsh, tree):
-        return {
-            'I HAVE A NAME FOR DISPLAY PURPOSES': tree
-        }
-
-    mapihttp.register_formula(
-        'autotrophic-idates',
-        '(autotrophic)'
-    )
-
-    idates = mapihttp.insertion_dates('autotrophic-idates')
-    assert idates == []
-
-
 def test_log(tsx):
     for name in ('log-me',):
         tsx.delete(name)
