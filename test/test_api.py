@@ -6,7 +6,10 @@ import pandas as pd
 import numpy as np
 
 from tshistory.api import timeseries
-from tshistory import search
+from tshistory import (
+    search,
+    tsio
+)
 from tshistory.testutil import (
     assert_df,
     assert_hist,
@@ -18,26 +21,6 @@ from tshistory.testutil import (
 )
 
 
-def formula_class():
-    try:
-        from tshistory_formula.tsio import timeseries
-    except ImportError:
-        return
-    return timeseries
-
-
-def supervision_class():
-    try:
-        from tshistory_supervision.tsio import timeseries
-    except ImportError:
-        return
-    return timeseries
-
-
-@pytest.mark.skipif(
-    not formula_class(),
-    reason='need formula plugin to be available'
-)
 def test_base_universal_api(tsx):
     for name in ('api-test',):
         tsx.delete(name)
@@ -291,10 +274,6 @@ def test_log(tsx):
     assert len(log) == 1
 
 
-@pytest.mark.skipif(
-    not formula_class(),
-    reason='need formula plugin to be available'
-)
 def test_multisource(mapi):
     for methname in ('get', 'update', 'replace', 'exists', 'type',
                      'history', 'staircase',
@@ -306,7 +285,7 @@ def test_multisource(mapi):
 
 
     def create(uri, ns, name):
-        api = timeseries(uri, ns)
+        api = timeseries(uri, ns, handler=tsio.timeseries)
         series = pd.Series(
             [1, 2, 3],
             index=pd.date_range(
@@ -373,7 +352,7 @@ def test_multisource(mapi):
     assert err.value.args[0].startswith('not allowed to replace')
 
 
-    api = timeseries(mapi.uri, mapi.namespace)
+    api = timeseries(mapi.uri, mapi.namespace, handler=tsio.timeseries)
     catalog = api.catalog()
     catalog2 = mapi.catalog()
     assert catalog == {
@@ -399,14 +378,12 @@ def test_multisource(mapi):
         'tablename': 'api-2',
         'tzaware': True,
         'value_dtype': '<f8',
-        'value_type': 'float64',
-        'supervision_status': 'unsupervised'
+        'value_type': 'float64'
     }
 
     assert mapi.metadata('api-2', all=True) == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
-        'supervision_status': 'unsupervised',
         'tablename': 'api-2',
         'tzaware': True,
         'value_dtype': '<f8',
@@ -415,7 +392,7 @@ def test_multisource(mapi):
 
     assert mapi.metadata('api-1') == {'descr': 'for the mapi test'}
 
-    api2 = timeseries(mapi.uri, 'ns-test-mapi-2')
+    api2 = timeseries(mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries)
     api2.update_metadata('api-2', {'othersouces': 'from other ns'})
     assert api2.metadata('api-2') == {'othersouces': 'from other ns'}
 
@@ -531,7 +508,8 @@ def test_conflicting_update(mapi):
     remotesource = mapi.othersources.sources[0]
     remote = timeseries(
         remotesource.uri,
-        namespace=remotesource.namespace
+        namespace=remotesource.namespace,
+        handler=tsio.timeseries
     )
     remote.update(
         'here-and-there',
@@ -760,7 +738,7 @@ def test_federated_basket(mapi):
         'Babar'
     )
 
-    remoteapi = timeseries(mapi.uri, 'ns-test-mapi-2')
+    remoteapi = timeseries(mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries)
     remoteapi.update(
         'remote.basket.fed',
         ts,
@@ -790,7 +768,7 @@ def test_federated_find(mapi):
         'Babar'
     )
 
-    remoteapi = timeseries(mapi.uri, 'ns-test-mapi-2')
+    remoteapi = timeseries(mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries)
     remoteapi.update(
         'remote.basket.fed',
         ts,

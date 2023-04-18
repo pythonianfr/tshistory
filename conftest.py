@@ -28,12 +28,6 @@ from tshistory.testutil import (
 )
 
 
-try:
-    from tshistory_formula import schema as fschema
-except ImportError:
-    fschema = None
-
-
 DATADIR = Path(__file__).parent / 'test' / 'data'
 DBURI = 'postgresql://localhost:5433/postgres'
 
@@ -59,9 +53,7 @@ def engine(db):
 @pytest.fixture(scope='session')
 def mapi(engine):
     schema.tsschema('ns-test-mapi').create(engine, reset=True)
-    fschema.formula_schema('ns-test-mapi').create(engine)
     schema.tsschema('ns-test-mapi-2').create(engine, reset=True)
-    fschema.formula_schema('ns-test-mapi-2').create(engine)
 
     return tsh_api.timeseries(
         DBURI,
@@ -179,18 +171,14 @@ def client(engine):
 
 def _initschema(engine):
     schema.tsschema().create(engine, reset=True)
-    fschema.formula_schema().create(engine)
 
-
-from tshistory_formula.http import formula_httpapi, FormulaClient
-from tshistory_formula.tsio import timeseries as formula_timeseries
 
 tsx = make_tsx(
     'http://test-uri',
     _initschema,
-    formula_timeseries,
-    formula_httpapi,
-    FormulaClient
+    tsio.timeseries,
+    http_server.httpapi,
+    http_client.Client
 )
 
 
@@ -199,11 +187,8 @@ URI2 = 'http://test-uri2'
 
 @pytest.fixture(scope='session')
 def mapihttp(engine):
-    from tshistory_formula import tsio
     schema.tsschema('ns-test-local').create(engine, reset=True)
-    fschema.formula_schema('ns-test-local').create(engine)
     schema.tsschema('ns-test-remote').create(engine, reset=True)
-    fschema.formula_schema('ns-test-remote').create(engine)
 
     wsgitester = WebTester(
         app.make_app(
@@ -212,7 +197,7 @@ def mapihttp(engine):
                 namespace='ns-test-remote',
                 handler=formula_timeseries
             ),
-            formula_httpapi
+            http_server.httpapi
         )
     )
     with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
@@ -221,7 +206,7 @@ def mapihttp(engine):
         yield tsh_api.timeseries(
             DBURI,
             namespace='ns-test-local',
-            handler=formula_timeseries,
+            handler=tsio.timeseries,
             sources={
                 'remote': (URI2, 'ns-test-remote'),
                 'nope': ('http://unavailable', 'ns-test-unavailable-remote')
