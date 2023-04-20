@@ -225,7 +225,7 @@ def migrate_to_groups(db_uri, reset=False, namespace='tsh'):
 def migrate_to_baskets(db_uri, namespace='tsh'):
     engine = create_engine(find_dburi(db_uri))
     sql = f"""
-    create table "{namespace}".basket (
+    create table if not exists "{namespace}".basket (
       id serial primary key,
       name text not null,
       "query" text not null,
