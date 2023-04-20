@@ -663,7 +663,12 @@ class mainsource:
 
         """
         if not self.tsh.exists(self.engine, name):
-            return self.othersources.log(name)
+            return self.othersources.log(
+                name,
+                limit=limit,
+                fromdate=fromdate,
+                todate=todate
+            )
 
         return self.tsh.log(
             self.engine,
