@@ -5,40 +5,19 @@ packages:
   - postgresql
   - emacs-nox
 sources:
-  - hg+https://hg.sr.ht/~pythonian/tshistory_supervision
-  - hg+https://hg.sr.ht/~pythonian/tshistory_formula
-  - hg+https://hg.sr.ht/~pythonian/tshistory_xl
-  - hg+https://hg.sr.ht/~pythonian/rework
-  - hg+https://hg.sr.ht/~pythonian/tsview
-  - hg+https://hg.sr.ht/~pythonian/tshistory_refinery
+  - hg+https://hg.sr.ht/~pythonian/tshistory
+secrets:
+  -  2697538f-6b29-4af7-9fb2-e17694886c3f
 tasks:
   - install: |
       export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/13/bin
-      pip3 install pandas==1.4.4
+      pip3 install pandas==1.5.3
       pip3 install numpy==1.23.4
       pip3 install pip --upgrade
       pip install tox wheel setuptools webtest pytest_sa_pg pystuck --quiet
       pip install -e tshistory --prefer-binary
-      pip install -e tshistory_supervision --prefer-binary
-      pip install -e tshistory_formula --prefer-binary
-      pip install -e tshistory_xl --prefer-binary
-      pip install -e rework --prefer-binary
-      pip install -e tsview --prefer-binary
-      pip install -e tshistory_refinery --prefer-binary
   - run-tests: |
       export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/13/bin
       pip3 install pytest pytest_sa_pg responses
       cd tshistory
-      pytest
-      cd ../tshistory_supervision
-      pytest
-      cd ../tshistory_formula
-      pytest
-      cd ../tshistory_xl
-      pytest
-      cd ../rework
-      pytest
-      cd ../tsview
-      pytest
-      cd ../tshistory_refinery
-      pytest
+      tox
