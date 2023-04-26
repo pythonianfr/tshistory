@@ -459,8 +459,8 @@ def test_update_with_nothing(engine, tsh):
     diff = tsh.update(engine, series, 'ts-up-nothing', 'babar')
     assert len(diff) == 3
 
-    with pytest.raises(AssertionError):
-        diff = tsh.update(engine, pd.Series(dtype='object'), 'ts-up-nothing', 'babar')
+    diff = tsh.update(engine, pd.Series(dtype='object'), 'ts-up-nothing', 'babar')
+    assert len(diff) == 0
 
     diff = tsh.update(engine, empty_series(False), 'ts-up-nothing', 'babar')
     assert len(diff) == 0
@@ -2268,7 +2268,7 @@ def test_insert_errors(engine, tsh):
                    index=pd.date_range(start=utcdt(2018, 1, 1),
                                        freq='D', periods=3))
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         tsh.update(engine, 42, 'error', 'Babar')
 
     with pytest.raises(AssertionError):

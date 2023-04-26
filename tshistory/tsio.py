@@ -84,22 +84,27 @@ class timeseries:
         """
         assert isinstance(name, str), 'Name is not a string'
         name = name.strip()
+        tablename = self._series_to_tablename(cn, name)
+        if not len(updatets):
+            if tablename is None:
+                return self._guard_insert(
+                    updatets, name, author, metadata,
+                    insertion_date
+                )
+            # known series: we can do a bit better
+            return empty_series(
+                self.tzaware(cn, name),
+                dtype=updatets.dtype
+            )
+
         updatets = self._guard_insert(
             updatets, name, author, metadata,
             insertion_date
         )
-        if not len(updatets):
-            return empty_series(
-                updatets.index.tz is not None,
-                dtype=updatets.dtype
-            )
-
+        updatets.name = name
         assert ('<M8[ns]' == updatets.index.dtype or
                 'datetime' in str(updatets.index.dtype) and not
                 isinstance(updatets.index, pd.MultiIndex))
-
-        updatets.name = name
-        tablename = self._series_to_tablename(cn, name)
 
         if tablename is None:
             seriesmeta = self._series_initial_meta(cn, name, updatets)
