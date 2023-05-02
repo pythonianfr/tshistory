@@ -687,7 +687,7 @@ def test_find(tsx):
     assert r == ['find.me.1', 'find.me.2']
 
     r = tsx.find(
-        '(and (or (bymetakey "bar") (bymetakey "foo")) (tzaware))'
+        '(by.and (by.or (by.metakey "bar") (by.metakey "foo")) (by.tzaware))'
     )
     assert r == ['find.me.1', 'find.me.2']
 

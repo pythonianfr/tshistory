@@ -15,9 +15,13 @@ def usym(basename):
 
 
 _OPMAP = {
-    'and': 'and_',
-    'or': 'or_',
-    'not': 'not_',
+    'by.and': 'and_',
+    'by.or': 'or_',
+    'by.not': 'not_',
+    'by.tzaware': 'tzaware',
+    'by.name': 'byname',
+    'by.metakey': 'bymetakey',
+    'by.metaitem': 'bymetaitem',
     '<': 'lt',
     '<=': 'lte',
     '>': 'gt',
@@ -59,7 +63,7 @@ class and_(query):
         self.items = items
 
     def __expr__(self):
-        return f'(and {" ".join(x.expr() for x in self.items)})'
+        return f'(by.and {" ".join(x.expr() for x in self.items)})'
 
     @classmethod
     def _fromtree(cls, tree):
@@ -86,7 +90,7 @@ class or_(query):
         self.items = items
 
     def __expr__(self):
-        return f'(or {" ".join(x.expr() for x in self.items)})'
+        return f'(by.or {" ".join(x.expr() for x in self.items)})'
 
     @classmethod
     def _fromtree(cls, tree):
@@ -113,7 +117,7 @@ class not_(query):
         self.item = item
 
     def __expr__(self):
-        return f'(not {self.item.expr()})'
+        return f'(by.not {self.item.expr()})'
 
     @classmethod
     def _fromtree(cls, tree):
@@ -127,7 +131,7 @@ class not_(query):
 class tzaware(query):
 
     def __expr__(self):
-        return '(tzaware)'
+        return '(by.tzaware)'
 
     @classmethod
     def _fromtree(cls, _):
@@ -144,7 +148,7 @@ class byname(query):
         self.query = query
 
     def __expr__(self):
-        return f'(byname "{self.query}")'
+        return f'(by.name "{self.query}")'
 
     @classmethod
     def _fromtree(cls, tree):
@@ -163,7 +167,7 @@ class bymetakey(query):
         self.key = key
 
     def __expr__(self):
-        return f'(bymetakey "{self.key}")'
+        return f'(by.metakey "{self.key}")'
 
     @classmethod
     def _fromtree(cls, tree):
@@ -183,8 +187,8 @@ class bymetaitem(query):
 
     def __expr__(self):
         if isinstance(self.value, str):
-            return f'(bymetaitem "{self.key}" "{self.value}")'
-        return f'(bymetaitem "{self.key}" {self.value})'
+            return f'(by.metaitem "{self.key}" "{self.value}")'
+        return f'(by.metaitem "{self.key}" {self.value})'
 
     @classmethod
     def _fromtree(cls, tree):

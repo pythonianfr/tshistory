@@ -508,15 +508,15 @@ class mainsource:
         .. code-block:: python
 
          tsa.find(
-            '(and '
-            '  (tzaware)'
-            '  (byname "power capacity") '
-            '  (bymeetakey "plant")'
-            '  (not (or '
-            '    (bymetaitem "plant_type" "oil")'
-            '    (bymetaitem "plant_type" "coal")))'
-            '  (bymetaitem "unit" "mwh")'
-            '  (bymetaitem "country" "fr"))'
+            '(by.and '
+            '  (by.tzaware)'
+            '  (by.name "power capacity") '
+            '  (by.meetakey "plant")'
+            '  (by.not (or '
+            '    (by.metaitem "plant_type" "oil")'
+            '    (by.metaitem "plant_type" "coal")))'
+            '  (by.metaitem "unit" "mwh")'
+            '  (by.metaitem "country" "fr"))'
          )
 
         This builds a query for timezone aware series about french

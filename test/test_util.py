@@ -563,35 +563,35 @@ def _serialize_roundtrip(searchobj):
 
 def test_search():
     s0 = search.tzaware()
-    assert s0.expr() == '(tzaware)'
+    assert s0.expr() == '(by.tzaware)'
     assert _serialize_roundtrip(s0)
 
     s1 = search.byname('foo bar')
-    assert s1.expr() == '(byname "foo bar")'
+    assert s1.expr() == '(by.name "foo bar")'
     assert _serialize_roundtrip(s1)
 
     s2 = search.or_(s0, s1)
-    assert s2.expr() == '(or (tzaware) (byname "foo bar"))'
+    assert s2.expr() == '(by.or (by.tzaware) (by.name "foo bar"))'
     assert _serialize_roundtrip(s2)
 
     s3 = search.and_(s0, s1)
-    assert s3.expr() == '(and (tzaware) (byname "foo bar"))'
+    assert s3.expr() == '(by.and (by.tzaware) (by.name "foo bar"))'
     assert _serialize_roundtrip(s3)
 
     s4 = search.not_(s3)
-    assert s4.expr() == '(not (and (tzaware) (byname "foo bar")))'
+    assert s4.expr() == '(by.not (by.and (by.tzaware) (by.name "foo bar")))'
     assert _serialize_roundtrip(s4)
 
     s5 = search.bymetakey('key')
-    assert s5.expr() == '(bymetakey "key")'
+    assert s5.expr() == '(by.metakey "key")'
     assert _serialize_roundtrip(s5)
 
     s6 = search.bymetaitem('key', 'value')
-    assert s6.expr() == '(bymetaitem "key" "value")'
+    assert s6.expr() == '(by.metaitem "key" "value")'
     assert _serialize_roundtrip(s6)
 
     s7 = search.bymetaitem('key', 42)
-    assert s7.expr() == '(bymetaitem "key" 42)'
+    assert s7.expr() == '(by.metaitem "key" 42)'
     assert _serialize_roundtrip(s7)
 
     s8 = search.lt('key', 42)
