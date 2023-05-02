@@ -710,18 +710,18 @@ def test_basket(tsx):
 
     tsx.register_basket(
         'b1',
-        '(byname "t.1")'
+        '(by.name "t.1")'
     )
     assert tsx.list_baskets() == ['b1']
 
     tsx.register_basket(
         'b2',
-        '(byname "basket.")'
+        '(by.name "basket.")'
     )
     assert tsx.list_baskets() == ['b1', 'b2']
 
     assert tsx.basket('b1') == ['basket.1']
-    assert tsx.basket_definition('b1') == '(byname "t.1")'
+    assert tsx.basket_definition('b1') == '(by.name "t.1")'
     assert tsx.basket('b2') == ['basket.1', 'basket.2']
 
     tsx.delete_basket('b1')
@@ -748,7 +748,7 @@ def test_federated_basket(mapi):
 
     mapi.register_basket(
         'federated.basket',
-        '(byname "basket.fed")'
+        '(by.name "basket.fed")'
     )
 
     b = mapi.basket('federated.basket')
@@ -777,7 +777,7 @@ def test_federated_find(mapi):
     )
 
 
-    names = mapi.find('(byname "basket.fed")')
+    names = mapi.find('(by.name "basket.fed")')
     assert names == [
         'local.basket.fed',
         'remote.basket.fed'

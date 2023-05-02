@@ -52,7 +52,7 @@ class query:
     @staticmethod
     def _fromtree(tree):
         op = tree[0]
-        klass = globals()[_OPMAP.get(op, op)]
+        klass = globals()[_OPMAP[op]]
         return klass._fromtree(tree)
 
 

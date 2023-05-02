@@ -2734,19 +2734,19 @@ def test_basket(engine, tsh):
     tsh.register_basket(
         engine,
         'b1',
-        '(byname "t.1")'
+        '(by.name "t.1")'
     )
     assert tsh.list_baskets(engine) == ['b1']
 
     tsh.register_basket(
         engine,
         'b2',
-        '(byname "basket.")'
+        '(by.name "basket.")'
     )
     assert tsh.list_baskets(engine) == ['b1', 'b2']
 
     assert tsh.basket(engine, 'b1') == ['basket.1']
-    assert tsh.basket_definition(engine, 'b1') == '(byname "t.1")'
+    assert tsh.basket_definition(engine, 'b1') == '(by.name "t.1")'
     assert tsh.basket(engine, 'b2') == ['basket.1', 'basket.2']
 
     tsh.delete_basket(engine, 'b1')
