@@ -1,5 +1,4 @@
 import json
-import zlib
 import warnings
 
 import inireader
@@ -20,7 +19,6 @@ from tshistory.util import (
     unpack_history,
     unpack_group_history,
     unpack_group,
-    unpack_many_series,
     unpack_series
 )
 

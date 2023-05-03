@@ -16,7 +16,6 @@ from flask_restx import (
 
 from tshistory import (
     api as tsapi,
-    search,
     util
 )
 
@@ -819,7 +818,7 @@ class httpapi:
                 )
 
         @nss.route('/baskets')
-        class timeseries_basket(Resource):
+        class timeseries_baskets(Resource):
 
             @api.expect(nothing)
             @onerror
@@ -827,7 +826,7 @@ class httpapi:
                 return tsa.list_baskets()
 
         @nss.route('/basket-definition')
-        class timeseries_basket(Resource):
+        class timeseries_basket_def(Resource):
 
             @api.expect(basket)
             @onerror
