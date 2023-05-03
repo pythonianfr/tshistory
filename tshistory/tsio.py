@@ -313,7 +313,7 @@ class timeseries:
         ).table(
             f'"{self.namespace}".changeset'
         ).where(
-            f'id = %(csid)s', csid=csid
+            'id = %(csid)s', csid=csid
         )
         return q.do(cn).scalar()
 
@@ -682,7 +682,7 @@ class timeseries:
 
     @tx
     def register_basket(self, cn, name, query):
-        q = insert(
+        insert(
             f'"{self.namespace}".basket'
         ).values(
             name=name,
