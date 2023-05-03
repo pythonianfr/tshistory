@@ -10,10 +10,7 @@ import threading
 import tempfile
 import shutil
 import zlib
-from functools import (
-    partial,
-    reduce
-)
+from functools import reduce
 from contextlib import contextmanager
 from pathlib import Path
 from warnings import warn
