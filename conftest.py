@@ -180,35 +180,3 @@ tsx = make_tsx(
     http_server.httpapi,
     http_client.Client
 )
-
-
-# formula test
-URI2 = 'http://test-uri2'
-
-@pytest.fixture(scope='session')
-def mapihttp(engine):
-    schema.tsschema('ns-test-local').create(engine, reset=True)
-    schema.tsschema('ns-test-remote').create(engine, reset=True)
-
-    wsgitester = WebTester(
-        app.make_app(
-            tsh_api.timeseries(
-                DBURI,
-                namespace='ns-test-remote',
-                handler=formula_timeseries
-            ),
-            http_server.httpapi
-        )
-    )
-    with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
-        with_tester(URI2, resp, wsgitester)
-
-        yield tsh_api.timeseries(
-            DBURI,
-            namespace='ns-test-local',
-            handler=tsio.timeseries,
-            sources={
-                'remote': (URI2, 'ns-test-remote'),
-                'nope': ('http://unavailable', 'ns-test-unavailable-remote')
-            }
-        )
