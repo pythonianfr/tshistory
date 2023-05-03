@@ -4,7 +4,7 @@ from psyl.lisp import parse
 
 __all__ = [
     'query', 'and_', 'or_', 'not_', 'tzaware',
-    'byname', 'bymetakey', 'bymetaitems',
+    'byname', 'bymetakey', 'bymetaitem',
     'lt', 'lte', 'gt', 'gte'
 ]
 
