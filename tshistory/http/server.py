@@ -4,7 +4,6 @@ import pandas as pd
 import werkzeug
 from flask import (
     Blueprint,
-    request,
     make_response
 )
 from flask_restx import (

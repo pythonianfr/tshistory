@@ -6,8 +6,7 @@ from typing import (
     Dict,
     List,
     Optional,
-    Tuple,
-    Union
+    Tuple
 )
 from collections import defaultdict
 import warnings

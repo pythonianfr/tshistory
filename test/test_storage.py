@@ -7,8 +7,6 @@ from tshistory.util import _set_cache
 from tshistory.storage import Postgres
 from tshistory.testutil import (
     assert_df,
-    assert_hist,
-    assert_group_equals,
     genserie,
     tempattr,
     utcdt

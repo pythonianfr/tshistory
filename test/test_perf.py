@@ -35,7 +35,7 @@ def test_patch():
     )
     t0 = time()
     for _ in range(100):
-        patched = patch(s1, s2)
+        patch(s1, s2)
     print('100 patches', time() - t0)
 
 
@@ -57,7 +57,7 @@ def test_unit_diff():
     s2[10] = np.nan
     t0 = time()
     for _ in range(1000):
-        diffed = diff(s1, s2)
+        diff(s1, s2)
     print('1000 diffs', time() - t0)
 
 
@@ -91,8 +91,8 @@ def test_hourly_forecast(engine, tracker, ptsh):
                 serie = pd.Series(localbase[idate.hour:idate.hour + 48],
                                   index=dr)
                 with engine.begin() as cn:
-                    diff = tsh.update(cn, serie, name, 'test',
-                                      insertion_date=idate)
+                    tsh.update(cn, serie, name, 'test',
+                               insertion_date=idate)
                 if limit and idx > limit:
                     break
 

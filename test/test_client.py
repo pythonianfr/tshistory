@@ -226,7 +226,7 @@ def test_base(client):
 
 def test_dates(client):
     series_in = genserie(utcdt(2020, 10, 25), 'H', 24)
-    diff = client.update(
+    client.update(
         'test_dates', series_in, 'Babar',
         insertion_date=utcdt(2020, 10, 1)
     )

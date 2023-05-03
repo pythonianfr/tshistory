@@ -371,10 +371,6 @@ def test_pack_unpack_series():
 2021-01-03 00:00:00+00:00    3.0
 """, unpacked)
 
-    series2 = pd.Series(
-        ['a', 'b', 'c'],
-        pd.date_range(utcdt(2021, 1, 1), freq='D', periods=3)
-    )
     meta = series_metadata(series1)
     assert_df("""
 2021-01-01 00:00:00+00:00    1.0
