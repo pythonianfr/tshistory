@@ -18,6 +18,5 @@ tasks:
       pip install -e tshistory --prefer-binary
   - run-tests: |
       export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/13/bin
-      pip3 install pytest pytest_sa_pg responses
       cd tshistory
       tox
