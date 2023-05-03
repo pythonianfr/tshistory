@@ -676,7 +676,7 @@ def test_block_staircase_hourly_day_ahead(client, hist_file_name, sc_file_name):
 def test_log_strip(client):
     series = genserie(utcdt(2020, 1, 1), 'D', 5)
     for d in range(5):
-        res = client.update(
+        client.update(
             'test-log',
             series,
             'Babar',
