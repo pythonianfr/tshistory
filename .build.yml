@@ -9,14 +9,9 @@ sources:
 secrets:
   -  2697538f-6b29-4af7-9fb2-e17694886c3f
 tasks:
-  - install: |
-      export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/13/bin
-      pip3 install pandas==1.5.3
-      pip3 install numpy==1.23.4
-      pip3 install pip --upgrade
-      pip install tox wheel setuptools webtest pytest_sa_pg pystuck --quiet
-      pip install -e tshistory --prefer-binary
   - run-tests: |
       export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/13/bin
+      pip3 install pip --upgrade
+      pip install tox
       cd tshistory
       tox
