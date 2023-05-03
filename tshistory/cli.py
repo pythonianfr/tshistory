@@ -386,7 +386,7 @@ def check(db_uri, series=None, namespace='tsh'):
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
 def shell(db_uri, namespace='tsh'):
-    tsa = timeseries(
+    tsa = timeseries(  # noqa: F841
         find_dburi(db_uri),
         namespace,
         handler=tshclass
