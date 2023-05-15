@@ -1,12 +1,14 @@
 from pathlib import Path
 from setuptools import setup, find_packages
 
+from tshistory import __version__
+
 
 doc = Path(__file__).parent / 'README.md'
 
 
 setup(name='tshistory',
-      version='0.18.0',
+      version=__version__,
       author='Pythonian',
       author_email='aurelien.campeas@pythonian.fr, arnaud.campeas@pythonian.fr',
       url='https://hg.sr.ht/~pythonian/tshistory',
