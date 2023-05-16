@@ -40,6 +40,7 @@ def run_migrations(engine, namespace, interactive=False):
 def initial_migration(engine, namespace, interactive):
     migrate_metadata(engine, namespace, interactive)
     fix_user_metadata(engine, namespace, interactive)
+    migrate_to_baskets(engine, namespace, interactive)
 
 
 def migrate_metadata(engine, namespace, interactive):
@@ -127,3 +128,16 @@ def fix_user_metadata(engine, namespace, interactive):
                 name=name,
                 meta=dumps({})
             )
+
+
+def migrate_to_baskets(engine, namespace, interactive):
+    sql = f"""
+    create table if not exists "{namespace}".basket (
+      id serial primary key,
+      name text not null,
+      "query" text not null,
+      unique(name)
+    );
+    """
+    with engine.begin() as cn:
+        cn.execute(sql)
