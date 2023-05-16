@@ -1,4 +1,5 @@
 from json import dumps
+
 from dbcache import (
     api as dbapi,
     schema as dbschema
@@ -9,6 +10,9 @@ from tshistory.util import (
     read_versions,
     NoVersion
 )
+
+
+MIGRATE = entry_points(group='tshistory.migrate.run_migrations')
 
 
 def yesno(msg):
@@ -35,6 +39,12 @@ def run_migrations(engine, namespace, interactive=False):
         initial_migration(engine, namespace, interactive)
         store = dbapi.kvstore(str(engine.url), namespace=storens)
         store.set('tshistory-version', known_version)
+
+
+    # call the plugins
+    for migrator_plugin in MIGRATE:
+        migrator = migrator_plugin.load()
+        migrator(engine, namespace, interactive)
 
 
 def initial_migration(engine, namespace, interactive):
