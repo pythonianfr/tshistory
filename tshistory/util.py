@@ -21,7 +21,9 @@ import pandas as pd
 from pandas.api.types import is_datetime64tz_dtype
 from sqlalchemy.engine import url
 from sqlalchemy.engine.base import Engine
+from sqlalchemy import exc
 from inireader import reader
+from dbcache.api import kvstore
 
 
 def logme(name, level=logging.DEBUG):
@@ -71,6 +73,8 @@ def unflatten(flattened):
     return nested
 
 
+# config stuff
+
 def get_cfg_path():
     if 'TSHISTORYCFGPATH' in os.environ:
         cfgpath = Path(os.environ['TSHISTORYCFGPATH'])
@@ -113,6 +117,28 @@ def find_dburi(something: str) -> str:
             f'could not find the `{something}` entry in the '
             f'[dburi] section of the `{cfgpath.resolve()}` '
             f'conf file (cause: {exc.__class__.__name__} -> {exc})'
+        )
+
+
+# versions
+
+def ensure_versions(uri, namespace):
+    from tshistory import __version__ as known_version
+    store = kvstore(uri, f'{namespace}-kvstore')
+    try:
+        stored_version = store.get('tshistory-version')
+    except exc.ProgrammingError:
+        raise Exception(
+            f'version of the software ({known_version}) '
+            f'and the db  differ. '
+            'Please install it or run the `migrate` command'
+        )
+
+    if stored_version != known_version:
+        raise Exception(
+            f'version of the software ({known_version}) '
+            f'and the db ({stored_version}) differ. '
+            'Please run the `migrate` command'
         )
 
 

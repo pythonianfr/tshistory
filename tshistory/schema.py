@@ -1,6 +1,12 @@
 from pathlib import Path
 
+from dbcache import (
+    api as kvapi,
+    schema as kvschema
+)
 from sqlhelp import sqlfile
+
+from tshistory import __version__
 
 
 SERIES = Path(__file__).parent / 'schema.sql'
@@ -16,6 +22,7 @@ class tsschema(object):
     def create(self, engine, reset=False):
         self._create_series(engine, self.namespace)
         self._create_group(engine, reset=reset)
+        self._create_kvstore(engine)
 
     def _create_series(self, engine, namespace):
         with engine.begin() as cn:
@@ -55,3 +62,9 @@ class tsschema(object):
         # group registry & mapping
         with engine.begin() as cn:
             cn.execute(sqlfile(GROUP, ns=self.namespace))
+
+    def _create_kvstore(self, engine):
+        ns = f'{self.namespace}-kvstore'
+        kvschema.init(engine, ns=ns)
+        kvstore = kvapi.kvstore(str(engine.url), namespace=ns)
+        kvstore.set('tshistory-version', __version__)

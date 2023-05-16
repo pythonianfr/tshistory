@@ -16,6 +16,7 @@ import pandas as pd
 
 from tshistory.util import (
     ensuretz,
+    ensure_versions,
     find_most_specific_tshclass,
     find_most_specific_http_client,
     threadpool
@@ -38,6 +39,7 @@ class timeseries:
         if parseduri.scheme.startswith('postgres'):
             if handler is None:
                 handler = find_most_specific_tshclass()
+            ensure_versions(uri, namespace)
             return mainsource(
                 uri,
                 namespace,
