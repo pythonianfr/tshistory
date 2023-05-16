@@ -39,6 +39,7 @@ def run_migrations(engine, namespace, interactive=False):
 
 def initial_migration(engine, namespace, interactive):
     migrate_metadata(engine, namespace, interactive)
+    fix_user_metadata(engine, namespace, interactive)
 
 
 def migrate_metadata(engine, namespace, interactive):
@@ -106,3 +107,23 @@ def migrate_metadata(engine, namespace, interactive):
         cn.execute(
             f'alter table "{ns}".registry drop column if exists "tablename"'
         )
+
+
+def fix_user_metadata(engine, namespace, interactive):
+    ns = namespace
+
+    with engine.begin() as cn:
+        names = [
+            name for name, in cn.execute(
+                f'select name from "{ns}".registry '
+                'where metadata is null'
+            ).fetchall()
+        ]
+        for name in names:
+            cn.execute(
+                f'update "{ns}".registry '
+                'set metadata = %(meta)s '
+                'where name = %(name)s',
+                name=name,
+                meta=dumps({})
+            )

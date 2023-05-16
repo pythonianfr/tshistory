@@ -237,30 +237,6 @@ def migrate_to_baskets(db_uri, namespace='tsh'):
         cn.execute(sql)
 
 
-@tsh.command(name='fix-user-metadata')
-@click.argument('db-uri')
-@click.option('--namespace', default='tsh')
-def fix_user_metadata(db_uri, namespace='tsh'):
-    engine = create_engine(find_dburi(db_uri))
-    ns = namespace
-
-    with engine.begin() as cn:
-        names = [
-            name for name, in cn.execute(
-                f'select name from "{ns}".registry '
-                'where metadata is null'
-            ).fetchall()
-        ]
-        for name in names:
-            cn.execute(
-                f'update "{ns}".registry '
-                'set metadata = %(meta)s '
-                'where name = %(name)s',
-                name=name,
-                meta=dumps({})
-            )
-
-
 # db maintenance
 
 @tsh.command(name='init-db')
