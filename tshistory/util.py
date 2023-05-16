@@ -122,20 +122,33 @@ def find_dburi(something: str) -> str:
 
 # versions
 
-def ensure_versions(uri, namespace):
+class NoVersion(Exception):
+    pass
+
+
+class VersionMismatch(Exception):
+    pass
+
+
+def read_versions(uri, namespace, version_string='tshistory-version'):
     from tshistory import __version__ as known_version
     store = kvstore(uri, f'{namespace}-kvstore')
     try:
         stored_version = store.get('tshistory-version')
     except exc.ProgrammingError:
-        raise Exception(
+        raise NoVersion(
             f'version of the software ({known_version}) '
             f'and the db  differ. '
             'Please install it or run the `migrate` command'
         )
 
+    return stored_version, known_version
+
+
+def ensure_versions(uri, namespace):
+    stored_version, known_version = read_versions(uri, namespace)
     if stored_version != known_version:
-        raise Exception(
+        raise VersionMismatch(
             f'version of the software ({known_version}) '
             f'and the db ({stored_version}) differ. '
             'Please run the `migrate` command'

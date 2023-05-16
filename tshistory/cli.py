@@ -14,6 +14,7 @@ from tshistory.util import (
     find_dburi,
     get_cfg_path
 )
+from tshistory.migrate import run_migrations
 from tshistory.schema import tsschema
 
 
@@ -380,6 +381,15 @@ def check(db_uri, series=None, namespace='tsh'):
         print(idx, s, 'inserts={}, read-time={} {}'.format(
             len(hist), time() - t0, monmsg)
         )
+
+
+@tsh.command(name='migrate')
+@click.argument('db-uri')
+@click.option('--interactive', is_flag=True, default=True)
+@click.option('--namespace', default='tsh')
+def migrate(db_uri, interactive=True, namespace='tsh'):
+    engine = create_engine(find_dburi(db_uri))
+    run_migrations(engine, namespace, interactive=True)
 
 
 @tsh.command(name='shell')
