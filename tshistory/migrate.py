@@ -1,8 +1,10 @@
+from json import dumps
 from dbcache import (
     api as dbapi,
     schema as dbschema
 )
 
+from tshistory.tsio import timeseries as tshclass
 from tshistory.util import (
     read_versions,
     NoVersion
@@ -33,3 +35,74 @@ def run_migrations(engine, namespace, interactive=False):
         initial_migration(engine, namespace, interactive)
         store = dbapi.kvstore(str(engine.url), namespace=storens)
         store.set('tshistory-version', known_version)
+
+
+def initial_migration(engine, namespace, interactive):
+    migrate_metadata(engine, namespace, interactive)
+
+
+def migrate_metadata(engine, namespace, interactive):
+    ns = namespace
+
+    with engine.begin() as cn:
+
+        # check initial condition
+        unmigrated = cn.execute(
+            "select exists (select 1 "
+            "from information_schema.columns "
+            f"where table_schema='{ns}' and "
+            "        table_name='registry' and "
+            "        column_name='tablename'"
+            ")"
+        ).scalar()
+        # add internal_metadata, add gin indexes
+        # rename seriesname -> name
+        # split internal / user metadata
+        # drop tablename
+        cn.execute(
+            f'alter table "{ns}".registry '
+            f'add column if not exists "internal_metadata" jsonb'
+        )
+        cn.execute(
+            f'create index if not exists idx_metadata '
+            f'on "{ns}".registry using gin (metadata)'
+        )
+        cn.execute(
+            f'create index if not exists idx_internal_metadata '
+            f'on "{ns}".registry using gin (internal_metadata)'
+        )
+        if unmigrated:
+            cn.execute(
+                f'alter table "{ns}".registry rename column seriesname to name'
+            )
+
+        # collect all series metadata and split internal / user
+        if unmigrated:
+            print('migrating data')
+            allmetas = {}
+            metakeys = tshclass.metakeys | {'supervision_status'}
+
+            for name, tablename, imeta in cn.execute(
+                    f'select name, tablename, metadata from "{ns}".registry'):
+                umeta = {}
+                for k in list(imeta):
+                    if k not in metakeys:
+                        umeta[k] = imeta.pop(k)
+                imeta['tablename'] = tablename
+                allmetas[name] = (imeta, umeta)
+
+            # store them
+            for name, (imeta, umeta) in allmetas.items():
+                cn.execute(
+                    f'update "{ns}".registry '
+                    'set (internal_metadata, metadata) = '
+                    '    (%(imeta)s, %(umeta)s) '
+                    'where name=%(name)s',
+                    name=name,
+                    imeta=dumps(imeta),
+                    umeta=dumps(umeta)
+                )
+
+        cn.execute(
+            f'alter table "{ns}".registry drop column if exists "tablename"'
+        )
