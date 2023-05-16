@@ -21,6 +21,7 @@ def yesno(msg):
 
 
 def run_migrations(engine, namespace, interactive=False):
+    print('Running migrations for tshistory.')
     # determine versions
     storens = f'{namespace}-kvstore'
     stored_version = None
@@ -48,6 +49,7 @@ def run_migrations(engine, namespace, interactive=False):
 
 
 def initial_migration(engine, namespace, interactive):
+    print('initial migration')
     migrate_metadata(engine, namespace, interactive)
     fix_user_metadata(engine, namespace, interactive)
     migrate_to_baskets(engine, namespace, interactive)
@@ -56,6 +58,7 @@ def initial_migration(engine, namespace, interactive):
 def migrate_metadata(engine, namespace, interactive):
     ns = namespace
 
+    print(f'migrate metadata for {ns}')
     with engine.begin() as cn:
 
         # check initial condition
@@ -123,6 +126,7 @@ def migrate_metadata(engine, namespace, interactive):
 def fix_user_metadata(engine, namespace, interactive):
     ns = namespace
 
+    print(f'fix user metadata for {ns}')
     with engine.begin() as cn:
         names = [
             name for name, in cn.execute(
@@ -141,6 +145,8 @@ def fix_user_metadata(engine, namespace, interactive):
 
 
 def migrate_to_baskets(engine, namespace, interactive):
+    print(f'migrate to baskets for {namespace}')
+
     sql = f"""
     create table if not exists "{namespace}".basket (
       id serial primary key,
