@@ -16,6 +16,7 @@ setup(name='tshistory',
       long_description=doc.read_text(),
       long_description_content_type='text/markdown',
       packages=find_packages(),
+      python_requires='>= 3.8',
       install_requires=[
           'pandas >= 1.0.5, < 1.6',
           'dbcache',
