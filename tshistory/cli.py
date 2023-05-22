@@ -3,6 +3,8 @@ from collections import defaultdict
 from json import dumps
 
 from pkg_resources import iter_entry_points
+from importlib.metadata import entry_points
+
 import click
 from sqlalchemy import create_engine
 from dateutil.parser import parse as temporal
@@ -14,7 +16,6 @@ from tshistory.util import (
     find_dburi,
     get_cfg_path
 )
-from tshistory.migrate import run_migrations
 from tshistory.schema import tsschema
 
 
@@ -278,7 +279,18 @@ def check(db_uri, series=None, namespace='tsh'):
 @click.option('--namespace', default='tsh')
 def migrate(db_uri, interactive=True, namespace='tsh'):
     engine = create_engine(find_dburi(db_uri))
-    run_migrations(engine, namespace, interactive=True)
+    # call the plugins
+    eps = sorted(
+        [
+            ep.load()
+            for ep in entry_points(group='tshistory.migrate.Migrator')
+        ],
+        key=lambda x: x._order
+    )
+    for migrator in eps:
+        migrator(
+            engine, namespace, interactive=True
+        ).run_migrations()
 
 
 @tsh.command(name='shell')

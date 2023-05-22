@@ -5,6 +5,7 @@ from dbcache import (
     schema as dbschema
 )
 
+from tshistory import __version__
 from tshistory.tsio import timeseries as tshclass
 from tshistory.util import (
     read_versions,
@@ -12,47 +13,53 @@ from tshistory.util import (
 )
 
 
-MIGRATE = entry_points(group='tshistory.migrate.run_migrations')
-
 
 def yesno(msg):
     out = input(msg)
     return out in 'yY'
 
 
-def run_migrations(engine, namespace, interactive=False):
-    print('Running migrations for tshistory.')
-    # determine versions
-    storens = f'{namespace}-kvstore'
-    stored_version = None
-    try:
-        stored_version, known_version = read_versions(str(engine.url), namespace)
-    except NoVersion:
-        # bootstrap: we're in a stage where this was never installed
-        if interactive:
-            if not yesno('Initialize the versions ? [y/n] '):
-                return
-        dbschema.init(engine, ns=storens)
+class Migrator:
+    _order = 0
+    _package = 'tshistory'
+    _known_version = __version__
+    __slots__ = 'engine', 'namespace', 'interactive'
 
-    if stored_version is None:
-        # first time
-        from tshistory import __version__ as known_version
-        initial_migration(engine, namespace, interactive)
-        store = dbapi.kvstore(str(engine.url), namespace=storens)
-        store.set('tshistory-version', known_version)
+    def __init__(self, engine, namespace, interactive=False):
+        self.engine = engine
+        self.namespace = namespace
+        self.interactive = interactive
 
+    def run_migrations(self):
+        print(f'Running migrations for {self._package}.')
+        # determine versions
+        storens = f'{self.namespace}-kvstore'
+        stored_version = None
+        version_string = f'{self._package}-version'
+        try:
+            stored_version, known_version = read_versions(
+                str(self.engine.url),
+                self.namespace,
+                version_string=version_string
+            )
+        except NoVersion:
+            # bootstrap: we're in a stage where this was never installed
+            if self.interactive:
+                if not yesno('Initialize the versions ? [y/n] '):
+                    return
+            dbschema.init(self.engine, ns=storens)
 
-    # call the plugins
-    for migrator_plugin in MIGRATE:
-        migrator = migrator_plugin.load()
-        migrator(engine, namespace, interactive)
+        if stored_version is None:
+            # first time
+            self.initial_migration(self.engine, self.namespace, self.interactive)
+            store = dbapi.kvstore(str(self.engine.url), namespace=storens)
+            store.set(version_string, self._known_version)
 
-
-def initial_migration(engine, namespace, interactive):
-    print('initial migration')
-    migrate_metadata(engine, namespace, interactive)
-    fix_user_metadata(engine, namespace, interactive)
-    migrate_to_baskets(engine, namespace, interactive)
+    def initial_migration(self):
+        print('initial migration')
+        migrate_metadata(self.engine, self.namespace, self.interactive)
+        fix_user_metadata(self.engine, self.namespace, self.interactive)
+        migrate_to_baskets(self.engine, self.namespace, self.interactive)
 
 
 def migrate_metadata(engine, namespace, interactive):

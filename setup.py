@@ -33,7 +33,7 @@ setup(name='tshistory',
           'flask < 2.2',
           'flask-restx >= 1.0.3, < 1.1',
           'jinja2 < 3.2',
-          'requests'
+          'requests',
       ],
       package_data={'tshistory': [
           'schema.sql',
@@ -43,7 +43,11 @@ setup(name='tshistory',
       entry_points={
           'console_scripts': [
               'tsh=tshistory.cli:tsh'
-          ]},
+          ],
+          'tshistory.migrate.Migrator': [
+              'migrator=tshistory.migrate:Migrator'
+          ]
+      },
       classifiers=[
           'Development Status :: 4 - Beta',
           'Intended Audience :: Developers',
