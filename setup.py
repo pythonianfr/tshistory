@@ -34,6 +34,7 @@ setup(name='tshistory',
           'flask-restx >= 1.0.3, < 1.1',
           'jinja2 < 3.2',
           'requests',
+          'version-parser'
       ],
       package_data={'tshistory': [
           'schema.sql',

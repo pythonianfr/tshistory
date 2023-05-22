@@ -1,5 +1,6 @@
 from json import dumps
 
+from version_parser import Version as _Version
 from dbcache import (
     api as dbapi,
     schema as dbschema
@@ -12,6 +13,26 @@ from tshistory.util import (
     NoVersion
 )
 
+
+VERSIONS = {}
+
+
+class Version(_Version):
+
+    def __init__(self, vstring, *a, **k):
+        super().__init__(vstring, *a, **k)
+        self.raw_version = vstring
+
+    def __hash__(self):
+        return hash(self.raw_version)
+
+
+def version(numversion):
+    def decorate(func):
+        VERSIONS[Version(numversion)] = func
+        return func
+
+    return decorate
 
 
 def yesno(msg):
@@ -51,9 +72,21 @@ class Migrator:
 
         if stored_version is None:
             # first time
-            self.initial_migration(self.engine, self.namespace, self.interactive)
+            self.initial_migration()
             store = dbapi.kvstore(str(self.engine.url), namespace=storens)
             store.set(version_string, self._known_version)
+
+        to_migrate = list(VERSIONS)
+        # filter from _known
+        if self._known_version is not None:
+            known = Version(self._known_version)
+            to_migrate = [
+                ver for ver in to_migrate
+                if ver > known
+            ]
+        for version in to_migrate:
+            VERSIONS[version](self.engine, self.namespace, self.interactive)
+
 
     def initial_migration(self):
         print('initial migration')
