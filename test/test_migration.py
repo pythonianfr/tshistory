@@ -21,7 +21,7 @@ def test_migrate(engine):
 
     assert len(VERSIONS) == 3
 
-    mig = Migrator(engine, 'tsh', True)
+    mig = Migrator(str(engine.url), 'tsh', True)
     mig.run_migrations()
     assert run == [('foo', 'tsh', True), ('bar', 'tsh', True), ('quux', 'tsh', True)]
 

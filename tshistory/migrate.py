@@ -1,5 +1,10 @@
 from json import dumps
 
+from sqlalchemy import (
+    create_engine,
+    exc
+)
+
 from version_parser import Version as _Version
 from dbcache import (
     api as dbapi,
@@ -44,12 +49,16 @@ class Migrator:
     _order = 0
     _package = 'tshistory'
     _known_version = __version__
-    __slots__ = 'engine', 'namespace', 'interactive'
+    __slots__ = 'uri', 'namespace', 'interactive'
 
-    def __init__(self, engine, namespace, interactive=False):
-        self.engine = engine
+    def __init__(self, uri, namespace, interactive=False):
+        self.uri = uri
         self.namespace = namespace
         self.interactive = interactive
+
+    @property
+    def engine(self):
+        return create_engine(self.uri)
 
     def run_migrations(self):
         print(f'Running migrations for {self._package}.')
@@ -57,13 +66,10 @@ class Migrator:
         storens = f'{self.namespace}-kvstore'
         stored_version = None
         version_string = f'{self._package}-version'
+        store = dbapi.kvstore(self.uri, namespace=storens)
         try:
-            stored_version, known_version = read_versions(
-                str(self.engine.url),
-                self.namespace,
-                version_string=version_string
-            )
-        except NoVersion:
+            stored_version = store.get(version_string)
+        except exc.ProgrammingError:
             # bootstrap: we're in a stage where this was never installed
             if self.interactive:
                 if not yesno('Initialize the versions ? [y/n] '):
@@ -72,8 +78,8 @@ class Migrator:
 
         if stored_version is None:
             # first time
+            print(f'initial migration to {self._known_version} for {self._package}')
             self.initial_migration()
-            store = dbapi.kvstore(str(self.engine.url), namespace=storens)
             store.set(version_string, self._known_version)
 
         to_migrate = list(VERSIONS)
@@ -85,14 +91,13 @@ class Migrator:
                 if ver > known
             ]
         for version in to_migrate:
-            VERSIONS[version](self.engine, self.namespace, self.interactive)
-
+            VERSIONS[version](self.uri, self.namespace, self.interactive)
 
     def initial_migration(self):
-        print('initial migration')
-        migrate_metadata(self.engine, self.namespace, self.interactive)
-        fix_user_metadata(self.engine, self.namespace, self.interactive)
-        migrate_to_baskets(self.engine, self.namespace, self.interactive)
+        engine = self.engine
+        migrate_metadata(engine, self.namespace, self.interactive)
+        fix_user_metadata(engine, self.namespace, self.interactive)
+        migrate_to_baskets(engine, self.namespace, self.interactive)
 
 
 def migrate_metadata(engine, namespace, interactive):
