@@ -91,7 +91,7 @@ class Postgres:
 
     """
     __slots__ = ('cn', 'name', 'tsh', 'tablename')
-    _max_bucket_size = 250
+    _max_bucket_size = 150
 
     def __init__(self, cn, tsh, name):
         self.cn = cn
