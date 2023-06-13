@@ -98,6 +98,10 @@ class Migrator:
         migrate_metadata(engine, self.namespace, self.interactive)
         fix_user_metadata(engine, self.namespace, self.interactive)
         migrate_to_baskets(engine, self.namespace, self.interactive)
+        gns = f'{self.namespace}.group'
+        migrate_metadata(engine, gns, self.interactive)
+        fix_user_metadata(engine, gns, self.interactive)
+        migrate_to_baskets(engine, gns, self.interactive)
 
 
 def migrate_metadata(engine, namespace, interactive):
