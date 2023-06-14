@@ -177,11 +177,6 @@ class with_http_bridge:
         )
 
         resp.add_callback(
-            responses.GET, uri + '/series/supervision',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
             responses.DELETE, uri + '/series/state',
             callback=write_request_bridge(wsgitester.delete)
         )
@@ -282,36 +277,6 @@ class with_http_bridge:
         )
 
         resp.add_callback(
-            responses.GET, uri + '/series/formula',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.PATCH, uri + '/series/formula',
-            callback=write_request_bridge(wsgitester.patch)
-        )
-
-        resp.add_callback(
-            responses.GET, uri + '/series/formula_depth',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.POST, uri + '/series/eval_formula',
-            callback=write_request_bridge(wsgitester.post)
-        )
-
-        resp.add_callback(
-            responses.GET, uri + '/series/xl',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.GET, uri + '/series/formula_components',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
             responses.GET, uri + '/group/state',
             callback=partial(read_request_bridge, wsgitester)
         )
@@ -354,86 +319,6 @@ class with_http_bridge:
         resp.add_callback(
             responses.GET, uri + '/group/catalog',
             callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.GET, uri + '/group/formula',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.PUT, uri + '/group/formula',
-            callback=write_request_bridge(wsgitester.put)
-        )
-
-        resp.add_callback(
-            responses.GET, uri + '/group/boundformula',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.PUT, uri + '/group/boundformula',
-            callback=write_request_bridge(wsgitester.put)
-        )
-
-        resp.add_callback(
-            responses.PUT, uri + '/cache/policy',
-            callback=write_request_bridge(wsgitester.put)
-        )
-
-        resp.add_callback(
-            responses.PATCH, uri + '/cache/policy',
-            callback=write_request_bridge(wsgitester.patch)
-        )
-
-        resp.add_callback(
-            responses.DELETE, uri + '/cache/policy',
-            callback=write_request_bridge(wsgitester.delete)
-        )
-
-        resp.add_callback(
-            responses.PUT, uri + '/cache/mapping',
-            callback=write_request_bridge(wsgitester.put)
-        )
-
-        resp.add_callback(
-            responses.DELETE, uri + '/cache/mapping',
-            callback=write_request_bridge(wsgitester.delete)
-        )
-
-        resp.add_callback(
-            responses.GET, uri + '/cache/cacheable',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.GET, uri + '/cache/policies',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.GET, uri + '/cache/policy-series',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.GET, uri + '/cache/series-policy',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.GET, uri + '/cache/series-has-cache',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.DELETE, uri + '/cache/series-has-cache',
-            callback=write_request_bridge(wsgitester.delete)
-        )
-
-        resp.add_callback(
-            responses.PUT, uri + '/cache/refresh-policy-now',
-            callback=write_request_bridge(wsgitester.put)
         )
 
 
