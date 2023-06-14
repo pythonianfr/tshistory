@@ -99,6 +99,7 @@ class Migrator:
         migrate_metadata(engine, self.namespace, self.interactive)
         fix_user_metadata(engine, self.namespace, self.interactive)
         migrate_to_baskets(engine, self.namespace, self.interactive)
+        fix_groups_metadata(self.engine, self.namespace, self.interactive)
         gns = f'{self.namespace}.group'
         migrate_metadata(engine, gns, self.interactive)
         fix_user_metadata(engine, gns, self.interactive)
@@ -192,6 +193,46 @@ def fix_user_metadata(engine, namespace, interactive):
                 name=name,
                 meta=dumps({})
             )
+
+
+def fix_groups_metadata(engine, namespace, interactive, deletebroken=False):
+    tsh = tshclass(namespace)
+    for name, kind in tsh.list_groups(engine).items():
+        if kind != 'primary':
+            continue
+
+        if deletebroken:
+            try:
+                tsh.group_get(engine, name)
+            except:
+                print('Deleting broken group', name)
+                tsh.group_delete(engine, name)
+                continue
+
+        with engine.begin() as cn:
+            tsmeta = cn.execute(
+                'select tsr.metadata '
+                f'from "{namespace}".group_registry as gr, '
+                f'     "{namespace}".groupmap as gm,'
+                f'     "{namespace}.group".registry as tsr '
+                'where gr.name = %(name)s and '
+                '      gr.id = gm.groupid and '
+                '      gm.seriesid = tsr.id '
+                'limit 1',
+                name=name
+            ).scalar()
+
+            grmeta = tsh.group_metadata(engine, name) or {}
+            #import pdb;pdb.set_trace()
+            grmeta.update(tsmeta)
+            cn.execute(
+                f'update "{namespace}".group_registry '
+                'set metadata = %(metadata)s '
+                f'where name = %(name)s',
+                metadata=dumps(grmeta),
+                name=name
+            )
+        print(f'updated `{name}` with {grmeta}')
 
 
 def migrate_to_baskets(engine, namespace, interactive):

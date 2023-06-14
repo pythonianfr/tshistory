@@ -169,46 +169,13 @@ def configpath():
 @click.argument('db-uri')
 @click.option('--deletebroken', default=False, is_flag=True)
 @click.option('--namespace', default='tsh')
-def fix_groups_metadata(db_uri, deletebroken=False, namespace='tsh'):
+def fix_groups_metadata_(db_uri, deletebroken=False, namespace='tsh'):
     engine = create_engine(find_dburi(db_uri))
-    tsh = tshclass()
 
-    for name, kind in tsh.list_groups(engine).items():
-        if kind != 'primary':
-            continue
-
-        if deletebroken:
-            try:
-                tsh.group_get(engine, name)
-            except:
-                print('Deleting broken group', name)
-                tsh.group_delete(engine, name)
-                continue
-
-        with engine.begin() as cn:
-            tsmeta = cn.execute(
-                'select tsr.metadata '
-                f'from "{namespace}".group_registry as gr, '
-                f'     "{namespace}".groupmap as gm,'
-                f'     "{namespace}.group".registry as tsr '
-                'where gr.name = %(name)s and '
-                '      gr.id = gm.groupid and '
-                '      gm.seriesid = tsr.id '
-                'limit 1',
-                name=name
-            ).scalar()
-
-            grmeta = tsh.group_metadata(engine, name) or {}
-            #import pdb;pdb.set_trace()
-            grmeta.update(tsmeta)
-            cn.execute(
-                f'update "{namespace}".group_registry '
-                'set metadata = %(metadata)s '
-                f'where name = %(name)s',
-                metadata=dumps(grmeta),
-                name=name
-            )
-        print(f'updated `{name}` with {grmeta}')
+    from tshistory.migrate import fix_groups_metadata
+    fix_groups_metadata(
+        engine, namespace, interactive=True, deletebroken=deletebroken
+    )
 
 
 @tsh.command(name='migrate-to-groups')
@@ -219,8 +186,6 @@ def migrate_to_groups(db_uri, reset=False, namespace='tsh'):
     engine = create_engine(find_dburi(db_uri))
     sch = tsschema(namespace)
     sch._create_group(engine, reset)
-
-
 
 
 # db maintenance
