@@ -276,8 +276,9 @@ def check(db_uri, series=None, namespace='tsh'):
 @tsh.command(name='migrate')
 @click.argument('db-uri')
 @click.option('--interactive', is_flag=True, default=True)
+@click.option('--initial')
 @click.option('--namespace', default='tsh')
-def migrate(db_uri, interactive=True, namespace='tsh'):
+def migrate(db_uri, interactive=True, initial=None, namespace='tsh'):
     uri = find_dburi(db_uri)
     # call the plugins
     eps = sorted(
@@ -289,7 +290,7 @@ def migrate(db_uri, interactive=True, namespace='tsh'):
     )
     for migrator in eps:
         migrator(
-            uri, namespace, interactive=True
+            uri, namespace, interactive=True, start=initial
         ).run_migrations()
 
 

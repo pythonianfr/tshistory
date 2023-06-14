@@ -49,12 +49,13 @@ class Migrator:
     _order = 0
     _package = 'tshistory'
     _known_version = __version__
-    __slots__ = 'uri', 'namespace', 'interactive'
+    __slots__ = 'uri', 'namespace', 'interactive', 'start'
 
-    def __init__(self, uri, namespace, interactive=False):
+    def __init__(self, uri, namespace, interactive=False, start=None):
         self.uri = uri
         self.namespace = namespace
         self.interactive = interactive
+        self.start = start
 
     @property
     def engine(self):
@@ -76,7 +77,7 @@ class Migrator:
                     return
             dbschema.init(self.engine, ns=storens)
 
-        if stored_version is None:
+        if stored_version is None or self.start == '0.0.0':
             # first time
             print(f'initial migration to {self._known_version} for {self._package}')
             self.initial_migration()
@@ -84,8 +85,8 @@ class Migrator:
 
         to_migrate = list(VERSIONS)
         # filter from _known
-        if self._known_version is not None:
-            known = Version(self._known_version)
+        if self._known_version is not None or self.start is not None:
+            known = Version(self._known_version or self.start)
             to_migrate = [
                 ver for ver in to_migrate
                 if ver > known
