@@ -23,7 +23,7 @@ from tshistory.http import (
 from tshistory.storage import Postgres
 from tshistory.testutil import (
     make_tsx,
-    with_tester,
+    with_http_bridge,
     WebTester
 )
 
@@ -163,7 +163,7 @@ def client(engine):
         )
     )
     with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
-        with_tester(uri, resp, wsgitester)
+        with_http_bridge(uri, resp, wsgitester)
         yield http_client.Client(uri)
 
 

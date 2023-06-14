@@ -163,276 +163,278 @@ def write_request_bridge(method):
     return bridge
 
 
-def with_tester(uri, resp, wsgitester):
-    resp.add_callback(
-        responses.GET, uri + '/series/state',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+class with_http_bridge:
 
-    resp.add_callback(
-        responses.PUT, uri + '/series/state',
-        callback=write_request_bridge(wsgitester.put)
-    )
+    def __init__(self, uri, resp, wsgitester):
+        resp.add_callback(
+            responses.GET, uri + '/series/state',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/supervision',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.PUT, uri + '/series/state',
+            callback=write_request_bridge(wsgitester.put)
+        )
 
-    resp.add_callback(
-        responses.DELETE, uri + '/series/state',
-        callback=write_request_bridge(wsgitester.delete)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/supervision',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PUT, uri + '/series/strip',
-        callback=write_request_bridge(wsgitester.put)
-    )
+        resp.add_callback(
+            responses.DELETE, uri + '/series/state',
+            callback=write_request_bridge(wsgitester.delete)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/insertion_dates',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.PUT, uri + '/series/strip',
+            callback=write_request_bridge(wsgitester.put)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/staircase',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/insertion_dates',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/block_staircase',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/staircase',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/history',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/block_staircase',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/catalog',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/history',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/find',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/catalog',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/baskets',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/find',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PUT, uri + '/series/basket',
-        callback=write_request_bridge(wsgitester.put)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/baskets',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.DELETE, uri + '/series/basket',
-        callback=write_request_bridge(wsgitester.delete)
-    )
+        resp.add_callback(
+            responses.PUT, uri + '/series/basket',
+            callback=write_request_bridge(wsgitester.put)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/basket',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.DELETE, uri + '/series/basket',
+            callback=write_request_bridge(wsgitester.delete)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/basket-definition',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/basket',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PATCH, uri + '/series/state',
-        callback=write_request_bridge(wsgitester.patch)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/basket-definition',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/source',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.PATCH, uri + '/series/state',
+            callback=write_request_bridge(wsgitester.patch)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/metadata',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/source',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PUT, uri + '/series/metadata',
-        callback=write_request_bridge(wsgitester.put)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/metadata',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PATCH, uri + '/series/metadata',
-        callback=write_request_bridge(wsgitester.patch)
-    )
+        resp.add_callback(
+            responses.PUT, uri + '/series/metadata',
+            callback=write_request_bridge(wsgitester.put)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/internal_metadata',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.PATCH, uri + '/series/metadata',
+            callback=write_request_bridge(wsgitester.patch)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/log',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/internal_metadata',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/formula',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/log',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PATCH, uri + '/series/formula',
-        callback=write_request_bridge(wsgitester.patch)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/formula',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/formula_depth',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.PATCH, uri + '/series/formula',
+            callback=write_request_bridge(wsgitester.patch)
+        )
 
-    resp.add_callback(
-        responses.POST, uri + '/series/eval_formula',
-        callback=write_request_bridge(wsgitester.post)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/formula_depth',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/xl',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.POST, uri + '/series/eval_formula',
+            callback=write_request_bridge(wsgitester.post)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/series/formula_components',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/xl',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/group/state',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/series/formula_components',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PATCH, uri + '/group/state',
-        callback=write_request_bridge(wsgitester.patch)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/group/state',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PUT, uri + '/group/state',
-        callback=write_request_bridge(wsgitester.put)
-    )
+        resp.add_callback(
+            responses.PATCH, uri + '/group/state',
+            callback=write_request_bridge(wsgitester.patch)
+        )
 
-    resp.add_callback(
-        responses.DELETE, uri + '/group/state',
-        callback=write_request_bridge(wsgitester.delete)
-    )
+        resp.add_callback(
+            responses.PUT, uri + '/group/state',
+            callback=write_request_bridge(wsgitester.put)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/group/insertion_dates',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.DELETE, uri + '/group/state',
+            callback=write_request_bridge(wsgitester.delete)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/group/history',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/group/insertion_dates',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/group/metadata',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/group/history',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PUT, uri + '/group/metadata',
-        callback=write_request_bridge(wsgitester.put)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/group/metadata',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/group/catalog',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.PUT, uri + '/group/metadata',
+            callback=write_request_bridge(wsgitester.put)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/group/formula',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/group/catalog',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PUT, uri + '/group/formula',
-        callback=write_request_bridge(wsgitester.put)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/group/formula',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/group/boundformula',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.PUT, uri + '/group/formula',
+            callback=write_request_bridge(wsgitester.put)
+        )
 
-    resp.add_callback(
-        responses.PUT, uri + '/group/boundformula',
-        callback=write_request_bridge(wsgitester.put)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/group/boundformula',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PUT, uri + '/cache/policy',
-        callback=write_request_bridge(wsgitester.put)
-    )
+        resp.add_callback(
+            responses.PUT, uri + '/group/boundformula',
+            callback=write_request_bridge(wsgitester.put)
+        )
 
-    resp.add_callback(
-        responses.PATCH, uri + '/cache/policy',
-        callback=write_request_bridge(wsgitester.patch)
-    )
+        resp.add_callback(
+            responses.PUT, uri + '/cache/policy',
+            callback=write_request_bridge(wsgitester.put)
+        )
 
-    resp.add_callback(
-        responses.DELETE, uri + '/cache/policy',
-        callback=write_request_bridge(wsgitester.delete)
-    )
+        resp.add_callback(
+            responses.PATCH, uri + '/cache/policy',
+            callback=write_request_bridge(wsgitester.patch)
+        )
 
-    resp.add_callback(
-        responses.PUT, uri + '/cache/mapping',
-        callback=write_request_bridge(wsgitester.put)
-    )
+        resp.add_callback(
+            responses.DELETE, uri + '/cache/policy',
+            callback=write_request_bridge(wsgitester.delete)
+        )
 
-    resp.add_callback(
-        responses.DELETE, uri + '/cache/mapping',
-        callback=write_request_bridge(wsgitester.delete)
-    )
+        resp.add_callback(
+            responses.PUT, uri + '/cache/mapping',
+            callback=write_request_bridge(wsgitester.put)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/cache/cacheable',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.DELETE, uri + '/cache/mapping',
+            callback=write_request_bridge(wsgitester.delete)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/cache/policies',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/cache/cacheable',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/cache/policy-series',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/cache/policies',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/cache/series-policy',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/cache/policy-series',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.GET, uri + '/cache/series-has-cache',
-        callback=partial(read_request_bridge, wsgitester)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/cache/series-policy',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.DELETE, uri + '/cache/series-has-cache',
-        callback=write_request_bridge(wsgitester.delete)
-    )
+        resp.add_callback(
+            responses.GET, uri + '/cache/series-has-cache',
+            callback=partial(read_request_bridge, wsgitester)
+        )
 
-    resp.add_callback(
-        responses.PUT, uri + '/cache/refresh-policy-now',
-        callback=write_request_bridge(wsgitester.put)
-    )
+        resp.add_callback(
+            responses.DELETE, uri + '/cache/series-has-cache',
+            callback=write_request_bridge(wsgitester.delete)
+        )
+
+        resp.add_callback(
+            responses.PUT, uri + '/cache/refresh-policy-now',
+            callback=write_request_bridge(wsgitester.put)
+        )
 
 
 class WebTester(webtest.TestApp):
@@ -478,7 +480,8 @@ def make_tsx(uri,
              tsioclass,
              httpclass,
              clientclass=None,
-             passthru=None):
+             passthru=None,
+             with_http_bridge=with_http_bridge):
     from tshistory import api as tsh_api
 
     @pytest.fixture(params=['pg', 'http'])
@@ -502,7 +505,7 @@ def make_tsx(uri,
                 )
             )
             with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
-                with_tester(uri, resp, wsgitester)
+                with_http_bridge(uri, resp, wsgitester)
                 if passthru:
                     passthru(resp)
                 # will query the app created above (which in turn uses
