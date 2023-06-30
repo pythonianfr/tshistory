@@ -10,6 +10,7 @@ import threading
 import tempfile
 import shutil
 import zlib
+from importlib.metadata import entry_points
 from functools import reduce
 from contextlib import contextmanager
 from pathlib import Path
@@ -71,6 +72,18 @@ def unflatten(flattened):
             continue
         nested[toplevel][newkey] = value
     return nested
+
+
+# generic functions
+
+def objects(groupname, key=lambda x:x):
+    return sorted(
+        [
+            ep.load()
+            for ep in entry_points(group=groupname)
+        ],
+        key=key
+    )
 
 
 # config stuff

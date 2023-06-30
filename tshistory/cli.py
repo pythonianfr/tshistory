@@ -3,8 +3,6 @@ from collections import defaultdict
 from json import dumps
 
 from pkg_resources import iter_entry_points
-from importlib.metadata import entry_points
-
 import click
 from sqlalchemy import create_engine
 from dateutil.parser import parse as temporal
@@ -14,7 +12,8 @@ from tshistory.tsio import timeseries as tshclass
 from tshistory.api import timeseries
 from tshistory.util import (
     find_dburi,
-    get_cfg_path
+    get_cfg_path,
+    objects
 )
 from tshistory.schema import tsschema
 
@@ -246,14 +245,7 @@ def check(db_uri, series=None, namespace='tsh'):
 def migrate(db_uri, interactive=True, initial=None, namespace='tsh'):
     uri = find_dburi(db_uri)
     # call the plugins
-    eps = sorted(
-        [
-            ep.load()
-            for ep in entry_points(group='tshistory.migrate.Migrator')
-        ],
-        key=lambda x: x._order
-    )
-    for migrator in eps:
+    for migrator in objects('tshistory.migrate.Migrator', key=lambda x: x._order):
         migrator(
             uri, namespace, interactive=True, start=initial
         ).run_migrations()
