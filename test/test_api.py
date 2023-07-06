@@ -19,6 +19,7 @@ from tshistory.testutil import (
     ts_from_csv,
     utcdt
 )
+from tshistory.util import replicate_series
 
 
 def test_base_universal_api(tsx):
@@ -782,6 +783,57 @@ def test_federated_find(mapi):
         'local.basket.fed',
         'remote.basket.fed'
     ]
+
+
+def test_replicate_series(tsx):
+    insertion_dates = pd.date_range(
+        start=pd.Timestamp('2023-07-01', tz='utc'),
+        end=pd.Timestamp('2023-07-03', tz='utc'),
+        freq='D'
+    )
+    for idate in insertion_dates:
+        ts = pd.Series(
+            [1, 2],
+            index = pd.date_range(start=idate.date(), periods=2, freq='H')
+        )
+        tsx.update(
+            'original.series.from.tsx',
+            ts,
+            'sensei',
+            insertion_date=idate
+        )
+
+    tsx.update_metadata('original.series.from.tsx', {'metadata1': 'value1'})
+
+
+    replicate_series(
+        tsx,
+        tsx,
+        'original.series.from.tsx',
+        'replicated.series.from.tsx'
+    )
+
+    hist = tsx.history(
+        'replicated.series.from.tsx'
+    )
+    assert_hist("""
+insertion_date             value_date         
+2023-07-01 00:00:00+00:00  2023-07-01 00:00:00    1.0
+                           2023-07-01 01:00:00    2.0
+2023-07-02 00:00:00+00:00  2023-07-01 00:00:00    1.0
+                           2023-07-01 01:00:00    2.0
+                           2023-07-02 00:00:00    1.0
+                           2023-07-02 01:00:00    2.0
+2023-07-03 00:00:00+00:00  2023-07-01 00:00:00    1.0
+                           2023-07-01 01:00:00    2.0
+                           2023-07-02 00:00:00    1.0
+                           2023-07-02 01:00:00    2.0
+                           2023-07-03 00:00:00    1.0
+                           2023-07-03 01:00:00    2.0
+""", hist)
+
+    metadata = tsx.metadata('replicated.series.from.tsx')
+    assert metadata == {'metadata1': 'value1'}
 
 
 # groups

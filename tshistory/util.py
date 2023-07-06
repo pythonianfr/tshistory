@@ -944,3 +944,31 @@ def extend(klass):
         return func
 
     return decorator
+
+
+# series replication helper
+
+def replicate_series(tsa_origin, tsa_target, origname, targetname=None):
+    if not tsa_origin.exists(origname):
+        raise ValueError(f'"{origname}" is unknown.')
+
+    targetname = origname if targetname is None else targetname
+
+    if tsa_target.exists(targetname):
+        last_insertion_date = tsa_target.insertion_dates(targetname)[-1]
+        insertion_dates = tsa_origin.insertion_dates(origname)
+        insertion_dates = [insertion_date for insertion_date in insertion_dates if  insertion_date > last_insertion_date]
+    else:
+        insertion_dates = tsa_origin.insertion_dates(origname)
+
+    for idate in insertion_dates:
+        ts = tsa_origin.get(origname, revision_date=idate)
+        tsa_target.update(
+            targetname,
+            ts,
+            insertion_date=idate,
+            author='replication'
+        )
+
+    metadata = tsa_origin.metadata(origname)
+    tsa_target.replace_metadata(targetname, metadata)
