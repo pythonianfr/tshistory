@@ -2263,25 +2263,57 @@ def test_no_series(engine, tsh):
     assert tsh.get(engine, 'inexisting_name') is None
 
 
-def test_insert_errors(engine, tsh):
+def test_update_errors(engine, tsh):
     ts = pd.Series([1, 2, 3],
                    index=pd.date_range(start=utcdt(2018, 1, 1),
                                        freq='D', periods=3))
 
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError) as err:
         tsh.update(engine, 42, 'error', 'Babar')
+    assert err.value.args[0] == (
+        "object of type 'int' has no len()"
+    )
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError) as err:
         tsh.update(engine, ts, 42, 'Babar')
+    assert err.value.args[0] == 'Name is not a string'
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError) as err:
         tsh.update(engine, ts, 'error', 42)
+    assert err.value.args[0] == 'Author is not a string'
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError) as err:
         tsh.update(engine, ts, 'error', 'Babar', insertion_date='2010-1-1')
+    assert err.value.args[0] == 'Bad format for insertion date'
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError) as err:
+        tsh.update(engine, ts, 'error', 'Babar', insertion_date=pd.Timestamp('2010-1-1'))
+    assert err.value.args[0] == (
+        'for "error", the specified revision date "2010-01-01 00:00:00" must be tzaware'
+    )
+
+    with pytest.raises(AssertionError) as err:
         tsh.update(engine, ts, 'error', 'Babar', metadata=42)
+    assert err.value.args[0] == 'Bad format for metadata (42)'
+
+    tsh.update(
+        engine,
+        ts,
+        'bad-updates',
+        'Babar'
+    )
+
+    with pytest.raises(AssertionError) as err:
+        tsh.update(
+            engine,
+            ts * 2,
+            'bad-updates',
+            'Babar',
+            insertion_date=pd.Timestamp('1900-1-1', tz='utc')
+        )
+    assert err.value.args[0] == (
+        '"bad-updates" already has a newer revision than "1900-01-01 00:00:00+00:00"'
+    )
 
 
 def test_index_with_nat(engine, tsh):

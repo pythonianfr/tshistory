@@ -729,7 +729,7 @@ class timeseries:
 
     def _guard_insert(self, newts, name, author, metadata, insertion_date):
         assert len(name), 'Name is an empty string'
-        assert isinstance(author, str), 'Author not a string'
+        assert isinstance(author, str), 'Author is not a string'
         assert metadata is None or isinstance(metadata, dict), (
             f'Bad format for metadata ({repr(metadata)})'
         )
@@ -840,13 +840,18 @@ class timeseries:
                       author, insertion_date, metadata):
         tablename = self._series_to_tablename(cn, name)
         if insertion_date is not None:
-            assert insertion_date.tzinfo is not None
+            assert insertion_date.tzinfo is not None, (
+                f'for "{name}", the specified revision date '
+                f'"{insertion_date}" must be tzaware'
+            )
             idate = pd.Timestamp(insertion_date)
         else:
             idate = pd.Timestamp(datetime.utcnow(), tz='UTC')
         latest_idate = self.latest_insertion_date(cn, name)
         if latest_idate:
-            assert idate > latest_idate
+            assert idate > latest_idate, (
+                f'"{name}" already has a newer revision than "{idate}"'
+            )
         if metadata:
             metadata = json.dumps(metadata)
 
