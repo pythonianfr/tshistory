@@ -11,6 +11,7 @@ from tshistory.search import query
 from tshistory.tsio import timeseries
 from tshistory.util import (
     get_cfg_path,
+    logme,
     pack_group,
     pack_series,
     series_metadata,
@@ -473,6 +474,12 @@ class Client:
                 tuplify(k): v
                 for k, v in res.json().items()
             }
+        elif res.status_code in (500, 502, 503, 504):
+            logme('tshistory.http.client.catalog').warning(
+                'remote at %s cannot return a catalog',
+                self.uri
+            )
+            return {}
 
         return res
 
