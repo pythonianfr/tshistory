@@ -521,8 +521,11 @@ def num2float(pdobj):
 
 
 def tojson(ts, precision=1e-14):
-    return ts.to_json(date_format='iso',
-                      double_precision=-int(math.log10(precision)))
+    return ts.to_json(
+        date_format='iso',
+        date_unit='ns',
+        double_precision=-int(math.log10(precision))
+    )
 
 
 def fromjson(jsonb, tsname, tzaware=False):
