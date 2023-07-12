@@ -11,6 +11,7 @@ from tshistory.util import (
     fromjson,
     nary_pack,
     nary_unpack,
+    objects,
     pack_group,
     pack_group_history,
     pack_history,
@@ -32,6 +33,11 @@ from tshistory.testutil import (
     genserie,
     utcdt
 )
+
+
+def test_objects():
+    with pytest.raises(TypeError):
+        objects('tshistory.migrate.Migrator')
 
 
 def test_unflatten():
