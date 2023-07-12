@@ -487,33 +487,12 @@ class mainsource:
         .. highlight:: python
         .. code-block:: python
 
-         from tshistory import search as s
-         query = s.and_(
-             s.tzaware(),
-             s.byname('power capacity'),
-             s.bymetakey('plant'),
-             s.not_(
-                 s.or_(
-                     s.bymetaitem('plant_type', 'oil'),
-                     s.bymetaitem('plant_type', 'coal')
-                 )
-             ),
-             s.bymetaitem('unit', 'mwh'),
-             s.bymetaitem('country', 'fr')
-         )
-         tsa.find(query)
-
-        Another equivalent way is to build a query string, like this:
-
-        .. highlight:: python
-        .. code-block:: python
-
          tsa.find(
             '(by.and '
             '  (by.tzaware)'
             '  (by.name "power capacity") '
             '  (by.meetakey "plant")'
-            '  (by.not (or '
+            '  (by.not (by.or '
             '    (by.metaitem "plant_type" "oil")'
             '    (by.metaitem "plant_type" "coal")))'
             '  (by.metaitem "unit" "mwh")'
@@ -526,25 +505,25 @@ class mainsource:
 
         The following filters can be used from the search module:
 
-        * tzaware(): no parameter, yields time zone aware series names
+        * by.tzaware: no parameter, yields time zone aware series names
 
-        * byname(str): takes a space separated string of word, yields
+        * by.name <str>: takes a space separated string of word, yields
           series names containing the substrings (in order)
 
-        * bymetakey(str): takes a string, strictly matches all series
+        * by.metakey <str>: takes a string, strictly matches all series
           having this metadata key
 
-        * bymetaitems(str, str or number): takes a string (key) and an
+        * by.metaitems <str>  <str-or-number>: takes a string (key) and an
           str (or numerical) value and yields all series strictly
           matching this metadata item
 
-        * and_(*clauses): takes a variable number of filters as above
+        * by.and: takes a variable number of filters as above
           to combine them
 
-        * or_(*clauses): takes a variable number of filters as above
+        * by.or: takes a variable number of filters as above
           to combine them
 
-        * not_(clause): produce the negation of a filter
+        * by.not: produce the negation of a filter
 
         Also inequalities on metadata values can be used:
 
@@ -553,10 +532,7 @@ class mainsource:
         As in `(<= "max_capacity" 900)`
 
         """
-        if isinstance(query, str):
-            qexpr = search.query.fromexpr(query)
-        else:
-            qexpr = query
+        qexpr = search.query.fromexpr(query)
         with self.engine.begin() as cn:
             localnames = self.tsh.find(cn, qexpr)
         remotenames = self.othersources.find(query)

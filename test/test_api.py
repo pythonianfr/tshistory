@@ -6,10 +6,7 @@ import pandas as pd
 import numpy as np
 
 from tshistory.api import timeseries
-from tshistory import (
-    search,
-    tsio
-)
+from tshistory import tsio
 from tshistory.testutil import (
     assert_df,
     assert_hist,
@@ -562,16 +559,16 @@ def test_find(tsx):
     assert tsx.source('find.me.1') == 'local'
 
     # by name
-    r = tsx.find(search.byname('nop'))
+    r = tsx.find('(by.name "nop")')
     assert r == []
 
-    r = tsx.find(search.byname('find.me.1'))
+    r = tsx.find('(by.name "find.me.1")')
     assert r == ['find.me.1']
 
-    r = tsx.find(search.byname('.me.'))
+    r = tsx.find('(by.name ".me.")')
     assert len(r) == 2
 
-    r = tsx.find(search.byname('find 1'))
+    r = tsx.find('(by.name "find 1")')
     assert r == ['find.me.1']
 
     tsx.replace_metadata(
@@ -589,24 +586,24 @@ def test_find(tsx):
     )
 
     # by metadata key
-    r = tsx.find(search.bymetakey('foo'))
+    r = tsx.find('(by.metakey "foo")')
     assert r == ['find.me.1', 'find.me.2']
 
-    r = tsx.find(search.bymetakey('nope'))
+    r = tsx.find('(by.metakey "nope")')
     assert r == []
 
-    r = tsx.find(search.bymetakey('bar'))
+    r = tsx.find('(by.metakey "bar")')
     assert r == ['find.me.2']
 
     # by metadata items
 
-    r = tsx.find(search.bymetaitem('foo', 43))
+    r = tsx.find('(by.metaitem "foo" 43)')
     assert r == ['find.me.2']
 
-    r = tsx.find(search.bymetaitem('foo', 42))
+    r = tsx.find('(by.metaitem "foo" 42)')
     assert r == ['find.me.1']
 
-    r = tsx.find(search.bymetaitem('bar', 'Hello'))
+    r = tsx.find('(by.metaitem "bar" "Hello")')
     assert r == ['find.me.2']
 
     # tzaware
@@ -626,69 +623,52 @@ def test_find(tsx):
         }
     )
 
-    r = tsx.find(search.tzaware())
+    r = tsx.find('(by.tzaware)')
     assert 'find.me.1' in r and 'find.me.2' in r
 
     # and combination
     r = tsx.find(
-        search.and_(
-            search.bymetaitem('foo', 43),
-            search.bymetaitem('bar', 'Hello')
-        )
+        '(by.and '
+        '  (by.metaitem "foo" 43) '
+        '  (by.metaitem "bar" "Hello"))'
     )
     assert r == ['find.me.2']
 
     # negation
     r = tsx.find(
-        search.not_(
-            search.tzaware()
-        )
+        '(by.not (by.tzaware))'
     )
     assert 'find.me.tznaive' in r and 'find.me.1' not in r and 'find.me.2' not in r
 
     r = tsx.find(
-        search.and_(
-            search.bymetaitem('foo', 43),
-            search.not_(
-                search.tzaware()
-            )
-        )
+        '(by.and '
+        '  (by.metaitem "foo" 43)'
+        '  (by.not (by.tzaware)))'
     )
     assert r == ['find.me.tznaive']
 
     r = tsx.find(
-        search.and_(
-            search.not_(
-                search.bymetaitem('foo', 43)
-            ),
-            search.tzaware()
-        )
+        '(by.and '
+        '  (by.not (by.metaitem "foo" 43))'
+        '  (by.tzaware))'
     )
     assert r == ['find.me.1']
 
     # or
 
     r = tsx.find(
-        search.or_(
-            search.bymetaitem('foo', 43),
-            search.bymetaitem('foo', 42),
-        )
+        '(by.or '
+        '  (by.metaitem "foo" 43)'
+        '  (by.metaitem "foo" 42))'
     )
     assert r == ['find.me.1', 'find.me.2', 'find.me.tznaive']
 
     r = tsx.find(
-        search.and_(
-            search.or_(
-                search.bymetakey('bar'),
-                search.bymetaitem('foo', 42),
-            ),
-            search.tzaware()
-        )
-    )
-    assert r == ['find.me.1', 'find.me.2']
-
-    r = tsx.find(
-        '(by.and (by.or (by.metakey "bar") (by.metakey "foo")) (by.tzaware))'
+        '(by.and '
+        '  (by.or '
+        '     (by.metakey "bar")'
+        '     (by.metaitem "foo" 42))'
+        '  (by.tzaware))'
     )
     assert r == ['find.me.1', 'find.me.2']
 
