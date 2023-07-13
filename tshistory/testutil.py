@@ -375,7 +375,8 @@ def make_tsx(uri,
 
         tsa = tsh_api.timeseries(
             str(engine.url),
-            handler=tsioclass
+            handler=tsioclass,
+            sources={}
         )
 
         if request.param == 'pg':

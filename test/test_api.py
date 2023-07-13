@@ -283,7 +283,7 @@ def test_multisource(mapi):
 
 
     def create(uri, ns, name):
-        api = timeseries(uri, ns, handler=tsio.timeseries)
+        api = timeseries(uri, ns, handler=tsio.timeseries, sources={})
         series = pd.Series(
             [1, 2, 3],
             index=pd.date_range(
@@ -350,7 +350,9 @@ def test_multisource(mapi):
     assert err.value.args[0].startswith('not allowed to replace')
 
 
-    api = timeseries(mapi.uri, mapi.namespace, handler=tsio.timeseries)
+    api = timeseries(
+        mapi.uri, mapi.namespace, handler=tsio.timeseries, sources={}
+    )
     catalog = api.catalog()
     catalog2 = mapi.catalog()
     assert catalog == {
@@ -390,7 +392,7 @@ def test_multisource(mapi):
 
     assert mapi.metadata('api-1') == {'descr': 'for the mapi test'}
 
-    api2 = timeseries(mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries)
+    api2 = timeseries(mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={})
     api2.update_metadata('api-2', {'othersouces': 'from other ns'})
     assert api2.metadata('api-2') == {'othersouces': 'from other ns'}
 
@@ -508,7 +510,8 @@ def test_conflicting_update(mapi):
     remote = timeseries(
         remotesource.uri,
         namespace=remotesource.namespace,
-        handler=tsio.timeseries
+        handler=tsio.timeseries,
+        sources={}
     )
     remote.update(
         'here-and-there',
@@ -720,7 +723,9 @@ def test_federated_basket(mapi):
         'Babar'
     )
 
-    remoteapi = timeseries(mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries)
+    remoteapi = timeseries(
+        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+    )
     remoteapi.update(
         'remote.basket.fed',
         ts,
@@ -750,7 +755,9 @@ def test_federated_find(mapi):
         'Babar'
     )
 
-    remoteapi = timeseries(mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries)
+    remoteapi = timeseries(
+        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+    )
     remoteapi.update(
         'remote.basket.fed',
         ts,

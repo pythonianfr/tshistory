@@ -19,6 +19,7 @@ from tshistory.util import (
     ensure_versions,
     find_most_specific_tshclass,
     find_most_specific_http_client,
+    find_sources,
     threadpool
 )
 from tshistory.tsio import timeseries as tshclass
@@ -33,13 +34,15 @@ class timeseries:
     def __new__(cls, uri,
                 namespace='tsh',
                 handler=None,
-                sources={},
+                sources=None,
                 clientclass=None):
         parseduri = urlparse(uri)
         if parseduri.scheme.startswith('postgres'):
             if handler is None:
                 handler = find_most_specific_tshclass()
             ensure_versions(uri, namespace)
+            if sources is None:
+                sources = find_sources(uri)
             return mainsource(
                 uri,
                 namespace,
@@ -917,7 +920,7 @@ class source:
         self.name = name
         self.uri = uri
         self.namespace = namespace
-        self.tsa = timeseries(uri, namespace, tshclass)
+        self.tsa = timeseries(uri, namespace, tshclass, sources={})
 
     def __repr__(self):
         return f'source(name={self.name},uri={self.uri},ns={self.namespace})'
