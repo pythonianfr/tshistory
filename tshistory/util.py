@@ -105,6 +105,13 @@ def get_cfg_path():
         return cfgpath
 
 
+def config():
+    cfgpath = get_cfg_path()
+    if cfgpath:
+        return reader(cfgpath)
+    raise Exception('No `tshistory.cfg` file could be found.')
+
+
 def find_dburi(something: str) -> str:
     if something.startswith('http'):
         return something
@@ -115,13 +122,8 @@ def find_dburi(something: str) -> str:
     else:
         return something
 
-    # lookup in the env, then in cwd, then in the home
-    cfgpath = get_cfg_path()
-    if not cfgpath:
-        raise Exception('could not use nor look up the db uri')
-
     try:
-        cfg = reader(cfgpath)
+        cfg = config()
         return cfg['dburi'][something]
     except Exception as exc:
         raise Exception(
