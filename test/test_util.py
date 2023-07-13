@@ -622,3 +622,7 @@ def test_search():
     s13 = search.eq('key', "Hello")
     assert s13.expr() == '(= "key" "Hello")'
     assert _serialize_roundtrip(s13)
+
+    s14 = search.bysource('remote')
+    assert s14.expr() == '(by.source "remote")'
+    assert _serialize_roundtrip(s14)

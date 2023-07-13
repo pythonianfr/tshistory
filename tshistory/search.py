@@ -4,7 +4,7 @@ from psyl.lisp import parse
 
 __all__ = [
     'query', 'and_', 'or_', 'not_', 'tzaware',
-    'byname', 'bymetakey', 'bymetaitem',
+    'byname', 'bymetakey', 'bymetaitem', 'bysource',
     'lt', 'lte', 'gt', 'gte'
 ]
 
@@ -22,6 +22,7 @@ _OPMAP = {
     'by.name': 'byname',
     'by.metakey': 'bymetakey',
     'by.metaitem': 'bymetaitem',
+    'by.source': 'bysource',
     '<': 'lt',
     '<=': 'lte',
     '>': 'gt',
@@ -54,6 +55,20 @@ class query:
         op = tree[0]
         klass = globals()[_OPMAP[op]]
         return klass._fromtree(tree)
+
+
+class bysource(query):
+    __slots__ = ('query',)
+
+    def __init__(self, query: str):
+        self.query = query
+
+    def __expr__(self):
+        return f'(by.source "{self.query}")'
+
+    @classmethod
+    def _fromtree(cls, tree):
+        return cls(tree[1])
 
 
 class and_(query):
