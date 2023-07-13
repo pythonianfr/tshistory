@@ -169,11 +169,11 @@ def ensure_versions(uri, namespace):
 # find available components
 
 def find_most_specific_tshclass():
-    try:
-        from tshistory_refinery.tsio import timeseries
-    except ImportError:
-        from tshistory.tsio import timeseries
-    return timeseries
+    objs = sorted(
+        objects('tshclass'),
+        key=lambda x:x.index
+    )
+    return objs[-1]
 
 
 def find_most_specific_http_client():

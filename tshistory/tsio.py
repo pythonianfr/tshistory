@@ -33,6 +33,7 @@ SERIESSCHEMA = Path(__file__).parent / 'series.sql'
 
 
 class timeseries:
+    index = 0
     namespace = 'tsh'
     schema = None
     metakeys = {
