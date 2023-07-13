@@ -245,7 +245,7 @@ def check(db_uri, series=None, namespace='tsh'):
 def migrate(db_uri, interactive=True, initial=None, namespace='tsh'):
     uri = find_dburi(db_uri)
     # call the plugins
-    for migrator in objects('tshistory.migrate.Migrator', key=lambda x: x._order):
+    for migrator in sorted(objects('migrator'), key=lambda x: x._order):
         migrator(
             uri, namespace, interactive=True, start=initial
         ).run_migrations()

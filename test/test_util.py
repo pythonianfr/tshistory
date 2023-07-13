@@ -36,8 +36,11 @@ from tshistory.testutil import (
 
 
 def test_objects():
-    with pytest.raises(TypeError):
-        objects('tshistory.migrate.Migrator')
+    objs = objects('migrator')
+    assert len(objs) > 0  # tshistory provides the base one
+
+    objs = objects('tshclass')
+    assert len(objs) > 0  # tshistory provides the base one
 
 
 def test_unflatten():

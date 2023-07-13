@@ -76,14 +76,12 @@ def unflatten(flattened):
 
 # generic functions
 
-def objects(groupname, key=lambda x:x):
-    return sorted(
-        [
-            ep.load()
-            for ep in entry_points(group=groupname)
-        ],
-        key=key
-    )
+def objects(name):
+    objs = set([
+        ep.load()
+        for ep in entry_points(name=name)
+    ])
+    return list(objs)
 
 
 # config stuff
