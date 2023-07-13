@@ -764,12 +764,14 @@ def test_federated_find(mapi):
         'Celeste'
     )
 
-
     names = mapi.find('(by.name "basket.fed")')
     assert names == [
         'local.basket.fed',
         'remote.basket.fed'
     ]
+
+    with pytest.raises(NotImplementedError):
+        names = mapi.find('(by.source "remote")')
 
 
 def test_replicate_series(tsx):
