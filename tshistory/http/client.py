@@ -71,7 +71,8 @@ def get_auth(uri, config):
     return ()
 
 
-class Client:
+class httpclient:
+    index = 0
     __slots__ = 'uri', 'auth', 'session'
 
     def __init__(self, uri):

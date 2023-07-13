@@ -177,11 +177,11 @@ def find_most_specific_tshclass():
 
 
 def find_most_specific_http_client():
-    try:
-        from tshistory_refinery.http import RefineryClient as Client
-    except ImportError:
-        from tshistory.http.client import Client
-    return Client
+    objs = sorted(
+        objects('httpclient'),
+        key=lambda x:x.index
+    )
+    return objs[-1]
 
 
 # tsio helpers

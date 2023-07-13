@@ -50,6 +50,9 @@ setup(name='tshistory',
           ],
           'tshclass': [
               'tshclass=tshistory.tsio:timeseries'
+          ],
+          'httpclient': [
+              'httpclient=tshistory.http.client:httpclient'
           ]
       },
       classifiers=[

@@ -164,7 +164,7 @@ def client(engine):
     )
     with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
         with_http_bridge(uri, resp, wsgitester)
-        yield http_client.Client(uri)
+        yield http_client.httpclient(uri)
 
 
 # federation api (direct + http)
@@ -178,5 +178,5 @@ tsx = make_tsx(
     _initschema,
     tsio.timeseries,
     http_server.httpapi,
-    http_client.Client
+    http_client.httpclient
 )
