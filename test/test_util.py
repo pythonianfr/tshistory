@@ -3,6 +3,10 @@ from datetime import datetime
 import pytest
 import pandas as pd
 import numpy as np
+from psyl.lisp import (
+    parse,
+    serialize
+)
 
 from tshistory import search
 from tshistory.util import (
@@ -626,3 +630,79 @@ def test_search():
     s14 = search.bysource('remote')
     assert s14.expr() == '(by.source "remote")'
     assert _serialize_roundtrip(s14)
+
+
+def test_prune_bysource():
+    """Notion of by.source filter.
+
+    Query without it: executed as is eveywhere.
+
+    by.source "source" -> remove all by.source <source> that do not
+    match "source"
+
+    """
+    assert search.prunebysource(
+        'local',
+        parse('(by.source "remote")')
+    ) is None
+
+    assert serialize(
+        search.prunebysource(
+            'local',
+            parse(
+                '(by.or '
+                '  (by.name "foo")'
+                '  (by.source "remote"))'
+            )
+        )
+    ) == '(by.name "foo")'
+
+    assert search.prunebysource(
+        'local',
+        parse(
+            '(by.and '
+            '  (by.name "foo")'
+            '  (by.source "remote"))'
+        )
+    ) is None
+
+    assert serialize(
+        search.prunebysource(
+            'remote',
+            parse(
+                '(by.or '
+                '  (by.name "foo")'
+                '  (by.source "local")'
+                '  (by.and '
+                '    (by.name "bar")'
+                '    (by.source "remote")))'
+            )
+        )
+    ) == '(by.or (by.name "foo") (by.and (by.name "bar") (by.source "remote")))'
+
+    assert serialize(
+        search.prunebysource(
+            'remote',
+            parse(
+                '(by.or '
+                '  (by.name "foo")'
+                '  (by.source "remote")'
+                '  (by.and '
+                '    (by.name "bar")'
+                '    (by.source "local")))'
+            )
+        )
+    ) == '(by.or (by.name "foo") (by.source "remote"))'
+
+    q = search.prunebysource(
+        'local',
+        parse(
+            '(by.or '
+            '  (by.not (by.and (by.name "basket.fed") (by.source "local")))'
+            '  (by.source "remote"))'
+        )
+    )
+    assert q == ['by.not', ['by.and', ['by.name', 'basket.fed'], ['by.source', 'local']]]
+    q2 = search.removebysource(querytree=q)
+    # quite sure this is not what we want
+    assert q2 is None

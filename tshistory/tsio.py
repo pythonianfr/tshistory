@@ -675,7 +675,8 @@ class timeseries:
             f'"{self.namespace}".registry'
         ).order('name', 'asc')
         sql, kw = query.sql()
-        q.where(sql, **kw)
+        if sql:
+            q.where(sql, **kw)
         return [
             name
             for name, in q.do(cn).fetchall()

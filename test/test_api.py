@@ -745,6 +745,12 @@ def test_federated_basket(mapi):
 
 
 def test_federated_find(mapi):
+    # cleanup
+    cat = mapi.catalog()
+    if cat:
+        for name, _ in list(cat.values())[0]:
+            mapi.delete(name)
+
     ts = pd.Series(
         [1, 2, 3],
         pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
@@ -758,6 +764,12 @@ def test_federated_find(mapi):
     remoteapi = timeseries(
         mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
     )
+    # cleanup
+    cat = remoteapi.catalog()
+    if cat:
+        for name, _ in list(cat.values())[0]:
+            remoteapi.delete(name)
+
     remoteapi.update(
         'remote.basket.fed',
         ts,
@@ -770,8 +782,45 @@ def test_federated_find(mapi):
         'remote.basket.fed'
     ]
 
-    with pytest.raises(NotImplementedError):
-        names = mapi.find('(by.source "remote")')
+    # some top-level bysource
+    names = mapi.find('(by.source "remote")')
+    assert names == ['remote.basket.fed']
+
+    names = mapi.find('(by.source "local")')
+    assert names == ['local.basket.fed']
+
+    names = mapi.find(
+        '(by.or '
+        '  (by.source "local")'
+        '  (by.source "remote"))'
+    )
+    assert names == [
+        'local.basket.fed',
+        'remote.basket.fed'
+    ]
+    names = mapi.find(
+        '(by.and '
+        '  (by.source "local")'
+        '  (by.source "remote"))'
+    )
+    assert names == []
+
+    # non-toplevel
+    names = mapi.find(
+        '(by.or '
+        '  (by.and (by.name "basket.fed") (by.source "local"))'
+        '  (by.source "remote"))'
+    )
+    assert names == ['local.basket.fed', 'remote.basket.fed']
+
+    names = mapi.find(
+        '(by.or '
+        '  (by.not (by.and (by.name "basket.fed") (by.source "local")))'
+        '  (by.source "remote"))'
+    )
+    # EXPLAIN ! Looks wrong ... I'd expect local to be not present
+    # Something was probably pruned too much.
+    assert names == ['local.basket.fed', 'remote.basket.fed']
 
 
 def test_replicate_series(tsx):

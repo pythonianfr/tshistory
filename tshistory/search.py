@@ -1,10 +1,12 @@
 import uuid
+from functools import partial
 from psyl.lisp import parse
 
 
 __all__ = [
     'query', 'and_', 'or_', 'not_', 'tzaware',
     'byname', 'bymetakey', 'bymetaitem', 'bysource',
+    'byeverything',
     'lt', 'lte', 'gt', 'gte'
 ]
 
@@ -15,6 +17,7 @@ def usym(basename):
 
 
 _OPMAP = {
+    'by.everything': 'byeverything',
     'by.and': 'and_',
     'by.or': 'or_',
     'by.not': 'not_',
@@ -29,6 +32,65 @@ _OPMAP = {
     '>=': 'gte',
     '=': 'eq'
 }
+
+
+def prunebysource(sourcename, querytree, removeall=False):
+    assert isinstance(querytree, list)
+
+    def _has_bysource(tree):
+        if not isinstance(tree, list):
+            return tree
+
+        op = tree[0]
+        if op == 'by.source':
+            return True
+
+        for item in tree:
+            if _has_bysource(item):
+                return True
+
+        return False
+
+    def _prune(tree):
+        if not isinstance(tree, list):
+            return tree
+
+        if not _has_bysource(tree):
+            # optimise the case where there is no bysource filter
+            # checking is cheaper than rewriting
+            return tree
+
+        op = tree[0]
+        if op == 'by.source' and (tree[1] != sourcename or removeall):
+            return None  # pruned !
+
+        newtree = []
+        pruned = False
+        for item in tree:
+            newitem = _prune(item)
+            if newitem is None:
+                pruned = True
+                continue
+            newtree.append(newitem)
+
+        if pruned and op in ('by.and', 'by.not'):
+            return None
+
+        if op in ('by.and', 'by.or'):
+            # remove the and/or if they reign over a single clause
+            if len(newtree[1:]) == 1:
+                return newtree[1]
+
+        return newtree
+
+    return _prune(
+        querytree
+    )
+
+
+removebysource = partial(prunebysource, sourcename='does not matter', removeall=True)
+
+
 
 
 class query:
@@ -69,6 +131,19 @@ class bysource(query):
     @classmethod
     def _fromtree(cls, tree):
         return cls(tree[1])
+
+    def sql(self):
+        return '', {}
+
+
+class byeverything(query):
+
+    @classmethod
+    def _fromtree(cls, _):
+        return cls()
+
+    def sql(self):
+        return '', {}
 
 
 class and_(query):

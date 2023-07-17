@@ -11,6 +11,7 @@ from typing import (
 from collections import defaultdict
 import warnings
 
+from psyl import lisp
 from sqlalchemy import create_engine
 import pandas as pd
 
@@ -535,9 +536,25 @@ class mainsource:
         As in `(<= "max_capacity" 900)`
 
         """
-        qexpr = search.query.fromexpr(query)
         with self.engine.begin() as cn:
-            localnames = self.tsh.find(cn, qexpr)
+            localquery = search.prunebysource(
+                'local',
+                lisp.parse(query)
+            )
+            if localquery is None:
+                localnames = []
+            else:
+                # purge all bysource remnants
+                localquery = search.removebysource(querytree=localquery)
+                if localquery is None:
+                    localquery = ['by.everything']
+                localnames = self.tsh.find(
+                    cn,
+                    search.query.fromexpr(
+                        lisp.serialize(localquery)
+                    )
+                )
+
         remotenames = self.othersources.find(query)
         return sorted(
             localnames + remotenames
@@ -1073,11 +1090,25 @@ class altsources:
     def find(self, query):
         nameslist = []
         pool = threadpool(len(self.sources))
+        parsedquery = lisp.parse(query)
 
         def readbasket(source):
+            localquery = search.prunebysource(
+                source.name, parsedquery
+            )
+            if localquery is None:
+                return []
             try:
+                # at this point, no bysource expression should remain
+                # and all relevant source-bound subexpressions should
+                # have been pruned
+                localquery = search.removebysource(querytree=localquery)
+                if not localquery:
+                    localquery = ['by.everything']
                 nameslist.append(
-                    source.tsa.find(query)
+                    source.tsa.find(
+                        lisp.serialize(localquery)
+                    )
                 )
             except:
                 import traceback as tb; tb.print_exc()
