@@ -128,7 +128,7 @@ def find_dburi(something: str) -> str:
     except Exception as exc:
         raise Exception(
             f'could not find the `{something}` entry in the '
-            f'[dburi] section of the `{cfgpath.resolve()}` '
+            f'[dburi] section of the tshistory.cfg '
             f'conf file (cause: {exc.__class__.__name__} -> {exc})'
         )
 
