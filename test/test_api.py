@@ -818,9 +818,7 @@ def test_federated_find(mapi):
         '  (by.not (by.and (by.name "basket.fed") (by.source "local")))'
         '  (by.source "remote"))'
     )
-    # EXPLAIN ! Looks wrong ... I'd expect local to be not present
-    # Something was probably pruned too much.
-    assert names == ['local.basket.fed', 'remote.basket.fed']
+    assert names == ['remote.basket.fed']
 
 
 def test_replicate_series(tsx):

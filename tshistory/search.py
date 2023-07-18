@@ -1,5 +1,5 @@
 import uuid
-from functools import partial
+import typing
 from psyl.lisp import parse
 
 
@@ -34,22 +34,28 @@ _OPMAP = {
 }
 
 
-def prunebysource(sourcename, querytree, removeall=False):
-    assert isinstance(querytree, list)
+def _has_bysource(tree):
+    if not isinstance(tree, list):
+        return tree
 
-    def _has_bysource(tree):
-        if not isinstance(tree, list):
-            return tree
+    op = tree[0]
+    if op == 'by.source':
+        return True
 
-        op = tree[0]
-        if op == 'by.source':
+    for item in tree:
+        if _has_bysource(item):
             return True
 
-        for item in tree:
-            if _has_bysource(item):
-                return True
+    return False
 
-        return False
+
+def prunebysource(sourcename: str, querytree: list) -> typing.Optional[list]:
+    """
+    Remove all subtrees associated with by.source expressions that
+    do not match the given sourcename.
+
+    """
+    assert isinstance(querytree, list)
 
     def _prune(tree):
         if not isinstance(tree, list):
@@ -61,7 +67,7 @@ def prunebysource(sourcename, querytree, removeall=False):
             return tree
 
         op = tree[0]
-        if op == 'by.source' and (tree[1] != sourcename or removeall):
+        if op == 'by.source' and tree[1] != sourcename:
             return None  # pruned !
 
         newtree = []
@@ -88,9 +94,46 @@ def prunebysource(sourcename, querytree, removeall=False):
     )
 
 
-removebysource = partial(prunebysource, sourcename='does not matter', removeall=True)
+def removebysource(querytree: list) -> typing.Optional[list]:
+    """
+    Remove all by.source expression and simplify the tree
+    accordingly
 
+    """
+    assert isinstance(querytree, list)
 
+    def _prune(tree):
+        if not isinstance(tree, list):
+            return tree
+
+        if not _has_bysource(tree):
+            # optimise the case where there is no bysource filter
+            # checking is cheaper than rewriting
+            return tree
+
+        op = tree[0]
+        if op == 'by.source':
+            return None  # pruned !
+
+        newtree = []
+        pruned = False
+        for item in tree:
+            newitem = _prune(item)
+            if newitem is None:
+                pruned = True
+                continue
+            newtree.append(newitem)
+
+        if op in ('by.and', 'by.or'):
+            # remove the and/or if they reign over a single clause
+            if len(newtree[1:]) == 1:
+                return newtree[1]
+
+        return newtree
+
+    return _prune(
+        querytree
+    )
 
 
 class query:

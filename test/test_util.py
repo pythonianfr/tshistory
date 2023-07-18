@@ -703,6 +703,5 @@ def test_prune_bysource():
         )
     )
     assert q == ['by.not', ['by.and', ['by.name', 'basket.fed'], ['by.source', 'local']]]
-    q2 = search.removebysource(querytree=q)
-    # quite sure this is not what we want
-    assert q2 is None
+    q2 = search.removebysource(q)
+    assert q2 == ['by.not', ['by.name', 'basket.fed']]

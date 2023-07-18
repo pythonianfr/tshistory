@@ -545,7 +545,7 @@ class mainsource:
                 localnames = []
             else:
                 # purge all bysource remnants
-                localquery = search.removebysource(querytree=localquery)
+                localquery = search.removebysource(localquery)
                 if localquery is None:
                     localquery = ['by.everything']
                 localnames = self.tsh.find(
@@ -1102,7 +1102,7 @@ class altsources:
                 # at this point, no bysource expression should remain
                 # and all relevant source-bound subexpressions should
                 # have been pruned
-                localquery = search.removebysource(querytree=localquery)
+                localquery = search.removebysource(localquery)
                 if not localquery:
                     localquery = ['by.everything']
                 nameslist.append(
