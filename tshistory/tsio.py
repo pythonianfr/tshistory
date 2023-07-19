@@ -674,7 +674,7 @@ class timeseries:
         ).table(
             f'"{self.namespace}".registry'
         ).order('name', 'asc')
-        sql, kw = query.sql()
+        sql, kw = query.sql(self.namespace)
         if sql:
             q.where(sql, **kw)
         return [

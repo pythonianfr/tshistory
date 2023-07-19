@@ -191,7 +191,7 @@ class bysource(query):
     def _fromtree(cls, tree):
         return cls(tree[1])
 
-    def sql(self):
+    def sql(self, namespace='tsh'):
         return '', {}
 
 
@@ -201,7 +201,7 @@ class byeverything(query):
     def _fromtree(cls, _):
         return cls()
 
-    def sql(self):
+    def sql(self, namespace='tsh'):
         return '', {}
 
 
@@ -222,7 +222,7 @@ class and_(query):
         ]
         return cls(*items)
 
-    def sql(self):
+    def sql(self, namespace='tsh'):
         sqls = []
         kws = {}
         for item in self.items:
@@ -249,7 +249,7 @@ class or_(query):
         ]
         return cls(*items)
 
-    def sql(self):
+    def sql(self, namespace='tsh'):
         sqls = []
         kws = {}
         for item in self.items:
@@ -272,7 +272,7 @@ class not_(query):
     def _fromtree(cls, tree):
         return cls(query._fromtree(tree[1]))
 
-    def sql(self):
+    def sql(self, namespace='tsh'):
         sql, kw = self.item.sql()
         return f'not {sql}', kw
 
@@ -286,7 +286,7 @@ class tzaware(query):
     def _fromtree(cls, _):
         return cls()
 
-    def sql(self):
+    def sql(self, namespace='tsh'):
         return 'internal_metadata @> \'{"tzaware":true}\'::jsonb', {}
 
 
@@ -303,7 +303,7 @@ class byname(query):
     def _fromtree(cls, tree):
         return cls(tree[1])
 
-    def sql(self):
+    def sql(self, namespace='tsh'):
         vid = usym('name')
         query = self.query.replace(' ', '%%')
         return f'name like %({vid})s', {vid: f'%%{query}%%'}
@@ -322,7 +322,7 @@ class bymetakey(query):
     def _fromtree(cls, tree):
         return cls(tree[1])
 
-    def sql(self):
+    def sql(self, namespace='tsh'):
         vid = usym('key')
         return f'metadata ? %({vid})s', {vid: self.key}
 
@@ -343,7 +343,7 @@ class bymetaitem(query):
     def _fromtree(cls, tree):
         return cls(*tree[1:])
 
-    def sql(self):
+    def sql(self, namespace='tsh'):
         # NOTE: this is weak and injection prone
         # we need to find a robust workaround for
         # psycopg2 bugs
@@ -375,7 +375,7 @@ class _comparator(query):
     def _fromtree(cls, tree):
         return cls(*tree[1:])
 
-    def sql(self):
+    def sql(self, namespace='tsh'):
         vid = usym('value')
         if isinstance(self.value, str):
             # NOTE: this is weak and injection prone
