@@ -53,6 +53,10 @@ setup(name='tshistory',
           ],
           'httpclient': [
               'httpclient=tshistory.http.client:httpclient'
+          ],
+          'forceimports': [
+              # empty there, but plugins will add items to this family
+              # to make sure timely objects registration happens
           ]
       },
       classifiers=[

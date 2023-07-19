@@ -84,6 +84,21 @@ def objects(name):
     return list(objs)
 
 
+_DONE = False
+
+def ensure_plugin_registration():
+    global _DONE
+    if _DONE:
+        return
+
+    # the whole purpose of this entry point is to make sure things are
+    # imported, hence objects from pluginsq registered in their proper
+    # places
+    for ep in entry_points(group='forceimports'):
+        ep.load()
+    _DONE = True
+
+
 # config stuff
 
 def get_cfg_path():

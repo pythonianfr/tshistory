@@ -2,7 +2,10 @@ import uuid
 import typing
 from psyl.lisp import parse
 
-from tshistory.util import leafclasses
+from tshistory.util import (
+    ensure_plugin_registration,
+    leafclasses
+)
 
 
 __all__ = [
@@ -169,6 +172,7 @@ class query:
 
     @staticmethod
     def _fromtree(tree):
+        ensure_plugin_registration()
         op = tree[0]
         klass = query.klassbyname(_OPMAP[op])
         return klass._fromtree(tree)
