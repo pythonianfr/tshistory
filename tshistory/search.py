@@ -2,6 +2,8 @@ import uuid
 import typing
 from psyl.lisp import parse
 
+from tshistory.util import leafclasses
+
 
 __all__ = [
     'query', 'and_', 'or_', 'not_', 'tzaware',
@@ -136,6 +138,8 @@ def removebysource(querytree: list) -> typing.Optional[list]:
     )
 
 
+
+
 class query:
 
     def sql(self):
@@ -156,9 +160,17 @@ class query:
         return query._fromtree(tree)
 
     @staticmethod
+    def klassbyname(klassname):
+        classmap = {
+            klass.__name__: klass
+            for klass in leafclasses(query)
+        }
+        return classmap[klassname]
+
+    @staticmethod
     def _fromtree(tree):
         op = tree[0]
-        klass = globals()[_OPMAP[op]]
+        klass = query.klassbyname(_OPMAP[op])
         return klass._fromtree(tree)
 
 

@@ -941,6 +941,29 @@ def bisect_search(values, value):
     return jl
 
 
+# python subclasses helper
+
+def isleaf(cls):
+    return not cls.__subclasses__()
+
+
+def all_subclasses(cls):
+    return set(
+        cls.__subclasses__()
+    ).union(
+        s for c in cls.__subclasses__()
+        for s in all_subclasses(c)
+    )
+
+
+def leafclasses(cls):
+    return {
+        klass
+        for klass in all_subclasses(cls)
+        if isleaf(klass)
+    }
+
+
 # api extensions helper
 
 def extend(klass):
