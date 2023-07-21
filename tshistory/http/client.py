@@ -15,6 +15,7 @@ from tshistory.util import (
     pack_group,
     pack_series,
     series_metadata,
+    ts,
     tzaware_serie,
     unflatten,
     unpack_history,
@@ -485,15 +486,19 @@ class httpclient:
         return res
 
     @unwraperror
-    def find(self, q, limit=None):
+    def find(self, q, limit=None, meta=False):
         assert isinstance(q, str)
         res = self.session.get(f'{self.uri}/series/find', params={
             'query': q,
-            'limit': limit
+            'limit': limit,
+            'meta': meta
         })
 
         if res.status_code == 200:
-            return res.json()
+            return [
+                ts(item['name'], item['imeta'], item['meta'])
+                for item in res.json()
+            ]
 
         return res
 
@@ -554,7 +559,10 @@ class httpclient:
             params={'name': name}
         )
         if res.status_code == 200:
-            return res.json()
+            return [
+                ts(item['name'], item['imeta'], item['meta'])
+                for item in res.json()
+            ]
 
         return res
 

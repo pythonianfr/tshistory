@@ -23,6 +23,7 @@ from tshistory.util import (
     pruned_history,
     series_metadata,
     start_end,
+    ts,
     tx
 )
 from tshistory.storage import Postgres
@@ -668,9 +669,12 @@ class timeseries:
         return pd.Interval(left=start, right=end, closed='both')
 
     @tx
-    def find(self, cn, query, limit=None):
+    def find(self, cn, query, limit=None, meta=False):
+        items = ['name']
+        if meta:
+            items += ['internal_metadata', 'metadata']
         q = select(
-            'name'
+            *items
         ).table(
             f'"{self.namespace}".registry as reg'
         ).order('name', 'asc')
@@ -679,9 +683,16 @@ class timeseries:
             q.where(sql, **kw)
         if limit:
             q.limit(limit)
+
+        if not meta:
+            return [
+                ts(name)
+                for name, in q.do(cn).fetchall()
+            ]
+
         return [
-            name
-            for name, in q.do(cn).fetchall()
+            ts(name, imeta, meta)
+            for name, imeta, meta in q.do(cn).fetchall()
         ]
 
     @tx

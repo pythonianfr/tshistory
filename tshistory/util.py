@@ -221,6 +221,41 @@ def find_most_specific_http_client():
 
 # tsio helpers
 
+class ts:
+    __slots__ = 'name', 'imeta', 'meta'
+
+    def __init__(self, name, imeta=None, meta=None):
+        self.name = name
+        self.imeta = imeta
+        self.meta = meta
+
+    def to_json(self):
+        return {
+            'name': self.name,
+            'imeta': self.imeta,
+            'meta': self.meta
+        }
+
+    def __repr__(self):
+        return f"'{self.name}'"
+
+    def __str__(self):
+        return self.name
+
+    def __lt__(self, other):
+        if not isinstance(other, ts):
+            return False
+        return self.name < other.name
+
+    def __eq__(self, other):
+        if isinstance(other, ts):
+            return self.name == other.name
+        elif isinstance(other, str):
+            return self.name == other
+
+        return False
+
+
 def ensuretz(adate):
     if adate is None:
         return

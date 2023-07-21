@@ -232,6 +232,9 @@ find.add_argument(
 find.add_argument(
     'limit', type=int
 )
+find.add_argument(
+    'meta', type=inputs.boolean, default=False
+)
 
 basket = reqparse.RequestParser()
 basket.add_argument(
@@ -786,10 +789,14 @@ class httpapi:
             @onerror
             def get(self):
                 args = find.parse_args()
-                return tsa.find(
-                    args.query,
-                    limit=args.limit
-                )
+                return [
+                    item.to_json()
+                    for item in tsa.find(
+                            args.query,
+                            limit=args.limit,
+                            meta=args.meta
+                    )
+                ]
 
         @nss.route('/basket')
         class timeseries_basket(Resource):
@@ -798,9 +805,12 @@ class httpapi:
             @onerror
             def get(self):
                 args = basket.parse_args()
-                return tsa.basket(
-                    args.name
-                )
+                return [
+                    item.to_json()
+                    for item in tsa.basket(
+                            args.name
+                    )
+                ]
 
             @api.expect(register_basket)
             @onerror
