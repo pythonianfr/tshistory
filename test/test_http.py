@@ -404,6 +404,26 @@ insertion_date             value_date
         pd.Timestamp('2018-01-02 00:00:00', tz='UTC')
     ]
 
+    res = http.get('/series/find', params={
+        'query': '(by.everything)',
+        '_source': 'fancysource'
+    })
+    assert res.json == [
+        {
+            'name': 'test',
+            'imeta': None,
+            'meta': None,
+            'source': 'fancysource'
+        },
+        {
+            'name': 'test-naive',
+            'imeta': None,
+            'meta': None,
+            'source': 'fancysource'
+        }
+    ]
+
+
 
 def test_delete(http):
     series_in = genserie(utcdt(2018, 1, 1), 'H', 3)

@@ -679,6 +679,7 @@ def test_find(tsx):
     assert ts.name == 'find.me.1'
     assert ts.imeta is None
     assert ts.meta is None
+    assert ts.source == 'local'
 
     r = tsx.find('(by.everything)', limit=1)
     assert len(r) == 1
@@ -700,6 +701,7 @@ def test_find(tsx):
         'bar': 'Hello',
         'foo': 43
     }
+    assert ts.source == 'local'
 
 
 def test_basket(tsx):
@@ -768,6 +770,9 @@ def test_federated_basket(mapi):
         'local.basket.fed',
         'remote.basket.fed'
     ]
+
+    r = b[1]
+    assert r.source == 'remote'
 
 
 def test_federated_find(mapi):

@@ -669,7 +669,7 @@ class timeseries:
         return pd.Interval(left=start, right=end, closed='both')
 
     @tx
-    def find(self, cn, query, limit=None, meta=False):
+    def find(self, cn, query, limit=None, meta=False, source='local'):
         items = ['name']
         if meta:
             items += ['internal_metadata', 'metadata']
@@ -686,12 +686,12 @@ class timeseries:
 
         if not meta:
             return [
-                ts(name)
+                ts(name, source=source)
                 for name, in q.do(cn).fetchall()
             ]
 
         return [
-            ts(name, imeta, meta)
+            ts(name, imeta, meta, source)
             for name, imeta, meta in q.do(cn).fetchall()
         ]
 

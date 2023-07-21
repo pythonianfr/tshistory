@@ -235,6 +235,9 @@ find.add_argument(
 find.add_argument(
     'meta', type=inputs.boolean, default=False
 )
+find.add_argument(
+    '_source', type=str, default='local'
+)
 
 basket = reqparse.RequestParser()
 basket.add_argument(
@@ -794,7 +797,8 @@ class httpapi:
                     for item in tsa.find(
                             args.query,
                             limit=args.limit,
-                            meta=args.meta
+                            meta=args.meta,
+                            _source=args._source
                     )
                 ]
 

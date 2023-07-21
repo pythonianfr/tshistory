@@ -222,18 +222,20 @@ def find_most_specific_http_client():
 # tsio helpers
 
 class ts:
-    __slots__ = 'name', 'imeta', 'meta'
+    __slots__ = 'name', 'imeta', 'meta', 'source'
 
-    def __init__(self, name, imeta=None, meta=None):
+    def __init__(self, name, imeta=None, meta=None, source='local'):
         self.name = name
         self.imeta = imeta
         self.meta = meta
+        self.source = source
 
     def to_json(self):
         return {
             'name': self.name,
             'imeta': self.imeta,
-            'meta': self.meta
+            'meta': self.meta,
+            'source': self.source
         }
 
     def __repr__(self):

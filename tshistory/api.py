@@ -481,7 +481,10 @@ class mainsource:
                 cat[key] = val
         return dict(cat)
 
-    def find(self, query: str, limit: Optional[int]=None, meta: Optional[int]=False) -> List[str]:
+    def find(self, query: str,
+             limit: Optional[int]=None,
+             meta: Optional[int]=False,
+             _source: Optional[str]='local') -> List[str]:
         """Return a list of series matching the query.
 
         A query is built with objects in the `tshistory.search` module.
@@ -554,7 +557,8 @@ class mainsource:
                         lisp.serialize(localquery)
                     ),
                     limit=limit,
-                    meta=meta
+                    meta=meta,
+                    source=_source
                 )
 
         remotenames = self.othersources.find(query, limit, meta)
@@ -1111,7 +1115,8 @@ class altsources:
                     source.tsa.find(
                         lisp.serialize(localquery),
                         limit=limit,
-                        meta=meta
+                        meta=meta,
+                        _source=source.name
                     )
                 )
             except:
