@@ -229,6 +229,9 @@ find = reqparse.RequestParser()
 find.add_argument(
     'query', type=str
 )
+find.add_argument(
+    'limit', type=int
+)
 
 basket = reqparse.RequestParser()
 basket.add_argument(
@@ -784,7 +787,8 @@ class httpapi:
             def get(self):
                 args = find.parse_args()
                 return tsa.find(
-                    args.query
+                    args.query,
+                    limit=args.limit
                 )
 
         @nss.route('/basket')

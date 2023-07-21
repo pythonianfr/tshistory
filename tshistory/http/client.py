@@ -485,11 +485,11 @@ class httpclient:
         return res
 
     @unwraperror
-    def find(self, q):
-        if isinstance(q, query):
-            q = q.expr()
+    def find(self, q, limit=None):
+        assert isinstance(q, str)
         res = self.session.get(f'{self.uri}/series/find', params={
-            'query': q
+            'query': q,
+            'limit': limit
         })
 
         if res.status_code == 200:

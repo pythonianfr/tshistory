@@ -675,6 +675,9 @@ def test_find(tsx):
     )
     assert r == ['find.me.1', 'find.me.2']
 
+    r = tsx.find('(by.everything)', limit=1)
+    assert len(r) == 1
+
 
 def test_basket(tsx):
     ts = pd.Series(

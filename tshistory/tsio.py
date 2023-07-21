@@ -668,15 +668,17 @@ class timeseries:
         return pd.Interval(left=start, right=end, closed='both')
 
     @tx
-    def find(self, cn, query):
+    def find(self, cn, query, limit=None):
         q = select(
             'name'
         ).table(
-            f'"{self.namespace}".registry'
+            f'"{self.namespace}".registry as reg'
         ).order('name', 'asc')
         sql, kw = query.sql(self.namespace)
         if sql:
             q.where(sql, **kw)
+        if limit:
+            q.limit(limit)
         return [
             name
             for name, in q.do(cn).fetchall()
