@@ -946,12 +946,11 @@ def test_primary_group(tsx):
     meta = tsx.group_metadata('first_group_api')
     assert meta == {'name': 'babar'}
 
-    meta = tsx.group_metadata('first_group_api', all=True)
+    meta = tsx.group_internal_metadata('first_group_api')
     meta.pop('tablename')
     assert meta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
-        'name': 'babar',
         'tzaware': False,
         'value_dtype': '<f8',
         'value_type': 'float64'

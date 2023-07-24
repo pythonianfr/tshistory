@@ -750,10 +750,30 @@ class httpclient:
 
     @unwraperror
     def group_metadata(self, name, all=False):
+        if all is not None:
+            warnings.warn(
+                'The `all` parameter is deprecated and has now no effect. '
+                'You should use .internal_metadata instead',
+                DeprecationWarning
+            )
+
         res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name,
             'type': 'standard',
             'all': all
+        })
+        assert res.status_code in (200, 404)
+        if res.status_code == 200:
+            return res.json()
+
+        if res.status_code == 418:
+            return res
+
+    @unwraperror
+    def group_internal_metadata(self, name):
+        res = self.session.get(f'{self.uri}/group/metadata', params={
+            'name': name,
+            'type': 'internal'
         })
         assert res.status_code in (200, 404)
         if res.status_code == 200:

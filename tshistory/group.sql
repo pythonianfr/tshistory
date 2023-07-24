@@ -3,10 +3,13 @@
 create table "{ns}".group_registry (
   id serial primary key,
   name text not null unique,
+  internal_metadata jsonb,
   metadata jsonb
 );
 
 create index "ix_{ns}_group_registry_idx" on "{ns}".group_registry(name);
+create index on "{ns}".group_registry using gin(internal_metadata);
+create index on "{ns}".group_registry using gin(metadata);
 
 -- in the series <-> group mapping below
 -- we don't give series names their member name

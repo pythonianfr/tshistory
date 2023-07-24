@@ -901,20 +901,20 @@ class mainsource:
         with self.engine.begin() as cn:
             self.tsh.group_delete(cn, name)
 
+    def group_internal_metadata(self,
+                                name: str) -> Optional[Dict[str, Any]]:
+        """Return a group internal metadata dictionary.
+
+        """
+        return self.tsh.group_internal_metadata(self.engine, name)
+
     def group_metadata(self,
                        name: str,
                        all: bool=False) -> Optional[Dict[str, Any]]:
         """Return a group metadata dictionary.
 
         """
-        meta = self.tsh.group_metadata(self.engine, name)
-        if meta is None:
-            return
-        if all:
-            return meta
-        for key in self.tsh.metakeys:
-            meta.pop(key, None)
-        return meta
+        return self.tsh.group_metadata(self.engine, name)
 
     def update_group_metadata(self, name: str, meta: Dict[str, Any]) -> NONETYPE:
         """Update a group metadata with a dictionary from strings to anything

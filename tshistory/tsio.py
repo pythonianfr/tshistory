@@ -1080,6 +1080,14 @@ class timeseries:
         return cat
 
     @tx
+    def group_internal_metadata(self, cn, name):
+        return cn.execute(
+            f'select internal_metadata from "{self.namespace}".group_registry '
+            'where name = %(name)s',
+            name=name
+        ).scalar()
+
+    @tx
     def group_metadata(self, cn, name):
         return cn.execute(
             f'select metadata from "{self.namespace}".group_registry '
@@ -1233,9 +1241,11 @@ class timeseries:
             ).scalar()
             cn.execute(
                 f'update "{self.namespace}".group_registry '
-                'set metadata = %(metadata)s '
+                'set internal_metadata = %(imeta)s, '
+                '    metadata = %(metadata)s '
                 f'where name = %(name)s',
-                metadata=json.dumps(tsmeta),
+                imeta=json.dumps(tsmeta),
+                metadata=json.dumps({}),
                 name=name
             )
             return

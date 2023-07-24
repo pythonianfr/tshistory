@@ -3098,6 +3098,9 @@ def test_group_other_operations(engine, tsh):
         tsh.tsh_group.delete(engine, names[0])
 
     meta = tsh.group_metadata(engine, 'third_group')
+    assert meta == {}
+
+    meta = tsh.group_internal_metadata(engine, 'third_group')
     meta.pop('tablename')  # make_uid output changes everytime, is not testable
     assert meta == {
         'index_dtype': '<M8[ns]',
@@ -3109,9 +3112,11 @@ def test_group_other_operations(engine, tsh):
 
     tsh.update_group_metadata(engine, 'third_group', {'foo': 'bar'})
     meta = tsh.group_metadata(engine, 'third_group')
+    assert meta == {'foo': 'bar'}
+
+    meta = tsh.group_internal_metadata(engine, 'third_group')
     meta.pop('tablename')
     assert meta  == {
-        'foo': 'bar',
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
         'tzaware': False,
