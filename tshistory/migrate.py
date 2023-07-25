@@ -13,10 +13,6 @@ from dbcache import (
 
 from tshistory import __version__
 from tshistory.tsio import timeseries as tshclass
-from tshistory.util import (
-    read_versions,
-    NoVersion
-)
 
 
 VERSIONS = {}

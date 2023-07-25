@@ -7,7 +7,6 @@ import pandas as pd
 import numpy as np
 import pytz
 
-from tshistory.search import query
 from tshistory.tsio import timeseries
 from tshistory.util import (
     get_cfg_path,

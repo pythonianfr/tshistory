@@ -1,12 +1,8 @@
-from time import time
 from collections import defaultdict
-from json import dumps
 
 from pkg_resources import iter_entry_points
 import click
 from sqlalchemy import create_engine
-from dateutil.parser import parse as temporal
-import pandas as pd
 
 from tshistory.tsio import timeseries as tshclass
 from tshistory.api import timeseries

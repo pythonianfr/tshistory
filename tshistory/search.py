@@ -121,11 +121,9 @@ def removebysource(querytree: list) -> typing.Optional[list]:
             return None  # pruned !
 
         newtree = []
-        pruned = False
         for item in tree:
             newitem = _prune(item)
             if newitem is None:
-                pruned = True
                 continue
             newtree.append(newitem)
 
