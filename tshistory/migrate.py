@@ -96,6 +96,8 @@ class Migrator:
         fix_user_metadata(engine, self.namespace, self.interactive)
         migrate_to_baskets(engine, self.namespace, self.interactive)
         fix_groups_metadata(self.engine, self.namespace, self.interactive)
+        migrate_groups_metadata(engine, self.namespace, self.interactive)
+
         gns = f'{self.namespace}.group'
         migrate_metadata(engine, gns, self.interactive)
         fix_user_metadata(engine, gns, self.interactive)
@@ -168,6 +170,64 @@ def migrate_metadata(engine, namespace, interactive):
         cn.execute(
             f'alter table "{ns}".registry drop column if exists "tablename"'
         )
+
+
+def migrate_groups_metadata(engine, namespace, interactive):
+    ns = namespace
+
+    print(f'migrate group metadata for {ns}')
+    with engine.begin() as cn:
+
+        # check initial condition
+        unmigrated = cn.execute(
+            "select not exists (select 1 "
+            "  from information_schema.columns "
+            f" where table_schema='{ns}' and "
+            "        table_name='group_registry' and "
+            "        column_name='internal_metadata'"
+            ")"
+        ).scalar()
+        if not unmigrated:
+            print('already migrated')
+            return
+
+        # add internal_metadata, add gin indexes
+        cn.execute(
+            f'alter table "{ns}".group_registry '
+            f'add column if not exists "internal_metadata" jsonb'
+        )
+        cn.execute(
+            f'create index if not exists idx_group_metadata '
+            f'on "{ns}".group_registry using gin (metadata)'
+        )
+        cn.execute(
+            f'create index if not exists idx_group_internal_metadata '
+            f'on "{ns}".group_registry using gin (internal_metadata)'
+        )
+
+        # collect all groups metadata and split internal / user
+        allmetas = {}
+        metakeys = tshclass.metakeys | {'supervision_status'}
+
+        for name, imeta in cn.execute(
+                f'select name, metadata from "{ns}".group_registry'):
+            umeta = {}
+            for k in list(imeta):
+                if k not in metakeys:
+                    umeta[k] = imeta.pop(k)
+            allmetas[name] = (imeta, umeta)
+
+        # store them
+        for name, (imeta, umeta) in allmetas.items():
+            cn.execute(
+                f'update "{ns}".group_registry '
+                'set (internal_metadata, metadata) = '
+                '    (%(imeta)s, %(umeta)s) '
+                'where name=%(name)s',
+                name=name,
+                imeta=dumps(imeta),
+                umeta=dumps(umeta)
+            )
 
 
 def fix_user_metadata(engine, namespace, interactive):
