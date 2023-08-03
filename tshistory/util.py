@@ -432,10 +432,13 @@ def numpy_deserialize(bindex, bvalues, metadata):
     )
 
     if metadata['value_type'] == 'object':  # str
-        values = [
-            v.decode('utf-8') if v != b'\3' else None
-            for v in bvalues.split(b'\0')
-        ]
+        if not len(bvalues):
+            values = []
+        else:
+            values = [
+                v.decode('utf-8') if v != b'\3' else None
+                for v in bvalues.split(b'\0')
+            ]
     else:
         values = np.frombuffer(
             bvalues,

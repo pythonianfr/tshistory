@@ -918,19 +918,13 @@ def test_str_series(tsx):
         ts,
         'Babar'
     )
-    if tsx.uri.startswith('http'):
-        with pytest.raises(ValueError):
-            tsx.update(
-                'crashme-str',
-                ts,
-                'Babar'
-            )
-    else:
-        tsx.update(
-            'crashme-str',
-            ts,
-            'Babar'
-        )
+    # the bug in numpy_deserialize is gone
+    tsx.update(
+        'crashme-str',
+        ts,
+        'Babar'
+    )
+
 
 # groups
 
