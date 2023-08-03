@@ -903,6 +903,35 @@ insertion_date             value_date
     assert metadata == {'metadata1': 'value1'}
 
 
+def test_str_series(tsx):
+    ts = pd.Series(
+        ['a', 'b', 'c'],
+        index=pd.date_range(
+            utcdt(2023, 1, 1),
+            freq='D',
+            periods=3
+        )
+    )
+
+    tsx.update(
+        'crashme-str',
+        ts,
+        'Babar'
+    )
+    if tsx.uri.startswith('http'):
+        with pytest.raises(ValueError):
+            tsx.update(
+                'crashme-str',
+                ts,
+                'Babar'
+            )
+    else:
+        tsx.update(
+            'crashme-str',
+            ts,
+            'Babar'
+        )
+
 # groups
 
 def test_primary_group(tsx):
