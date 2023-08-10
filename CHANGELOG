@@ -1,6 +1,48 @@
 # Changelog
 
-## [0.18.0]
+## [0.19.0]
+### Added
+- api/find: allow searching in metadata for text values with (in)equalities
+- api/find: align the operator names with their counterparts in the formula subsystem
+- api/find: accept a "limit" parameter
+- api/find: return a list of "ts" objects rather than just strings
+  (can provide the source and metadata)
+- search: have a "by.source" filter
+- a schema migration for the baskets feature
+- find/baskets: add federation support
+- pandas 1.5 support
+- api/source: provide the source of a series (by series name)
+- api/log: add federation suppport
+- ci: use tox, ruff and pytype
+- have a __version__ attribute in the package root
+- a generic "tsh migrate" command that do migrations automatically
+- util/replicate_series: an helper to replicate a series from another instance
+
+### Changed
+- api/update_metadata renamed to replace_metadata
+- api/update_metadata reintroduced to really *update* the metadata
+- api/update: be lenient when updating with an empty series (except at creation time)
+- api/update: better error conditions reporting
+- api/timeseries: if the source param is None (default), load the
+  sources definitions from tshistory.cfg
+- http/client: raise a dedicated exception on unauthorized access
+- storage: the max bucket size changed from 250 to 150 after a series of measurments
+- util/tojson: force timestamp precision down to nanoseconds
+- api/find: allow only Lisp expressions as input
+- groups: split metadata/internal_metadata (as was done previously for series)
+- minimal Python version set to 3.8
+
+### Fixed
+- api/groups: reuse the existing session object to correctly handle the auth info
+- api/get: fix crasher when mixing naive/tzaware dates for the value dates
+- api/metadata: make it work from secondary sources
+- api/catalog: do not choke on secondary source unavailability
+- api/update: fix a crasher with str series when updating with no effect
+
+## Removed
+- cli: a number of practically unused commands have been removed
+
+## [0.18.0] 2023-02-24
 ### Added
 - api/internal_metadata: to easily separate it from regular metadata
 - api/find: allow filtering series names using filters
