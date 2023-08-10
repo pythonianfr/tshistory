@@ -480,7 +480,8 @@ def unpack_series(name, bytestream, decompressor=zlib.decompress):
     series = pd.Series(
         values,
         index=index,
-        name=name
+        name=name,
+        dtype=meta['value_type']
     )
     if meta['tzaware']:
         series = series.tz_localize('UTC')
