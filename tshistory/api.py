@@ -216,6 +216,8 @@ class mainsource:
     def source(self, name: str) -> Optional[str]:
         """Provide the source name of a series.
 
+        When coming from the main source, it returns 'local'.
+
         """
         if self.tsh.exists(self.engine, name):
             return 'local'
@@ -284,7 +286,7 @@ class mainsource:
                         from_value_date: Optional[datetime]=None,
                         to_value_date: Optional[datetime]=None,
                         **kw):
-        """Get the list of all insertion dates.
+        """Get the list of all insertion dates (as pandas timestamps).
 
         """
         from_insertion_date = ensuretz(from_insertion_date)
@@ -335,6 +337,28 @@ class mainsource:
         much more compact, and it encodes the same information as with
         `diffmode` set to False.
 
+        .. highlight:: python
+        .. code-block:: python
+
+        >>> history = tsa.history('my_series')
+        ...
+        >>>
+        >>> for idate, series in history.items(): # it's a dict
+        ...     print('insertion date:', idate)
+        ...     print(series)
+        ...
+        insertion date: 2018-09-26 17:10:36.988920+02:00
+        2017-01-01    1.0
+        2017-01-02    2.0
+        2017-01-03    3.0
+        Name: my_series, dtype: float64
+        insertion date: 2018-09-26 17:12:54.508252+02:00
+        2017-01-01    1.0
+        2017-01-02    2.0
+        2017-01-03    7.0
+        2017-01-04    8.0
+        2017-01-05    9.0
+        Name: my_series, dtype: float64
         """
         from_insertion_date = ensuretz(from_insertion_date)
         to_insertion_date = ensuretz(to_insertion_date)
@@ -406,7 +430,10 @@ class mainsource:
         maturity_offset: Optional[Dict[str, int]] = None,
         maturity_time: Optional[Dict[str, int]] = None,
     ):
-        """Staircase series by block
+        """Staircase a series by block
+
+        This is a more sophisticated and controllable version of the
+        `staircase` method.
 
         Computes a series rebuilt from successive blocks of history, each linked to a
         distinct revision date. The revision dates are taken at regular time intervals
@@ -415,28 +442,36 @@ class mainsource:
         `maturity_offset` and `maturity_time`.
 
         name: str unique identifier of the series
+
         from_value_date: pandas.Timestamp from which values are retrieved
+
         to_value_date: pandas.Timestamp to which values are retrieved
+
         revision_freq: dict giving revision frequency, of which keys must be taken from
             ['years', 'months', 'weeks', 'bdays', 'days', 'hours', 'minutes', 'seconds']
             and values as integers. Default is daily frequency, i.e. {'days': 1}
+
         revision_time: dict giving revision time, of which keys should be taken from
             ['year', 'month', 'day', 'weekday', 'hour', 'minute', 'second'] and values
             must be integers. It is only used for revision date initialisation. The next
             revision dates are then obtained by successively adding `revision_freq`.
             Default is {'hour': 0}
+
         revision_tz: str giving time zone in which revision date and time are expressed.
             Default is 'UTC'
+
         maturity_offset: dict giving time lag between each revision date and start time
             of related block values. Its keys must be taken from ['years', 'months',
             'weeks', 'bdays', 'days', 'hours', 'minutes', 'seconds'] and values as
             integers. Default is {}, i.e. the revision date is the block start date
+
         maturity_time: dict fixing start time of each block, of which keys should be
             taken from ['year', 'month', 'day', 'hour', 'minute', 'second'] and values
             must be integers. The start date of each block is thus obtained by adding
             `maturity_offset` to revision date and then applying `maturity_time`.
             Default is {}, i.e. block start date is just the revision date shifted by
             `maturity_offset`
+
         """
         bsc = self.tsh.block_staircase(
             self.engine,
@@ -485,7 +520,13 @@ class mainsource:
              limit: Optional[int]=None,
              meta: Optional[int]=False,
              _source: Optional[str]='local') -> List[str]:
-        """Return a list of series matching the query.
+        """Return a list of series descriptors matching the query.
+
+        A series descriptor is a small object carrying a .name
+        attribute. If `meta` has been set to True, the .meta (for
+        normal metadata) and .imeta (for internal metadata) fields
+        will be populated. Lastly, the .source attribute provides the
+        series source.
 
         A query is built with objects in the `tshistory.search` module.
 
@@ -744,7 +785,7 @@ class mainsource:
             self.tsh.register_basket(cn, name, query)
 
     def basket(self, name: str) -> List[str]:
-        """Returns the list of series names associated with a basket."""
+        """Returns the list of series descriptors associated with a basket."""
         with self.engine.begin() as cn:
             localnames = self.tsh.basket(cn, name)
         remotenames = self.othersources.find(
