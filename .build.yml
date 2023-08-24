@@ -1,4 +1,4 @@
-image: debian/bullseye
+image: debian/bookworm
 packages:
   - mercurial
   - python3-pip
@@ -10,8 +10,7 @@ secrets:
   -  2697538f-6b29-4af7-9fb2-e17694886c3f
 tasks:
   - run-tests: |
-      export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/13/bin
-      pip3 install pip --upgrade
-      pip install tox
+      export PATH=$PATH:~/.local/bin:/usr/lib/postgresql/15/bin
+      python -m pip install tox
       cd tshistory
       tox
