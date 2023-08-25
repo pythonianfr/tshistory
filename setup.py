@@ -19,7 +19,7 @@ setup(name='tshistory',
       python_requires='>= 3.10',
       install_requires=[
           'pandas >= 1.0.5, < 1.6',
-          'dbcache',
+          'dbcache >= 0.4.0',
           'psyl',
           'dateutils',
           'sqlalchemy < 2',
