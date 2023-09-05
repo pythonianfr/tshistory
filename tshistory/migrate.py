@@ -277,9 +277,10 @@ def fix_groups_metadata(engine, namespace, interactive, deletebroken=False):
                 'limit 1',
                 name=name
             ).scalar()
+            if tsmeta is None:
+                continue
 
             grmeta = tsh.group_metadata(engine, name) or {}
-            #import pdb;pdb.set_trace()
             grmeta.update(tsmeta)
             cn.execute(
                 f'update "{namespace}".group_registry '
