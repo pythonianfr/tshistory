@@ -539,7 +539,7 @@ class mainsource:
             '(by.and '
             '  (by.tzaware)'
             '  (by.name "power capacity") '
-            '  (by.meetakey "plant")'
+            '  (by.metakey "plant")'
             '  (by.not (by.or '
             '    (by.metaitem "plant_type" "oil")'
             '    (by.metaitem "plant_type" "coal")))'
