@@ -21,7 +21,8 @@ from tshistory.util import (
     find_most_specific_tshclass,
     find_most_specific_http_client,
     find_sources,
-    threadpool
+    threadpool,
+    ts
 )
 from tshistory.tsio import timeseries as tshclass
 from tshistory import search
@@ -519,7 +520,7 @@ class mainsource:
     def find(self, query: str,
              limit: Optional[int]=None,
              meta: Optional[int]=False,
-             _source: Optional[str]='local') -> List[str]:
+             _source: Optional[str]='local') -> List[ts]:
         """Return a list of series descriptors matching the query.
 
         A series descriptor is a small object carrying a .name
