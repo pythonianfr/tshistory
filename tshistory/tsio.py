@@ -668,9 +668,11 @@ class timeseries:
         start, end = pd.Timestamp(start, tz=tz), pd.Timestamp(end, tz=tz)
         return pd.Interval(left=start, right=end, closed='both')
 
+    _find_items = ['name']
+
     @tx
     def find(self, cn, query, limit=None, meta=False, source='local'):
-        items = ['name']
+        items = self._find_items[:]
         if meta:
             items += ['internal_metadata', 'metadata']
         q = select(
@@ -684,6 +686,9 @@ class timeseries:
         if limit:
             q.limit(limit)
 
+        return self._finish_find(cn, q, meta, source)
+
+    def _finish_find(self, cn, q, meta, source):
         if not meta:
             return [
                 ts(name, source=source)
@@ -691,8 +696,8 @@ class timeseries:
             ]
 
         return [
-            ts(name, imeta, meta, source)
-            for name, imeta, meta in q.do(cn).fetchall()
+            ts(name, imeta, umeta, source)
+            for name, imeta, umeta in q.do(cn).fetchall()
         ]
 
     @tx

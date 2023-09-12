@@ -413,13 +413,15 @@ insertion_date             value_date
             'name': 'test',
             'imeta': None,
             'meta': None,
-            'source': 'fancysource'
+            'source': 'fancysource',
+            'kind': 'primary'
         },
         {
             'name': 'test-naive',
             'imeta': None,
             'meta': None,
-            'source': 'fancysource'
+            'source': 'fancysource',
+            'kind': 'primary'
         }
     ]
 

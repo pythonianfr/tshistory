@@ -568,6 +568,8 @@ def test_find(tsx):
     r = tsx.find('(by.name "find.me.1")')
     assert r == ['find.me.1']
 
+    assert r[0].kind == 'primary'
+
     r = tsx.find('(by.name ".me.")')
     assert len(r) == 2
 

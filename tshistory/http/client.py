@@ -496,7 +496,7 @@ class httpclient:
 
         if res.status_code == 200:
             return [
-                ts(item['name'], item['imeta'], item['meta'])
+                ts(item['name'], item['imeta'], item['meta'], kind=item['kind'])
                 for item in res.json()
             ]
 
