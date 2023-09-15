@@ -523,11 +523,11 @@ class mainsource:
              _source: Optional[str]='local') -> List[ts]:
         """Return a list of series descriptors matching the query.
 
-        A series descriptor is a small object carrying a .name
-        attribute. If `meta` has been set to True, the .meta (for
+        A series descriptor is a string-like object with additional
+        attributes. If `meta` has been set to True, the .meta (for
         normal metadata) and .imeta (for internal metadata) fields
-        will be populated. Lastly, the .source attribute provides the
-        series source.
+        will be populated (non None). Lastly, the .source and .kind
+        attributes provides the series source and kind.
 
         A query is built with objects in the `tshistory.search` module.
 

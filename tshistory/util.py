@@ -221,43 +221,25 @@ def find_most_specific_http_client():
 
 # tsio helpers
 
-class ts:
+class ts(str):
     __slots__ = 'name', 'imeta', 'meta', 'source', 'kind'
 
-    def __init__(self, name, imeta=None, meta=None, source='local', kind='primary'):
-        self.name = name
-        self.imeta = imeta
-        self.meta = meta
-        self.source = source
-        self.kind = kind
+    def __new__(cls, name, imeta=None, meta=None, source='local', kind='primary'):
+        obj = str.__new__(cls, name)
+        obj.imeta = imeta
+        obj.meta = meta
+        obj.source = source
+        obj.kind = kind
+        return obj
 
     def to_json(self):
         return {
-            'name': self.name,
+            'name': self,
             'imeta': self.imeta,
             'meta': self.meta,
             'source': self.source,
             'kind': self.kind
         }
-
-    def __repr__(self):
-        return f"'{self.name}'"
-
-    def __str__(self):
-        return self.name
-
-    def __lt__(self, other):
-        if not isinstance(other, ts):
-            return False
-        return self.name < other.name
-
-    def __eq__(self, other):
-        if isinstance(other, ts):
-            return self.name == other.name
-        elif isinstance(other, str):
-            return self.name == other
-
-        return False
 
 
 def ensuretz(adate):

@@ -678,10 +678,11 @@ def test_find(tsx):
     assert r == ['find.me.1', 'find.me.2']
 
     ts = r[0]
-    assert ts.name == 'find.me.1'
+    assert ts == 'find.me.1'
     assert ts.imeta is None
     assert ts.meta is None
     assert ts.source == 'local'
+    assert ts.kind == 'primary'
 
     r = tsx.find('(by.everything)', limit=1)
     assert len(r) == 1
@@ -690,7 +691,7 @@ def test_find(tsx):
     assert r == ['find.me.2']
 
     ts = r[0]
-    assert ts.name == 'find.me.2'
+    assert ts == 'find.me.2'
     assert ts.imeta == {
         'tzaware': True,
         'tablename': 'find.me.2',
