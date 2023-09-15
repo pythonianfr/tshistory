@@ -166,9 +166,11 @@ insertion_date             value_date
     meta = tsx.metadata('api-test')
     assert meta == {}
 
-    tsx.update_metadata('api-test', {
+    out = tsx.update_metadata('api-test', {
         'desc': 'a metadata test'
     })
+    assert out is None
+
     meta = tsx.metadata('api-test')
     assert meta == {
         'desc': 'a metadata test'
@@ -874,7 +876,6 @@ def test_replicate_series(tsx):
         )
 
     tsx.update_metadata('original.series.from.tsx', {'metadata1': 'value1'})
-
 
     replicate_series(
         tsx,

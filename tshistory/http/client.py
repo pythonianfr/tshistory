@@ -232,6 +232,8 @@ class httpclient:
             'name': name,
             'metadata': json.dumps(existing_metadata)
         })
+        if res.status_code == 200:
+            return None
 
         return res
 
