@@ -77,7 +77,6 @@ class Migrator:
             # first time
             print(f'initial migration to {self._known_version} for {self._package}')
             self.initial_migration()
-            store.set(version_string, self._known_version)
 
         to_migrate = list(VERSIONS)
         # filter from _known
@@ -89,6 +88,7 @@ class Migrator:
             ]
         for version in to_migrate:
             VERSIONS[version](self.uri, self.namespace, self.interactive)
+        store.set(version_string, self._known_version)
 
     def initial_migration(self):
         engine = self.engine
