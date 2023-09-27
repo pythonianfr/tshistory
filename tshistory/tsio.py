@@ -12,7 +12,6 @@ from sqlhelp import sqlfile, select, insert
 
 from tshistory import search
 from tshistory.util import (
-    bisect_search,
     closed_overlaps,
     compatible_date,
     diff,
@@ -427,27 +426,23 @@ class timeseries:
         if not len(base):
             return empty_series(tzaware, name=name)
 
-        # prepare the needed revision dates
-        toidate = base.index.max() - delta
+        chunks = []
+        for vdate in base.index:
+            idate = ensuretz(vdate)
+            ts = self.get(
+                cn,
+                name,
+                revision_date=idate - delta,
+                from_value_date=vdate,
+                to_value_date=vdate,
+                _keep_nans=True
+            )
+            if ts is not None and len(ts):
+                chunks.append(ts)
 
-        hist = self.history(
-            cn, name,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            to_insertion_date=toidate,
-            _keep_nans=True
-        )
-
-        hcache = historycache(
-            name, hist,
-            tzaware=tzaware
-        )
-
-        return hcache.staircase(
-            delta,
-            from_value_date,
-            to_value_date
-        )
+        if chunks:
+            return pd.concat(chunks).dropna()
+        return empty_series(tzaware, name=name)
 
     @tx
     def block_staircase(
@@ -1473,71 +1468,3 @@ class BlockStaircaseRevisionError(Exception):
             [str(rd) for rd in revision_dates],
             [str(bs) for bs in block_start_dates]
         ))
-
-
-class historycache:
-
-    def __init__(self, name, hist, tzaware=True):
-        self.name = name
-        self.tzaware = tzaware
-        self.hist = hist
-        self.idates = list(self.hist.keys())
-
-    def _find_nearest_idate(self, revision_date):
-        idates = self.idates
-        idx = bisect_search(idates, revision_date)
-        if idx == -1:
-            return None
-        if idx >= len(idates):
-            idx = len(idates) - 1
-        return self.idates[idx]
-
-    def get(self, revision_date=None,
-            from_value_date=None,
-            to_value_date=None):
-        revision_date = ensuretz(revision_date)
-
-        if not len(self.hist):
-            return empty_series(self.tzaware, name=self.name)
-
-        if revision_date is None:
-            return list(self.hist.values())[-1].dropna()
-
-        idate = self._find_nearest_idate(revision_date)
-        if idate:
-            ts = self.hist[idate]
-            return ts.loc[
-                (ts.index >= from_value_date) & (ts.index <= to_value_date)
-            ].dropna()
-
-        return empty_series(self.tzaware, name=self.name)
-
-    def staircase(self, delta,
-                  from_value_date=None,
-                  to_value_date=None):
-        """ compute a series whose value dates are bounded to be
-        `delta` time after the insertion dates and where we
-        keep the most recent ones
-        """
-        base = self.get(
-            from_value_date=from_value_date,
-            to_value_date=to_value_date
-        )
-        if not len(base):
-            return base
-
-        chunks = []
-        for vdate in base.index:
-            ts = self.get(
-                revision_date=vdate - delta,
-                from_value_date=vdate,
-                to_value_date=vdate
-            )
-            if ts is not None and len(ts):
-                chunks.append(ts)
-
-        ts = empty_series(self.tzaware, name=self.name)
-        if chunks:
-            ts = pd.concat(chunks)
-        ts.name = self.name
-        return ts
