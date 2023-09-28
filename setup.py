@@ -16,7 +16,7 @@ setup(name='tshistory',
       long_description=doc.read_text(),
       long_description_content_type='text/markdown',
       packages=find_packages(),
-      python_requires='>= 3.10',
+      python_requires='>= 3.9',
       install_requires=[
           'pandas >= 1.0.5, < 1.6',
           'dbcache >= 0.4.0',
@@ -34,7 +34,8 @@ setup(name='tshistory',
           'flask-restx == 1.1',
           'jinja2 < 3.2',
           'requests',
-          'version-parser == 1.0.1'
+          'version-parser == 1.0.1',
+          'importlib-metadata == 6.8'
       ],
       package_data={'tshistory': [
           'schema.sql',

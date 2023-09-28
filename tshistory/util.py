@@ -10,7 +10,7 @@ import threading
 import tempfile
 import shutil
 import zlib
-from importlib.metadata import entry_points
+from importlib_metadata import entry_points
 from functools import reduce
 from contextlib import contextmanager
 from pathlib import Path
