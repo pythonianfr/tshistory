@@ -148,6 +148,12 @@ def find_dburi(something: str) -> str:
         )
 
 
+def find_first_uri():
+    cfg = config()
+    assert 'dburi' in cfg, 'Your tshistory.cfg file does not contain a [dburi] section.'
+    return next(iter(cfg['dburi'].values()))
+
+
 def find_sources(uri):
     # The [db] section may contain several name -> uri entries. We find
     # the matching name and then we can find the associated sources.

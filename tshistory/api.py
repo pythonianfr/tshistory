@@ -21,6 +21,7 @@ from tshistory.util import (
     find_most_specific_tshclass,
     find_most_specific_http_client,
     find_sources,
+    find_first_uri,
     threadpool,
     ts
 )
@@ -33,11 +34,15 @@ NONETYPE = type(None)
 
 class timeseries:
 
-    def __new__(cls, uri,
+    def __new__(cls,
+                uri=None,
                 namespace='tsh',
                 handler=None,
                 sources=None,
                 clientclass=None):
+        if uri is None:
+            uri = find_first_uri()
+            print(f'timeseries picked this uri: {uri}')
         parseduri = urlparse(uri)
         if parseduri.scheme.startswith('postgres'):
             if handler is None:
