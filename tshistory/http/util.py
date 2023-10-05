@@ -10,6 +10,18 @@ import pandas as pd
 from tshistory import util
 
 
+def get_auth(uri, config):
+    if 'auth' not in config:
+        return {}
+
+    for name, items in util.unflatten(config['auth']).items():
+        if items['uri'] == uri:
+            return items
+
+    print(f'found no auth items for this uri: `{uri}`')
+    return {}
+
+
 def utcdt(dtstr):
     return pd.Timestamp(dtstr)
 

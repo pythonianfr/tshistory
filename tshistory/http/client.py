@@ -16,12 +16,12 @@ from tshistory.util import (
     series_metadata,
     ts,
     tzaware_serie,
-    unflatten,
     unpack_history,
     unpack_group_history,
     unpack_group,
     unpack_series
 )
+from tshistory.http.util import get_auth
 
 
 def strft(dt):
@@ -62,17 +62,6 @@ def unwraperror(func):
         return res
 
     return wrapper
-
-
-def get_auth(uri, config):
-    if 'auth' not in config:
-        return ()
-    for name, items in unflatten(config['auth']).items():
-        if items['uri'] == uri:
-            return items
-
-    print(f'found no auth items for this uri: `{uri}`')
-    return ()
 
 
 class httpclient:
