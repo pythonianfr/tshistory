@@ -6,3 +6,4 @@ data/pgdb
 build
 dist
 .cache
+.pytype
