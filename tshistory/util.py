@@ -836,6 +836,7 @@ def patchmany(series):
     for ts in series:
         _populate(ts.index.values, ts.values, uindex, uvalues)
 
+    # assumption: all series are tzaware or naive
     tz = first.index.dtype.tz.zone if is_datetime64tz_dtype(first.index) else None
     series = pd.Series(
         uvalues,
