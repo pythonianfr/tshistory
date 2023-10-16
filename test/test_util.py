@@ -304,20 +304,12 @@ def test_json():
     )
 
     series2 = pd.read_json(jsonseries, typ='series', dtype=False)
-    if pd.__version__.startswith('0.24'):
-        assert not getattr(series2.index.dtype, 'tz', False)
-        assert series.equals(series2)
-    elif pd.__version__.startswith('0.25'):
-        assert series2.index.dtype.tz.zone == 'UTC'
-        assert not series.equals(series2)
+    assert not getattr(series2.index.dtype, 'tz', False)
+    assert series.equals(series2)
 
     series2 = fromjson(jsonseries, 'foo', tzaware=False)
-    if pd.__version__.startswith('0.24'):
-        assert not getattr(series2.index.dtype, 'tz', False)
-        assert series.equals(series2)
-    elif pd.__version__.startswith('0.25'):
-        assert not getattr(series2.index.dtype, 'tz', False)
-        assert series.equals(series2)
+    assert not getattr(series2.index.dtype, 'tz', False)
+    assert series.equals(series2)
 
 
 def test_bisect():
