@@ -75,6 +75,19 @@ def migrate(db_uri, interactive=True, initial=None, namespace='tsh'):
         ).run_migrations()
 
 
+@tsh.command(name='dbversions')
+@click.argument('db-uri')
+@click.option('--namespace', default='tsh')
+def dbversions(db_uri, namespace='tsh'):
+    uri = find_dburi(db_uri)
+    store = storeapi.kvstore(
+        uri,
+        namespace=f'{namespace}-kvstore'
+    )
+    for k, v in sorted(store.all().items()):
+        print(f'{k} -> {v}')
+
+
 @tsh.command(name='shell')
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
