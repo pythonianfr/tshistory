@@ -4,6 +4,7 @@ from pkg_resources import iter_entry_points
 import click
 from sqlalchemy import create_engine
 
+from dbcache import api as storeapi
 from tshistory.tsio import timeseries as tshclass
 from tshistory.api import timeseries
 from tshistory.util import (
@@ -78,10 +79,15 @@ def migrate(db_uri, interactive=True, initial=None, namespace='tsh'):
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
 def shell(db_uri, namespace='tsh'):
+    uri = find_dburi(db_uri)
     tsa = timeseries(  # noqa: F841
-        find_dburi(db_uri),
+        uri,
         namespace,
         handler=tshclass
+    )
+    store = storeapi.kvstore(  # noqa: F841
+        uri,
+        namespace=f'{namespace}-kvstore'
     )
     import pdb; pdb.set_trace()
 
