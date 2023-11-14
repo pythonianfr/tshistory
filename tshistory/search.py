@@ -1,3 +1,4 @@
+import json
 import uuid
 import typing
 from psyl.lisp import parse
@@ -376,9 +377,17 @@ class _comparator(query):
     def sql(self, namespace='tsh'):
         vid = usym('value')
         if isinstance(self.value, str):
-            # NOTE: this is weak and injection prone
             return (
-                f'jsonb_path_match(metadata, \'$.{self.key} {self._op} "{self.value}"\')', {}
+                # issue: " (double quotes) in json vs plain sql means
+                # something different - we have to use a concatenation
+                # trick to have it
+                f'jsonb_path_match(metadata, '
+                f'(\'$."\' || %(key)s || \'" {self._op} $value\')::jsonpath, '
+                f'%(json)s)',
+                {
+                    'key': self.key,
+                    'json': json.dumps({'value': self.value})
+                }
             )
 
         return (
