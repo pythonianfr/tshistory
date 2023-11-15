@@ -472,7 +472,7 @@ class mainsource:
             integers. Default is {}, i.e. the revision date is the block start date
 
         maturity_time: dict fixing start time of each block, of which keys should be
-            taken from ['year', 'month', 'day', 'hour', 'minute', 'second'] and values
+            taken from ['year', 'month', 'day', 'weekday', 'hour', 'minute', 'second'] and values
             must be integers. The start date of each block is thus obtained by adding
             `maturity_offset` to revision date and then applying `maturity_time`.
             Default is {}, i.e. block start date is just the revision date shifted by

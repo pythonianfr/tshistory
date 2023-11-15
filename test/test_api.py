@@ -665,6 +665,13 @@ def test_find(tsx):
 
     r = tsx.find(
         '(by.or '
+        '  (= "foo" 43)'
+        '  (= "foo" 42))'
+    )
+    assert r == ['find.me.1', 'find.me.2', 'find.me.tznaive']
+
+    r = tsx.find(
+        '(by.or '
         '  (by.metaitem "foo" 43)'
         '  (by.metaitem "foo" 42))'
     )

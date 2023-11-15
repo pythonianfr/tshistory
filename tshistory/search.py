@@ -4,8 +4,8 @@ import typing
 from psyl.lisp import parse
 
 from tshistory.util import (
-    ensure_plugin_registration,
-    leafclasses
+    all_subclasses,
+    ensure_plugin_registration
 )
 
 
@@ -165,7 +165,8 @@ class query:
     def klassbyname(klassname):
         classmap = {
             klass.__name__: klass
-            for klass in leafclasses(query)
+            for klass in all_subclasses(query)
+            if not klass.__name__.startswith('_')
         }
         return classmap[klassname]
 
@@ -326,36 +327,6 @@ class bymetakey(query):
         return f'metadata ? %({vid})s', {vid: self.key}
 
 
-class bymetaitem(query):
-    __slots__ = ('key', 'value')
-
-    def __init__(self, key: str, value: str):
-        self.key = key
-        self.value = value
-
-    def __expr__(self):
-        if isinstance(self.value, str):
-            return f'(by.metaitem "{self.key}" "{self.value}")'
-        return f'(by.metaitem "{self.key}" {self.value})'
-
-    @classmethod
-    def _fromtree(cls, tree):
-        return cls(*tree[1:])
-
-    def sql(self, namespace='tsh'):
-        # NOTE: this is weak and injection prone
-        # we need to find a robust workaround for
-        # psycopg2 bugs
-        vid = usym('value')
-        if not isinstance(self.value, str):
-            return (
-                f'metadata @> \'{{"{self.key}":%({vid})s}}\'::jsonb',
-                {vid: self.value}
-            )
-
-        return f'metadata @> \'{{"{self.key}":"{self.value}"}}\'::jsonb', {}
-
-
 class _comparator(query):
     __slots__ = ('key', 'value')
     _op = None
@@ -420,3 +391,12 @@ class eq(_comparator):
     __slots__ = ('key', 'value')
     _op = '=='
     _lispop = '='
+
+
+class bymetaitem(eq):
+    __slots__ = ('key', 'value')
+
+    def __expr__(self):
+        if isinstance(self.value, str):
+            return f'(by.metaitem "{self.key}" "{self.value}")'
+        return f'(by.metaitem "{self.key}" {self.value})'
