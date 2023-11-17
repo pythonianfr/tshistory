@@ -17,6 +17,7 @@ from tshistory.util import (
     diff,
     empty_series,
     ensuretz,
+    infer_freq,
     num2float,
     patch,
     pruned_history,
@@ -1180,13 +1181,7 @@ class timeseries:
         if ts is None or len(ts) < 2:
             return None
 
-        index = ts.index.to_series()
-        deltas = (index - index.shift(1)).dropna()
-        freq = deltas.median()
-
-        conform_intervals = sum(deltas == freq)
-        return freq, conform_intervals / len(deltas)
-
+        return infer_freq(ts)
     # groups
 
     @tx

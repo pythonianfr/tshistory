@@ -13,6 +13,7 @@ from tshistory.util import (
     bisect_search,
     diff,
     fromjson,
+    infer_freq,
     nary_pack,
     nary_unpack,
     objects,
@@ -289,6 +290,31 @@ def test_diff_duplicated():
     )
     with pytest.raises(ValueError):
         diff(s1, s2)
+
+
+def test_infer_freq():
+    s1 = pd.Series(
+        [1., 2., 3., 4.],
+        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+    )
+    d, q = infer_freq(s1)
+    assert d == pd.Timedelta(hours=1)
+    assert q == 1
+
+    s2 = pd.Series(
+        [1., 2., 3., None, 5.],
+        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=5)
+    )
+    d, q = infer_freq(s2.dropna())
+    assert d == pd.Timedelta(hours=1)
+    assert q == 0.6666666666666666
+
+    s3 = pd.Series(
+        [1.],
+        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=1)
+    )
+    with pytest.raises(AssertionError):
+        infer_freq(s3)
 
 
 def test_json():

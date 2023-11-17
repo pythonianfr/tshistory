@@ -319,6 +319,16 @@ def compatible_date(tzaware, date):
     return date.tz_convert('utc')
 
 
+def infer_freq(ts):
+    assert len(ts) > 1, 'infer_freq needs a series of size > 1'
+    index = ts.index.to_series()
+    deltas = (index - index.shift(1)).dropna()
+    freq = deltas.median()
+
+    conform_intervals = sum(deltas == freq)
+    return freq, conform_intervals / len(deltas)
+
+
 # metadata
 
 def series_metadata(ts):
