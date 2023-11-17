@@ -647,7 +647,10 @@ def test_infer_freq(engine, tsh):
         insertion_date=pd.Timestamp('2023-5-1', tz='utc')
     )
 
-    assert tsh.infer_freq(engine, 'infer_freq') == pd.Timedelta(days=1)
+    assert tsh.infer_freq(engine, 'infer_freq') == (
+        pd.Timedelta(days=1),
+        1
+    )
     assert tsh.infer_freq(
         engine,
         'infer_freq',
@@ -672,12 +675,19 @@ def test_infer_freq(engine, tsh):
         insertion_date=pd.Timestamp('2023-5-2', tz='utc')
     )
 
-    assert tsh.infer_freq(engine, 'infer_freq') == pd.Timedelta(hours=1)
-    assert tsh.infer_freq(
+    assert tsh.infer_freq(engine, 'infer_freq') == (
+        pd.Timedelta(hours=1),
+        0.7142857142857143
+    )
+    freq = tsh.infer_freq(
         engine,
         'infer_freq',
         revision_date=pd.Timestamp('2023-5-1')
-    ) == pd.Timedelta(days=1)
+    )
+    assert freq == (
+        pd.Timedelta(days=1),
+        1
+    )
 
 
 def test_point_deletion(engine, tsh):

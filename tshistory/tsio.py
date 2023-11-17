@@ -1181,8 +1181,11 @@ class timeseries:
             return None
 
         index = ts.index.to_series()
-        deltas = index - index.shift(1)
-        return deltas.median()
+        deltas = (index - index.shift(1)).dropna()
+        freq = deltas.median()
+
+        conform_intervals = sum(deltas == freq)
+        return freq, conform_intervals / len(deltas)
 
     # groups
 
