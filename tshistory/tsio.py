@@ -1166,6 +1166,24 @@ class timeseries:
             q.limit(limit)
         return q
 
+    def infer_freq(self, cn, name,
+                   revision_date=None,
+                   from_value_date=None,
+                   to_value_date=None):
+        ts = self.get(
+            cn,
+            name,
+            revision_date=revision_date,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date
+        )
+        if ts is None or len(ts) < 2:
+            return None
+
+        index = ts.index.to_series()
+        deltas = index - index.shift(1)
+        return deltas.median()
+
     # groups
 
     @tx

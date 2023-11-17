@@ -630,6 +630,56 @@ def test_first_latest_insertion_date(engine, tsh):
     assert tsh.latest_insertion_date(engine, name) == idates[-1]
 
 
+def test_infer_freq(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2023-1-1'),
+            freq='D',
+            periods=3
+        )
+    )
+    tsh.update(
+        engine,
+        ts,
+        'infer_freq',
+        'Babar',
+        insertion_date=pd.Timestamp('2023-5-1', tz='utc')
+    )
+
+    assert tsh.infer_freq(engine, 'infer_freq') == pd.Timedelta(days=1)
+    assert tsh.infer_freq(
+        engine,
+        'infer_freq',
+        from_value_date=pd.Timestamp('2023-1-3')
+    ) is None
+    assert tsh.infer_freq(engine, 'no-such-series') is None
+
+    # frequence change
+    ts = pd.Series(
+        [1, 2, 3, 4, 5],
+        index=pd.date_range(
+            pd.Timestamp('2023-1-3T01:00:00'),
+            freq='H',
+            periods=5
+        )
+    )
+    tsh.update(
+        engine,
+        ts,
+        'infer_freq',
+        'Babar',
+        insertion_date=pd.Timestamp('2023-5-2', tz='utc')
+    )
+
+    assert tsh.infer_freq(engine, 'infer_freq') == pd.Timedelta(hours=1)
+    assert tsh.infer_freq(
+        engine,
+        'infer_freq',
+        revision_date=pd.Timestamp('2023-5-1')
+    ) == pd.Timedelta(days=1)
+
+
 def test_point_deletion(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 11)
     ts_begin.iloc[-1] = np.nan
