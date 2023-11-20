@@ -654,6 +654,36 @@ def test_search():
     assert _serialize_roundtrip(s15)
 
 
+def test_search_types():
+    types = {}
+    for lispname, kname in search._OPMAP.items():
+        if not getattr(search, kname, False):
+            continue
+        types[lispname] = search.query.klassbyname(kname).__sig__()
+
+    assert types == {
+        '<': {'key': 'str', 'return': 'query', 'value': 'Union[str, Number, bool]'},
+        '<=': {'key': 'str', 'return': 'query', 'value': 'Union[str, Number, bool]'},
+        '=': {'key': 'str', 'return': 'query', 'value': 'Union[str, Number, bool]'},
+        '>': {'key': 'str', 'return': 'query', 'value': 'Union[str, Number, bool]'},
+        '>=': {'key': 'str', 'return': 'query', 'value': 'Union[str, Number, bool]'},
+        'by.and': {'items': 'Packed[query]', 'return': 'query'},
+        'by.everything': {'return': 'query'},
+        'by.internal-metaitem': {'key': 'str',
+                                 'return': 'query',
+                                 'value': 'Union[str, Number, bool]'},
+        'by.metaitem': {'key': 'str',
+                        'return': 'query',
+                        'value': 'Union[str, Number, bool]'},
+        'by.metakey': {'key': 'str', 'return': 'query'},
+        'by.name': {'query': 'str', 'return': 'query'},
+        'by.not': {'item': 'query', 'return': 'query'},
+        'by.or': {'items': 'Packed[query]', 'return': 'query'},
+        'by.source': {'query': 'query', 'return': 'query'},
+        'by.tzaware': {'return': 'query'}
+    }
+
+
 def test_prune_bysource():
     """Notion of by.source filter.
 

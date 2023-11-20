@@ -188,6 +188,13 @@ class bysource(query):
     def __expr__(self):
         return f'(by.source "{self.query}")'
 
+    @staticmethod
+    def __sig__():
+        return {
+            'query': 'query',
+            'return': 'query'
+        }
+
     @classmethod
     def _fromtree(cls, tree):
         return cls(tree[1])
@@ -202,6 +209,12 @@ class byeverything(query):
     def _fromtree(cls, _):
         return cls()
 
+    @staticmethod
+    def __sig__():
+        return {
+            'return': 'query'
+        }
+
     def sql(self, namespace='tsh'):
         return '', {}
 
@@ -214,6 +227,13 @@ class and_(query):
 
     def __expr__(self):
         return f'(by.and {" ".join(x.expr() for x in self.items)})'
+
+    @staticmethod
+    def __sig__():
+        return {
+            'items': 'Packed[query]',
+            'return': 'query'
+        }
 
     @classmethod
     def _fromtree(cls, tree):
@@ -242,6 +262,13 @@ class or_(query):
     def __expr__(self):
         return f'(by.or {" ".join(x.expr() for x in self.items)})'
 
+    @staticmethod
+    def __sig__():
+        return {
+            'items': 'Packed[query]',
+            'return': 'query'
+        }
+
     @classmethod
     def _fromtree(cls, tree):
         items = [
@@ -269,6 +296,13 @@ class not_(query):
     def __expr__(self):
         return f'(by.not {self.item.expr()})'
 
+    @staticmethod
+    def __sig__():
+        return {
+            'item': 'query',
+            'return': 'query'
+        }
+
     @classmethod
     def _fromtree(cls, tree):
         return cls(query._fromtree(tree[1]))
@@ -282,6 +316,12 @@ class tzaware(query):
 
     def __expr__(self):
         return '(by.tzaware)'
+
+    @staticmethod
+    def __sig__():
+        return {
+            'return': 'query'
+        }
 
     @classmethod
     def _fromtree(cls, _):
@@ -299,6 +339,13 @@ class byname(query):
 
     def __expr__(self):
         return f'(by.name "{self.query}")'
+
+    @staticmethod
+    def __sig__():
+        return {
+            'query': 'str',
+            'return': 'query'
+        }
 
     @classmethod
     def _fromtree(cls, tree):
@@ -318,6 +365,13 @@ class bymetakey(query):
 
     def __expr__(self):
         return f'(by.metakey "{self.key}")'
+
+    @staticmethod
+    def __sig__():
+        return {
+            'key': 'str',
+            'return': 'query'
+        }
 
     @classmethod
     def _fromtree(cls, tree):
@@ -342,6 +396,14 @@ class _comparator(query):
         if isinstance(self.value, str):
             return f'({self._lispop or self._op} "{self.key}" "{self.value}")'
         return f'({self._lispop or self._op} "{self.key}" {self.value})'
+
+    @staticmethod
+    def __sig__():
+        return {
+            'key': 'str',
+            'value': 'Union[str, Number, bool]',
+            'return': 'query'
+        }
 
     @classmethod
     def _fromtree(cls, tree):
