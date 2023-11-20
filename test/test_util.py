@@ -649,6 +649,10 @@ def test_search():
     assert s14.expr() == '(by.source "remote")'
     assert _serialize_roundtrip(s14)
 
+    s15 = search.byinternalmetaitem('key', 42)
+    assert s15.expr() == '(by.internal-metaitem "key" 42)'
+    assert _serialize_roundtrip(s15)
+
 
 def test_prune_bysource():
     """Notion of by.source filter.

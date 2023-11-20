@@ -773,6 +773,9 @@ def test_find(tsx):
     }
     assert ts.source == 'local'
 
+    r = tsx.find('(by.internal-metaitem "tablename" "find.me.1")')
+    assert r == ['find.me.1']
+
 
 def test_basket(tsx):
     ts = pd.Series(

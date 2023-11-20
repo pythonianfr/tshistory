@@ -31,6 +31,7 @@ _OPMAP = {
     'by.name': 'byname',
     'by.metakey': 'bymetakey',
     'by.metaitem': 'bymetaitem',
+    'by.internal-metaitem': 'byinternalmetaitem',
     'by.source': 'bysource',
     '<': 'lt',
     '<=': 'lte',
@@ -331,6 +332,7 @@ class _comparator(query):
     __slots__ = ('key', 'value')
     _op = None
     _lispop = None
+    _field = 'metadata'
 
     def __init__(self, key, value):
         self.key = key
@@ -352,7 +354,7 @@ class _comparator(query):
                 # issue: " (double quotes) in json vs plain sql means
                 # something different - we have to use a concatenation
                 # trick to have it
-                f'jsonb_path_match(metadata, '
+                f'jsonb_path_match({self._field}, '
                 f'(\'$."\' || %(key)s || \'" {self._op} $value\')::jsonpath, '
                 f'%(json)s)',
                 {
@@ -400,3 +402,12 @@ class bymetaitem(eq):
         if isinstance(self.value, str):
             return f'(by.metaitem "{self.key}" "{self.value}")'
         return f'(by.metaitem "{self.key}" {self.value})'
+
+
+class byinternalmetaitem(eq):
+    _field = 'internal_metadata'
+
+    def __expr__(self):
+        if isinstance(self.value, str):
+            return f'(by.internal-metaitem "{self.key}" "{self.value}")'
+        return f'(by.internal-metaitem "{self.key}" {self.value})'
