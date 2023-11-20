@@ -13,6 +13,7 @@ from tshistory.util import (
     logme,
     pack_group,
     pack_series,
+    parse_delta,
     series_metadata,
     ts,
     tzaware_serie,
@@ -236,6 +237,34 @@ class httpclient:
             'metadata': json.dumps(metadata)
         })
 
+        return res
+
+    @unwraperror
+    def inferred_freq(self, name,
+                      revision_date=None,
+                      from_value_date=None,
+                      to_value_date=None):
+        args = {
+            'name': name
+        }
+        if revision_date:
+            args['revision_date'] = strft(revision_date)
+        if from_value_date:
+            args['from_value_date'] = strft(from_value_date)
+        if to_value_date:
+            args['to_value_date'] = strft(to_value_date)
+
+        res = self.session.get(
+            f'{self.uri}/series/freq', params=args
+        )
+        if res.status_code == 404:
+            return None
+        if res.status_code == 200:
+            data = res.json()
+            if data is None:
+                return
+            ifreq = data['inferred_freq']
+            return parse_delta(ifreq[0]), float(ifreq[1])
         return res
 
     @unwraperror

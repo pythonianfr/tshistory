@@ -107,6 +107,18 @@ put_metadata.add_argument(
     help='set new metadata for a series'
 )
 
+inferred_freq = base.copy()
+inferred_freq.add_argument(
+    'revision_date', type=utcdt, default=None,
+)
+inferred_freq.add_argument(
+    'from_value_date', type=utcdt, default=None
+)
+inferred_freq.add_argument(
+    'to_value_date', type=utcdt, default=None
+)
+
+
 insertion_dates = base.copy()
 insertion_dates.add_argument(
     'from_insertion_date', type=utcdt, default=None
@@ -516,6 +528,34 @@ class httpapi:
 
                 return '', 200
 
+        @nss.route('/freq')
+        class timeseries_freq(Resource):
+
+            @api.expect(inferred_freq)
+            @onerror
+            def get(self):
+                args = inferred_freq.parse_args()
+                if not tsa.exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
+                freq_qa = tsa.inferred_freq(
+                    args.name,
+                    args.revision_date,
+                    args.from_value_date,
+                    args.to_value_date
+                )
+
+                if freq_qa is None:
+                    return make_response('null')
+
+                freq = util.delta_isoformat(freq_qa[0])
+                response = make_response(
+                    {
+                        'inferred_freq': (freq, str(freq_qa[1]))
+                    }
+                )
+                response.headers['Content-Type'] = 'text/json'
+                return response
 
         @nss.route('/state')
         class timeseries_state(Resource):

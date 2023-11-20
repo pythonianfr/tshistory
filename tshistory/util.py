@@ -3,6 +3,7 @@ import os
 import math
 import struct
 import json
+import re
 from array import array
 from collections import defaultdict
 import logging
@@ -327,6 +328,24 @@ def infer_freq(ts):
 
     conform_intervals = sum(deltas == freq)
     return freq, conform_intervals / len(deltas)
+
+
+# timedelta (de)serialisation
+
+def delta_isoformat(td):
+    return f'P{td.days}DT0H0M{td.seconds}S'
+
+
+_DELTA = re.compile('P(.*)DT(.*)H(.*)M(.*)S')
+def parse_delta(td):
+    match = _DELTA.match(td)
+    if not match:
+        raise Exception(f'unparseable time delta `{td}`')
+    days, hours, minutes, seconds = match.groups()
+    return pd.Timedelta(
+        days=int(days), hours=int(hours),
+        minutes=int(minutes), seconds=int(seconds)
+    )
 
 
 # metadata

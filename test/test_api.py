@@ -242,6 +242,64 @@ datetime,               value
     pd.testing.assert_series_equal(computed_ts, expected_ts, check_names=False)
 
 
+def test_inferred_freq(tsx):
+    tsx.delete('infer_freq')
+
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2023-1-1'),
+            freq='D',
+            periods=3
+        )
+    )
+    tsx.update(
+        'infer_freq',
+        ts,
+        'Babar',
+        insertion_date=pd.Timestamp('2023-5-1', tz='utc')
+    )
+
+    assert tsx.inferred_freq('infer_freq') == (
+        pd.Timedelta(days=1),
+        1
+    )
+    assert tsx.inferred_freq(
+        'infer_freq',
+        from_value_date=pd.Timestamp('2023-1-3')
+    ) is None
+    assert tsx.inferred_freq('no-such-series') is None
+
+    # frequence change
+    ts = pd.Series(
+        [1, 2, 3, 4, 5],
+        index=pd.date_range(
+            pd.Timestamp('2023-1-3T01:00:00'),
+            freq='H',
+            periods=5
+        )
+    )
+    tsx.update(
+        'infer_freq',
+        ts,
+        'Babar',
+        insertion_date=pd.Timestamp('2023-5-2', tz='utc')
+    )
+
+    assert tsx.inferred_freq('infer_freq') == (
+        pd.Timedelta(hours=1),
+        0.7142857142857143
+    )
+    freq = tsx.inferred_freq(
+        'infer_freq',
+        revision_date=pd.Timestamp('2023-5-1')
+    )
+    assert freq == (
+        pd.Timedelta(days=1),
+        1
+    )
+
+
 def test_log(tsx):
     for name in ('log-me',):
         tsx.delete(name)

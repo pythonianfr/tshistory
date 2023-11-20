@@ -272,6 +272,11 @@ class with_http_bridge:
         )
 
         resp.add_callback(
+            responses.GET, uri + '/series/freq',
+            callback=partial(read_request_bridge, wsgitester)
+        )
+
+        resp.add_callback(
             responses.GET, uri + '/series/log',
             callback=partial(read_request_bridge, wsgitester)
         )

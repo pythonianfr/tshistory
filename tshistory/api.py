@@ -624,6 +624,28 @@ class mainsource:
             return self.othersources.interval(name)
         return ival
 
+    def inferred_freq(self,
+                      name: str,
+                      revision_date: Optional[pd.Timestamp]=None,
+                      from_value_date: Optional[pd.Timestamp]=None,
+                      to_value_date: Optional[pd.Timestamp]=None
+                      ) -> Optional[Tuple[pd.Timedelta, float]]:
+        """Return a tuple of timedelta, float (between 0 and 1).
+
+        The timedelta represents the period (or 'freq' in pandas
+        parlance) and the number the quality of the period, which may vary
+        because of the irregularity of the series.
+
+        """
+        with self.engine.begin() as cn:
+            return self.tsh.infer_freq(
+                cn,
+                name,
+                revision_date,
+                from_value_date,
+                to_value_date
+            )
+
     def metadata(self,
                  name: str,
                  all: bool=None) -> Optional[Dict[str, Any]]:
