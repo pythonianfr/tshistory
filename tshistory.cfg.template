@@ -1,0 +1,10 @@
+[dburi]
+refinery = postgresql://user@passwd/refinery
+
+[sources]
+refinery.meteo = http://refinery-meteo.info/api, tsh
+
+[auth]
+meteo.uri = http://refinery-meteo.info/api
+meteo.login = <login>
+meteo.passwd = <passwd>
