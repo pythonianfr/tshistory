@@ -448,18 +448,15 @@ class timeseries:
         return empty_series(tzaware, name=name)
 
     @tx
-    def block_staircase(
-        self,
-        cn,
-        name,
-        from_value_date=None,
-        to_value_date=None,
-        revision_freq=None,
-        revision_time=None,
-        revision_tz='UTC',
-        maturity_offset=None,
-        maturity_time=None,
-    ):
+    def block_staircase(self, cn, name,
+                        from_value_date=None,
+                        to_value_date=None,
+                        revision_freq=None,
+                        revision_time=None,
+                        revision_tz='UTC',
+                        maturity_offset=None,
+                        maturity_time=None):
+
         if not self.exists(cn, name):
             return
         guard_query_dates(from_value_date, to_value_date)

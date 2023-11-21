@@ -373,16 +373,15 @@ class httpclient:
 
 
     @unwraperror
-    def block_staircase(
-        self,
-        name,
-        from_value_date=None,
-        to_value_date=None,
-        revision_freq=None,
-        revision_time=None,
-        revision_tz='UTC',
-        maturity_offset=None,
-        maturity_time=None):
+    def block_staircase(self, name,
+                        from_value_date=None,
+                        to_value_date=None,
+                        revision_freq=None,
+                        revision_time=None,
+                        revision_tz='UTC',
+                        maturity_offset=None,
+                        maturity_time=None):
+
         guard_query_dates(from_value_date, to_value_date)
         args = {'name': name, 'format': 'tshpack'}
 
