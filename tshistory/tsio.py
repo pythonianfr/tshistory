@@ -685,6 +685,10 @@ class timeseries:
         sql = (f'update "{self.namespace}".registry '
                'set name = %(newname)s '
                'where name = %(oldname)s')
+        if self.exists(cn, newname):
+            raise ValueError(
+                f'`{newname}` already exists.'
+            )
         cn.execute(sql, oldname=oldname, newname=newname)
 
     @tx

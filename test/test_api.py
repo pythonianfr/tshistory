@@ -204,6 +204,11 @@ insertion_date             value_date
 
     tsx.rename('nope', 'nada')
 
+    tsx.update('api-test2', series, 'Babar')
+
+    with pytest.raises(ValueError):
+        tsx.rename('api-test2', 'api-test')
+
 
 def test_block_staircase(tsx):
     hist = hist_from_csv(io.StringIO("""

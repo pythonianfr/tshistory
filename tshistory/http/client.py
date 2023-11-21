@@ -556,6 +556,11 @@ class httpclient:
         if res.status_code == 404:
             # oldname didn't exist
             return
+        if res.status_code == 409:
+            # newname already exists
+            raise ValueError(
+                f'`{newname}` already exists.'
+            )
 
         return res
 
