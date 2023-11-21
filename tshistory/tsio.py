@@ -17,6 +17,8 @@ from tshistory.util import (
     diff,
     empty_series,
     ensuretz,
+    guard_insert,
+    guard_query_dates,
     infer_freq,
     num2float,
     patch,
@@ -89,7 +91,7 @@ class timeseries:
         tablename = self._series_to_tablename(cn, name)
         if not len(updatets):
             if tablename is None:
-                return self._guard_insert(
+                return guard_insert(
                     updatets, name, author, metadata,
                     insertion_date
                 )
@@ -99,7 +101,7 @@ class timeseries:
                 dtype=updatets.dtype
             )
 
-        updatets = self._guard_insert(
+        updatets = guard_insert(
             updatets, name, author, metadata,
             insertion_date
         )
@@ -134,7 +136,7 @@ class timeseries:
         assert isinstance(name, str), 'Name is not a string'
         name = name.strip()
         newts = newts.dropna()
-        newts = self._guard_insert(
+        newts = guard_insert(
             newts, name, author, metadata,
             insertion_date
         )
@@ -207,7 +209,7 @@ class timeseries:
         if not self.exists(cn, name):
             return
 
-        self._guard_query_dates(
+        guard_query_dates(
             revision_date, from_value_date, to_value_date
         )
 
@@ -335,7 +337,7 @@ class timeseries:
         if tablename is None:
             return
 
-        self._guard_query_dates(
+        guard_query_dates(
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date
         )
@@ -414,7 +416,7 @@ class timeseries:
         if not self.exists(cn, name):
             return
 
-        self._guard_query_dates(
+        guard_query_dates(
             from_value_date, to_value_date
         )
         base = self.get(
@@ -460,7 +462,7 @@ class timeseries:
     ):
         if not self.exists(cn, name):
             return
-        self._guard_query_dates(from_value_date, to_value_date)
+        guard_query_dates(from_value_date, to_value_date)
 
         latest_ts = self.get(
             cn, name,
@@ -640,7 +642,7 @@ class timeseries:
                         from_value_date=None,
                         to_value_date=None,
                         **kw):
-        self._guard_query_dates(
+        guard_query_dates(
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date
         )
@@ -855,33 +857,6 @@ class timeseries:
     # Helpers
 
     # creation / update
-
-    def _guard_insert(self, newts, name, author, metadata, insertion_date):
-        assert len(name), 'Name is an empty string'
-        assert isinstance(author, str), 'Author is not a string'
-        assert metadata is None or isinstance(metadata, dict), (
-            f'Bad format for metadata ({repr(metadata)})'
-        )
-        assert (insertion_date is None or
-                isinstance(insertion_date, datetime)), 'Bad format for insertion date'
-        assert isinstance(newts, pd.Series), 'Not a pd.Series'
-        index = newts.index
-        assert isinstance(index, pd.DatetimeIndex), 'You must provide a DatetimeIndex'
-        assert not index.duplicated().any(), 'There are some duplicates in the index'
-
-        assert index.notna().all(), 'The index contains NaT entries'
-        if index.tz is not None:
-            newts.index = index.tz_convert('UTC')
-        if not index.is_monotonic_increasing:
-            newts = newts.sort_index()
-
-        return num2float(newts)
-
-    def _guard_query_dates(self, *dates):
-        assert all(
-            isinstance(dt, datetime)
-            for dt in filter(None, dates)
-        ), 'all query dates must be datetime-compatible objects'
 
     def _create(self, cn, newts, name, author, seriesmeta,
                 metadata=None, insertion_date=None):

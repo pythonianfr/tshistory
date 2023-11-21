@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import warnings
 
@@ -10,6 +11,8 @@ import pytz
 from tshistory.tsio import timeseries
 from tshistory.util import (
     get_cfg_path,
+    guard_insert,
+    guard_query_dates,
     logme,
     pack_group,
     pack_series,
@@ -101,6 +104,10 @@ class httpclient:
                 insertion_date=None,
                 supervision=False,
                 replace=False):
+        guard_insert(
+            series, name, author, metadata,
+            insertion_date
+        )
         meta = series_metadata(series)
         qdata = {
             'name': name,
@@ -275,6 +282,9 @@ class httpclient:
             nocache=False,
             live=False,
             _keep_nans=False):
+        guard_query_dates(
+            revision_date, from_value_date, to_value_date
+        )
         args = {
             'name': name,
             'format': 'tshpack',
@@ -305,6 +315,10 @@ class httpclient:
                         from_value_date=None,
                         to_value_date=None,
                         nocache=False):
+        guard_query_dates(
+            from_insertion_date, to_insertion_date,
+            from_value_date, to_value_date
+        )
         args = {
             'name': name,
             'nocache': nocache
@@ -335,6 +349,9 @@ class httpclient:
     def staircase(self, name, delta,
                   from_value_date=None,
                   to_value_date=None):
+        guard_query_dates(
+            from_value_date, to_value_date
+        )
         args = {
             'name': name,
             'delta': delta,
@@ -365,8 +382,8 @@ class httpclient:
         revision_time=None,
         revision_tz='UTC',
         maturity_offset=None,
-        maturity_time=None,
-    ):
+        maturity_time=None):
+        guard_query_dates(from_value_date, to_value_date)
         args = {'name': name, 'format': 'tshpack'}
 
         if from_value_date is not None:
@@ -404,6 +421,10 @@ class httpclient:
                 diffmode=False,
                 nocache=False,
                 _keep_nans=False):
+        guard_query_dates(
+            from_insertion_date, to_insertion_date,
+            from_value_date, to_value_date
+        )
         args = {
             'name': name,
             'format': 'tshpack',

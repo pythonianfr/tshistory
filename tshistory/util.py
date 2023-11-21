@@ -11,6 +11,7 @@ import threading
 import tempfile
 import shutil
 import zlib
+from datetime import datetime
 from importlib_metadata import entry_points
 from functools import reduce
 from contextlib import contextmanager
@@ -328,6 +329,35 @@ def infer_freq(ts):
 
     conform_intervals = sum(deltas == freq)
     return freq, conform_intervals / len(deltas)
+
+
+def guard_insert(newts, name, author, metadata, insertion_date):
+    assert len(name), 'Name is an empty string'
+    assert isinstance(author, str), 'Author is not a string'
+    assert metadata is None or isinstance(metadata, dict), (
+        f'Bad format for metadata ({repr(metadata)})'
+    )
+    assert (insertion_date is None or
+            isinstance(insertion_date, datetime)), 'Bad format for insertion date'
+    assert isinstance(newts, pd.Series), 'Not a pd.Series'
+    index = newts.index
+    assert isinstance(index, pd.DatetimeIndex), 'You must provide a DatetimeIndex'
+    assert not index.duplicated().any(), 'There are some duplicates in the index'
+
+    assert index.notna().all(), 'The index contains NaT entries'
+    if index.tz is not None:
+        newts.index = index.tz_convert('UTC')
+    if not index.is_monotonic_increasing:
+        newts = newts.sort_index()
+
+    return num2float(newts)
+
+
+def guard_query_dates(*dates):
+    assert all(
+        isinstance(dt, datetime)
+        for dt in filter(None, dates)
+    ), 'all query dates must be datetime-compatible objects'
 
 
 # timedelta (de)serialisation
