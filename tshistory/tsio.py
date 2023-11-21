@@ -20,7 +20,6 @@ from tshistory.util import (
     guard_insert,
     guard_query_dates,
     infer_freq,
-    num2float,
     patch,
     pruned_history,
     series_metadata,
