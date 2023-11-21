@@ -202,6 +202,8 @@ insertion_date             value_date
 2020-01-04 00:00:00+00:00    4.0
 """, st)
 
+    tsx.rename('nope', 'nada')
+
 
 def test_block_staircase(tsx):
     hist = hist_from_csv(io.StringIO("""

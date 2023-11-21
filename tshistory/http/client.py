@@ -553,6 +553,9 @@ class httpclient:
         )
         if res.status_code == 204:
             return
+        if res.status_code == 404:
+            # oldname didn't exist
+            return
 
         return res
 
