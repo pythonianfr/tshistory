@@ -30,11 +30,11 @@ def assert_df(expected, df):
 
 def hist_to_df(dfdict):
     # copy to avoid side effects
-    series = [(key, serie.copy()) for key, serie in dfdict.items()]
-    for revdate, serie in series:
-        inject_in_index(serie, revdate)
+    series = [(key, ts.copy()) for key, ts in dfdict.items()]
+    for revdate, ts in series:
+        inject_in_index(ts, revdate)
 
-    return pd.concat([serie for _, serie in series])
+    return pd.concat([ts for _, ts in series])
 
 
 def assert_hist(expected, dfdict):

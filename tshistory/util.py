@@ -298,9 +298,9 @@ def closed_overlaps(fromdate, todate):
     return f'({fromdate}, {todate}) overlaps (tsstart, tsend + interval \'1 microsecond\')'
 
 
-def inject_in_index(serie, revdate):
-    mindex = [(revdate, valuestamp) for valuestamp in serie.index]
-    serie.index = pd.MultiIndex.from_tuples(
+def inject_in_index(series, revdate):
+    mindex = [(revdate, valuestamp) for valuestamp in series.index]
+    series.index = pd.MultiIndex.from_tuples(
         mindex,
         names=[
             'insertion_date', 'value_date'
