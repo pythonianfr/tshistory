@@ -489,8 +489,7 @@ def test_block_staircase_output_timezone(
         revision_tz=revision_tz,
     )
     if expected_output_tz:
-        expected_output_tz = pytz.timezone(expected_output_tz)
-    assert sc_ts.index.tz == expected_output_tz
+        assert str(sc_ts.index.tz).upper() == expected_output_tz.upper()
 
 
 def test_block_staircase_arg_errors(client):

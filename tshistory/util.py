@@ -656,12 +656,11 @@ def unpack_many_series(bytestream, decompressor=zlib.decompress):
 
 def pack_history(metadata, hist):
     byteslist = [json.dumps(metadata).encode('utf-8')]
-    byteslist.append(
-        np.array(
-            [tstamp.to_datetime64() for tstamp in hist],
-            dtype='datetime64'
-        ).view(np.uint8).data.tobytes()
-    )
+    arr = np.array(
+        [tstamp.to_datetime64() for tstamp in hist],
+        dtype='datetime64[ns]'
+    ).view(np.uint8).data.tobytes()
+    byteslist.append(arr)
     isstr = metadata['value_type'] == 'object'
     for series in hist.values():
         index, values = numpy_serialize(
@@ -681,6 +680,7 @@ def pack_history(metadata, hist):
 def unpack_history(bytestring):
     byteslist = nary_unpack(zlib.decompress(bytestring))
     metadata = json.loads(byteslist[0])
+    print('D', byteslist[1])
     idates = np.frombuffer(
         array('d', byteslist[1]),
         '|M8[ns]' if metadata['tzaware'] else '<M8[ns]'
@@ -822,7 +822,7 @@ def pack_group_history(hist):
     byteslist.append(
         np.array(
             [tstamp.to_datetime64() for tstamp in hist],
-            dtype='datetime64'
+            dtype='datetime64[ns]'
         ).view(np.uint8).data.tobytes()
     )
     for df in hist.values():
@@ -887,6 +887,12 @@ def unpack_group_history(bytestring):
 
 # diff/patch utilities
 
+def index_zone(ts):
+    if pd.__version__.startswith('2'):
+        return ts.index.dtype.tz
+    return ts.index.dtype.tz.zone
+
+
 def _populate(index, values, outindex, outvalues):
     mask = np.in1d(outindex, index, assume_unique=True)
     outvalues[
@@ -930,7 +936,7 @@ def patch(base, diff):
     _populate(index1, base.values, uindex, uvalues)
     _populate(index2, diff.values, uindex, uvalues)
 
-    tz = base.index.dtype.tz.zone if is_datetime64tz_dtype(base.index) else None
+    tz = index_zone(base) if is_datetime64tz_dtype(base.index) else None
     series = pd.Series(
         uvalues,
         index=uindex,
@@ -971,7 +977,7 @@ def patchmany(series):
         _populate(ts.index.values, ts.values, uindex, uvalues)
 
     # assumption: all series are tzaware or naive
-    tz = first.index.dtype.tz.zone if is_datetime64tz_dtype(first.index) else None
+    tz = index_zone(first) if is_datetime64tz_dtype(first.index) else None
     series = pd.Series(
         uvalues,
         index=uindex,
