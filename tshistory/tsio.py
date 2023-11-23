@@ -1,4 +1,7 @@
-from datetime import datetime
+from datetime import (
+    datetime,
+    timedelta
+)
 import logging
 import hashlib
 import uuid
@@ -332,69 +335,51 @@ class timeseries:
                 diffmode=False,
                 _keep_nans=False,
                 **kw):
-        tablename = self._series_to_tablename(cn, name)
-        if tablename is None:
+        if not self.exists(cn, name):
             return
 
         guard_query_dates(
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date
         )
-        revs = self._revisions(
-            cn, name,
+
+        base = None
+        idates = self.insertion_dates(
+            cn,
+            name,
             from_insertion_date,
             to_insertion_date,
             from_value_date,
-            to_value_date
+            to_value_date,
+            **kw
         )
-
-        if not revs:
-            return {}
-
         if diffmode:
-            # compute the previous serie value
-            first_csid = revs[0][0]
-            previous_csid = self._previous_cset(cn, name, first_csid)
-            revs.insert(0, (previous_csid, None))
+            base = self.get(
+                cn,
+                name,
+                revision_date=idates[0] - timedelta(seconds=1),
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                _keep_nans=_keep_nans,
+                **kw
+            )
 
-        snapshot = self.storageclass(cn, self, name)
-
-        # careful there with naive series vs inputs
-        if from_value_date or to_value_date:
-            tzaware = self.tzaware(cn, name)
-            if from_value_date:
-                from_value_date = compatible_date(tzaware, from_value_date)
-            if to_value_date:
-                to_value_date = compatible_date(tzaware, to_value_date)
-
-        series = snapshot.findall(
-            revs,
-            from_value_date,
-            to_value_date
-        )
-
-        if diffmode:
-            diffs = []
-            for (_revdate_a, serie_a), (revdate_b, serie_b) in zip(series, series[1:]):
-                if serie_a is None:
-                    # when we scan the entirety of the history: there exists no "previous" serie
-                    # we therefore consider the first serie as a diff to the "null" serie
-                    diffs.append((revdate_b, serie_b))
-                else:
-                    series_diff = diff(serie_a, serie_b)
-                    if len(series_diff):
-                        diffs.append((revdate_b, series_diff))
-            series = diffs
-        else:
-            series = [
-                (idate, ts if _keep_nans else ts.dropna())
-                for idate, ts in series
-            ]
-
-        hist = {
-            idate: ts
-            for idate, ts in series if len(series)
-        }
+        hist = {}
+        for idate in idates:
+            ts = self.get(
+                cn,
+                name,
+                revision_date=idate,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                _keep_nans=_keep_nans,
+                **kw
+            )
+            if diffmode:
+                oldbase = base
+                base = ts
+                ts = diff(oldbase, ts)
+            hist[idate] = ts
 
         if from_value_date or to_value_date:
             # now it's possible that the extremities cut
