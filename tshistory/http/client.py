@@ -1,5 +1,6 @@
 import json
 import warnings
+from datetime import timedelta
 
 import inireader
 import requests
@@ -9,6 +10,7 @@ import pytz
 
 from tshistory.tsio import timeseries
 from tshistory.util import (
+    diff,
     get_cfg_path,
     guard_insert,
     guard_query_dates,
@@ -16,10 +18,10 @@ from tshistory.util import (
     pack_group,
     pack_series,
     parse_delta,
+    pruned_history,
     series_metadata,
     ts,
     tzaware_serie,
-    unpack_history,
     unpack_group_history,
     unpack_group,
     unpack_series
@@ -423,33 +425,46 @@ class httpclient:
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date
         )
-        args = {
-            'name': name,
-            'format': 'tshpack',
-            'diffmode': json.dumps(diffmode),
-            'nocache': json.dumps(nocache),
-            '_keep_nans': json.dumps(_keep_nans)
-        }
-        if from_insertion_date:
-            args['from_insertion_date'] = strft(from_insertion_date)
-        if to_insertion_date:
-            args['to_insertion_date'] = strft(to_insertion_date)
-        if from_value_date:
-            args['from_value_date'] = strft(from_value_date)
-        if to_value_date:
-            args['to_value_date'] = strft(to_value_date)
-        res = self.session.get(
-            f'{self.uri}/series/history', params=args
-        )
-        if res.status_code == 404:
-            return None
-        if res.status_code == 200:
-            _meta, hist = unpack_history(res.content)
-            for series in hist.values():
-                series.name = name
-            return hist
 
-        return res
+        if not self.exists(name):
+            return
+
+        idates = self.insertion_dates(
+            name,
+            from_insertion_date,
+            to_insertion_date,
+            from_value_date,
+            to_value_date,
+            nocache
+        )
+        base = None
+        if diffmode:
+            base = self.get(
+                name,
+                revision_date=idates[0] - timedelta(seconds=1),
+                from_value_date=from_value_date,
+                to_value_date=to_value_date
+            )
+
+        hist = {}
+        for idate in idates:
+            ts = self.get(
+                name,
+                revision_date=idate,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                nocache=nocache
+            )
+            if diffmode:
+                oldbase = base
+                base = ts
+                ts = diff(oldbase, ts)
+            hist[idate] = ts
+
+        if from_value_date or to_value_date:
+            hist = pruned_history(hist)
+
+        return hist
 
     @unwraperror
     def type(self, name):

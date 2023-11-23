@@ -9,7 +9,6 @@ import webtest
 from tshistory import util, tsio
 from tshistory.testutil import (
     assert_df,
-    assert_hist,
     utcdt,
     gengroup,
     genserie,
@@ -68,12 +67,6 @@ def test_no_series(http):
     }
 
     res = http.get('/series/metadata?name=no-such-series')
-    assert res.status_code == 404
-    assert res.json == {
-        'message': '`no-such-series` does not exists'
-    }
-
-    res = http.get('/series/history?name=no-such-series')
     assert res.status_code == 404
     assert res.json == {
         'message': '`no-such-series` does not exists'
@@ -263,86 +256,6 @@ def test_base(http):
         'insertion_date': utcdt(2018, 1, 1, 0)
     })
     assert res.json == {}
-
-    # history
-    res = http.get('/series/history?name=test')
-    df = pd.read_json(io.BytesIO(res.body))
-
-    # we real client would need to handle timestamp
-    # tz-awareness
-    assert_df("""
-2018-01-01 10:00:00  2018-01-01 13:00:00
-2018-01-01 00:00:00                  0.0                    0
-2018-01-01 01:00:00                  1.0                    1
-2018-01-01 02:00:00                  2.0                    2
-2018-01-01 03:00:00                  NaN                    3
-""", df)
-
-    res = http.get('/series/history?name=test&format=tshpack')
-    meta, hist = util.unpack_history(res.body)
-    assert_hist("""
-insertion_date             value_date               
-2018-01-01 10:00:00+00:00  2018-01-01 00:00:00+00:00    0.0
-                           2018-01-01 01:00:00+00:00    1.0
-                           2018-01-01 02:00:00+00:00    2.0
-2018-01-01 13:00:00+00:00  2018-01-01 00:00:00+00:00    0.0
-                           2018-01-01 01:00:00+00:00    1.0
-                           2018-01-01 02:00:00+00:00    2.0
-                           2018-01-01 03:00:00+00:00    3.0
-""", hist)
-
-    # diff mode
-    res = http.get('/series/history', params={
-        'name': 'test',
-        'diffmode': True
-    })
-    df = pd.read_json(io.BytesIO(res.body))
-
-    assert_df("""
-2018-01-01 10:00:00  2018-01-01 13:00:00
-2018-01-01 00:00:00                  0.0                  NaN
-2018-01-01 01:00:00                  1.0                  NaN
-2018-01-01 02:00:00                  2.0                  NaN
-2018-01-01 03:00:00                  NaN                  3.0
-""", df)
-
-    # empty range
-    res = http.get('/series/history', params={
-        'name': 'test',
-        'from_insertion_date': utcdt(2018, 1, 1, 11),
-        'to_insertion_date': utcdt(2018, 1, 1, 12),
-    })
-    df = pd.read_json(io.BytesIO(res.body))
-    assert len(df) == 0
-
-    # insertion dates subset
-    res = http.get('/series/history', params={
-        'name': 'test',
-        'from_insertion_date': utcdt(2018, 1, 1, 10),
-        'to_insertion_date': utcdt(2018, 1, 1, 12),
-    })
-    df = pd.read_json(io.BytesIO(res.body))
-
-    assert_df("""
-                     2018-01-01 10:00:00
-2018-01-01 00:00:00                    0
-2018-01-01 01:00:00                    1
-2018-01-01 02:00:00                    2
-""", df)
-
-    # value dates subset
-    res = http.get('/series/history', params={
-        'name': 'test',
-        'from_value_date': utcdt(2018, 1, 1, 2),
-        'to_value_date': utcdt(2018, 1, 1, 3),
-    })
-    df = pd.read_json(io.BytesIO(res.body))
-
-    assert_df("""
-                     2018-01-01 10:00:00  2018-01-01 13:00:00
-2018-01-01 02:00:00                  2.0                    2
-2018-01-01 03:00:00                  NaN                    3
-""", df)
 
     # state/get from from/to value date restriction
     res = http.get('/series/state', params={
