@@ -216,7 +216,6 @@ def test_base(http):
 2018-01-01 02:00:00+00:00    2.0
 """, series)
 
-
     # reinsert
     series_in = genserie(utcdt(2018, 1, 1, 3), 'H', 1, [3])
     res = http.patch('/series/state', params={
@@ -339,6 +338,48 @@ def test_base(http):
     ]
 
 
+def test_get_by_horizon(http):
+    ts = genserie(utcdt(2023, 1, 1), 'D', 60)
+    http.patch('/series/state', params={
+        'name': 'horizon',
+        'series': util.tojson(ts),
+        'author': 'Babar',
+        'insertion_date': utcdt(2023, 1, 1),
+        'tzaware': util.tzaware_series(ts)
+    })
+
+    res = http.get('/series/state', params={
+        'name': 'horizon',
+        'horizon': (
+            '(horizon #:date (date "2023-2-1")'
+            '         #:offset 0'
+            '         #:past (delta #:days -2) '
+            '         #:future (delta #:days 1))'
+        )
+    })
+    assert res.json == {
+        '2023-01-30T00:00:00.000Z': 29.0,
+        '2023-01-31T00:00:00.000Z': 30.0,
+        '2023-02-01T00:00:00.000Z': 31.0,
+        '2023-02-02T00:00:00.000Z': 32.0
+    }
+
+    res = http.get('/series/state', params={
+        'name': 'horizon',
+        'horizon': (
+            '(horizon #:date (date "2023-2-1")'
+            '         #:offset 2'
+            '         #:past (delta #:days -2) '
+            '         #:future (delta #:days 1))'
+        )
+    })
+    assert res.json == {
+        '2023-01-24T00:00:00.000Z': 23.0,
+        '2023-01-25T00:00:00.000Z': 24.0,
+        '2023-01-26T00:00:00.000Z': 25.0,
+        '2023-01-27T00:00:00.000Z': 26.0
+    }
+
 
 def test_delete(http):
     series_in = genserie(utcdt(2018, 1, 1), 'H', 3)
@@ -385,6 +426,7 @@ def test_rename(http):
     assert res.json == {
         'postgres': [
             ['test-naive', 'primary'],
+            ['horizon', 'primary'],
             ['test2', 'primary']
         ]
     }
@@ -704,6 +746,7 @@ def test_multisource(http, engine):
         ],
         'postgres': [
             ['test-naive', 'primary'],
+            ['horizon', 'primary'],
             ['test2', 'primary'],
             ['test3', 'primary'],
             ['stripme', 'primary'],

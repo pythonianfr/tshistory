@@ -1,5 +1,6 @@
 import json
 
+from psyl import lisp
 import pandas as pd
 import werkzeug
 from flask import (
@@ -17,7 +18,7 @@ from tshistory import (
     api as tsapi,
     util
 )
-
+from tshistory.http.horizon import OPERATORS
 from tshistory.http.util import (
     enum,
     onerror,
@@ -146,6 +147,10 @@ get.add_argument(
 )
 get.add_argument(
     'to_value_date', type=utcdt, default=None
+)
+get.add_argument(
+    'horizon', type=str, default=None,
+    help='alternative to from/to_value_date'
 )
 get.add_argument(
     'nocache', type=inputs.boolean, default=False,
@@ -604,11 +609,24 @@ class httpapi:
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
 
+                # handle the horizon parameter
+                fvd = args.from_value_date
+                tvd = args.to_value_date
+                hz = args.get('horizon')
+                if hz:
+                    env = lisp.Env(OPERATORS)
+                    try:
+                        horizon = lisp.evaluate(hz, env)
+                    except:
+                        api.abort(400, f'bad horizon expression for `{args.name}`')
+                    fvd = horizon.past
+                    tvd = horizon.future
+
                 series = tsa.get(
                     args.name,
                     revision_date=args.insertion_date,
-                    from_value_date=args.from_value_date,
-                    to_value_date=args.to_value_date,
+                    from_value_date=fvd,
+                    to_value_date=tvd,
                     nocache=args.nocache,
                     live=args.live,
                     _keep_nans=args._keep_nans
