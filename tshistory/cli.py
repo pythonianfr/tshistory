@@ -63,7 +63,7 @@ def init_db(db_uri, namespace='tsh'):
 
 @tsh.command(name='migrate')
 @click.argument('db-uri')
-@click.option('--interactive', is_flag=True, default=True)
+@click.option('--interactive/--no-interactive', is_flag=True, default=True)
 @click.option('--initial')
 @click.option('--namespace', default='tsh')
 def migrate(db_uri, interactive=True, initial=None, namespace='tsh'):
@@ -71,7 +71,7 @@ def migrate(db_uri, interactive=True, initial=None, namespace='tsh'):
     # call the plugins
     for migrator in sorted(objects('migrator'), key=lambda x: x._order):
         migrator(
-            uri, namespace, interactive=True, start=initial
+            uri, namespace, interactive=interactive, start=initial
         ).run_migrations()
 
 
