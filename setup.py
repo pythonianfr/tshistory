@@ -35,7 +35,8 @@ setup(name='tshistory',
           'jinja2 < 3.2',
           'requests',
           'version-parser == 1.0.1',
-          'importlib-metadata == 6.8'
+          'importlib-metadata == 6.8',
+          'deprecation'
       ],
       package_data={'tshistory': [
           'schema.sql',

@@ -29,7 +29,7 @@ def test_error(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
-        'tzaware': util.tzaware_serie(series_in)
+        'tzaware': util.tzaware_series(series_in)
     })
 
     v2 = pd.Series(
@@ -40,7 +40,7 @@ def test_error(http):
         'name': 'test-error',
         'series': util.tojson(v2),
         'author': 'Babar',
-        'tzaware': util.tzaware_serie(v2)
+        'tzaware': util.tzaware_series(v2)
     })
     assert res.status_code == 418
     assert res.body == (
@@ -96,7 +96,7 @@ def test_naive(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
-        'tzaware': util.tzaware_serie(series_in)
+        'tzaware': util.tzaware_series(series_in)
     })
 
     assert res.status_code == 201
@@ -135,7 +135,7 @@ def test_base(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
-        'tzaware': util.tzaware_serie(series_in)
+        'tzaware': util.tzaware_series(series_in)
     })
 
     assert res.status_code == 201
@@ -150,7 +150,7 @@ def test_base(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
-        'tzaware': util.tzaware_serie(series_in)
+        'tzaware': util.tzaware_series(series_in)
     })
     assert res.status_code == 200
     assert res.body == b'{}'
@@ -224,7 +224,7 @@ def test_base(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 13),
-        'tzaware': util.tzaware_serie(series_in)
+        'tzaware': util.tzaware_series(series_in)
     })
 
     assert res.status_code == 200
@@ -274,7 +274,7 @@ def test_base(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 2),
-        'tzaware': util.tzaware_serie(series_in),
+        'tzaware': util.tzaware_series(series_in),
         'replace': True
     })
 
@@ -347,7 +347,7 @@ def test_delete(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
-        'tzaware': util.tzaware_serie(series_in)
+        'tzaware': util.tzaware_series(series_in)
     })
 
     res = http.delete('/series/state', params={
@@ -369,7 +369,7 @@ def test_rename(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
-        'tzaware': util.tzaware_serie(series_in)
+        'tzaware': util.tzaware_series(series_in)
     })
     res = http.put('/series/state', params={
         'name': 'no-such-series',
@@ -396,7 +396,7 @@ def test_rename(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
-        'tzaware': util.tzaware_serie(series_in)
+        'tzaware': util.tzaware_series(series_in)
     })
     res = http.put('/series/state', params={
         'name': 'test2',
@@ -416,7 +416,7 @@ def test_strip(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2021, 1, 1),
-        'tzaware': util.tzaware_serie(series_in)
+        'tzaware': util.tzaware_series(series_in)
     })
     series_in = genserie(utcdt(2021, 1, 2), 'H', 3)
     res = http.patch('/series/state', params={
@@ -424,7 +424,7 @@ def test_strip(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2021, 1, 2),
-        'tzaware': util.tzaware_serie(series_in)
+        'tzaware': util.tzaware_series(series_in)
     })
 
     res = http.put('/series/strip', params={
@@ -451,7 +451,7 @@ def test_staircase(http):
             'series': util.tojson(series),
             'author': 'Babar',
             'insertion_date': idate,
-            'tzaware': util.tzaware_serie(series)
+            'tzaware': util.tzaware_series(series)
         })
 
     res = http.get('/series/staircase', params={
@@ -512,7 +512,7 @@ datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00
             'series': util.tojson(ts),
             'author': 'test_http',
             'insertion_date': idate,
-            'tzaware': util.tzaware_serie(ts)
+            'tzaware': util.tzaware_series(ts)
         })
     sc_kwargs = dict(
         from_value_date=pd.Timestamp('2020-01-03', tz='CET').to_pydatetime(),
@@ -557,7 +557,7 @@ def test_get_fast_path(http):
         'series': util.tojson(series_in),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
-        'tzaware': util.tzaware_serie(series_in)
+        'tzaware': util.tzaware_series(series_in)
     })
 
     assert res.status_code == 201
@@ -596,7 +596,7 @@ def test_multisource(http, engine):
         'series': util.tojson(series),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
-        'tzaware': util.tzaware_serie(series)
+        'tzaware': util.tzaware_series(series)
     })
 
     assert res.status_code == 201
@@ -632,7 +632,7 @@ def test_multisource(http, engine):
         'series': util.tojson(series),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
-        'tzaware': util.tzaware_serie(series)
+        'tzaware': util.tzaware_series(series)
     })
     assert res.status_code == 200
 
@@ -641,7 +641,7 @@ def test_multisource(http, engine):
         'series': util.tojson(series),
         'author': 'Babar',
         'insertion_date': utcdt(2018, 1, 1, 10),
-        'tzaware': util.tzaware_serie(series)
+        'tzaware': util.tzaware_series(series)
     })
     assert res.status_code == 405
     assert res.json == {'message': 'not allowed to update to a secondary source'}
@@ -730,7 +730,7 @@ def test_log(http):
             'author': 'Babar',
             'insertion_date': utcdt(2020, 1, d + 1).isoformat(),
             'metadata': json.dumps({'comment': f'day {d+1}'}),
-            'tzaware': util.tzaware_serie(series)
+            'tzaware': util.tzaware_series(series)
         })
         assert res.status_code in (201, 200)
         series[d] = 42

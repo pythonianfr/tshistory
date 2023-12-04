@@ -84,7 +84,7 @@ class timeseries:
         * nans will be interpreted as point erasure
 
         updatets: pandas.Series with date index
-        name: str unique identifier of the serie
+        name: str unique identifier of the series
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
@@ -130,7 +130,7 @@ class timeseries:
         with the provided one (no update semantics)
 
         newts: pandas.Series with date index
-        name: str unique identifier of the serie
+        name: str unique identifier of the series
         author: str free-form author name
         metadata: optional dict for changeset metadata
         """
@@ -202,10 +202,10 @@ class timeseries:
             from_value_date=None, to_value_date=None,
             _keep_nans=False,
             **kw):
-        """Compute and return the serie of a given name
+        """Compute and return the series of a given name
 
         revision_date: datetime filter to get previous versions of the
-        serie
+        series
 
         """
         if not self.exists(cn, name):
@@ -721,7 +721,7 @@ class timeseries:
         stats = {'series count': cn.execute(sql).scalar()}
         sql = (f'select distinct name from "{self.namespace}".registry '
                'order by name')
-        stats['serie names'] = [row for row, in cn.execute(sql).fetchall()]
+        stats['series names'] = [row for row, in cn.execute(sql).fetchall()]
         return stats
 
     @tx
@@ -956,11 +956,11 @@ class timeseries:
         )
         q.do(cn)
 
-    # serie table handling
+    # series table handling
 
     def _make_tablename(self, cn, name):
         """ compute the unqualified (no namespace) table name
-        from a serie name, to allow arbitrary serie names
+        from a series name, to allow arbitrary series names
         """
         # default
         tablename = name

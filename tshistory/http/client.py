@@ -21,7 +21,7 @@ from tshistory.util import (
     pruned_history,
     series_metadata,
     ts,
-    tzaware_serie,
+    tzaware_series,
     unpack_group_history,
     unpack_group,
     unpack_series
@@ -406,7 +406,7 @@ class httpclient:
             return None
         if res.status_code == 200:
             ts = unpack_series(name, res.content)
-            if tzaware_serie(ts) and revision_tz:
+            if tzaware_series(ts) and revision_tz:
                 ts = ts.tz_convert(revision_tz)
             return ts
         return res

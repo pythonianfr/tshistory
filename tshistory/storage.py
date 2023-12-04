@@ -141,11 +141,11 @@ class Postgres:
         )
 
         assert len(values) == len(index)
-        serie = pd.Series(values, index=index)
-        assert serie.index.is_monotonic_increasing
-        serie.name = self.name
+        ts = pd.Series(values, index=index)
+        assert ts.index.is_monotonic_increasing
+        ts.name = self.name
 
-        return self._ensure_tz_consistency(serie)
+        return self._ensure_tz_consistency(ts)
 
     # /serialisation
 

@@ -258,8 +258,10 @@ def ensuretz(adate):
     return adate
 
 
-def tzaware_serie(ts):
+def tzaware_series(ts):
     return is_datetime64tz_dtype(ts.index)
+
+tzaware_serie = tzaware_series
 
 
 def pruned_history(hist):
