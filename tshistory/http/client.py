@@ -130,7 +130,6 @@ class httpclient:
             }
         )
 
-        assert res.status_code in (200, 201, 405, 418), f'{res.status_code} {res.text}'
         if res.status_code == 405:
             raise ValueError(res.json()['message'])
 
@@ -472,12 +471,13 @@ class httpclient:
             'name': name,
             'type': 'type'
         })
-        assert res.status_code in (200, 404)
         if res.status_code == 200:
             return res.json()
 
         if res.status_code == 418:
             return res
+
+        # 404 -> we tried to delete a non-existent series, do nothing
 
     @unwraperror
     def interval(self, name):
@@ -806,12 +806,13 @@ class httpclient:
             'name': name,
             'type': 'type'
         })
-        assert res.status_code in (200, 404)
         if res.status_code == 200:
             return res.json()
 
         if res.status_code == 418:
             return res
+
+        # 404 -> we tried to delete a non-existent group, do nothing
 
     @unwraperror
     def group_metadata(self, name, all=False):
@@ -827,12 +828,13 @@ class httpclient:
             'type': 'standard',
             'all': all
         })
-        assert res.status_code in (200, 404)
         if res.status_code == 200:
             return res.json()
 
         if res.status_code == 418:
             return res
+
+        # 404 -> we tried to read a non-existent group, do nothing
 
     @unwraperror
     def group_internal_metadata(self, name):
@@ -840,12 +842,13 @@ class httpclient:
             'name': name,
             'type': 'internal'
         })
-        assert res.status_code in (200, 404)
         if res.status_code == 200:
             return res.json()
 
         if res.status_code == 418:
             return res
+
+        # 404 -> we tried to delete a non-existent group, do nothing
 
     @unwraperror
     def update_group_metadata(self, name, meta):
