@@ -20,17 +20,21 @@ VERSIONS = {}
 
 class Version(_Version):
 
-    def __init__(self, vstring, *a, **k):
+    def __init__(self, package, vstring, *a, **k):
         super().__init__(vstring, *a, **k)
+        self.package = package
         self.raw_version = vstring
 
     def __hash__(self):
-        return hash(self.raw_version)
+        return hash((self.package, self.raw_version))
+
+    def __repr__(self):
+        return f'Version({self.package}:{self.raw_version})'
 
 
-def version(numversion):
+def version(package, numversion):
     def decorate(func):
-        VERSIONS[Version(numversion)] = func
+        VERSIONS[Version(package, numversion)] = func
         return func
 
     return decorate
@@ -44,51 +48,101 @@ def yesno(msg):
 class Migrator:
     _order = 0
     _package = 'tshistory'
-    _known_version = __version__
-    __slots__ = 'uri', 'namespace', 'interactive', 'start'
+    _package_version = __version__
+    # __slots__ = 'uri', 'namespace', 'interactive', 'start', 'force'
 
-    def __init__(self, uri, namespace, interactive=False, start=None):
+    def __init__(self, uri, namespace, interactive=False, start=None, force=None):
         self.uri = uri
         self.namespace = namespace
         self.interactive = interactive
         self.start = start
+        # "package:version"
+        self.force = force.split(':') if force else (None, None)
 
     @property
     def engine(self):
         return create_engine(self.uri)
 
-    def run_migrations(self):
-        print(f'Running migrations for {self._package}.')
-        # determine versions
-        storens = f'{self.namespace}-kvstore'
-        stored_version = None
-        version_string = f'{self._package}-version'
-        store = dbapi.kvstore(self.uri, namespace=storens)
+    @property
+    def storens(self):
+        return f'{self.namespace}-kvstore'
+
+    @property
+    def store(self):
+        return dbapi.kvstore(self.uri, namespace=self.storens)
+
+    @property
+    def versionkey(self):
+        return f'{self._package}-version'
+
+    @property
+    def initialversion(self):
+        stored_version = Version(self._package, '0.0.0')
         try:
-            stored_version = store.get(version_string)
+            stored_version = Version(
+                self._package,
+                self.store.get(self.versionkey)
+            )
         except exc.ProgrammingError:
             # bootstrap: we're in a stage where this was never installed
+            # yes, this is a bit aggressive for a propery, but that
+            # happens only once ...
             if self.interactive:
                 if not yesno('Initialize the versions ? [y/n] '):
                     return
-            dbschema.init(self.engine, ns=storens)
+            dbschema.init(self.engine, ns=self.storens)
 
-        if stored_version is None or self.start == '0.0.0':
+        if self.start:
+            return Version(self._package, self.start)
+        return stored_version
+
+    @property
+    def finalversion(self):
+        # prepare version migration forcing
+        forced_package, forced_version = self.force
+        if forced_package != self._package:
+            # we are not concerned
+            forced_version = None
+        return Version(self._package, forced_version or self._package_version)
+
+    def run_migrations(self):
+        print(f'Running migrations for {self._package}.')
+        # determine from where we start (stored version or provided
+        # initial)
+        start = self.initialversion
+
+        if start.raw_version == '0.0.0':
             # first time
-            print(f'initial migration to {self._known_version} for {self._package}')
+            print(f'Initial migration to {self._package_version}')
             self.initial_migration()
 
         to_migrate = list(VERSIONS)
-        # filter from _known
-        if self._known_version is not None or self.start is not None:
-            known = Version(self._known_version or self.start)
-            to_migrate = [
-                ver for ver in to_migrate
-                if ver > known
-            ]
-        for version in to_migrate:
-            VERSIONS[version](self.uri, self.namespace, self.interactive)
-        store.set(version_string, self._known_version)
+
+        end = self.finalversion
+        print(f'Versions: from {start} to {end}')
+
+        # build migration plan (from stored_version to package_version
+        # or forced_version)
+        to_migrate = [
+            ver for ver in to_migrate
+            if start < ver <= end
+            and ver.package == self._package
+        ]
+
+        if not to_migrate:
+            print(f'Nothing to migrate for `{self._package}`, skipping.')
+        else:
+            print(
+                f'Migration plan for `{self._package}`: {[v.raw_version for v in to_migrate]}'
+            )
+            if self.interactive:
+                if not yesno('Execute this migration plan ? [y/n] '):
+                    return
+
+            for version in to_migrate:
+                VERSIONS[version](self.engine, self.namespace, self.interactive)
+
+        self.store.set(self.versionkey, self._package_version)
 
     def initial_migration(self):
         engine = self.engine
