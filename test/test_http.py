@@ -167,6 +167,17 @@ def test_base(http):
     meta = res.json
     assert meta == {}
 
+    res = http.get('/series/metadata?name=test&type=internal')
+    meta = res.json
+    assert meta == {
+        'index_dtype': '|M8[ns]',
+        'index_type': 'datetime64[ns, UTC]',
+        'tablename': 'test',
+        'tzaware': True,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+
     res = http.get('/series/metadata?name=test&all=1')
     meta = res.json
     meta.pop('supervision_status', None)
