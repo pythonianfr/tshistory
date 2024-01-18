@@ -157,7 +157,6 @@ def test_base(http):
     assert res.status_code == 200
     assert res.json == {
         'postgres': [
-            ['test-naive', 'primary'],
             ['test', 'primary']
         ]
     }
@@ -335,13 +334,6 @@ def test_base(http):
             'meta': None,
             'source': 'fancysource',
             'kind': 'primary'
-        },
-        {
-            'name': 'test-naive',
-            'imeta': None,
-            'meta': None,
-            'source': 'fancysource',
-            'kind': 'primary'
         }
     ]
 
@@ -433,8 +425,6 @@ def test_rename(http):
     res = http.get('/series/catalog')
     assert res.json == {
         'postgres': [
-            ['test-naive', 'primary'],
-            ['horizon', 'primary'],
             ['test2', 'primary']
         ]
     }
@@ -753,14 +743,6 @@ def test_multisource(http, engine):
             ['test-other-source', 'primary']
         ],
         'postgres': [
-            ['test-naive', 'primary'],
-            ['horizon', 'primary'],
-            ['test2', 'primary'],
-            ['test3', 'primary'],
-            ['stripme', 'primary'],
-            ['staircase', 'primary'],
-            ['test_b_staircase', 'primary'],
-            ['test_fast', 'primary'],
             ['test-multi', 'primary']
         ]
     }

@@ -126,19 +126,23 @@ class NoRaiseWebTester(webtest.TestApp):
             # raise <- default behaviour on 4xx is silly
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture()
 def http(engine):
     schema.tsschema().create(engine, reset=True)
     schema.tsschema(ns='other').create(engine, reset=True)
 
-    wsgi = app.make_app(
-        tsh_api.timeseries(
-            str(engine.url),
-            handler=tsio.timeseries,
-            namespace='tsh',
-            sources={'other': (DBURI, 'other')}
-        )
+    tsa = tsh_api.timeseries(
+        str(engine.url),
+        handler=tsio.timeseries,
+        namespace='tsh',
+        sources={'other': (DBURI, 'other')}
     )
+
+    # do a cleanup
+    for ts in tsa.find('(by.everything)'):
+        tsa.delete(str(ts))
+
+    wsgi = app.make_app(tsa)
     yield NoRaiseWebTester(wsgi)
 
 
