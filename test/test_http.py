@@ -17,9 +17,6 @@ from tshistory.testutil import (
 )
 
 
-DBURI = 'postgresql://localhost:5433/postgres'
-
-
 # series
 
 def test_error(http):
