@@ -160,7 +160,7 @@ def find_sources(uri):
     # The [db] section may contain several name -> uri entries. We find
     # the matching name and then we can find the associated sources.
     cfg = config()
-    for name, dburi in cfg['dburi'].items():
+    for localname, dburi in cfg['dburi'].items():
         if uri == dburi:
             break
     else:
@@ -168,7 +168,7 @@ def find_sources(uri):
 
     allsources = unflatten(cfg['sources'])
     sources = {}
-    for name, source in allsources.get(name, {}).items():
+    for name, source in allsources.get(localname, {}).items():
         uri, ns = source.split(',')
         sources[name] = (uri.strip(), ns.strip())
     return sources
