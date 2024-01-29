@@ -83,7 +83,7 @@ class Migrator:
                 self._package,
                 self.store.get(self.versionkey)
             )
-        except exc.ProgrammingError:
+        except (exc.ProgrammingError, ValueError):
             # bootstrap: we're in a stage where this was never installed
             # yes, this is a bit aggressive for a propery, but that
             # happens only once ...
