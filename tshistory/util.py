@@ -150,8 +150,9 @@ def find_dburi(something: str) -> str:
         )
 
 
-def find_first_uri():
-    cfg = config()
+def find_first_uri(cfg=None):
+    if cfg is None:
+        cfg = config()
     assert 'dburi' in cfg, 'Your tshistory.cfg file does not contain a [dburi] section.'
     return next(iter(cfg['dburi'].values()))
 
