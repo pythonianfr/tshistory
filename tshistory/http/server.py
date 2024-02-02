@@ -24,6 +24,7 @@ from tshistory.http.util import (
     onerror,
     series_response,
     group_response,
+    required_roles,
     todict,
     utcdt
 )
@@ -428,6 +429,7 @@ class httpapi:
             @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
             @api.expect(source)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 """returns the source of a series
 
@@ -446,6 +448,7 @@ class httpapi:
             @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
             @api.expect(metadata)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 """get a series metadata
 
@@ -496,6 +499,7 @@ class httpapi:
             })
             @api.expect(put_metadata)
             @onerror
+            @required_roles('admin', 'rw')
             def put(self):
                 """replace the user metadata of a series
 
@@ -520,6 +524,7 @@ class httpapi:
             @api.doc(responses={204: 'Success', 404: 'Does not exist'})
             @api.expect(put_metadata)
             @onerror
+            @required_roles('admin', 'rw')
             def patch(self):
                 """update the user metadata of a series
 
@@ -549,6 +554,7 @@ class httpapi:
             @api.doc(responses={200: 'Got Content', 404: 'Does not exist'})
             @api.expect(inferred_freq)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 """returns the inferred period and a quality indicator of a series
 
@@ -599,6 +605,7 @@ class httpapi:
             })
             @api.expect(update)
             @onerror
+            @required_roles('admin', 'rw')
             def patch(self):
                 """create or update a series
 
@@ -669,6 +676,7 @@ class httpapi:
             })
             @api.expect(rename)
             @onerror
+            @required_roles('admin', 'rw')
             def put(self):
                 "rename a series"
                 args = rename.parse_args()
@@ -689,6 +697,7 @@ class httpapi:
             @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
             @api.expect(get)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 """return a series in json format
 
@@ -761,6 +770,7 @@ class httpapi:
             })
             @api.expect(delete)
             @onerror
+            @required_roles('admin', 'rw')
             def delete(self):
                 """delete a series
 
@@ -785,6 +795,7 @@ class httpapi:
 
             @api.expect(strip)
             @onerror
+            @required_roles('admin', 'rw')
             def put(self):
                 """strip a series
 
@@ -805,6 +816,7 @@ class httpapi:
             @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
             @api.expect(insertion_dates)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 """return the revisions of a series
 
@@ -846,6 +858,7 @@ class httpapi:
             @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
             @api.expect(staircase)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 args = staircase.parse_args()
                 if not tsa.exists(args.name):
@@ -880,6 +893,7 @@ class httpapi:
             @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
             @api.expect(block_staircase)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 args = block_staircase.parse_args()
                 if not tsa.exists(args.name):
@@ -919,6 +933,7 @@ class httpapi:
             @api.doc(responses={200: 'Got content'})
             @api.expect(catalog)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 """returns the series catalog (deprecated)
 
@@ -937,6 +952,7 @@ class httpapi:
             @api.doc(responses={200: 'Got content'})
             @api.expect(find)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 """return a list of series descriptor from a filter query
 
@@ -1003,6 +1019,7 @@ class httpapi:
 
             @api.expect(basket)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 args = basket.parse_args()
                 return [
@@ -1014,6 +1031,7 @@ class httpapi:
 
             @api.expect(register_basket)
             @onerror
+            @required_roles('admin', 'rw')
             def put(self):
                 args = register_basket.parse_args()
                 tsa.register_basket(
@@ -1024,6 +1042,7 @@ class httpapi:
 
             @api.expect(basket)
             @onerror
+            @required_roles('admin', 'rw')
             def delete(self):
                 args = basket.parse_args()
                 return tsa.delete_basket(
@@ -1035,6 +1054,7 @@ class httpapi:
 
             @api.expect(nothing)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 return tsa.list_baskets()
 
@@ -1043,6 +1063,7 @@ class httpapi:
 
             @api.expect(basket)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 args = basket.parse_args()
                 return tsa.basket_definition(
@@ -1055,6 +1076,7 @@ class httpapi:
             @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
             @api.expect(log)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 """returns the insertion log of a series, as a list.
 
@@ -1098,6 +1120,7 @@ class httpapi:
 
             @api.expect(groupupdate)
             @onerror
+            @required_roles('admin', 'rw')
             def patch(self):
                 args = groupupdate.parse_args()
 
@@ -1117,6 +1140,7 @@ class httpapi:
 
             @api.expect(groupget)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 args = groupget.parse_args()
 
@@ -1137,6 +1161,7 @@ class httpapi:
 
             @api.expect(grouprename)
             @onerror
+            @required_roles('admin', 'rw')
             def put(self):
                 args = grouprename.parse_args()
                 if not tsa.group_exists(args.name):
@@ -1155,6 +1180,7 @@ class httpapi:
 
             @api.expect(groupdelete)
             @onerror
+            @required_roles('admin', 'rw')
             def delete(self):
                 args = groupdelete.parse_args()
                 if not tsa.group_exists(args.name):
@@ -1174,6 +1200,7 @@ class httpapi:
 
             @api.expect(group_insertion_dates)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 args = group_insertion_dates.parse_args()
                 if not tsa.group_exists(args.name):
@@ -1197,6 +1224,7 @@ class httpapi:
 
             @api.expect(group_history)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 args = group_history.parse_args()
                 if not tsa.group_exists(args.name):
@@ -1221,6 +1249,7 @@ class httpapi:
 
             @api.expect(groupcatalog)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 cat = {
                     f'{uri}': series
@@ -1233,6 +1262,7 @@ class httpapi:
 
             @api.expect(groupmetadata)
             @onerror
+            @required_roles('admin', 'rw', 'ro')
             def get(self):
                 args = groupmetadata.parse_args()
                 if not tsa.group_exists(args.name):
@@ -1252,6 +1282,7 @@ class httpapi:
 
             @api.expect(put_groupmetadata)
             @onerror
+            @required_roles('admin', 'rw')
             def put(self):
                 args = put_groupmetadata.parse_args()
                 if not tsa.group_exists(args.name):

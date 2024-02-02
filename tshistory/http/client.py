@@ -58,8 +58,10 @@ def unwraperror(func):
                 raise Exception('404 - please check your base uri')
             if res.status_code == 400:
                 raise Exception(f'Bad Query: {res.text}')
-            if res.status_code in (401, 403):
+            if res.status_code == 401:
                 raise Exception('401 - Unauthorized. Check your tshistory.cfg file.')
+            if res.status_code == 403:
+                raise Exception(f'403 - Unauthorized. {res.text}')
             if res.status_code == 413:
                 raise Exception('413 - Payload to big for the web server.')
             if res.status_code >= 500:

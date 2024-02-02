@@ -16,10 +16,11 @@ from tshistory import (
     tsio
 )
 from tshistory.http import (
-    app,
+    app as appmaker,
     client as http_client,
     server as http_server
 )
+from tshistory.http.util import nosecurity
 from tshistory.storage import Postgres
 from tshistory.testutil import (
     make_tsx,
@@ -142,7 +143,9 @@ def http(engine):
     for ts in tsa.find('(by.everything)'):
         tsa.delete(str(ts))
 
-    wsgi = app.make_app(tsa)
+    wsgi = nosecurity(
+        appmaker.make_app(tsa)
+    )
     yield NoRaiseWebTester(wsgi)
 
 
@@ -157,13 +160,15 @@ def client(engine):
     uri = 'http://perdu.com'
 
     wsgitester = WebTester(
-        app.make_app(
-            tsh_api.timeseries(
-                str(engine.url),
-                handler=tsio.timeseries,
-                sources={'other': (DBURI, 'other')}
-            ),
-            http_server.httpapi
+        nosecurity(
+            appmaker.make_app(
+                tsh_api.timeseries(
+                    str(engine.url),
+                    handler=tsio.timeseries,
+                    sources={'other': (DBURI, 'other')}
+                ),
+                http_server.httpapi
+            )
         )
     )
     with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:

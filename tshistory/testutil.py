@@ -8,7 +8,8 @@ import responses
 import pytest
 import webtest
 
-from tshistory.http import app
+from tshistory.http import app as appmaker
+from tshistory.http.util import nosecurity
 from tshistory.util import inject_in_index
 
 
@@ -371,7 +372,8 @@ def make_tsx(uri,
              httpclass,
              clientclass=None,
              passthru=None,
-             with_http_bridge=with_http_bridge):
+             with_http_bridge=with_http_bridge,
+             role='admin'):
     from tshistory import api as tsh_api
 
     @pytest.fixture(params=['pg', 'http'])
@@ -389,11 +391,15 @@ def make_tsx(uri,
             yield tsa
 
         else:
-            wsgitester = WebTester(
-                app.make_app(
+            app = nosecurity(
+                appmaker.make_app(
                     tsa,
                     httpclass
-                )
+                ),
+                role=role
+            )
+            wsgitester = WebTester(
+                app
             )
             with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
                 with_http_bridge(uri, resp, wsgitester)

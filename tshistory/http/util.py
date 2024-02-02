@@ -3,7 +3,10 @@ from functools import wraps
 import logging
 import traceback as tb
 
-from flask import make_response
+from flask import (
+    make_response,
+    request
+)
 from werkzeug.exceptions import HTTPException
 import pandas as pd
 
@@ -20,6 +23,38 @@ def get_auth(uri, config):
 
     print(f'found no auth items for this uri: `{uri}`')
     return {}
+
+
+# null wsgi security wrapper
+
+class nosecurity:
+    """A wsgi middleware that provides no security at all, running all
+    api calls as "admin".
+
+    """
+    __slots__ = 'app', 'role'
+
+    def __init__(self, app, role='admin'):
+        self.app = app
+        self.role = role
+
+    def __call__(self, environ, start_response):
+        environ['ROLE'] = self.role
+        return self.app(environ, start_response)
+
+
+def required_roles(*roles):
+
+    def decorator(func):
+        def wrapper(*a, **kw):
+            role = request.environ.get('ROLE') or 'guest'
+            if role not in roles:
+                user = request.environ.get('USER')
+                return f'permission denied for user "{user}"', 403
+            return func(*a, **kw)
+
+        return wrapper
+    return decorator
 
 
 def utcdt(dtstr):
