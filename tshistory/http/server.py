@@ -37,6 +37,12 @@ def no_content():
     return resp
 
 
+def rawseries(value):
+    # here we got a dict with stamps as strings and nulls as Nones
+    # *or* maybe a string ...
+    return value
+
+
 base = reqparse.RequestParser()
 
 base.add_argument(
@@ -46,7 +52,7 @@ base.add_argument(
 
 update = base.copy()
 update.add_argument(
-    'series', type=str,
+    'series', type=rawseries,
     help='json representation of the series'
 )
 update.add_argument(
@@ -628,10 +634,21 @@ class httpapi:
                 """
                 args = update.parse_args()
                 if args.format == 'json':
-                    series = util.fromjson(
-                        args.series,
-                        args.name,
-                        args.tzaware
+                    # here we get into some tricky-land
+                    # because there is a lack of coherency between
+                    # what webtest does and the rest (flask, gunicorn)
+                    # at http patch time ...
+                    if isinstance(args.series, str):
+                        # webtest
+                        series = util.fromjson(args.series, args.name)
+                    else:
+                        # gunicorn
+                        assert isinstance(args.series, dict)
+                        meta = tsa.internal_metadata(args.name)
+                        series = pd.Series(args.series, dtype=meta['value_dtype'])
+                    series.index = pd.to_datetime(
+                        series.index,
+                        utc=args.tzaware
                     )
                 else:
                     assert args.format == 'tshpack'
