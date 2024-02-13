@@ -5,7 +5,6 @@ import click
 from sqlalchemy import create_engine
 
 from dbcache import api as storeapi
-from tshistory.tsio import timeseries as tshclass
 from tshistory.api import timeseries
 from tshistory.util import (
     find_dburi,
@@ -94,12 +93,11 @@ def dbversions(db_uri, namespace='tsh'):
 @click.option('--namespace', default='tsh')
 def shell(db_uri, namespace='tsh'):
     uri = find_dburi(db_uri)
-    tsa = timeseries(  # noqa: F841
+    tsa = timeseries(  # noqa
         uri,
-        namespace,
-        handler=tshclass
+        namespace
     )
-    store = storeapi.kvstore(  # noqa: F841
+    store = storeapi.kvstore(  # noqa
         uri,
         namespace=f'{namespace}-kvstore'
     )
