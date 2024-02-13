@@ -6,7 +6,6 @@ import inireader
 import requests
 import pandas as pd
 import numpy as np
-import pytz
 
 from tshistory.tsio import timeseries
 from tshistory.util import (
@@ -36,9 +35,7 @@ def strft(dt):
     UTC is automatically added as tzinfo.
     """
     is_naive = dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None
-    if is_naive:
-        dt = pytz.UTC.localize(dt)
-    else:
+    if not is_naive:
         dt = pd.Timestamp(dt).tz_convert('UTC')
 
     return dt.isoformat()
