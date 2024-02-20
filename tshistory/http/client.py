@@ -6,6 +6,7 @@ import inireader
 import requests
 import pandas as pd
 import numpy as np
+from requests_auth import OAuth2ClientCredentials
 
 from tshistory.tsio import timeseries
 from tshistory.util import (
@@ -39,6 +40,22 @@ def strft(dt):
         dt = pd.Timestamp(dt).tz_convert('UTC')
 
     return dt.isoformat()
+
+
+def oauth2_auth(auth):
+    domain = auth['domain']
+    meta = requests.get(
+        f'https://{domain}/.well-known/openid-configuration'
+    ).json()
+    tokenurl = meta['token_endpoint']
+    clientid = auth['client_id']
+    clientsecret = auth['client_secret']
+    return OAuth2ClientCredentials(
+        audience=auth['uri'],
+        token_url=tokenurl,
+        client_id=clientid,
+        client_secret=clientsecret
+    )
 
 
 def unwraperror(func):
@@ -81,6 +98,8 @@ class httpclient:
         )
         if 'login' in auth:
             self.session.auth = auth['login'], auth['password']
+        elif 'client_id' in auth:
+            self.session.auth = oauth2_auth(auth)
 
     def __repr__(self):
         return f"tshistory-http-client(uri='{self.uri}')"
