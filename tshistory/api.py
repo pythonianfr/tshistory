@@ -528,13 +528,12 @@ class mainsource:
              _source: Optional[str]='local') -> List[ts]:
         """Return a list of series descriptors matching the query.
 
-        A series descriptor is a string-like object with additional
-        attributes. If `meta` has been set to True, the .meta (for
-        normal metadata) and .imeta (for internal metadata) fields
-        will be populated (non None). Lastly, the .source and .kind
-        attributes provides the series source and kind.
-
-        A query is built with objects in the `tshistory.search` module.
+        A series descriptor is a string-like object (exhibiting the
+        series name) with additional attributes. If `meta` has been
+        set to True, the .meta (for normal metadata) and .imeta (for
+        internal metadata) fields will be populated (non
+        None). Lastly, the .source and .kind attributes provides the
+        series source and kind.
 
         Here is an example:
 
@@ -813,7 +812,16 @@ class mainsource:
             self.tsh.register_basket(cn, name, query)
 
     def basket(self, name: str) -> List[str]:
-        """Returns the list of series descriptors associated with a basket."""
+        """Returns the list of series descriptors associated with a basket.
+
+        A series descriptor is a string-like object (exhibiting the
+        series name) with additional attributes. If `meta` has been
+        set to True, the .meta (for normal metadata) and .imeta (for
+        internal metadata) fields will be populated (non
+        None). Lastly, the .source and .kind attributes provides the
+        series source and kind.
+
+        """
         with self.engine.begin() as cn:
             localnames = self.tsh.basket(cn, name)
         remotenames = self.othersources.find(
