@@ -798,12 +798,14 @@ class timeseries:
 
     @tx
     def register_basket(self, cn, name, query):
-        insert(
-            f'"{self.namespace}".basket'
-        ).values(
+        cn.execute(
+            f'insert into "{self.namespace}".basket '
+            '(name, query) '
+            'values (%(name)s, %(query)s)'
+            'on conflict (name) do update set query = %(query)s',
             name=name,
             query=query
-        ).do(cn)
+        )
 
     @tx
     def basket(self, cn, name):
