@@ -805,6 +805,12 @@ def test_basket(tsx):
         '(by.name "t.1")'
     )
     assert tsx.list_baskets() == ['b1']
+    # make sure upsert works
+    with pytest.raises(Exception):
+        tsx.register_basket(
+            'b1',
+            '(by.name "t.1")'
+        )
 
     tsx.register_basket(
         'b2',
