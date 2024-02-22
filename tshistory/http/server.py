@@ -172,6 +172,10 @@ get.add_argument(
     help='keep erasure information'
 )
 get.add_argument(
+    'tzone', type=str, default='UTC',
+    help='Convert tz-aware series into this time zone before sending'
+)
+get.add_argument(
     'format', type=enum('json', 'tshpack'), default='json'
 )
 
@@ -769,10 +773,14 @@ class httpapi:
                     live=args.live,
                     _keep_nans=args._keep_nans
                 )
+
                 # the fast path will need it
                 # also it is read from a cache filled at get time
                 # so very cheap call
                 metadata = tsa.internal_metadata(args.name)
+                if metadata['tzaware'] and args.tzone.upper() != 'UTC':
+                    series.index = series.index.tz_convert(args.tzone)
+
                 return series_response(
                     args.format,
                     series,

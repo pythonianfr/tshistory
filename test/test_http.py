@@ -123,6 +123,15 @@ def test_naive(http):
 2018-01-01 02:00:00    2.0
 """, series)
 
+    # tzone should have no effect
+    res = http.get('/series/state?name=test-naive&tzone=Europe/Paris')
+    series = util.fromjson(res.body, 'test', meta['tzaware'])
+    assert_df("""
+2018-01-01 00:00:00    0.0
+2018-01-01 01:00:00    1.0
+2018-01-01 02:00:00    2.0
+""", series)
+
 
 def test_base(http):
     # insert
@@ -379,6 +388,22 @@ def test_get_by_horizon(http):
         '2023-01-26T00:00:00+00:00': 25.0,
         '2023-01-27T00:00:00+00:00': 26.0
     }
+
+    res = http.get('/series/state', params={
+        'name': 'horizon',
+        'tzone': 'Europe/Paris',
+        'horizon': (
+            '(horizon #:date (date "2023-2-1")'
+            '         #:offset 2'
+            '         #:past (delta #:days -2) '
+            '         #:future (delta #:days 1))'
+        )
+    })
+    assert res.json == {
+        '2023-01-24T01:00:00+01:00': 23.0,
+        '2023-01-25T01:00:00+01:00': 24.0,
+        '2023-01-26T01:00:00+01:00': 25.0,
+        '2023-01-27T01:00:00+01:00': 26.0
     }
 
 
