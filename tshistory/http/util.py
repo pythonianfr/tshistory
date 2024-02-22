@@ -102,8 +102,12 @@ def series_response(format, series, metadata, code):
     if format == 'json':
         if series is not None:
             response = make_response(
-                series.to_json(orient='index',
-                               date_format='iso')
+                # no series.to_json because it switches the series to
+                # utc before serialization and we don't want that
+                json.dumps({
+                    stamp.isoformat(): val
+                    for stamp, val in series.items()
+                })
             )
         else:
             response = make_response('null')
