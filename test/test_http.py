@@ -407,6 +407,42 @@ def test_get_by_horizon(http):
     }
 
 
+def test_patch_nonutc(http):
+    ts = genserie(utcdt(2023, 1, 1), 'D', 5)
+    ts.index = ts.index.tz_convert('Europe/Paris')
+    http.patch('/series/state', params={
+        'name': 'patchnonutc',
+        'tzone': 'Europe/Paris',
+        'series': json.dumps(util.tojson2(ts)),
+        'author': 'Babar',
+        'insertion_date': utcdt(2023, 1, 1),
+        'tzaware': util.tzaware_series(ts)
+    })
+
+    res = http.get('/series/state', params={
+        'name': 'patchnonutc',
+        'tzone': 'Europe/Paris'
+    })
+    assert res.json == {
+        '2023-01-01T01:00:00+01:00': 0.0,
+        '2023-01-02T01:00:00+01:00': 1.0,
+        '2023-01-03T01:00:00+01:00': 2.0,
+        '2023-01-04T01:00:00+01:00': 3.0,
+        '2023-01-05T01:00:00+01:00': 4.0
+    }
+
+    res = http.get('/series/state', params={
+        'name': 'patchnonutc'
+    })
+    assert res.json == {
+        '2023-01-01T00:00:00+00:00': 0.0,
+        '2023-01-02T00:00:00+00:00': 1.0,
+        '2023-01-03T00:00:00+00:00': 2.0,
+        '2023-01-04T00:00:00+00:00': 3.0,
+        '2023-01-05T00:00:00+00:00': 4.0
+    }
+
+
 def test_delete(http):
     series_in = genserie(utcdt(2018, 1, 1), 'H', 3)
     res = http.patch('/series/state', params={

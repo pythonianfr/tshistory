@@ -87,6 +87,10 @@ update.add_argument(
     help='series in binary format (if "tshpack" is chosen)'
 )
 update.add_argument(
+    'tzone', type=str, default='UTC',
+    help='Convert tz-aware series into this time zone before sending'
+)
+update.add_argument(
     'format', type=enum('json', 'tshpack'), default='json'
 )
 
@@ -644,12 +648,13 @@ class httpapi:
                     # at http patch time ...
                     if isinstance(args.series, str):
                         # webtest
-                        series = util.fromjson(args.series, args.name)
+                        series = pd.Series(json.loads(args.series))
                     else:
                         # gunicorn
                         assert isinstance(args.series, dict)
                         meta = tsa.internal_metadata(args.name)
                         series = pd.Series(args.series, dtype=meta['value_dtype'])
+
                     series.index = pd.to_datetime(
                         series.index,
                         utc=args.tzaware
@@ -681,6 +686,9 @@ class httpapi:
                     if err.args[0].startswith('not allowed to'):
                         api.abort(405, err.args[0])
                     raise
+
+                if args.tzone != 'UTC':
+                    diff.index = diff.index.tz_convert(args.tzone)
 
                 return series_response(
                     args.format,

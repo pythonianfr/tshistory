@@ -654,6 +654,13 @@ def tojson(ts, precision=1e-14):
     )
 
 
+def tojson2(ts):
+    return {
+        k.isoformat(): v
+        for k, v in ts.items()
+    }
+
+
 def fromjson(jsonb, tsname, tzaware=False):
     if jsonb  ==  '{}':
         return empty_series(tzaware, name=tsname)
