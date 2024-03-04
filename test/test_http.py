@@ -424,8 +424,8 @@ def test_get_nans(http):
         'name': 'test-nans',
         '_keep_nans': json.dumps(True)
     })
-    # violates the json spec
-    assert 'NaN' in res.text
+    # NaNs have been converted to nulls
+    assert 'null' in res.text
 
 
 def test_patch_nonutc(http):

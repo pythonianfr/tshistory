@@ -1,4 +1,4 @@
-import json
+import simplejson as json
 from functools import wraps
 import logging
 import traceback as tb
@@ -107,7 +107,7 @@ def series_response(format, series, metadata, code):
                 json.dumps({
                     stamp.isoformat(): val
                     for stamp, val in series.items()
-                })
+                }, ignore_nan=True)
             )
         else:
             response = make_response('null')

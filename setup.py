@@ -18,6 +18,7 @@ setup(name='tshistory',
       packages=find_packages(),
       python_requires='>= 3.9',
       install_requires=[
+          'simplejson',
           'pandas >= 1.0.5, < 1.6',
           'dbcache >= 0.4.0',
           'psyl',
