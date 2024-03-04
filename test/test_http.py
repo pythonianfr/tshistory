@@ -3,6 +3,7 @@ import json
 import zlib
 from datetime import datetime as dt, timedelta
 
+import numpy as np
 import pandas as pd
 import webtest
 
@@ -405,6 +406,26 @@ def test_get_by_horizon(http):
         '2023-01-26T01:00:00+01:00': 25.0,
         '2023-01-27T01:00:00+01:00': 26.0
     }
+
+
+def test_get_nans(http):
+    # insert
+    ts = genserie(utcdt(2024, 1, 1), 'H', 3)
+    ts[1] = np.nan
+    http.patch('/series/state', params={
+        'name': 'test-nans',
+        'series': util.tojson(ts),
+        'author': 'Babar',
+        'insertion_date': utcdt(2024, 1, 1),
+        'tzaware': util.tzaware_series(ts)
+    })
+
+    res = http.get('/series/state', params={
+        'name': 'test-nans',
+        '_keep_nans': json.dumps(True)
+    })
+    # violates the json spec
+    assert 'NaN' in res.text
 
 
 def test_patch_nonutc(http):
