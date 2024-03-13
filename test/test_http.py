@@ -428,20 +428,21 @@ def test_get_nans(http):
     assert 'null' in res.text
 
 
-def test_patch_nonutc(http):
+def test_patch_nonutc_tzaware(http):
     ts = genserie(utcdt(2023, 1, 1), 'D', 5)
     ts.index = ts.index.tz_convert('Europe/Paris')
-    http.patch('/series/state', params={
-        'name': 'patchnonutc',
+    res = http.patch('/series/state', params={
+        'name': 'patchnonutc-tzaware',
         'tzone': 'Europe/Paris',
         'series': json.dumps(util.tojson2(ts)),
         'author': 'Babar',
         'insertion_date': utcdt(2023, 1, 1),
         'tzaware': util.tzaware_series(ts)
     })
+    assert res.status_code == 201
 
     res = http.get('/series/state', params={
-        'name': 'patchnonutc',
+        'name': 'patchnonutc-tzaware',
         'tzone': 'Europe/Paris'
     })
     assert res.json == {
@@ -453,7 +454,7 @@ def test_patch_nonutc(http):
     }
 
     res = http.get('/series/state', params={
-        'name': 'patchnonutc'
+        'name': 'patchnonutc-tzaware'
     })
     assert res.json == {
         '2023-01-01T00:00:00+00:00': 0.0,
@@ -461,6 +462,42 @@ def test_patch_nonutc(http):
         '2023-01-03T00:00:00+00:00': 2.0,
         '2023-01-04T00:00:00+00:00': 3.0,
         '2023-01-05T00:00:00+00:00': 4.0
+    }
+
+
+def test_patch_nonutc_naive(http):
+    ts = genserie(pd.Timestamp('2023-1-1'), 'D', 5)
+    res = http.patch('/series/state', params={
+        'name': 'patchnonutc-naive',
+        'tzone': 'Europe/Paris',
+        'series': json.dumps(util.tojson2(ts)),
+        'author': 'Babar',
+        'insertion_date': utcdt(2023, 1, 1),
+        'tzaware': util.tzaware_series(ts)
+    })
+    assert res.status_code == 201
+
+    res = http.get('/series/state', params={
+        'name': 'patchnonutc-naive',
+        'tzone': 'Europe/Paris'
+    })
+    assert res.json == {
+        '2023-01-01T00:00:00': 0.0,
+        '2023-01-02T00:00:00': 1.0,
+        '2023-01-03T00:00:00': 2.0,
+        '2023-01-04T00:00:00': 3.0,
+        '2023-01-05T00:00:00': 4.0
+    }
+
+    res = http.get('/series/state', params={
+        'name': 'patchnonutc-naive'
+    })
+    assert res.json == {
+        '2023-01-01T00:00:00': 0.0,
+        '2023-01-02T00:00:00': 1.0,
+        '2023-01-03T00:00:00': 2.0,
+        '2023-01-04T00:00:00': 3.0,
+        '2023-01-05T00:00:00': 4.0
     }
 
 

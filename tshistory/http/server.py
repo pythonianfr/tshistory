@@ -687,7 +687,7 @@ class httpapi:
                         api.abort(405, err.args[0])
                     raise
 
-                if args.tzone != 'UTC':
+                if args.tzaware and args.tzone != 'UTC':
                     diff.index = diff.index.tz_convert(args.tzone)
 
                 return series_response(
