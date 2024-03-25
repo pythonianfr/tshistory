@@ -6,7 +6,10 @@ import inireader
 import requests
 import pandas as pd
 import numpy as np
-from requests_auth import OAuth2ClientCredentials
+from requests_auth import (
+    OAuth2AuthorizationCodePKCE,
+    OAuth2ClientCredentials
+)
 
 from tshistory.tsio import timeseries
 from tshistory.util import (
@@ -58,6 +61,20 @@ def oauth2_auth(auth):
     )
 
 
+def pkce_auth(uri, auth):
+    domain = auth['domain']
+    meta = requests.get(
+        f'https://{domain}/.well-known/openid-configuration'
+    ).json()
+    return OAuth2AuthorizationCodePKCE(
+        authorization_url=meta['authorization_endpoint'],
+        token_url=meta['token_endpoint'],
+        redirect_uri_endpoint='pkce',
+        audience=auth['uri'],
+        client_id=auth['client_id']
+    )
+
+
 def unwraperror(func):
     """Method decorator to transform HTTP 418 errors into proper
     exceptions
@@ -98,6 +115,8 @@ class httpclient:
         )
         if 'login' in auth:
             self.session.auth = auth['login'], auth['password']
+        elif 'pkce' in auth:
+            self.session.auth = pkce_auth(uri, auth)
         elif 'client_id' in auth:
             self.session.auth = oauth2_auth(auth)
 
