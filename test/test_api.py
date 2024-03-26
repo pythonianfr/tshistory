@@ -210,6 +210,75 @@ insertion_date             value_date
         tsx.rename('api-test2', 'api-test')
 
 
+def test_get_with_inferred_freq(tsx):
+    ts = pd.Series(
+        [0, 1, np.nan, np.nan, 6, 7, 8, 9],
+        index=pd.date_range(
+            utcdt(2024, 1, 1), periods=8, freq='H'
+        )
+    )
+
+    tsx.update(
+        'with-inferred-freq',
+        ts,
+        'Babar',
+        insertion_date=utcdt(2024, 1, 1)
+    )
+
+    ts = tsx.get('with-inferred-freq', inferred_freq=True)
+    assert_df("""
+2024-01-01 00:00:00+00:00    0.0
+2024-01-01 01:00:00+00:00    1.0
+2024-01-01 02:00:00+00:00    NaN
+2024-01-01 03:00:00+00:00    NaN
+2024-01-01 04:00:00+00:00    6.0
+2024-01-01 05:00:00+00:00    7.0
+2024-01-01 06:00:00+00:00    8.0
+2024-01-01 07:00:00+00:00    9.0
+""", ts)
+
+    ts = tsx.get(
+        'with-inferred-freq',
+        inferred_freq=True,
+        from_value_date=pd.Timestamp('2024-1-1T02:00:00', tz='UTC')
+    )
+    assert_df("""
+2024-01-01 02:00:00+00:00    NaN
+2024-01-01 03:00:00+00:00    NaN
+2024-01-01 04:00:00+00:00    6.0
+2024-01-01 05:00:00+00:00    7.0
+2024-01-01 06:00:00+00:00    8.0
+2024-01-01 07:00:00+00:00    9.0
+""", ts)
+
+
+def test_with_inferred_freq_remote(mapi):
+    ts = pd.Series(
+        [1, 2, 3, np.nan, 5],
+        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=5)
+    )
+
+    remoteapi = timeseries(
+        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+    )
+    remoteapi.update(
+        'remote.inferred-freq',
+        ts,
+        'Celeste'
+    )
+
+    ts = mapi.get('remote.inferred-freq', inferred_freq=True)
+    assert_df("""
+2023-01-01 00:00:00+00:00    1.0
+2023-01-02 00:00:00+00:00    2.0
+2023-01-03 00:00:00+00:00    3.0
+2023-01-04 00:00:00+00:00    NaN
+2023-01-05 00:00:00+00:00    5.0
+""", ts)
+
+    remoteapi.delete('remote.inferred-freq')
+
+
 def test_block_staircase(tsx):
     hist = hist_from_csv(io.StringIO("""
 datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00+0

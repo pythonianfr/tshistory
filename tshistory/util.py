@@ -334,6 +334,59 @@ def infer_freq(ts):
     return freq, conform_intervals / len(deltas)
 
 
+def with_inferred_freq(ts,
+                       from_value_date=None,
+                       to_value_date=None):
+    if len(ts) < 3 :
+        # we can't infer anything
+        return ts
+
+    ts_start = ts.index[0]
+    ts_end = ts.index[-1]
+    freq = infer_freq(ts)[0]
+    tzaware = ts_start.tz is not None
+    to_value_date = compatible_date(tzaware, to_value_date)
+    from_value_date = compatible_date(tzaware, from_value_date)
+
+    if from_value_date is None and to_value_date is None:
+        new_index = pd.date_range(
+            start=ts_start,
+            end=ts_end,
+            freq=freq
+        )
+        return ts.reindex(new_index)
+
+    if from_value_date is None:
+        new_index = pd.date_range(
+            start=ts_start,
+            end=to_value_date,
+            freq=freq
+        )
+        return ts.reindex(new_index)
+
+    if to_value_date is None:
+        new_index = pd.date_range(
+            start=ts_end,
+            end=from_value_date,
+            freq=-freq
+        ).sort_values()
+        return ts.reindex(new_index)
+
+    # we have to build the index in two parts
+    new_index = pd.date_range(
+        start=ts_start,
+        end=to_value_date,
+        freq=freq
+    )
+    complement = pd.date_range(
+        start=ts_start,
+        end=from_value_date,
+        freq=-freq
+    )
+    new_index = new_index.union(complement).sort_values()
+    return ts.reindex(new_index)
+
+
 def guard_insert(newts, name, author, metadata, insertion_date):
     assert len(name), 'Name is an empty string'
     assert isinstance(author, str), 'Author is not a string'

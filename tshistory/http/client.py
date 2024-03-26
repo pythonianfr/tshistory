@@ -318,6 +318,7 @@ class httpclient:
             to_value_date=None,
             nocache=False,
             live=False,
+            inferred_freq=False,
             _keep_nans=False):
         guard_query_dates(
             revision_date, from_value_date, to_value_date
@@ -327,6 +328,7 @@ class httpclient:
             'format': 'tshpack',
             'nocache': nocache,
             'live': live,
+            'inferred_freq': inferred_freq,
             '_keep_nans': _keep_nans
         }
         if revision_date:

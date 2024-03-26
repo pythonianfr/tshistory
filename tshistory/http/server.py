@@ -180,6 +180,10 @@ get.add_argument(
     help='Convert tz-aware series into this time zone before sending'
 )
 get.add_argument(
+    'inferred_freq', type=inputs.boolean, default=False,
+    help='re-index series on a inferred frequency'
+)
+get.add_argument(
     'format', type=enum('json', 'tshpack'), default='json'
 )
 
@@ -779,6 +783,7 @@ class httpapi:
                     to_value_date=tvd,
                     nocache=args.nocache,
                     live=args.live,
+                    inferred_freq=args.inferred_freq,
                     _keep_nans=args._keep_nans
                 )
 

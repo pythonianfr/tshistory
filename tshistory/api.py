@@ -23,7 +23,8 @@ from tshistory.util import (
     find_sources,
     find_first_uri,
     threadpool,
-    ts
+    ts,
+    with_inferred_freq
 )
 from tshistory.tsio import timeseries as tshclass
 from tshistory import search
@@ -237,6 +238,7 @@ class mainsource:
             revision_date: Optional[datetime]=None,
             from_value_date: Optional[datetime]=None,
             to_value_date: Optional[datetime]=None,
+            inferred_freq: bool=False,
             _keep_nans: bool=False,
             **kw) -> Optional[pd.Series]:
         """Get a series by name.
@@ -281,7 +283,15 @@ class mainsource:
                 revision_date=revision_date,
                 from_value_date=from_value_date,
                 to_value_date=to_value_date,
+                inferred_freq=inferred_freq,
                 _keep_nans=_keep_nans
+            )
+
+        if inferred_freq:
+            ts = with_inferred_freq(
+                ts,
+                from_value_date,
+                to_value_date
             )
         return ts
 
@@ -1066,15 +1076,18 @@ class altsources:
             revision_date: Optional[datetime]=None,
             from_value_date: Optional[datetime]=None,
             to_value_date: Optional[datetime]=None,
+            inferred_freq: bool=False,
             _keep_nans: bool=False) -> Optional[pd.Series]:
         source = self._findsourcefor(name)
         if source is None:
             return
+
         return source.tsa.get(
             name,
             revision_date=revision_date,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
+            inferred_freq=inferred_freq,
             _keep_nans=_keep_nans
         )
 
