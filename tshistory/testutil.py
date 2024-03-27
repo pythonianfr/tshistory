@@ -373,6 +373,7 @@ def make_tsx(uri,
              clientclass=None,
              passthru=None,
              with_http_bridge=with_http_bridge,
+             sources={},
              role='admin'):
     from tshistory import api as tsh_api
 
@@ -383,7 +384,7 @@ def make_tsx(uri,
         tsa = tsh_api.timeseries(
             str(engine.url),
             handler=tsioclass,
-            sources={}
+            sources=sources
         )
 
         if request.param == 'pg':
