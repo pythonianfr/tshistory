@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.20.0]
+### Added
+- api/inferred_freq: get the inferred frequency (and a quality
+  indicator) for a series over a given horizon and for a given
+  version
+- api/search: allow to filter on internal metadata
+- api/get: (http only) accept an horizon parameter as an
+  alternative to from/to_value_date
+- http/server: better documentation for the important API points in the Swagger UI
+- cli/migrate: allow to force a destination version for a given package
+- http/server: a basic permissioning system
+- http/client: support the machine-to-machine (aka credentials) flow
+- http/client: preliminary support for the pkce (aka credentials) flow
+- api/register_basket: allow updating an existing basket
+- http/server: allow non-python (aka json) consummers to specify a time zone
+- api/get: accept an 'inferred_freq' parameter to yield a series
+  reindexed on its inferred frequency
+
+### Changed
+- api/timeseries: allow a parameterless call (using the
+  tshistory.cfg file to get its information)
+- util/replace_series: add an 'from_insertion_date' parameter
+- api/rename: raise a ValueError when attempting to rename to a known series
+- api/history: change the implementation to reduce the memory consumption
+
+### Fixed
+- http/client: raise a dedicated exception on a server crash (500)
+- http/client: raise a dedicated exception on authorization issues (401, 403)
+- http/client: raise a dedicated exception on excessive payload (413)
+- api/staircase and api/block_staircase: do not use the .history
+  api call (which is too memory expansive)
+- cli/migrate: fix the --interactive switch
+- http/client: fix an issue where a naive series came as a tz-aware series
+
 ## [0.19.0]
 ### Added
 - api/find: allow searching in metadata for text values with (in)equalities
