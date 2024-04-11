@@ -277,23 +277,23 @@ class mainsource:
             **kw
         )
 
-        if ts is None:
-            ts = self.othersources.get(
-                name,
-                revision_date=revision_date,
-                from_value_date=from_value_date,
-                to_value_date=to_value_date,
-                inferred_freq=inferred_freq,
-                _keep_nans=_keep_nans
-            )
+        if ts is not None:
+            if inferred_freq:
+                ts = with_inferred_freq(
+                    ts,
+                    from_value_date,
+                    to_value_date
+                )
+            return ts
 
-        if inferred_freq:
-            ts = with_inferred_freq(
-                ts,
-                from_value_date,
-                to_value_date
-            )
-        return ts
+        return self.othersources.get(
+            name,
+            revision_date=revision_date,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date,
+            inferred_freq=inferred_freq,
+            _keep_nans=_keep_nans
+        )
 
     def insertion_dates(self,
                         name: str,
