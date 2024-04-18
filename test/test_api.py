@@ -1125,6 +1125,65 @@ def test_str_series(tsx):
     )
 
 
+def test_insertion_dates(tsx):
+    for name in ('historical-serie',):
+        tsx.delete(name)
+
+    for i in range(10):
+        ts = pd.Series(
+            np.array([1, 2, 3]) + i*2,
+            pd.date_range(utcdt(2024, 4, 1+i), freq='D', periods=3)
+        )
+        tsx.update(
+            'historical-serie',
+            ts,
+            'Babar',
+            insertion_date=utcdt(2024, 4, 1+i)
+        )
+
+    revs = tsx.insertion_dates('historical-serie')
+    assert revs == [
+        pd.Timestamp('2024-04-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-06 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-07 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-08 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-09 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-10 00:00:00+0000', tz='UTC')
+    ]
+
+    revs = tsx.insertion_dates(
+        'historical-serie',
+        from_value_date=pd.Timestamp("2024-04-04"),
+        to_value_date=pd.Timestamp("2024-04-05")
+    )
+    assert revs == [
+        pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-06 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
+        pd.Timestamp('2024-04-07 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
+        pd.Timestamp('2024-04-08 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
+        pd.Timestamp('2024-04-09 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
+        pd.Timestamp('2024-04-10 00:00:00+0000', tz='UTC')  # SHOULD NOT BE
+    ]
+
+    revs = tsx.history(
+        'historical-serie',
+        from_value_date=pd.Timestamp("2024-04-04"),
+        to_value_date=pd.Timestamp("2024-04-05")
+    ).keys()
+    assert list(revs) == [
+        pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC')
+    ]
+
 # groups
 
 def test_primary_group(tsx):
