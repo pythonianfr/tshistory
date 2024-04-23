@@ -1229,3 +1229,25 @@ class altsources:
             )
 
         return []
+
+    def block_staircase(self,
+                        name,
+                        from_value_date,
+                        to_value_date,
+                        revision_freq,
+                        revision_time,
+                        revision_tz,
+                        maturity_offset,
+                        maturity_time):
+        source = self._findsourcefor(name)
+        if source:
+            return source.tsa.block_staircase(
+                name,
+                from_value_date,
+                to_value_date,
+                revision_freq,
+                revision_time,
+                revision_tz,
+                maturity_offset,
+                maturity_time
+            )
