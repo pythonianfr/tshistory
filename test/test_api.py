@@ -318,6 +318,51 @@ datetime,               value
     pd.testing.assert_series_equal(computed_ts, expected_ts, check_names=False)
 
 
+def test_block_staircase_remote(mapi):
+    hist = hist_from_csv(io.StringIO("""
+datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00+0
+2020-01-03 00:00+00:00, 1.0,                10.0,               100.0
+2020-01-03 04:00+00:00, 2.0,                20.0,               200.0
+2020-01-03 08:00+00:00, 3.0,                30.0,               300.0
+2020-01-03 16:00+00:00, 4.0,                40.0,               400.0
+2020-01-04 00:00+00:00, 5.0,                50.0,               500.0
+2020-01-04 04:00+00:00, 6.0,                60.0,               600.0
+2020-01-04 08:00+00:00, 7.0,                70.0,               700.0
+2020-01-04 16:00+00:00, 8.0,                80.0,               800.0
+"""))
+
+    remoteapi = timeseries(
+        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+    )
+    for idate, ts in hist.items():
+        remoteapi.update('remote_staircase', ts, author='test', insertion_date=idate)
+
+    with pytest.raises(AttributeError):
+        computed_ts = mapi.block_staircase(
+            'remote_staircase',
+            from_value_date=pd.Timestamp('2020-01-03', tz='utc'),
+            to_value_date=pd.Timestamp('2020-01-05', tz='utc'),
+            revision_freq={'days': 1},
+            revision_time={'hour': 10},
+            revision_tz='UTC',
+            maturity_offset={'hours': 24},
+            maturity_time={'hour': 4},
+        )
+        expected_ts = ts_from_csv(io.StringIO("""
+    datetime,               value
+    2020-01-03 00:00+00:00, 1.0
+    2020-01-03 04:00+00:00, 20.0
+    2020-01-03 08:00+00:00, 30.0
+    2020-01-03 16:00+00:00, 40.0
+    2020-01-04 00:00+00:00, 50.0
+    2020-01-04 04:00+00:00, 600.0
+    2020-01-04 08:00+00:00, 700.0
+    2020-01-04 16:00+00:00, 800.0
+    """))
+        pd.testing.assert_series_equal(computed_ts, expected_ts, check_names=False)
+
+
+
 def test_inferred_freq(tsx):
     tsx.delete('infer_freq')
 
