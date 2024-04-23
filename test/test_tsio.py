@@ -606,6 +606,66 @@ def test_revision_date(engine, tsh):
 """, oldstate)
 
 
+def test_insertion_dates(engine, tsh):
+    for i in range(10):
+        ts = pd.Series(
+            np.array([1, 2, 3]) + i*2,
+            pd.date_range(utcdt(2024, 4, 1+i), freq='D', periods=3)
+        )
+        tsh.update(
+            engine,
+            ts,
+            'historical-series',
+            'Babar',
+            insertion_date=utcdt(2024, 4, 1+i)
+        )
+
+    revs = tsh.insertion_dates(engine, 'historical-series')
+    assert revs == [
+        pd.Timestamp('2024-04-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-06 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-07 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-08 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-09 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-10 00:00:00+0000', tz='UTC')
+    ]
+
+    revs = tsh.insertion_dates(
+        engine,
+        'historical-series',
+        from_value_date=pd.Timestamp("2024-04-04"),
+        to_value_date=pd.Timestamp("2024-04-05")
+    )
+    assert revs == [
+        pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-06 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
+        pd.Timestamp('2024-04-07 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
+        pd.Timestamp('2024-04-08 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
+        pd.Timestamp('2024-04-09 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
+        pd.Timestamp('2024-04-10 00:00:00+0000', tz='UTC')  # SHOULD NOT BE
+    ]
+
+    revs = tsh.history(
+        engine,
+        'historical-series',
+        from_value_date=pd.Timestamp("2024-04-04"),
+        to_value_date=pd.Timestamp("2024-04-05")
+    ).keys()
+    assert list(revs) == [
+        pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC')
+    ]
+
+
 def test_first_latest_insertion_date(engine, tsh):
     name = 'test-f-l-idate'
     for i in range(3):
