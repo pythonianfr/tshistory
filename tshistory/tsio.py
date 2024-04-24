@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 
 from sqlhelp import sqlfile, select, insert
+from psyl.lisp import pairwise
 
 from tshistory import search
 from tshistory.util import (
@@ -173,7 +174,7 @@ class timeseries:
         start, end = start_end(newts)
         head = self.storageclass(cn, self, name).create(newts)
         self._new_revision(
-            cn, name, head, start, end,
+            cn, name, head, start, end, start, end,
             author, insertion_date, metadata
         )
         L.info('inserted series (size=%s) for ts %s by %s',
@@ -871,7 +872,7 @@ class timeseries:
         start, end = start_end(newts)
 
         self._new_revision(
-            cn, name, head, start, end,
+            cn, name, head, start, end, start, end,
             author, insertion_date, metadata
         )
 
@@ -902,6 +903,8 @@ class timeseries:
             )
 
         # compute series start/end stamps
+        diffstart = series_diff.index[0]
+        diffend = series_diff.index[-1]
         tsstart, tsend = start_end(series_diff)
         ival = self.interval(cn, name, notz=True)
         start = min(tsstart or ival.left, ival.left)
@@ -920,7 +923,7 @@ class timeseries:
         head = snapshot.update(series_diff)
 
         self._new_revision(
-            cn, name, head, start, end,
+            cn, name, head, start, end, diffstart, diffend,
             author, insertion_date, metadata
         )
         L.info('inserted diff (size=%s) for ts %s by %s',
@@ -928,6 +931,7 @@ class timeseries:
         return series_diff
 
     def _new_revision(self, cn, name, head, tsstart, tsend,
+                      diffstart, diffend,
                       author, insertion_date, metadata):
         tablename = self._series_to_tablename(cn, name)
         if insertion_date is not None:
@@ -952,6 +956,8 @@ class timeseries:
             snapshot=head,
             tsstart=tsstart,
             tsend=tsend,
+            diffstart=diffstart,
+            diffend=diffend,
             author=author,
             insertion_date=idate,
             metadata=metadata

@@ -1165,11 +1165,6 @@ def test_insertion_dates(tsx):
         pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
         pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
         pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
-        pd.Timestamp('2024-04-06 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
-        pd.Timestamp('2024-04-07 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
-        pd.Timestamp('2024-04-08 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
-        pd.Timestamp('2024-04-09 00:00:00+0000', tz='UTC'), # SHOULD NOT BE
-        pd.Timestamp('2024-04-10 00:00:00+0000', tz='UTC')  # SHOULD NOT BE
     ]
 
     revs = tsx.history(

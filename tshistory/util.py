@@ -305,7 +305,12 @@ def start_end(ts, notz=True):
 def closed_overlaps(fromdate, todate):
     fromdate = "'-infinity'" if fromdate is None else '%(fromdate)s'
     todate = "'infinity'" if todate is None else '%(todate)s'
-    return f'({fromdate}, {todate}) overlaps (tsstart, tsend + interval \'1 microsecond\')'
+    return (
+        f'({fromdate}, {todate}) '
+        'overlaps '
+        '(diffstart - interval \'1 microsecond\', '
+        ' diffend + interval \'1 microsecond\')'
+    )
 
 
 def inject_in_index(series, revdate):
