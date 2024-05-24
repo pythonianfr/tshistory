@@ -12,7 +12,6 @@ import pandas as pd
 import numpy as np
 
 from sqlhelp import sqlfile, select, insert
-from psyl.lisp import pairwise
 
 from tshistory import search
 from tshistory.util import (
