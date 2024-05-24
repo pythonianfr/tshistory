@@ -24,7 +24,8 @@ def test_migrate(engine, tsh):
     def migrate_quux(engine, namespace, interactive):
         run.append(('quux', namespace, interactive))
 
-    assert len(VERSIONS) == 3
+    # >= because we also have the real migrations there
+    assert len(VERSIONS) >= 3
 
     mig = Migrator(str(engine.url), 'tsh', False)
     mig._package_version = '99.1.5'

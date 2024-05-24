@@ -158,6 +158,216 @@ class Migrator:
         migrate_to_baskets(engine, gns, self.interactive)
 
 
+@version('tshistory', '0.20.0')
+def migrate_series_versions(engine, namespace, interactive):
+    migrate_add_diffstart_diffend(engine, namespace, interactive)
+    migrate_add_diffstart_diffend(engine, f'{namespace}.group', interactive)
+
+
+def migrate_add_diffstart_diffend(engine, namespace, interactive):
+    import os
+    import signal
+    import sys
+    import multiprocessing
+    from sqlalchemy import create_engine
+    from tshistory import util
+    print(f'add columns `diffstart` and `diffend` to {namespace}.revision')
+
+    def addattributes(cn, tablename):
+        sql = (
+            f"select exists (select 1 "
+            f" from information_schema.columns "
+            f" where table_schema='{namespace}.revision' and "
+            f" table_name='{tablename}' and "
+            f" column_name='diffstart'"
+            f")"
+        )
+
+        migrated = cn.execute(sql).scalar()
+        if migrated:
+            return False
+
+        cn.execute(
+            f'alter table "{namespace}.revision"."{tablename}" '
+            f'add column diffstart timestamp'
+        )
+        cn.execute(
+            f'create index if not exists "rev.{tablename}.idx_diffstart" '
+            f'on "{namespace}.revision"."{tablename}" (diffstart)'
+        )
+
+        cn.execute(
+            f'alter table "{namespace}.revision"."{tablename}" '
+            f'add column diffend timestamp'
+        )
+        cn.execute(
+            f'create index if not exists "rev.{tablename}.idx_diffend" '
+            f'on "{namespace}.revision"."{tablename}" (diffend)'
+        )
+        return True
+
+    def finalizeattributes(cn, tablename):
+        # put the not null constraints
+        cn.execute(
+            f'alter table "{namespace}.revision"."{tablename}" '
+            f'alter column diffstart set not null'
+        )
+        cn.execute(
+            f'alter table "{namespace}.revision"."{tablename}" '
+            f'alter column diffend set not null'
+        )
+
+    def partition(alist, size):
+        for i in range(0, len(alist), size):
+            yield alist[i:i+size]
+
+    def listchunks(alist, n):
+        k, m = divmod(len(alist), n)
+        return [
+            alist[i * k + min(i, m):(i + 1) * k + min(i + 1, m)]
+            for i in range(n)
+        ]
+
+    def populatedata(pid, cn, name, tablename):
+        sto = tsh.storageclass(cn, tsh, name)
+        tzaware = tsh.tzaware(cn, name)
+        ts = util.empty_series(tzaware)
+        startid = -1
+
+        # revs
+        revsql = (
+            f'select id, snapshot, insertion_date '
+            f'from "{namespace}.revision"."{tablename}" '
+            f'order by id asc'
+        )
+        allrevs = [
+            (csid, snapshot, idate)
+            for csid, snapshot, idate in cn.execute(revsql)
+        ]
+        chunksql = (
+            f'select id, parent, chunk '
+            f'from "{namespace}.snapshot"."{tablename}" '
+            f'where id > %(startid)s and'
+            f'      id <= %(endid)s'
+        )
+
+        def buildseries(chunks, parent):
+            items = []
+            while parent in chunks:
+                item = chunks[parent]
+                parent = item[0]  # deref parent
+                items.append(item[1]) # bytes
+            items.reverse()
+            return sto._chunks_to_ts(items)
+
+        for revs in partition(allrevs, 512):
+            # batch of revs
+            endrev = revs[-1]
+            chunks = {
+                c.id: (c.parent, c.chunk)
+                for c in cn.execute(
+                        chunksql,
+                        startid=startid,
+                        endid=endrev[1]
+                ).fetchall()
+            }
+            # rebuild the versions
+            diffsb = []
+            delete = []
+            for csid, snapid, idate in revs:
+                current = buildseries(chunks, snapid)
+                diff = util.diff(ts, current)
+                if len(diff):
+                    diffsb.append(
+                        {
+                            'csid': csid,
+                            'diffstart': diff.index[0],
+                            'diffend': diff.index[-1]
+                        }
+                    )
+                else:
+                    delete.append(
+                        {
+                            'csid': csid,
+                            'idate': idate
+                        }
+                    )
+
+                ts = current
+
+            if diffsb:
+                sql = (
+                    f'update "{namespace}.revision"."{tablename}" '
+                    f'set diffstart=%(diffstart)s, '
+                    f'    diffend=%(diffend)s '
+                    f'where id=%(csid)s'
+                )
+                cn.execute(
+                    sql, diffsb
+                )
+
+            if delete:
+                print(f'{pid}: revs to delete:', ','.join(x['idate'].isoformat() for x in delete))
+                sql = (
+                    f'delete from "{namespace}.revision"."{tablename}" '
+                    f'where id = %(csid)s'
+                )
+                cn.execute(sql, [{'csid': x['csid']} for x in delete])
+
+            startid = endrev[1]
+
+    # main
+    tsh = tshclass(namespace)
+    names = [
+        name
+        for name, kind in tsh.list_series(engine).items()
+        if kind == 'primary'
+    ]
+    cpus = 1 if sys.platform == 'win32' else int(multiprocessing.cpu_count() / 2)
+    chunked = listchunks(names, int(cpus))
+
+    def migrate(url, names):
+        pid = os.getpid()
+        engine = create_engine(url)
+        for name in names:
+            print(f'{pid}: migrating `{name}`')
+
+            with engine.begin() as cn:
+                cn.cache = {'series_tablename': {}}
+                tablename = tsh._series_to_tablename(cn, name)
+
+                if tablename is None: # not a primary
+                    continue
+
+                if not addattributes(cn, tablename):
+                    print('... already migrated, skipping')
+                    continue
+                populatedata(pid, cn, name, tablename)
+                finalizeattributes(cn, tablename)
+
+    if cpus == 1:
+        migrate(str(engine.url), names)
+    else:
+        pids = []
+        for idx, names in enumerate(chunked):
+            pid = os.fork()
+            if not pid:
+                names.sort()
+                migrate(str(engine.url), names)
+                sys.exit(0)
+
+            pids.append(pid)
+
+        try:
+            for pid in pids:
+                print('waiting for', pid)
+                os.waitpid(pid, 0)
+        except KeyboardInterrupt:
+            for pid in pids:
+                print('kill', pid)
+                os.kill(pid, signal.SIGINT)
+
+
 def migrate_metadata(engine, namespace, interactive):
     ns = namespace
 
