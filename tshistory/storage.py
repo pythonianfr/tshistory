@@ -305,51 +305,6 @@ class Postgres:
                   for cid, parent, rawchunk in res.fetchall()}
         return chunks
 
-    def findall(self, revs, from_value_date, to_value_date):
-        # there might be a None in first position because
-        # of the diff mode
-        csets = [rev for rev, _ in revs if rev is not None]
-        # csid -> heads
-
-        q = self.cset_heads_query(
-            (
-                lambda q: q.where('id >= %(mincset)s', mincset=min(csets)),
-                lambda q: q.where('id <= %(maxcset)s', maxcset=max(csets))
-            ),
-            order='asc'
-        )
-
-        cset_snap_map = {
-            row.id: row.snapshot
-            for row in q.do(self.cn).fetchall()
-        }
-        rawchunks = self.allchunks(
-            sorted(cset_snap_map.values()),
-            from_value_date
-        )
-
-        series = []
-        for cset, idate in revs:
-            if cset is None:
-                # first occurrence, because of diff mode
-                assert idate is None
-                series.append((None, None))
-                continue
-            chunks = []
-            head = cset_snap_map[cset]
-            while True:
-                parent, chunk = rawchunks.get(head, (None, None))
-                if chunk is None:
-                    break
-                chunks.append(chunk)
-                head = parent
-            series.append(
-                (idate, self._chunks_to_ts(reversed(chunks)).loc[
-                    from_value_date:to_value_date
-                ])
-            )
-        return series
-
     def garbage(self):
         """ inefficient but simple garbage list builder
         garbage chunks are created on strip operations
