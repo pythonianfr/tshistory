@@ -390,6 +390,68 @@ class timeseries:
         return hist
 
     @tx
+    def diffs(self, cn, name,
+              from_insertion_date=None,
+              to_insertion_date=None):
+        sto = self.storageclass(cn, self, name)
+        tablename = self._series_to_tablename(cn, name)
+
+        # chunksql
+        rawsql = f"""
+        with recursive allchunks as (
+          select chunks.id as cid,
+                 chunks.parent as parent,
+                 chunks.chunk as chunk
+          from "{self.namespace}.snapshot"."{tablename}" as chunks
+          where chunks.id = %(head)s
+        union
+          select chunks.id as cid,
+                 chunks.parent as parent,
+                 chunks.chunk as chunk
+          from "{self.namespace}.snapshot"."{tablename}" as chunks
+          join allchunks on chunks.id = allchunks.parent
+          where chunks.id > %(lastid)s
+        )
+        select chunk from allchunks
+        order by cid
+        """
+        lastid = self.changeset_at(cn, name, from_insertion_date) if from_insertion_date else -1
+        # revs
+        revsql = select(
+            'id', 'snapshot', 'insertion_date'
+        ).table(f'"{self.namespace}.revision"."{tablename}"'
+        ).order('id', direction='asc')
+        if from_insertion_date:
+            revsql.where(
+                'insertion_date >= %(fromdate)s',
+                fromdate=from_insertion_date
+            )
+        if to_insertion_date:
+            revsql.where(
+                'insertion_date <= %(todate)s',
+                todate=to_insertion_date
+            )
+
+        diffs = {}
+        ts = empty_series(self.tzaware(cn, name))
+        res = revsql.do(cn)
+        for csid, snapid, idate in res.fetchall():
+            chunks = [
+                c.chunk
+                for c in cn.execute(
+                        rawsql,
+                        lastid=lastid,
+                        head=snapid
+                ).fetchall()
+            ]
+            current = sto._chunks_to_ts(chunks)
+            diffs[idate] = diff(ts, current)
+            ts = current
+            lastid = snapid
+
+        return diffs
+
+    @tx
     def staircase(self, cn, name, delta,
                   from_value_date=None,
                   to_value_date=None):

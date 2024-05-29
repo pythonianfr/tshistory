@@ -728,6 +728,50 @@ def test_first_latest_insertion_date(engine, tsh):
     assert tsh.latest_insertion_date(engine, name) == idates[-1]
 
 
+def test_diffs(engine, tsh):
+    for i in range(3):
+        ts = pd.Series(
+            [i],
+            index=pd.date_range(
+                pd.Timestamp(f'2024-1-{i+1}'),
+                freq='D',
+                periods=1
+            )
+        )
+        tsh.update(
+            engine,
+            ts,
+            'test-diffs',
+            'Babar',
+            insertion_date=pd.Timestamp(f'2024-1-{i+1}', tz='utc')
+        )
+
+    assert_hist("""
+insertion_date             value_date
+2024-01-01 00:00:00+00:00  2024-01-01    0.0
+2024-01-02 00:00:00+00:00  2024-01-02    1.0
+2024-01-03 00:00:00+00:00  2024-01-03    2.0
+""", tsh.history(engine, 'test-diffs', diffmode=True))
+
+    assert_hist("""
+insertion_date             value_date
+2024-01-01 00:00:00+00:00  2024-01-01    0.0
+2024-01-02 00:00:00+00:00  2024-01-02    1.0
+2024-01-03 00:00:00+00:00  2024-01-03    2.0
+""", tsh.diffs(engine, 'test-diffs'))
+
+    diffs = tsh.diffs(
+        engine,
+        'test-diffs',
+        from_insertion_date=pd.Timestamp('2024-1-2', tz='utc'),
+        to_insertion_date=pd.Timestamp('2024-1-2', tz='utc')
+    )
+    assert_hist("""
+insertion_date             value_date
+2024-01-02 00:00:00+00:00  2024-01-02    1.0
+""", diffs)
+
+
 def test_infer_freq(engine, tsh):
     ts = pd.Series(
         [1, 2, 3],
