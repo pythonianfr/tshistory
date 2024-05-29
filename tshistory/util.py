@@ -193,26 +193,26 @@ class VersionMismatch(Exception):
 
 
 def read_versions(uri, namespace, version_string='tshistory-version'):
-    from tshistory import __version__ as known_version
+    from tshistory import __version__ as code_version
     store = kvstore(uri, f'{namespace}-kvstore')
     try:
         stored_version = store.get('tshistory-version')
     except exc.ProgrammingError:
         raise NoVersion(
-            f'version of the software ({known_version}) '
+            f'version of the software ({code_version}) '
             f'and the db  differ. '
             'Please install it or run the `migrate` command'
         )
 
-    return stored_version, known_version
+    return stored_version, code_version
 
 
 def ensure_versions(uri, namespace):
-    stored_version, known_version = read_versions(uri, namespace)
-    if stored_version != known_version:
+    stored_version, code_version = read_versions(uri, namespace)
+    if stored_version != code_version:
         raise VersionMismatch(
-            f'version of the software ({known_version}) '
-            f'and the db ({stored_version}) differ. '
+            f'version of the software ({code_version}) '
+            f'and the db ({stored_version}@{namespace}) differ. '
             'Please run the `migrate` command'
         )
 
