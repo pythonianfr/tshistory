@@ -88,6 +88,37 @@ def dbversions(db_uri, namespace='tsh'):
         print(f'{k} -> {v}')
 
 
+@tsh.command(name='checkdiffs')
+@click.argument('db-uri')
+@click.argument('name')
+@click.option('--namespace', default='tsh')
+def checkdiffs(db_uri, name, namespace='tsh'):
+    uri = find_dburi(db_uri)
+
+    tsa = timeseries(uri, namespace)
+    tsh = tsa.tsh
+
+    engine = create_engine(uri)
+
+    with engine.begin() as cn:
+        cn.cache = {'series_tablename': {}}
+        tablename = tsh._series_to_tablename(cn, name)
+
+    things = engine.execute(
+        f'select insertion_date, diffstart, diffend '
+        f'from "tsh.revision"."{tablename}"'
+    )
+    h = tsa.history(name, diffmode=True)
+
+    for idate, start, end in things.fetchall():
+        print(idate)
+        ts = h[idate]
+        if ts.index[0] != start:
+            print('-> start', ts.index[0], start)
+        if ts.index[-1] != end:
+            print('-> end', ts.index[0], end)
+
+
 @tsh.command(name='shell')
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')

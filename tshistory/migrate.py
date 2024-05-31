@@ -326,6 +326,8 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
     cpus = 1 if sys.platform == 'win32' else int(multiprocessing.cpu_count() / 2)
     chunked = listchunks(names, int(cpus))
 
+    print(f'Starting with {cpus} processes.')
+
     def migrate(url, names):
         pid = os.getpid()
         engine = create_engine(url)
