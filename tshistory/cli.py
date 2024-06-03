@@ -2,6 +2,7 @@ from collections import defaultdict
 
 from pkg_resources import iter_entry_points
 import click
+import pandas as pd
 from sqlalchemy import create_engine
 
 from dbcache import api as storeapi
@@ -109,8 +110,12 @@ def checkdiffs(db_uri, name, namespace='tsh'):
         f'from "tsh.revision"."{tablename}"'
     )
     h = tsa.history(name, diffmode=True)
+    tzaware = tsa.tsh.tzaware(engine, name)
 
     for idate, start, end in things.fetchall():
+        if not tzaware:
+            start = pd.Timestamp(start).tz_localize(None)
+            end = pd.Timestamp(end).tz_localize(None)
         print(idate)
         ts = h[idate]
         if ts.index[0] != start:

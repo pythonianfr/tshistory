@@ -1122,11 +1122,11 @@ class timeseries:
             # if only a tzaware from_value_date is provided.
             if not(from_value_date and to_value_date):
                 if from_value_date:
-                    if from_value_date.tzinfo is not None:
-                        from_value_date = from_value_date.tz_localize(None)
+                    if from_value_date.tzinfo is None:
+                        from_value_date = ensuretz(from_value_date)
                 else:
-                    if to_value_date.tzinfo is not None:
-                        to_value_date = to_value_date.tz_localize(None)
+                    if to_value_date.tzinfo is None:
+                        to_value_date = ensuretz(to_value_date)
 
             q.where(
                 closed_overlaps(from_value_date, to_value_date),

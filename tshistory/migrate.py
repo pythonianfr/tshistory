@@ -189,7 +189,7 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
 
         cn.execute(
             f'alter table "{namespace}.revision"."{tablename}" '
-            f'add column diffstart timestamp'
+            f'add column diffstart timestamptz'
         )
         cn.execute(
             f'create index if not exists "rev.{tablename}.idx_diffstart" '
@@ -198,7 +198,7 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
 
         cn.execute(
             f'alter table "{namespace}.revision"."{tablename}" '
-            f'add column diffend timestamp'
+            f'add column diffend timestamptz'
         )
         cn.execute(
             f'create index if not exists "rev.{tablename}.idx_diffend" '

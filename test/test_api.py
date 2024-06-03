@@ -1125,8 +1125,8 @@ def test_str_series(tsx):
     )
 
 
-def test_insertion_dates(tsx):
-    for name in ('historical-serie',):
+def test_insertion_dates_tzaware(tsx):
+    for name in ('historical-series-tzaware',):
         tsx.delete(name)
 
     for i in range(10):
@@ -1135,13 +1135,13 @@ def test_insertion_dates(tsx):
             pd.date_range(utcdt(2024, 4, 1+i), freq='D', periods=3)
         )
         tsx.update(
-            'historical-serie',
+            'historical-series-tzaware',
             ts,
             'Babar',
             insertion_date=utcdt(2024, 4, 1+i)
         )
 
-    revs = tsx.insertion_dates('historical-serie')
+    revs = tsx.insertion_dates('historical-series-tzaware')
     assert revs == [
         pd.Timestamp('2024-04-01 00:00:00+0000', tz='UTC'),
         pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
@@ -1156,7 +1156,7 @@ def test_insertion_dates(tsx):
     ]
 
     revs = tsx.insertion_dates(
-        'historical-serie',
+        'historical-series-tzaware',
         from_value_date=pd.Timestamp("2024-04-04"),
         to_value_date=pd.Timestamp("2024-04-05")
     )
@@ -1168,7 +1168,7 @@ def test_insertion_dates(tsx):
     ]
 
     revs = tsx.history(
-        'historical-serie',
+        'historical-series-tzaware',
         from_value_date=pd.Timestamp("2024-04-04"),
         to_value_date=pd.Timestamp("2024-04-05")
     ).keys()
@@ -1178,6 +1178,62 @@ def test_insertion_dates(tsx):
         pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
         pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC')
     ]
+
+
+def test_insertion_dates_tznaive(tsx):
+    for name in ('historical-series-naive',):
+        tsx.delete(name)
+
+    for i in range(10):
+        ts = pd.Series(
+            np.array([1, 2, 3]) + i*2,
+            pd.date_range(pd.Timestamp(f'2024-4-{1+i}'), freq='D', periods=3)
+        )
+        tsx.update(
+            'historical-series-naive',
+            ts,
+            'Babar',
+            insertion_date=utcdt(2024, 4, 1+i)
+        )
+
+    revs = tsx.insertion_dates('historical-series-naive')
+    assert revs == [
+        pd.Timestamp('2024-04-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-06 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-07 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-08 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-09 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-10 00:00:00+0000', tz='UTC')
+    ]
+
+    revs = tsx.insertion_dates(
+        'historical-series-naive',
+        from_value_date=pd.Timestamp("2024-04-04"),
+        to_value_date=pd.Timestamp("2024-04-05")
+    )
+    assert revs == [
+        pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
+    ]
+
+    revs = tsx.history(
+        'historical-series-naive',
+        from_value_date=pd.Timestamp("2024-04-04"),
+        to_value_date=pd.Timestamp("2024-04-05")
+    ).keys()
+    assert list(revs) == [
+        pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC')
+    ]
+
 
 # groups
 
