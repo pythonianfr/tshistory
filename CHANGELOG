@@ -33,6 +33,7 @@
   api call (which is too memory expansive)
 - cli/migrate: fix the --interactive switch
 - http/client: fix an issue where a naive series came as a tz-aware series
+- api/insertion_dates: fix output when used with the 'to_value_date' parameter
 
 ## [0.19.0]
 ### Added
