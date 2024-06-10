@@ -222,11 +222,10 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
             yield alist[i:i+size]
 
     def listchunks(alist, n):
-        k, m = divmod(len(alist), n)
-        return [
-            alist[i * k + min(i, m):(i + 1) * k + min(i + 1, m)]
-            for i in range(n)
-        ]
+        import numpy as np
+        return list(
+            np.array_split(np.array(alist), n)
+        )
 
     def populatedata(pid, cn, name, tablename):
         sto = tsh.storageclass(cn, tsh, name)
