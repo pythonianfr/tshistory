@@ -342,7 +342,7 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
                     continue
 
                 if not addattributes(cn, tablename):
-                    print('... already migrated, skipping')
+                    print(f'{pid} ... already migrated, skipping')
                     continue
                 populatedata(pid, cn, name, tablename)
                 finalizeattributes(cn, tablename)
