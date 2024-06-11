@@ -47,7 +47,7 @@ You need a postgresql database. You can create one like this:
 Then, initialize the `tshistory` tables, like this:
 
 ```python
- tsh init-db postgresql://me:password@localhost/mydb
+ tsh init-db postgresql://me:password@localhost/mydb --no-dry-run
 ```
 
 From this you're ready to go !
