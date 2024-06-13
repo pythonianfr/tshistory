@@ -1,7 +1,4 @@
-from datetime import (
-    datetime,
-    timedelta
-)
+from datetime import timedelta
 import logging
 import hashlib
 import uuid
@@ -944,7 +941,7 @@ class timeseries:
         start = min(tsstart or ival.left, ival.left)
         end = max(tsend or ival.right, ival.right)
 
-        if pd.isnull(series_diff[0]) or pd.isnull(series_diff[-1]):
+        if pd.isnull(series_diff.iloc[0]) or pd.isnull(series_diff.iloc[-1]):
             # we *might* be shrinking, let's look at the full series
             # and yes, shrinkers have a slow path
             last = snapshot.last()
@@ -975,7 +972,7 @@ class timeseries:
             )
             idate = pd.Timestamp(insertion_date)
         else:
-            idate = pd.Timestamp(datetime.utcnow(), tz='UTC')
+            idate = pd.Timestamp.utcnow()
         latest_idate = self.latest_insertion_date(cn, name)
         if latest_idate:
             assert idate > latest_idate, (
@@ -1338,7 +1335,7 @@ class timeseries:
         if df.columns.dtype != np.dtype('O'):
             df.columns = df.columns.astype('str')
         if insertion_date is None:
-            insertion_date = pd.Timestamp(datetime.utcnow(), tz='UTC')
+            insertion_date = pd.Timestamp.utcnow()
 
         infos = self._group_info(cn, name)
 

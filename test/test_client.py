@@ -21,7 +21,7 @@ DATADIR = Path(__file__).parent / 'data'
 
 
 def test_naive(client):
-    series_in = genserie(pd.Timestamp('2018-1-1'), 'H', 3)
+    series_in = genserie(pd.Timestamp('2018-1-1'), 'h', 3)
     client.update('test-naive', series_in, 'Babar',
                   insertion_date=utcdt(2019, 1, 1))
 
@@ -42,7 +42,7 @@ def test_naive(client):
 
 
 def test_error(client):
-    series_in = genserie(pd.Timestamp('2018-1-1'), 'H', 3)
+    series_in = genserie(pd.Timestamp('2018-1-1'), 'h', 3)
     client.update(
         'test-error',
         series_in,
@@ -74,7 +74,7 @@ def test_base(client):
     meta = client.metadata('no-such-series')
     assert meta is None
 
-    series_in = genserie(utcdt(2018, 1, 1), 'H', 3)
+    series_in = genserie(utcdt(2018, 1, 1), 'h', 3)
     diff = client.update(
         'test1', series_in, 'Babar',
         insertion_date=utcdt(2019, 1, 1)
@@ -160,7 +160,7 @@ def test_base(client):
     }
 
     # check the insertion_date
-    series_in = genserie(utcdt(2018, 1, 2), 'H', 3)
+    series_in = genserie(utcdt(2018, 1, 2), 'h', 3)
     client.update('test1', series_in, 'Babar',
                   metadata={'event': 'hello'},
                   insertion_date=utcdt(2019, 1, 2))
@@ -225,7 +225,7 @@ def test_base(client):
 
 
 def test_dates(client):
-    series_in = genserie(utcdt(2020, 10, 25), 'H', 24)
+    series_in = genserie(utcdt(2020, 10, 25), 'h', 24)
     client.update(
         'test_dates', series_in, 'Babar',
         insertion_date=utcdt(2020, 10, 1)
@@ -264,7 +264,7 @@ def test_staircase_history(client):
     for idx, idate in enumerate(pd.date_range(start=utcdt(2015, 1, 1),
                                               end=utcdt(2015, 1, 4),
                                               freq='D')):
-        series = genserie(start=idate, freq='H', repeat=7)
+        series = genserie(start=idate, freq='h', repeat=7)
         client.update(
             'staircase',
             series, 'Babar',
@@ -342,7 +342,7 @@ def test_staircase_history_naive(client):
                                               freq='D')):
         series = genserie(
             start=idate.tz_convert(None),
-            freq='H',
+            freq='h',
             repeat=7
         )
         client.update(
@@ -420,7 +420,7 @@ def test_block_staircase_no_series(client):
 def test_block_staircase_empty_series(client):
     insert_date = pd.Timestamp('2021-10-15', tz='Europe/Brussels')
     value_start_date = insert_date + pd.Timedelta(1, 'D')
-    ts = genserie(start=value_start_date, freq='H', repeat=24)
+    ts = genserie(start=value_start_date, freq='h', repeat=24)
     client.update(
         'staircase-missed-insertion', ts, 'test', insertion_date=insert_date
     )
@@ -476,7 +476,7 @@ def test_block_staircase_output_timezone(
 ):
     insert_date = pd.Timestamp('2021-10-15', tz='utc')
     value_start_date = insert_date + pd.Timedelta(1, 'D')
-    ts = genserie(start=value_start_date, freq='H', repeat=24)
+    ts = genserie(start=value_start_date, freq='h', repeat=24)
     ts = ts if source_ts_is_tz_aware else ts.tz_localize(None)
     client.update(ts_name, ts, 'test', insertion_date=insert_date)
     sc_ts = client.block_staircase(
@@ -494,7 +494,7 @@ def test_block_staircase_output_timezone(
 
 def test_block_staircase_arg_errors(client):
     start_date = pd.Timestamp('2021-10-15', tz='Europe/Brussels')
-    ts = genserie(start=start_date, freq='H', repeat=24)
+    ts = genserie(start=start_date, freq='h', repeat=24)
     client.update(
         'block-staircase-arg-error', ts, 'test', insertion_date=start_date
     )
@@ -522,7 +522,7 @@ def test_block_staircase_arg_errors(client):
 def test_block_staircase_revision_errors(client):
     """Test errors returned by block_staircase wit wrong arguments"""
     start_date = pd.Timestamp('2021-10-15', tz='Europe/Brussels')
-    ts = genserie(start=start_date, freq='H', repeat=24)
+    ts = genserie(start=start_date, freq='h', repeat=24)
     client.update(
         'block-staircase-rev-error', ts, 'test', insertion_date=start_date
     )
@@ -682,7 +682,7 @@ def test_log_strip(client):
             metadata={'comment': f'day {d+1}'},
             insertion_date=utcdt(2020, 1, d + 1)
         )
-        series[d] = 42
+        series.iloc[d] = 42
 
     v = client.get('test-log', revision_date=dt.datetime(2020, 1, 3))
     assert_df("""

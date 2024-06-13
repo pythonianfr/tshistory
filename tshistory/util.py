@@ -21,7 +21,6 @@ from warnings import warn
 import pytz
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64tz_dtype
 from sqlalchemy.engine import url
 from sqlalchemy.engine.base import Engine
 from sqlalchemy import exc
@@ -267,7 +266,7 @@ def ensuretz(adate):
 
 
 def tzaware_series(ts):
-    return is_datetime64tz_dtype(ts.index)
+    return isinstance(ts.index.dtype, pd.DatetimeTZDtype)
 
 tzaware_serie = tzaware_series
 
@@ -451,7 +450,7 @@ def parse_delta(td):
 def series_metadata(ts):
     index = ts.index
     return {
-        'tzaware': tzaware_serie(ts),
+        'tzaware': tzaware_series(ts),
         'index_type': index.dtype.name,
         'index_dtype': index.dtype.str,
         'value_dtype': ts.dtypes.str,
@@ -918,7 +917,7 @@ def patch(base, diff):
         basei = base.index
         diffi = diff.index
         newindex = basei.union(diffi)
-        patched = pd.Series([0] * len(newindex), index=newindex)
+        patched = pd.Series([0] * len(newindex), index=newindex, dtype='object')
         patched[basei] = base
         patched[diffi] = diff
         patched.name = base.name
@@ -936,11 +935,12 @@ def patch(base, diff):
     _populate(index1, base.values, uindex, uvalues)
     _populate(index2, diff.values, uindex, uvalues)
 
-    tz = index_zone(base) if is_datetime64tz_dtype(base.index) else None
+    tz = index_zone(base) if tzaware_series(base) else None
     series = pd.Series(
         uvalues,
         index=uindex,
-        name=base.name
+        name=base.name,
+        dtype='float64'
     )
     if tz:
         series.index = series.index.tz_localize(tz)
@@ -977,7 +977,7 @@ def patchmany(series):
         _populate(ts.index.values, ts.values, uindex, uvalues)
 
     # assumption: all series are tzaware or naive
-    tz = index_zone(first) if is_datetime64tz_dtype(first.index) else None
+    tz = index_zone(first) if tzaware_series(first) else None
     series = pd.Series(
         uvalues,
         index=uindex,

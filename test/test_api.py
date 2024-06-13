@@ -214,7 +214,7 @@ def test_get_with_inferred_freq(tsx):
     ts = pd.Series(
         [0, 1, np.nan, np.nan, 6, 7, 8, 9],
         index=pd.date_range(
-            utcdt(2024, 1, 1), periods=8, freq='H'
+            utcdt(2024, 1, 1), periods=8, freq='h'
         )
     )
 
@@ -396,7 +396,7 @@ def test_inferred_freq(tsx):
         [1, 2, 3, 4, 5],
         index=pd.date_range(
             pd.Timestamp('2023-1-3T01:00:00'),
-            freq='H',
+            freq='h',
             periods=5
         )
     )
@@ -442,7 +442,7 @@ def test_log(tsx):
         'meta': {'foo': 'A', 'bar': 42}
     }]
 
-    series[1] = 42
+    series.iloc[1] = 42
     tsx.update(
         'log-me',
         series,
@@ -1061,7 +1061,7 @@ def test_replicate_series(tsx):
     for idate in insertion_dates:
         ts = pd.Series(
             [1, 2],
-            index = pd.date_range(start=idate.date(), periods=2, freq='H')
+            index = pd.date_range(start=idate.date(), periods=2, freq='h')
         )
         tsx.update(
             'original.series.from.tsx',

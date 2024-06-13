@@ -1,4 +1,5 @@
 from datetime import datetime
+import io
 
 import pytest
 import pandas as pd
@@ -82,11 +83,11 @@ def test_unflatten2():
 def test_patch():
     s1 = pd.Series(
         [1., 2., 3., 4.],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=4)
     )
     s2 = pd.Series(
         [12., 13., np.nan, 15.],
-        index=pd.date_range(datetime(2020, 1, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1, 1), freq='h', periods=4)
     )
     p = patch(s1, s2)
     assert_df("""
@@ -123,11 +124,11 @@ def test_patch():
 def test_patch_tzaware():
     s1 = pd.Series(
         [1., 2., 3., 4.],
-        index=pd.date_range(utcdt(2020, 6, 23, 22), freq='H', periods=4)
+        index=pd.date_range(utcdt(2020, 6, 23, 22), freq='h', periods=4)
     )
     s2 = pd.Series(
         [3.1, 4., 5.],
-        index=pd.date_range(utcdt(2020, 6, 24), freq='H', periods=3)
+        index=pd.date_range(utcdt(2020, 6, 24), freq='h', periods=3)
     )
     p = patch(s1, s2)
     assert_df("""
@@ -157,7 +158,7 @@ def test_patch_tzaware():
 def test_patch_one_empty():
     s1 = pd.Series(
         [1., 2., 3., 4.],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=4)
     )
     s2 = pd.Series(dtype='float64')
     p = patch(s1, s2)
@@ -173,7 +174,7 @@ def test_patch_empty_one():
     s1 = pd.Series(dtype='float64')
     s2 = pd.Series(
         [1., 2., 3., 4.],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=4)
     )
     p = patch(s1, s2)
     assert_df("""
@@ -187,15 +188,15 @@ def test_patch_empty_one():
 def test_float_patchmany():
     s1 = pd.Series(
         [1., 2., 3., 4.],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=4)
     )
     s2 = pd.Series(
         [12., 13., np.nan, 15.],
-        index=pd.date_range(datetime(2020, 1, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1, 1), freq='h', periods=4)
     )
     s3 = pd.Series(
         [0., 1., 2., 13., ],
-        index=pd.date_range(datetime(2019, 12, 31, 23), freq='H', periods=4)
+        index=pd.date_range(datetime(2019, 12, 31, 23), freq='h', periods=4)
     )
     p = patchmany([s1, s2, s3])
     assert_df("""
@@ -223,15 +224,15 @@ def test_float_patchmany():
 def test_string_patchmany():
     s1 = pd.Series(
         ['a', 'b', 'c', 'd'],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=4)
     )
     s2 = pd.Series(
         ['bb', 'cc', None, 'ee'],
-        index=pd.date_range(datetime(2020, 1, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1, 1), freq='h', periods=4)
     )
     s3 = pd.Series(
         ['Z', 'a', 'b', 'cc'],
-        index=pd.date_range(datetime(2019, 12, 31, 23), freq='H', periods=4)
+        index=pd.date_range(datetime(2019, 12, 31, 23), freq='h', periods=4)
     )
     p = patchmany([s1, s2, s3])
     assert_df("""
@@ -247,11 +248,11 @@ def test_string_patchmany():
 def test_diff():
     s1 = pd.Series(
         [1., 2., 3., 4.],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=4)
     )
     s2 = pd.Series(
         [12., 13., np.nan, 15.],
-        index=pd.date_range(datetime(2020, 1, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1, 1), freq='h', periods=4)
     )
     s2[datetime(2019, 12, 31, 23)] = -1
 
@@ -280,13 +281,13 @@ def test_diff_duplicated():
     # with a duplicated row (left)
     s1 = pd.Series(
         [1., 2., 3., 4.],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=4)
     )
     dupe = pd.Series([5.], index=[datetime(2020, 1, 1, 3)])
     s1 = pd.concat([s1, dupe])
     s2 = pd.Series(
         [1., 2., 42., 4., .5],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=5)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=5)
     )
     with pytest.raises(ValueError):
         diff(s1, s2)
@@ -295,7 +296,7 @@ def test_diff_duplicated():
 def test_infer_freq():
     s1 = pd.Series(
         [1., 2., 3., 4.],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=4)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=4)
     )
     d, q = infer_freq(s1)
     assert d == pd.Timedelta(hours=1)
@@ -303,7 +304,7 @@ def test_infer_freq():
 
     s2 = pd.Series(
         [1., 2., 3., None, 5.],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=5)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=5)
     )
     d, q = infer_freq(s2.dropna())
     assert d == pd.Timedelta(hours=1)
@@ -311,7 +312,7 @@ def test_infer_freq():
 
     s3 = pd.Series(
         [1.],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=1)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=1)
     )
     with pytest.raises(AssertionError):
         infer_freq(s3)
@@ -320,7 +321,7 @@ def test_infer_freq():
 def test_json():
     series = pd.Series(
         [1., 2., 3.],
-        index=pd.date_range(datetime(2020, 1, 1), freq='H', periods=3)
+        index=pd.date_range(datetime(2020, 1, 1), freq='h', periods=3)
     )
     jsonseries = series.to_json(date_format='iso')
     assert jsonseries == (
@@ -329,7 +330,7 @@ def test_json():
         '"2020-01-01T02:00:00.000":3.0}'
     )
 
-    series2 = pd.read_json(jsonseries, typ='series', dtype=False)
+    series2 = pd.read_json(io.StringIO(jsonseries), typ='series', dtype=False)
     assert not getattr(series2.index.dtype, 'tz', False)
     assert series.equals(series2)
 
@@ -434,11 +435,11 @@ def test_pack_unpack_series():
 def test_pack_unpack_many_series():
     s1 = pd.Series(
         [1., 2., 3.],
-        index=pd.date_range(utcdt(2020, 1, 1), freq='H', periods=3)
+        index=pd.date_range(utcdt(2020, 1, 1), freq='h', periods=3)
     )
     s2 = pd.Series(
         [1.1, 2.2, 3.3],
-        index=pd.date_range(datetime(2020, 1, 2), freq='H', periods=3)
+        index=pd.date_range(datetime(2020, 1, 2), freq='h', periods=3)
     )
     meta1 = {
         'tzaware': True,
@@ -575,7 +576,7 @@ def test_in_tx(tsh, engine):
     assert err.value.args[0] == 'You must use a transaction object'
 
     ts = genserie(datetime(2017, 10, 28, 23),
-                  'H', 4, tz='UTC')
+                  'h', 4, tz='UTC')
     with engine.begin() as cn:
         tsh.update(cn, ts, 'test_tx', 'Babar')
 

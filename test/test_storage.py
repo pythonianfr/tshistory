@@ -132,8 +132,8 @@ def test_chunks(engine, tsh):
 """, ts4)
 
         # non-append edit
-        whole[2] = 0
-        whole[7] = 0
+        whole.iloc[2] = 0
+        whole.iloc[7] = 0
 
         tsh.update(engine, whole, 'chunks', 'test')
 

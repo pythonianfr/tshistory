@@ -56,7 +56,7 @@ def assert_group_equals(g1, g2):
         assert s1.equals(s2)
 
 
-def genserie(start, freq, repeat, initval=None, tz=None, name=None):
+def genserie(start, freq, repeat, initval=None, tz=None, name=None, dtype='float64'):
     if initval is None:
         values = range(repeat)
     else:
@@ -69,15 +69,20 @@ def genserie(start, freq, repeat, initval=None, tz=None, name=None):
                                      freq=freq[i],
                                      periods=repeat,
                                      tz=tz))
-        return pd.Series(values, name=name, index=idx)
+        return pd.Series(values, name=name, index=idx, dtype=dtype)
 
     else:
-        return pd.Series(values,
-                         name=name,
-                         index=pd.date_range(start=start,
-                                             freq=freq,
-                                             periods=repeat,
-                                             tz=tz))
+        return pd.Series(
+            values,
+            name=name,
+            index=pd.date_range(
+                start=start,
+                freq=freq,
+                periods=repeat,
+                tz=tz
+            ),
+            dtype=dtype
+        )
 
 
 def gen_value_ranges(start, end, lag):
