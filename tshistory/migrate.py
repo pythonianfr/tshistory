@@ -307,11 +307,11 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
 
             if delete:
                 print(f'{pid}: revs to delete:', ','.join(x['idate'].isoformat() for x in delete))
-                sql = (
-                    f'delete from "{namespace}.revision"."{tablename}" '
-                    f'where id = %(csid)s'
-                )
-                cn.execute(sql, [{'csid': x['csid']} for x in delete])
+                # sql = (
+                #     f'delete from "{namespace}.revision"."{tablename}" '
+                #     f'where id = %(csid)s'
+                # )
+                # cn.execute(sql, [{'csid': x['csid']} for x in delete])
 
             startid = endrev[1]
 
