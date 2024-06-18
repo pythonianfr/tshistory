@@ -45,7 +45,13 @@ def strft(dt):
     return dt.isoformat()
 
 
+def setup_cache():
+    from requests_auth import OAuth2, JsonTokenFileCache
+    OAuth2.token_cache = JsonTokenFileCache('.tshistory.token_cache.json')
+
+
 def oauth2_auth(auth):
+    setup_cache()
     domain = auth['domain']
     meta = requests.get(
         f'https://{domain}/.well-known/openid-configuration'
@@ -62,6 +68,7 @@ def oauth2_auth(auth):
 
 
 def pkce_auth(uri, auth):
+    setup_cache()
     domain = auth['domain']
     meta = requests.get(
         f'https://{domain}/.well-known/openid-configuration'
