@@ -160,15 +160,16 @@ class mainsource:
                 'not allowed to update to a secondary source'
             )
 
-        return self.tsh.update(
-            self.engine,
-            updatets,
-            name,
-            author,
-            metadata=metadata,
-            insertion_date=insertion_date,
-            **kw
-        )
+        with self.engine.begin() as cn:
+            return self.tsh.update(
+                cn,
+                updatets,
+                name,
+                author,
+                metadata=metadata,
+                insertion_date=insertion_date,
+                **kw
+            )
 
     def replace(self,
                 name: str,
