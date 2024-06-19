@@ -231,7 +231,6 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
         sto = tsh.storageclass(cn, tsh, name)
         tzaware = tsh.tzaware(cn, name)
         ts = util.empty_series(tzaware)
-        startid = -1
 
         # revs
         revsql = (
@@ -246,8 +245,6 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
         chunksql = (
             f'select id, parent, chunk '
             f'from "{namespace}.snapshot"."{tablename}" '
-            f'where id > %(startid)s and'
-            f'      id <= %(endid)s'
         )
 
         def buildseries(chunks, parent):
@@ -259,61 +256,55 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
             items.reverse()
             return sto._chunks_to_ts(items)
 
-        for revs in partition(allrevs, 512):
-            # batch of revs
-            endrev = revs[-1]
-            chunks = {
-                c.id: (c.parent, c.chunk)
-                for c in cn.execute(
-                        chunksql,
-                        startid=startid,
-                        endid=endrev[1]
-                ).fetchall()
-            }
-            # rebuild the versions
-            diffsb = []
-            delete = []
-            for csid, snapid, idate in revs:
-                current = buildseries(chunks, snapid)
-                diff = util.diff(ts, current)
-                if len(diff):
-                    diffsb.append(
-                        {
-                            'csid': csid,
-                            'diffstart': diff.index[0],
-                            'diffend': diff.index[-1]
-                        }
-                    )
-                else:
-                    delete.append(
-                        {
-                            'csid': csid,
-                            'idate': idate
-                        }
-                    )
+        chunks = {
+            c.id: (c.parent, c.chunk)
+            for c in cn.execute(
+                    chunksql
+            ).fetchall()
+        }
+        # rebuild the versions
+        diffsb = []
+        delete = []
 
-                ts = current
-
-            if diffsb:
-                sql = (
-                    f'update "{namespace}.revision"."{tablename}" '
-                    f'set diffstart=%(diffstart)s, '
-                    f'    diffend=%(diffend)s '
-                    f'where id=%(csid)s'
+        for csid, snapid, idate in allrevs:
+            current = buildseries(chunks, snapid)
+            diff = util.diff(ts, current)
+            if len(diff):
+                diffsb.append(
+                    {
+                        'csid': csid,
+                        'diffstart': diff.index[0],
+                        'diffend': diff.index[-1]
+                    }
                 )
-                cn.execute(
-                    sql, diffsb
+            else:
+                delete.append(
+                    {
+                        'csid': csid,
+                        'idate': idate
+                    }
                 )
 
-            if delete:
-                print(f'{pid}: revs to delete:', ','.join(x['idate'].isoformat() for x in delete))
-                # sql = (
-                #     f'delete from "{namespace}.revision"."{tablename}" '
-                #     f'where id = %(csid)s'
-                # )
-                # cn.execute(sql, [{'csid': x['csid']} for x in delete])
+            ts = current
 
-            startid = endrev[1]
+        if diffsb:
+            sql = (
+                f'update "{namespace}.revision"."{tablename}" '
+                f'set diffstart=%(diffstart)s, '
+                f'    diffend=%(diffend)s '
+                f'where id=%(csid)s'
+            )
+            cn.execute(
+                sql, diffsb
+            )
+
+        if delete:
+            print(f'{pid}: revs to delete:', ','.join(x['idate'].isoformat() for x in delete))
+            sql = (
+                f'delete from "{namespace}.revision"."{tablename}" '
+                f'where id = %(csid)s'
+            )
+            cn.execute(sql, [{'csid': x['csid']} for x in delete])
 
     # main
     tsh = tshclass(namespace)
