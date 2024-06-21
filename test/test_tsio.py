@@ -469,6 +469,36 @@ def test_update_with_nothing(engine, tsh):
     assert len(diff) == 0
 
 
+def test_update_na_vs_hole(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],  # but we'll punch a hole at the place of '2'
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=3,
+            freq='h'
+        )
+    )
+    hole = ts.index[1]
+    ts = ts.drop(hole)  # punch hole
+
+    tsh.update(engine, ts, 'na-in-hole', 'Babar')
+
+    ts = pd.Series(
+        [1, np.nan, 3],  # hole will be 'erased'
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=3,
+            freq='h'
+        )
+    )
+    diff = tsh.update(engine, ts, 'na-in-hole', 'Babar')
+
+    revs = tsh.insertion_dates(engine, 'na-in-hole')
+    # looks odd
+    assert len(revs) == 1
+    assert len(diff) == 0
+
+
 def test_serie_metadata(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
     tsh.update(engine, serie, 'ts-metadata', 'babar')
