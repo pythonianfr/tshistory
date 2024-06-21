@@ -277,6 +277,62 @@ def test_diff():
 """, ds2s1)
 
 
+def test_diff_nans():
+    s1 = pd.Series(
+        [1, np.nan, 3],
+        index=pd.date_range(datetime(2024, 1, 1), freq='h', periods=3)
+    )
+    s2 = pd.Series(
+        [1, np.nan, 3, 4],
+        index=pd.date_range(datetime(2024, 1, 1), freq='h', periods=4)
+    )
+    d = diff(s1, s2)
+    # looks good
+    assert_df("""
+2024-01-01 03:00:00    4.0
+""", d)
+
+    s3 = pd.Series(
+        [1, np.nan, np.nan, 4],
+        index=pd.date_range(datetime(2024, 1, 1), freq='h', periods=4)
+    )
+    d = diff(s2, s3)
+    # still good
+    assert_df("""
+2024-01-01 02:00:00   NaN
+""", d)
+
+    n1 = pd.Series(
+        [np.nan],
+        index=pd.date_range(datetime(2024, 1, 1), freq='h', periods=1)
+    )
+    n2 = pd.Series(
+        [np.nan, np.nan, 3],
+        index=pd.date_range(datetime(2024, 1, 1), freq='h', periods=3)
+    )
+    d = diff(n1, n2)
+    # oops !
+    assert_df("""
+2024-01-01 00:00:00    NaN
+2024-01-01 01:00:00    NaN
+2024-01-01 02:00:00    3.0
+""", d)
+
+
+    n1 = pd.Series(
+        [np.nan, 2, 3],
+        index=pd.date_range(datetime(2024, 1, 1), freq='h', periods=3)
+    )
+    n1 = n1.drop(n1.index[1])  # erase the '2' point
+    n2 = pd.Series(
+        [np.nan, np.nan, 3],
+        index=pd.date_range(datetime(2024, 1, 1), freq='h', periods=3)
+    )
+    d = diff(n1, n2)
+    # oops !
+    assert len(d) == 0
+
+
 def test_diff_duplicated():
     # with a duplicated row (left)
     s1 = pd.Series(
