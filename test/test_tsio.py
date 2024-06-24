@@ -482,8 +482,12 @@ def test_update_na_vs_hole(engine, tsh):
     ts = ts.drop(hole)  # punch hole
 
     tsh.update(engine, ts, 'na-in-hole', 'Babar')
+    assert_df("""
+2024-01-01 00:00:00+00:00    1
+2024-01-01 02:00:00+00:00    3
+""", ts)
 
-    ts = pd.Series(
+    ts2 = pd.Series(
         [1, np.nan, 3],  # hole will be 'erased'
         index=pd.date_range(
             pd.Timestamp('2024-1-1', tz='utc'),
@@ -491,12 +495,20 @@ def test_update_na_vs_hole(engine, tsh):
             freq='h'
         )
     )
-    diff = tsh.update(engine, ts, 'na-in-hole', 'Babar')
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+2024-01-01 01:00:00+00:00    NaN
+2024-01-01 02:00:00+00:00    3.0
+""", ts2)
+
+    diff = tsh.update(engine, ts2, 'na-in-hole', 'Babar')
+    assert_df("""
+2024-01-01 01:00:00+00:00   NaN
+""", diff)
 
     revs = tsh.insertion_dates(engine, 'na-in-hole')
-    # looks odd
-    assert len(revs) == 1
-    assert len(diff) == 0
+    assert len(revs) == 2
+    assert len(diff) == 1
 
 
 def test_serie_metadata(engine, tsh):
@@ -868,7 +880,7 @@ def test_point_deletion(engine, tsh):
     tsh.update(engine, ts_begin, 'ts_del', 'test')
 
     _, ts = Postgres(engine, tsh, 'ts_del').find()
-    assert ts.iloc[-2] == 8.0
+    assert ts.iloc[-3] == 8.0
 
     ts_begin.iloc[0] = np.nan
     ts_begin.iloc[3] = np.nan
@@ -969,8 +981,8 @@ def test_nan_first(engine, tsh):
 
 
 def test_more_point_deletion(engine, tsh):
-    ts_repushed = genserie(datetime(2010, 1, 1), 'D', 11)
-    ts_repushed.iloc[0:3] = np.nan
+    ts_nans = genserie(datetime(2010, 1, 1), 'D', 11)
+    ts_nans.iloc[0:3] = np.nan
 
     assert_df("""
 2010-01-01     NaN
@@ -985,31 +997,48 @@ def test_more_point_deletion(engine, tsh):
 2010-01-10     9.0
 2010-01-11    10.0
 Freq: D
-""", ts_repushed)
+""", ts_nans)
 
-    tsh.update(engine, ts_repushed, 'ts_repushed', 'test')
-    dif = tsh.update(engine, ts_repushed, 'ts_repushed', 'test')
+    tsh.update(engine, ts_nans, 'ts_nans', 'test')
+    dif = tsh.update(engine, ts_nans, 'ts_nans', 'test')
     assert len(dif) == 0
 
     # there is no difference
-    assert 0 == len(diff(ts_repushed, ts_repushed))
+    assert 0 == len(diff(ts_nans, ts_nans))
 
     ts_add = genserie(datetime(2010, 1, 1), 'D', 15)
     ts_add.iloc[0] = np.nan
     ts_add.iloc[13:] = np.nan
     ts_add.iloc[8] = np.nan
-    dif = diff(ts_repushed, ts_add)
 
+    assert_df("""
+2010-01-01     NaN
+2010-01-02     1.0
+2010-01-03     2.0
+2010-01-04     3.0
+2010-01-05     4.0
+2010-01-06     5.0
+2010-01-07     6.0
+2010-01-08     7.0
+2010-01-09     NaN
+2010-01-10     9.0
+2010-01-11    10.0
+2010-01-12    11.0
+2010-01-13    12.0
+2010-01-14     NaN
+2010-01-15     NaN
+""", ts_add)
+
+    dif = diff(ts_nans, ts_add)
     assert_df("""
 2010-01-02     1.0
 2010-01-03     2.0
 2010-01-09     NaN
 2010-01-12    11.0
-2010-01-13    12.0""", dif)
-    # value on nan => value
-    # nan on value => nan
-    # nan on nan => Nothing
-    # nan on nothing=> Nothing
+2010-01-13    12.0
+2010-01-14     NaN
+2010-01-15     NaN
+""", dif)
 
     # full erasing
     # numeric
@@ -1377,8 +1406,6 @@ insertion_date             value_date
 
 
 def test_add_na(engine, tsh):
-    # a serie of NaNs won't be insert in base
-    # in case of first insertion
     ts_nan = genserie(datetime(2010, 1, 1), 'D', 5)
     ts_nan[[True] * len(ts_nan)] = np.nan
 
@@ -1394,7 +1421,7 @@ def test_add_na(engine, tsh):
     ts_nan = pd.concat([ts_begin, ts_nan])
 
     diff = tsh.update(engine, ts_nan, 'ts_add_na', 'test')
-    assert len(diff) == 0
+    assert len(diff) == 5
 
     result = tsh.get(engine, 'ts_add_na')
     assert len(result) == 5
@@ -2443,11 +2470,16 @@ def test_na_at_boundaries(engine, tsh):
 
     result = tsh.get(engine, 'test_nan', _keep_nans=True)
     assert_df("""
+2010-01-10    NaN
+2010-01-11    NaN
+2010-01-12    NaN
 2010-01-13    3.0
 2010-01-14    3.0
 2010-01-15    3.0
 2010-01-16    3.0
 2010-01-17    3.0
+2010-01-18    NaN
+2010-01-19    NaN
 """, result)
 
     ival = tsh.interval(engine, 'test_nan')
@@ -2462,11 +2494,16 @@ def test_na_at_boundaries(engine, tsh):
     result = tsh.get(engine, 'test_nan', _keep_nans=True)
     # they don't show up
     assert_df("""
+2010-01-10    NaN
+2010-01-11    NaN
+2010-01-12    NaN
 2010-01-13    4.0
 2010-01-14    4.0
 2010-01-15    4.0
 2010-01-16    4.0
 2010-01-17    4.0
+2010-01-18    NaN
+2010-01-19    NaN
 """, result)
 
     ival = tsh.interval(engine, 'test_nan')
@@ -2480,11 +2517,16 @@ def test_na_at_boundaries(engine, tsh):
     tsh.update(engine, ts, 'test_nan', 'test')
     result = tsh.get(engine, 'test_nan', _keep_nans=True)
     assert_df("""
+2010-01-10    NaN
+2010-01-11    NaN
+2010-01-12    NaN
 2010-01-13    NaN
 2010-01-14    5.0
 2010-01-15    5.0
 2010-01-16    5.0
 2010-01-17    NaN
+2010-01-18    NaN
+2010-01-19    NaN
 """, result)
 
     ival = tsh.interval(engine, 'test_nan')

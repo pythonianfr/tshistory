@@ -277,7 +277,7 @@ def test_diff():
 """, ds2s1)
 
 
-def test_diff_nans():
+def test_diff_nan_pure():
     s1 = pd.Series(
         [1, np.nan, 3],
         index=pd.date_range(datetime(2024, 1, 1), freq='h', periods=3)
@@ -302,6 +302,8 @@ def test_diff_nans():
 2024-01-01 02:00:00   NaN
 """, d)
 
+
+def test_nan_mixed():
     n1 = pd.Series(
         [np.nan],
         index=pd.date_range(datetime(2024, 1, 1), freq='h', periods=1)
@@ -311,13 +313,10 @@ def test_diff_nans():
         index=pd.date_range(datetime(2024, 1, 1), freq='h', periods=3)
     )
     d = diff(n1, n2)
-    # oops !
     assert_df("""
-2024-01-01 00:00:00    NaN
 2024-01-01 01:00:00    NaN
 2024-01-01 02:00:00    3.0
 """, d)
-
 
     n1 = pd.Series(
         [np.nan, 2, 3],
@@ -329,8 +328,9 @@ def test_diff_nans():
         index=pd.date_range(datetime(2024, 1, 1), freq='h', periods=3)
     )
     d = diff(n1, n2)
-    # oops !
-    assert len(d) == 0
+    assert_df("""
+2024-01-01 01:00:00   NaN
+""", d)
 
 
 def test_diff_duplicated():

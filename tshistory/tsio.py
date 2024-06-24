@@ -884,10 +884,6 @@ class timeseries:
             assert end is None
             # this is just full of nans
             return None
-        # chop off unwanted nans
-        newts = newts.loc[start:end]
-        if len(newts) == 0:
-            return None
 
         # at creation time we take an exclusive lock to avoid
         # a deadlock on created tables against the changeset-series fk

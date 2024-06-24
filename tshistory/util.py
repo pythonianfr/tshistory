@@ -991,7 +991,6 @@ def patchmany(series):
 def diff(base, other, _precision=1e-14):
     if base is None:
         return other
-    base = base.dropna()
     if not len(base):
         return other
 
@@ -1025,7 +1024,7 @@ def diff(base, other, _precision=1e-14):
     diff_overlap = other_overlap[~mask_equal]
     # series of new elements brought by the `other` side
     diff_new = other[~mask_overlap]
-    diff_new = diff_new.dropna()
+    diff_new = diff_new
 
     return pd.concat([diff_overlap, diff_new]).sort_index()
 
