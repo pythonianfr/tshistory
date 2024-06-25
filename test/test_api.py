@@ -421,6 +421,35 @@ def test_inferred_freq(tsx):
     )
 
 
+def test_erasure(tsx):
+    tsx.delete('erasure')
+
+    ts = pd.Series(
+        [np.nan, np.nan],
+        index=pd.date_range(
+            utcdt(2024, 1, 1),
+            freq='h',
+            periods=2
+        )
+    )
+
+    diff = tsx.update('erasure', ts, 'Babar')
+    assert not tsx.insertion_dates('erasure')
+
+    diff = tsx.update('erasure', ts, 'Babar', keepnans=True)
+    assert len(tsx.insertion_dates('erasure')) == 1
+
+    ts = pd.Series(
+        [np.nan, 1, 2],
+        index=pd.date_range(
+            utcdt(2024, 1, 1),
+            freq='h',
+            periods=3
+        )
+    )
+
+
+
 def test_log(tsx):
     for name in ('log-me',):
         tsx.delete(name)

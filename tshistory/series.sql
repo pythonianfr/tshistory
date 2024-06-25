@@ -13,8 +13,8 @@ create index on "{namespace}.snapshot"."{tablename}"(parent);
 
 create table "{namespace}.revision"."{tablename}" (
   id serial primary key,
-  tsstart timestamp not null, -- whole series index min
-  tsend timestamp not null,   -- whole series index max
+  tsstart timestamp, -- whole series index min
+  tsend timestamp,   -- whole series index max
   diffstart timestamptz not null, -- diff index min
   diffend timestamptz not null,   -- diff index min
   snapshot integer references "{namespace}.snapshot"."{tablename}"(id),

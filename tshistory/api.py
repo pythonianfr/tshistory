@@ -110,6 +110,7 @@ class mainsource:
                author: str,
                metadata: Optional[dict]=None,
                insertion_date: Optional[datetime]=None,
+               keepnans: Optional[bool]=False,
                **kw) -> Optional[pd.Series]:
         """Update a series named by <name> with the input pandas series.
 
@@ -121,7 +122,7 @@ class mainsource:
         no change, None is returned and no new version is created.
 
         New points are added, changed points are changed,
-        points with NaN are considered to be _erased_.
+        points with NaN are _erased_.
 
         The `author` is mandatory.
         The `metadata` dictionary allows to associate any metadata
@@ -129,6 +130,10 @@ class mainsource:
 
         It is possible to force an `insertion_date`, which can only be
         higher than the previous `insertion_date`.
+
+        The `keepnans` flag will treat, if true, the Nans values as
+        erasures. If false, we do a dropna() call on the series before
+        the actual update.
 
         .. highlight:: python
         .. code-block:: python
@@ -168,6 +173,7 @@ class mainsource:
                 author,
                 metadata=metadata,
                 insertion_date=insertion_date,
+                keepnans=keepnans,
                 **kw
             )
 

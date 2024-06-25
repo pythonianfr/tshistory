@@ -73,6 +73,7 @@ class timeseries:
     def update(self, cn, updatets, name, author,
                metadata=None,
                insertion_date=None,
+               keepnans=False,
                **k):
         """Create a new revision of a given time series
         with update semantics:
@@ -108,6 +109,9 @@ class timeseries:
         assert ('<M8[ns]' == updatets.index.dtype or
                 'datetime' in str(updatets.index.dtype) and not
                 isinstance(updatets.index, pd.MultiIndex))
+
+        if not keepnans:
+            updatets = updatets.dropna()
 
         if tablename is None:
             seriesmeta = self._series_initial_meta(cn, name, updatets)
@@ -879,12 +883,10 @@ class timeseries:
 
     def _create(self, cn, newts, name, author, seriesmeta,
                 metadata=None, insertion_date=None):
-        start, end = start_end(newts, notz=False)
-        if start is None:
-            assert end is None
-            # this is just full of nans
+        if not len(newts):
             return None
 
+        start, end = start_end(newts, notz=False)
         # at creation time we take an exclusive lock to avoid
         # a deadlock on created tables against the changeset-series fk
         cn.execute(
@@ -899,7 +901,7 @@ class timeseries:
         start, end = start_end(newts)
 
         self._new_revision(
-            cn, name, head, start, end, start, end,
+            cn, name, head, start, end, newts.index.min(), newts.index.max(),
             author, insertion_date, metadata
         )
 
@@ -909,6 +911,9 @@ class timeseries:
 
     def _update(self, cn, newts, name, author,
                 metadata=None, insertion_date=None):
+        if not len(newts):
+            return empty_series(self.tzaware(cn, name))
+
         self._validate(cn, newts, name)
 
         snapshot = self.storageclass(cn, self, name)

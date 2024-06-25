@@ -417,6 +417,7 @@ def test_get_nans(http):
         'series': util.tojson(ts),
         'author': 'Babar',
         'insertion_date': utcdt(2024, 1, 1),
+        'keepnans': json.dumps(True),
         'tzaware': util.tzaware_series(ts)
     })
 

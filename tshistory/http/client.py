@@ -147,6 +147,7 @@ class httpclient:
     def _insert(self, name, series, author,
                 metadata=None,
                 insertion_date=None,
+                keepnans=False,
                 supervision=False,
                 replace=False):
         guard_insert(
@@ -158,6 +159,7 @@ class httpclient:
             'name': name,
             'author': author,
             'insertion_date': insertion_date.isoformat() if insertion_date else None,
+            'keepnans': keepnans,
             'tzaware': meta['tzaware'],
             'replace': replace,
             'supervision': supervision,
@@ -184,11 +186,12 @@ class httpclient:
 
     @unwraperror
     def update(self, name, series, author,
-               metadata=None, insertion_date=None, manual=False):
+               metadata=None, insertion_date=None, keepnans=False, manual=False):
         return self._insert(
             name, series, author,
             metadata=metadata,
             insertion_date=insertion_date,
+            keepnans=keepnans,
             supervision=manual
         )
 

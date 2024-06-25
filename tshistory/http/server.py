@@ -64,6 +64,10 @@ update.add_argument(
     help='insertion date can be forced'
 )
 update.add_argument(
+    'keepnans', type=inputs.boolean, default=False,
+    help='treat nans as point erasure or drop them'
+)
+update.add_argument(
     'tzaware', type=inputs.boolean, default=True,
     help='tzaware series'
 )
@@ -684,6 +688,7 @@ class httpapi:
                             args.name, series, args.author,
                             metadata=args.metadata,
                             insertion_date=args.insertion_date,
+                            keepnans=args.keepnans,
                             manual=args.supervision
                         )
                 except ValueError as err:
@@ -693,6 +698,12 @@ class httpapi:
 
                 if args.tzaware and args.tzone != 'UTC':
                     diff.index = diff.index.tz_convert(args.tzone)
+
+                if diff is None:
+                    # nothing happened
+                    # possible cause is sending nans without erasure flag
+                    # on creation
+                    return no_content()
 
                 return series_response(
                     args.format,

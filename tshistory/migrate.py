@@ -216,6 +216,14 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
             f'alter table "{namespace}.revision"."{tablename}" '
             f'alter column diffend set not null'
         )
+        cn.execute(
+            f'alter table "{namespace}.revision"."{tablename}" '
+            f'alter column tsstart drop not null'
+        )
+        cn.execute(
+            f'alter table "{namespace}.revision"."{tablename}" '
+            f'alter column tsend drop not null'
+        )
 
     def partition(alist, size):
         for i in range(0, len(alist), size):
