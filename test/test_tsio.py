@@ -746,6 +746,136 @@ insertion_date             value_date
     ]
 
 
+def test_insertion_dates_with_nans(engine, tsh):
+    val = [1, 2, 3, 4, 5]
+    for i in range(3):
+        ts = pd.Series(
+            val[i:i+3],
+            pd.date_range(utcdt(2024, 4, 1+i), freq='d', periods=3)
+        )
+        tsh.update(
+            engine,
+            ts,
+            'hist-withfullnans',
+            'Babar',
+            insertion_date=utcdt(2024, 4, 1+i)
+        )
+
+    assert len(tsh.insertion_dates(engine, 'hist-withfullnans')) == 3
+
+    assert_hist("""
+insertion_date             value_date               
+2024-04-01 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    3.0
+2024-04-02 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    3.0
+                           2024-04-04 00:00:00+00:00    4.0
+2024-04-03 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    3.0
+                           2024-04-04 00:00:00+00:00    4.0
+                           2024-04-05 00:00:00+00:00    5.0
+""", tsh.history(engine, 'hist-withfullnans', _keep_nans=True))
+
+    # erase points + gratuitous nan
+    erasets = pd.Series(
+        [np.nan, np.nan, np.nan],
+        index=pd.date_range(
+            utcdt(2024, 4, 3),
+            freq='d',
+            periods=3
+        ),
+    )
+    diff = tsh.update(
+        engine,
+        erasets,
+        'hist-withfullnans',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-4-4', tz='utc')
+    )
+    assert_df("""
+2024-04-03 00:00:00+00:00   NaN
+2024-04-04 00:00:00+00:00   NaN
+2024-04-05 00:00:00+00:00   NaN
+""", diff)
+
+    assert_hist("""
+insertion_date             value_date               
+2024-04-01 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    3.0
+2024-04-02 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    3.0
+                           2024-04-04 00:00:00+00:00    4.0
+2024-04-03 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    3.0
+                           2024-04-04 00:00:00+00:00    4.0
+                           2024-04-05 00:00:00+00:00    5.0
+2024-04-04 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    NaN
+                           2024-04-04 00:00:00+00:00    NaN
+                           2024-04-05 00:00:00+00:00    NaN
+""", tsh.history(engine, 'hist-withfullnans', _keep_nans=True))
+
+    # gratuitous nans
+    erasets = pd.Series(
+        [np.nan, np.nan],
+        index=pd.date_range(
+            utcdt(2024, 4, 6),
+            freq='d',
+            periods=2
+        ),
+    )
+    diff = tsh.update(
+        engine,
+        erasets,
+        'hist-withfullnans',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-4-5', tz='utc')
+    )
+    assert_df("""
+2024-04-06 00:00:00+00:00   NaN
+2024-04-07 00:00:00+00:00   NaN
+""", diff)
+
+    assert_hist("""
+insertion_date             value_date               
+2024-04-01 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    3.0
+2024-04-02 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    3.0
+                           2024-04-04 00:00:00+00:00    4.0
+2024-04-03 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    3.0
+                           2024-04-04 00:00:00+00:00    4.0
+                           2024-04-05 00:00:00+00:00    5.0
+2024-04-04 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    NaN
+                           2024-04-04 00:00:00+00:00    NaN
+                           2024-04-05 00:00:00+00:00    NaN
+2024-04-05 00:00:00+00:00  2024-04-01 00:00:00+00:00    1.0
+                           2024-04-02 00:00:00+00:00    2.0
+                           2024-04-03 00:00:00+00:00    NaN
+                           2024-04-04 00:00:00+00:00    NaN
+                           2024-04-05 00:00:00+00:00    NaN
+                           2024-04-06 00:00:00+00:00    NaN
+                           2024-04-07 00:00:00+00:00    NaN
+""", tsh.history(engine, 'hist-withfullnans', _keep_nans=True))
+
+    revs = tsh.insertion_dates(engine, 'hist-withfullnans')
+    # last rev is full of nans that don't erase anything but it's okay
+    assert len(revs) == 5
+
+
 def test_first_latest_insertion_date(engine, tsh):
     name = 'test-f-l-idate'
     for i in range(3):
