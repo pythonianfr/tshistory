@@ -173,7 +173,7 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
     from tshistory import util
     print(f'add columns `diffstart` and `diffend` to {namespace}.revision')
 
-    def addattributes(cn, tablename):
+    def migrated(cn, tablename):
         sql = (
             f"select exists (select 1 "
             f" from information_schema.columns "
@@ -182,11 +182,10 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
             f" column_name='diffstart'"
             f")"
         )
-
         migrated = cn.execute(sql).scalar()
-        if migrated:
-            return False
+        return migrated
 
+    def addattributes(cn, tablename):
         cn.execute(
             f'alter table "{namespace}.revision"."{tablename}" '
             f'add column diffstart timestamptz'
@@ -267,7 +266,8 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
             )
 
         if delete:
-            print(f'{pid}: revs to delete:', ','.join(x['idate'].isoformat() for x in delete))
+            print(f'{pid}: revs to delete:', ','.join(x['idate'].isoformat()
+                                                      for x in delete))
             sql = (
                 f'delete from "{namespace}.revision"."{tablename}" '
                 f'where id = %(csid)s'
@@ -276,11 +276,20 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
 
     # main
     tsh = tshclass(namespace)
-    names = [
-        name
-        for name, kind in tsh.list_series(engine).items()
-        if kind == 'primary'
-    ]
+    with engine.begin() as cn:
+        cn.cache = {'series_tablename': {}}
+        allnames = {
+            name: tsh._series_to_tablename(cn, name)
+            for name in tsh.list_series(engine).keys()
+        }
+        names = [
+            name
+            for name in allnames
+            if allnames[name] is not None
+            and not migrated(cn, allnames[name])
+        ]
+
+    print(f'{len(names)} series to migrate.')
     cpus = 1 if sys.platform == 'win32' else int(multiprocessing.cpu_count() / 2)
     chunked = listchunks(names, int(cpus))
 
@@ -290,18 +299,11 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
         pid = os.getpid()
         engine = create_engine(url)
         for name in names:
-            print(f'{pid}: migrating `{name}`')
-
             with engine.begin() as cn:
                 cn.cache = {'series_tablename': {}}
                 tablename = tsh._series_to_tablename(cn, name)
-
-                if tablename is None: # not a primary
-                    continue
-
-                if not addattributes(cn, tablename):
-                    print(f'{pid} ... already migrated, skipping')
-                    continue
+                print(f'{pid}: migrating `{name}`')
+                addattributes(cn, tablename)
                 populatedata(pid, cn, name, tablename)
                 finalizeattributes(cn, tablename)
 

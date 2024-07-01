@@ -1090,24 +1090,25 @@ def diffs(cn, tsh, name, tablename, from_idate, to_idate):
         items.reverse()
         # non-appends will cause costly recomputations
         # we might want to find a middle ground
-        _cache.clear()
+        if len(_cache) > 100:
+            for ci in list(_cache.keys())[:20]:
+                _cache.pop(ci)
         out = _cache[top] = patch(
             prev,
             sto._chunks_to_ts(items)
         )
         return out
 
-    def buildseries(parent):
-        top = parent
+    def buildseries(top):
         items = []
 
+        parent = top
         while parent in chunks:
             grandpa, chunk = chunks[parent]
             items.append(chunk)  # bytes
             if grandpa in _cache:
                 # found a known parent: let's patch and remember
-                cached = _cache.pop(grandpa)
-                return patched(top, cached, items)
+                return patched(top, _cache[grandpa], items)
             parent = grandpa
 
         # initial revision or full new series
