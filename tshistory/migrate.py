@@ -236,47 +236,9 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
         )
 
     def populatedata(pid, cn, name, tablename):
-        sto = tsh.storageclass(cn, tsh, name)
-        tzaware = tsh.tzaware(cn, name)
-        ts = util.empty_series(tzaware)
-
-        # revs
-        revsql = (
-            f'select id, snapshot, insertion_date '
-            f'from "{namespace}.revision"."{tablename}" '
-            f'order by id asc'
-        )
-        allrevs = [
-            (csid, snapshot, idate)
-            for csid, snapshot, idate in cn.execute(revsql)
-        ]
-        chunksql = (
-            f'select id, parent, chunk '
-            f'from "{namespace}.snapshot"."{tablename}" '
-        )
-
-        def buildseries(chunks, parent):
-            items = []
-            while parent in chunks:
-                item = chunks[parent]
-                parent = item[0]  # deref parent
-                items.append(item[1]) # bytes
-            items.reverse()
-            return sto._chunks_to_ts(items)
-
-        chunks = {
-            c.id: (c.parent, c.chunk)
-            for c in cn.execute(
-                    chunksql
-            ).fetchall()
-        }
-        # rebuild the versions
         diffsb = []
         delete = []
-
-        for csid, snapid, idate in allrevs:
-            current = buildseries(chunks, snapid)
-            diff = util.diff(ts, current)
+        for csid, idate, diff in util.diffs(cn, tsh, name, tablename, None, None):
             if len(diff):
                 diffsb.append(
                     {
@@ -292,8 +254,6 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
                         'idate': idate
                     }
                 )
-
-            ts = current
 
         if diffsb:
             sql = (

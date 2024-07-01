@@ -305,35 +305,6 @@ class Postgres:
                   for cid, parent, rawchunk in res.fetchall()}
         return chunks
 
-    def bychunksrange(self, startid, lastid):
-        sql = f"""
-        with recursive allchunks as (
-          select chunks.id as cid,
-                 chunks.parent as parent,
-                 chunks.chunk as chunk
-          from "{self.tsh.namespace}.snapshot"."{self.tablename}" as chunks
-          where chunks.id = %(head)s
-        union
-          select chunks.id as cid,
-                 chunks.parent as parent,
-                 chunks.chunk as chunk
-          from "{self.tsh.namespace}.snapshot"."{self.tablename}" as chunks
-          join allchunks on chunks.id = allchunks.parent
-          where chunks.id > %(startid)s
-        )
-        select chunk from allchunks
-        order by cid
-        """
-        chunks = [
-            c.chunk
-            for c in self.cn.execute(
-                    sql,
-                    startid=startid,
-                    head=lastid
-            ).fetchall()
-        ]
-        return self._chunks_to_ts(chunks)
-
     def garbage(self):
         """ inefficient but simple garbage list builder
         garbage chunks are created on strip operations

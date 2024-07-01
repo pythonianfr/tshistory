@@ -15,6 +15,7 @@ from tshistory.util import (
     closed_overlaps,
     compatible_date,
     diff,
+    diffs,
     empty_series,
     ensuretz,
     guard_insert,
@@ -394,36 +395,16 @@ class timeseries:
     def diffs(self, cn, name,
               from_insertion_date=None,
               to_insertion_date=None):
-        sto = self.storageclass(cn, self, name)
         tablename = self._series_to_tablename(cn, name)
+        out = {}
+        iterable = diffs(
+            cn, self, name, tablename,
+            from_insertion_date, to_insertion_date
+        )
+        for csid, idate, diff in iterable:
+            out[idate] = diff
 
-        lastid = self.changeset_at(cn, name, from_insertion_date) if from_insertion_date else -1
-
-        revsql = select(
-            'id', 'snapshot', 'insertion_date'
-        ).table(f'"{self.namespace}.revision"."{tablename}"'
-        ).order('id', direction='asc')
-        if from_insertion_date:
-            revsql.where(
-                'insertion_date >= %(fromdate)s',
-                fromdate=from_insertion_date
-            )
-        if to_insertion_date:
-            revsql.where(
-                'insertion_date <= %(todate)s',
-                todate=to_insertion_date
-            )
-
-        diffs = {}
-        ts = empty_series(self.tzaware(cn, name))
-        res = revsql.do(cn)
-        for csid, snapid, idate in res.fetchall():
-            current = sto.bychunksrange(lastid, snapid)
-            diffs[idate] = diff(ts, current)
-            ts = current
-            lastid = snapid
-
-        return diffs
+        return out
 
     @tx
     def staircase(self, cn, name, delta,

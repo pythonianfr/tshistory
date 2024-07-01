@@ -954,6 +954,42 @@ insertion_date             value_date
 2024-01-02 00:00:00+00:00  2024-01-02    1.0
 """, diffs)
 
+    diffs = tsh.diffs(
+        engine,
+        'test-diffs',
+        from_insertion_date=pd.Timestamp('2023-12-31', tz='utc'),
+        to_insertion_date=pd.Timestamp('2024-1-1', tz='utc')
+    )
+    assert_hist("""
+insertion_date             value_date
+2024-01-01 00:00:00+00:00  2024-01-01    0.0
+""", diffs)
+
+    # now, write 2 points in the past (overwrite the first two)
+    ts = pd.Series(
+        [-1, -1],
+        index=pd.date_range(
+            pd.Timestamp(f'2024-1-1'),
+            freq='D',
+            periods=2
+        )
+    )
+    tsh.update(
+        engine,
+        ts,
+        'test-diffs',
+        'Babar',
+        insertion_date=pd.Timestamp(f'2024-1-4', tz='utc')
+    )
+    assert_hist("""
+insertion_date             value_date
+2024-01-01 00:00:00+00:00  2024-01-01    0.0
+2024-01-02 00:00:00+00:00  2024-01-02    1.0
+2024-01-03 00:00:00+00:00  2024-01-03    2.0
+2024-01-04 00:00:00+00:00  2024-01-01   -1.0
+                           2024-01-02   -1.0
+""", tsh.diffs(engine, 'test-diffs'))
+
 
 def test_infer_freq(engine, tsh):
     ts = pd.Series(

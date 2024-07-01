@@ -11,7 +11,10 @@ import threading
 import tempfile
 import shutil
 import zlib
-from datetime import datetime
+from datetime import (
+    datetime,
+    timedelta
+)
 from importlib_metadata import entry_points
 from functools import reduce
 from contextlib import contextmanager
@@ -24,6 +27,7 @@ import pandas as pd
 from sqlalchemy.engine import url
 from sqlalchemy.engine.base import Engine
 from sqlalchemy import exc
+from sqlhelp import select
 from inireader import reader
 from dbcache.api import kvstore
 
@@ -1027,6 +1031,93 @@ def diff(base, other, _precision=1e-14):
     diff_new = diff_new
 
     return pd.concat([diff_overlap, diff_new]).sort_index()
+
+
+# stuff
+
+def diffs(cn, tsh, name, tablename, from_idate, to_idate):
+    sto = tsh.storageclass(cn, tsh, name)
+    tzaware = tsh.tzaware(cn, name)
+    if from_idate:
+        ts = tsh.get(
+            cn,
+            name,
+            revision_date=from_idate - timedelta(milliseconds=1)
+        )
+    else:
+        ts = empty_series(tzaware)
+
+    # revs
+    revsql = select(
+        'id', 'snapshot', 'insertion_date'
+    ).table(f'"{tsh.namespace}.revision"."{tablename}"'
+    ).order('id', direction='asc')
+    if from_idate:
+        revsql.where(
+            'insertion_date >= %(fromdate)s',
+            fromdate=from_idate
+        )
+    if to_idate:
+        revsql.where(
+            'insertion_date <= %(to_idate)s',
+            to_idate=to_idate
+        )
+
+    allrevs = [
+        (csid, snapshot, idate)
+        for csid, snapshot, idate in revsql.do(cn).fetchall()
+    ]
+
+    chunksql = (
+        f'select id, parent, chunk '
+        f'from "{tsh.namespace}.snapshot"."{tablename}" '
+    )
+
+    # very greedy, let's try to limit this using
+    # to_idate later ...
+    chunks = {
+        c.id: (c.parent, c.chunk)
+        for c in cn.execute(
+                chunksql
+        ).fetchall()
+    }
+
+    _cache = {}
+
+    def patched(top, prev, items):
+        if not items:
+            return prev
+        items.reverse()
+        # non-appends will cause costly recomputations
+        # we might want to find a middle ground
+        _cache.clear()
+        out = _cache[top] = patch(
+            prev,
+            sto._chunks_to_ts(items)
+        )
+        return out
+
+    def buildseries(parent):
+        top = parent
+        items = []
+
+        while parent in chunks:
+            grandpa, chunk = chunks[parent]
+            items.append(chunk)  # bytes
+            if grandpa in _cache:
+                # found a known parent: let's patch and remember
+                cached = _cache.pop(grandpa)
+                return patched(top, cached, items)
+            parent = grandpa
+
+        # initial revision or full new series
+        return patched(top, empty_series(tzaware), items)
+
+    for csid, snapid, idate in allrevs:
+        current = buildseries(snapid)
+        tsdiff = diff(ts, current)
+        yield csid, idate, tsdiff
+        ts = current
 
 
 # //ism helper
