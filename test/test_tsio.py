@@ -887,6 +887,58 @@ insertion_date             value_date
     assert len(revs) == 5
 
 
+def test_insertion_dates_without_diffs(engine, tsh):
+    if tsh.namespace != 'tsh':
+        return
+
+    for i in range(3):
+        ts = pd.Series(
+            [i],
+            index=pd.date_range(
+                utcdt(2024, 1, i+1),
+                freq='d',
+                periods=1
+            )
+        )
+        tsh.update(
+            engine,
+            ts,
+            'hist-no-diff',
+            'Babar',
+            insertion_date=utcdt(2024, 1, i+1)
+        )
+
+    idates = tsh.insertion_dates(
+        engine,
+        'hist-no-diff',
+        from_value_date=utcdt(2024, 1, 2),
+        to_value_date=utcdt(2024, 1, 2)
+    )
+    assert idates == [
+        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC')
+    ]
+
+    # now, erase one diffstart / diffend
+    with engine.begin() as cn:
+        cn.cache = {'series_tablename': {}}
+        tablename = tsh._series_to_tablename(cn, 'hist-no-diff')
+        # engine.execute(f'select id, diffstart from "tsh.revision"."{tablename}"').fetchall()
+
+        cn.execute(
+            f'update "tsh.revision"."{tablename}" '
+            f'set diffstart = NULL,'
+            '     diffend = NULL'
+        )
+
+    idates = tsh.insertion_dates(
+        engine,
+        'hist-no-diff',
+        from_value_date=utcdt(2024, 1, 2),
+        to_value_date=utcdt(2024, 1, 2)
+    )
+    assert idates == []
+
+
 def test_first_latest_insertion_date(engine, tsh):
     name = 'test-f-l-idate'
     for i in range(3):

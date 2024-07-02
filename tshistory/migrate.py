@@ -173,6 +173,10 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
     from tshistory import util
     print(f'add columns `diffstart` and `diffend` to {namespace}.revision')
 
+    if interactive:
+        if yesno('Defer data migration to a task ? [y/n] '):
+            return
+
     def migrated(cn, tablename):
         sql = (
             f"select exists (select 1 "
@@ -206,15 +210,7 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
         return True
 
     def finalizeattributes(cn, tablename):
-        # put the not null constraints
-        cn.execute(
-            f'alter table "{namespace}.revision"."{tablename}" '
-            f'alter column diffstart set not null'
-        )
-        cn.execute(
-            f'alter table "{namespace}.revision"."{tablename}" '
-            f'alter column diffend set not null'
-        )
+        # drop the not null constraints for tsstart/tsend
         cn.execute(
             f'alter table "{namespace}.revision"."{tablename}" '
             f'alter column tsstart drop not null'
