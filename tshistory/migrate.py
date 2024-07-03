@@ -164,18 +164,21 @@ def migrate_series_versions(engine, namespace, interactive):
     migrate_add_diffstart_diffend(engine, f'{namespace}.group', interactive)
 
 
-def migrate_add_diffstart_diffend(engine, namespace, interactive):
+def migrate_add_diffstart_diffend(engine, namespace, interactive, onlydata=False, cpus=1):
     import os
     import signal
     import sys
     import multiprocessing
     from sqlalchemy import create_engine
     from tshistory import util
-    print(f'add columns `diffstart` and `diffend` to {namespace}.revision')
+    if onlydata:
+        print(f'data migration for columns `diffstart` and `diffend` to {namespace}.revision')
+    else:
+        print(f'add columns `diffstart` and `diffend` to {namespace}.revision')
 
+    migdata = True
     if interactive:
-        if yesno('Defer data migration to a task ? [y/n] '):
-            return
+        migdata = not yesno('Defer data migration to the "migrate_diffs" task ? [y/n] ')
 
     def migrated(cn, tablename):
         sql = (
@@ -282,11 +285,11 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
             name
             for name in allnames
             if allnames[name] is not None
-            and not migrated(cn, allnames[name])
+            and (onlydata or not migrated(cn, allnames[name]))
         ]
 
     print(f'{len(names)} series to migrate.')
-    cpus = 1 if sys.platform == 'win32' else int(multiprocessing.cpu_count() / 2)
+    cpus = cpus if onlydata else 1 if sys.platform == 'win32' else int(multiprocessing.cpu_count() / 2)
     chunked = listchunks(names, int(cpus))
 
     print(f'Starting with {cpus} processes.')
@@ -298,10 +301,17 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
             with engine.begin() as cn:
                 cn.cache = {'series_tablename': {}}
                 tablename = tsh._series_to_tablename(cn, name)
-                print(f'{pid}: migrating `{name}`')
-                addattributes(cn, tablename)
-                populatedata(pid, cn, name, tablename)
-                finalizeattributes(cn, tablename)
+                print(f'{pid}: migrating `{name}` (table: {tablename})')
+                if not migdata:
+                    print(f'{pid}: no data migration')
+                if tablename is None:
+                    continue
+                if not onlydata:
+                    addattributes(cn, tablename)
+                if migdata or onlydata:
+                    populatedata(pid, cn, name, tablename)
+                if not onlydata:
+                    finalizeattributes(cn, tablename)
 
     if cpus == 1:
         migrate(str(engine.url), names)
@@ -312,6 +322,7 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
             if not pid:
                 names.sort()
                 migrate(str(engine.url), names)
+                # rewrite this stuff to be compatible with a task
                 sys.exit(0)
 
             pids.append(pid)
@@ -324,6 +335,11 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive):
             for pid in pids:
                 print('kill', pid)
                 os.kill(pid, signal.SIGINT)
+
+    if migdata:
+        print(
+            'Do not forget to schedule the "migrate_diffs" task to complete the migration.'
+        )
 
 
 def migrate_metadata(engine, namespace, interactive):
