@@ -1021,7 +1021,7 @@ insertion_date             value_date
     ts = pd.Series(
         [-1, -1],
         index=pd.date_range(
-            pd.Timestamp(f'2024-1-1'),
+            pd.Timestamp('2024-1-1'),
             freq='D',
             periods=2
         )
@@ -1031,7 +1031,7 @@ insertion_date             value_date
         ts,
         'test-diffs',
         'Babar',
-        insertion_date=pd.Timestamp(f'2024-1-4', tz='utc')
+        insertion_date=pd.Timestamp('2024-1-4', tz='utc')
     )
     assert_hist("""
 insertion_date             value_date

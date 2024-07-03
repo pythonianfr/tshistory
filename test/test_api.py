@@ -433,10 +433,10 @@ def test_erasure(tsx):
         )
     )
 
-    diff = tsx.update('erasure', ts, 'Babar')
+    tsx.update('erasure', ts, 'Babar')
     assert not tsx.insertion_dates('erasure')
 
-    diff = tsx.update('erasure', ts, 'Babar', keepnans=True)
+    tsx.update('erasure', ts, 'Babar', keepnans=True)
     assert len(tsx.insertion_dates('erasure')) == 1
 
     ts = pd.Series(

@@ -401,8 +401,8 @@ class timeseries:
             cn, self, name, tablename,
             from_insertion_date, to_insertion_date
         )
-        for csid, idate, diff in iterable:
-            out[idate] = diff
+        for csid, idate, tsdiff in iterable:
+            out[idate] = tsdiff
 
         return out
 
