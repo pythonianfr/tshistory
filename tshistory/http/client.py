@@ -610,10 +610,10 @@ class httpclient:
         return res
 
     @unwraperror
-    def rename(self, oldname, newname):
+    def rename(self, oldname, newname, propagate=True):
         res = self.session.put(
             f'{self.uri}/series/state',
-            data={'name': oldname, 'newname': newname}
+            data={'name': oldname, 'newname': newname, 'propagate': json.dumps(propagate)}
         )
         if res.status_code == 204:
             return

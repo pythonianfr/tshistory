@@ -768,7 +768,8 @@ class mainsource:
 
     def rename(self,
                currname: str,
-               newname: str) -> NONETYPE:
+               newname: str,
+               propagate: bool=True) -> NONETYPE:
         """Rename a series.
 
         The target name must be available.
@@ -780,7 +781,7 @@ class mainsource:
             'not allowed to rename to a secondary source'
         )
 
-        return self.tsh.rename(self.engine, currname, newname)
+        return self.tsh.rename(self.engine, currname, newname, propagate=propagate)
 
     def delete(self, name: str):
         """Delete a series.

@@ -103,6 +103,11 @@ rename.add_argument(
     'newname', type=str, required=True,
     help='new name of the series'
 )
+rename.add_argument(
+    'propagate', type=inputs.boolean,
+    default=True,
+    help='propagate renaming to dependents'
+)
 
 source = base.copy()
 
@@ -730,7 +735,7 @@ class httpapi:
                     api.abort(409, f'`{args.newname}` does exists')
 
                 try:
-                    tsa.rename(args.name, args.newname)
+                    tsa.rename(args.name, args.newname, args.propagate)
                 except ValueError as err:
                     if err.args[0].startswith('not allowed to'):
                         api.abort(405, err.args[0])

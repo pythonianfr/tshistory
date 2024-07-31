@@ -683,7 +683,7 @@ class timeseries:
         return q.do(cn).scalar()
 
     @tx
-    def rename(self, cn, oldname, newname):
+    def rename(self, cn, oldname, newname, propagate=True):
         sql = (f'update "{self.namespace}".registry '
                'set name = %(newname)s '
                'where name = %(oldname)s')

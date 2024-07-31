@@ -1131,6 +1131,25 @@ insertion_date             value_date
     assert metadata == {'metadata1': 'value1'}
 
 
+def test_rename(tsx):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            utcdt(2023, 1, 1),
+            freq='d',
+            periods=3
+        )
+    )
+    tsx.update('rename-me', ts, 'Babar')
+    tsx.rename('rename-me', 'me-renamed')
+    assert tsx.exists('me-renamed')
+    assert not tsx.exists('rename-me')
+
+    tsx.rename('me-renamed', 'renamed-again', propagate=False)
+    assert tsx.exists('renamed-again')
+    assert not tsx.exists('me-renamed')
+
+
 def test_str_series(tsx):
     ts = pd.Series(
         ['a', 'b', 'c'],
