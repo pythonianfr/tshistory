@@ -180,18 +180,18 @@ class query:
 
 
 class bysource(query):
-    __slots__ = ('query',)
+    __slots__ = ('source',)
 
-    def __init__(self, query: str):
-        self.query = query
+    def __init__(self, source: str):
+        self.source = source
 
     def __expr__(self):
-        return f'(by.source "{self.query}")'
+        return f'(by.source "{self.source}")'
 
     @staticmethod
     def __sig__():
         return {
-            'query': 'query',
+            'source': 'str',
             'return': 'query'
         }
 

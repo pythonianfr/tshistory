@@ -736,7 +736,7 @@ def test_search_types():
         'by.name': {'query': 'str', 'return': 'query'},
         'by.not': {'item': 'query', 'return': 'query'},
         'by.or': {'items': 'Packed[query]', 'return': 'query'},
-        'by.source': {'query': 'query', 'return': 'query'},
+        'by.source': {'source': 'str', 'return': 'query'},
         'by.tzaware': {'return': 'query'}
     }
 
