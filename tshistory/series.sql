@@ -16,7 +16,7 @@ create table "{namespace}.revision"."{tablename}" (
   tsstart timestamp, -- whole series index min
   tsend timestamp,   -- whole series index max
   diffstart timestamptz, -- diff index min
-  diffend timestamptz,   -- diff index min
+  diffend timestamptz,   -- diff index max
   snapshot integer references "{namespace}.snapshot"."{tablename}"(id),
   author text not null,
   insertion_date timestamptz not null,

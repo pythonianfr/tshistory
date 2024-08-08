@@ -1301,3 +1301,31 @@ def replicate_series(tsa_origin, tsa_target, origname,
 
     metadata = tsa_origin.metadata(origname)
     tsa_target.replace_metadata(targetname, metadata)
+
+
+# checkdiff helper
+
+def checkdiffs_for_name(engine, tsa, name):
+    tsh = tsa.tsh
+    with engine.begin() as cn:
+        cn.cache = {'series_tablename': {}}
+        tablename = tsh._series_to_tablename(cn, name)
+
+    things = engine.execute(
+        f'select insertion_date, diffstart, diffend '
+        f'from "tsh.revision"."{tablename}" '
+        f'order by insertion_date'
+    )
+    h = tsa.history(name, diffmode=True, _keep_nans=True)
+    tzaware = tsa.tsh.tzaware(engine, name)
+
+    for idate, start, end in things.fetchall():
+        if not tzaware:
+            start = pd.Timestamp(start).tz_localize(None)
+            end = pd.Timestamp(end).tz_localize(None)
+        print(idate)
+        ts = h[idate]
+        if ts.index[0] != start:
+            print('-> start', ts.index[0], start)
+        if ts.index[-1] != end:
+            print('-> end', ts.index[0], end)

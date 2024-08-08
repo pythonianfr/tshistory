@@ -1,4 +1,5 @@
 from collections import defaultdict
+from random import sample
 
 from pkg_resources import iter_entry_points
 import click
@@ -8,6 +9,7 @@ from sqlalchemy import create_engine
 from dbcache import api as storeapi
 from tshistory.api import timeseries
 from tshistory.util import (
+    checkdiffs_for_name,
     find_dburi,
     get_cfg_path,
     objects
@@ -95,33 +97,29 @@ def dbversions(db_uri, namespace='tsh'):
 @click.option('--namespace', default='tsh')
 def checkdiffs(db_uri, name, namespace='tsh'):
     uri = find_dburi(db_uri)
-
     tsa = timeseries(uri, namespace)
-    tsh = tsa.tsh
-
     engine = create_engine(uri)
 
-    with engine.begin() as cn:
-        cn.cache = {'series_tablename': {}}
-        tablename = tsh._series_to_tablename(cn, name)
+    checkdiffs_for_name(engine, tsa, name)
 
-    things = engine.execute(
-        f'select insertion_date, diffstart, diffend '
-        f'from "tsh.revision"."{tablename}"'
-    )
-    h = tsa.history(name, diffmode=True)
-    tzaware = tsa.tsh.tzaware(engine, name)
 
-    for idate, start, end in things.fetchall():
-        if not tzaware:
-            start = pd.Timestamp(start).tz_localize(None)
-            end = pd.Timestamp(end).tz_localize(None)
-        print(idate)
-        ts = h[idate]
-        if ts.index[0] != start:
-            print('-> start', ts.index[0], start)
-        if ts.index[-1] != end:
-            print('-> end', ts.index[0], end)
+@tsh.command(name='random-checkdiffs')
+@click.argument('db-uri')
+@click.argument('number', type=int)
+@click.option('--namespace', default='tsh')
+def random_checkdiffs(db_uri, number, namespace='tsh'):
+    uri = find_dburi(db_uri)
+    tsa = timeseries(uri, namespace)
+    engine = create_engine(uri)
+
+    list_series = tsa.find('(by.and (by.source "local") (by.not (by.formula)))')
+
+    if len(list_series):
+        random_series = sample(list_series, int(number))
+
+        for name in random_series:
+            print("check starting for: ", name)
+            checkdiffs_for_name(engine, tsa, name)
 
 
 @tsh.command(name='shell')
