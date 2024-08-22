@@ -1103,6 +1103,14 @@ def test_infer_freq(engine, tsh):
     )
 
 
+def test_empty_update(engine, tsh):
+    ts = genserie(datetime(2010, 1, 1), 'D', 11)
+    d1 = tsh.update(engine, ts, 'empty-update', 'Babar')
+    assert len(d1)
+    d2 = tsh.update(engine, ts, 'empty-update', 'Babar')
+    assert not len(d2)
+
+
 def test_point_deletion(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'D', 11)
     ts_begin.iloc[-1] = np.nan

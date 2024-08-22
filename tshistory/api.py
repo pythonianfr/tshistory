@@ -119,10 +119,12 @@ class mainsource:
         the new version.
 
         A series made of the changed points is returned.  If there was
-        no change, None is returned and no new version is created.
+        no change, an empty series is returned and no new version is
+        created.
 
-        New points are added, changed points are changed,
-        points with NaN are _erased_.
+        New points are added, changed points are changed, points with
+        NaN are dropped if `keepnans` is False (by default) or
+        _erased_ if True.
 
         The `author` is mandatory.
         The `metadata` dictionary allows to associate any metadata
@@ -130,10 +132,6 @@ class mainsource:
 
         It is possible to force an `insertion_date`, which can only be
         higher than the previous `insertion_date`.
-
-        The `keepnans` flag will treat, if true, the Nans values as
-        erasures. If false, we do a dropna() call on the series before
-        the actual update.
 
         .. highlight:: python
         .. code-block:: python
