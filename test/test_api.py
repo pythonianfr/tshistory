@@ -252,6 +252,44 @@ def test_get_with_inferred_freq(tsx):
 """, ts)
 
 
+def test_inferred_freq_irregular(tsx):
+    index_0 = pd.date_range(
+        utcdt(2024, 1, 1), periods=3, freq='D'
+    )
+    # same freq, with an offset of 6h
+    index_1 = pd.date_range(
+        utcdt(2024, 1, 4, 6), periods=3, freq='D'
+    )
+    ts = pd.Series(
+        [0, 1, 2, 3, 4, 5],
+        index = index_0.append(index_1)
+    )
+    tsx.update('irregular_freq', ts, 'test')
+
+    ts = tsx.get('irregular_freq')
+    assert_df("""
+2024-01-01 00:00:00+00:00    0.0
+2024-01-02 00:00:00+00:00    1.0
+2024-01-03 00:00:00+00:00    2.0
+2024-01-04 06:00:00+00:00    3.0
+2024-01-05 06:00:00+00:00    4.0
+2024-01-06 06:00:00+00:00    5.0
+""", ts)
+
+    # when called with the option 'inferred_freq'
+    # new index are created (good)
+    # but some values disappeared (bad)
+    ts = tsx.get('irregular_freq', inferred_freq=True)
+    assert_df("""
+2024-01-01 00:00:00+00:00    0.0
+2024-01-02 00:00:00+00:00    1.0
+2024-01-03 00:00:00+00:00    2.0
+2024-01-04 00:00:00+00:00    NaN
+2024-01-05 00:00:00+00:00    NaN
+2024-01-06 00:00:00+00:00    NaN
+""", ts)
+
+
 def test_with_inferred_freq_remote(mapi):
     ts = pd.Series(
         [1, 2, 3, np.nan, 5],
