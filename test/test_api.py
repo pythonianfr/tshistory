@@ -278,15 +278,18 @@ def test_inferred_freq_irregular(tsx):
 
     # when called with the option 'inferred_freq'
     # new index are created (good)
-    # but some values disappeared (bad)
+    # and the old ones are also kept (also good)
     ts = tsx.get('irregular_freq', inferred_freq=True)
     assert_df("""
 2024-01-01 00:00:00+00:00    0.0
 2024-01-02 00:00:00+00:00    1.0
 2024-01-03 00:00:00+00:00    2.0
 2024-01-04 00:00:00+00:00    NaN
+2024-01-04 06:00:00+00:00    3.0
 2024-01-05 00:00:00+00:00    NaN
+2024-01-05 06:00:00+00:00    4.0
 2024-01-06 00:00:00+00:00    NaN
+2024-01-06 06:00:00+00:00    5.0
 """, ts)
 
 

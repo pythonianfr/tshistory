@@ -358,6 +358,7 @@ def with_inferred_freq(ts,
 
     ts_start = ts.index[0]
     ts_end = ts.index[-1]
+    old_index = ts.index
     freq = infer_freq(ts)[0]
     tzaware = ts_start.tz is not None
     to_value_date = compatible_date(tzaware, to_value_date)
@@ -369,7 +370,7 @@ def with_inferred_freq(ts,
             end=ts_end,
             freq=freq
         )
-        return ts.reindex(new_index)
+        return ts.reindex(new_index.union(old_index))
 
     if from_value_date is None:
         new_index = pd.date_range(
@@ -377,7 +378,7 @@ def with_inferred_freq(ts,
             end=to_value_date,
             freq=freq
         )
-        return ts.reindex(new_index)
+        return ts.reindex(new_index.union(old_index))
 
     if to_value_date is None:
         new_index = pd.date_range(
@@ -385,7 +386,7 @@ def with_inferred_freq(ts,
             end=from_value_date,
             freq=-freq
         ).sort_values()
-        return ts.reindex(new_index)
+        return ts.reindex(new_index.union(old_index))
 
     # we have to build the index in two parts
     new_index = pd.date_range(
@@ -399,7 +400,7 @@ def with_inferred_freq(ts,
         freq=-freq
     )
     new_index = new_index.union(complement).sort_values()
-    return ts.reindex(new_index)
+    return ts.reindex(new_index.union(old_index))
 
 
 def guard_insert(newts, name, author, metadata, insertion_date):
