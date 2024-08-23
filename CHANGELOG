@@ -19,6 +19,8 @@
   reindexed on its inferred frequency
 
 ### Changed
+- api/update: have a `keepnans` keyword to explicitely accept
+  erasures
 - api/timeseries: allow a parameterless call (using the
   tshistory.cfg file to get its information)
 - util/replace_series: add an 'from_insertion_date' parameter
