@@ -627,7 +627,6 @@ class httpapi:
             @api.doc(responses={
                 200: 'Updated',
                 201: 'Created',
-                404: 'Does not exist',
                 405: 'Not allowed'
             })
             @api.expect(update)
