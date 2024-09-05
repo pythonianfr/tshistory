@@ -170,7 +170,7 @@ get.add_argument(
 )
 get.add_argument(
     'horizon', type=str, default=None,
-    help='alternative to from/to_value_date'
+    help='alternative to from/to_value_date (EXPERIMENTAL)'
 )
 get.add_argument(
     'nocache', type=inputs.boolean, default=False,
