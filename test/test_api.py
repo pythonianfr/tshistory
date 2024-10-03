@@ -968,6 +968,48 @@ def test_find(tsx):
     assert r == ['find.me.1']
 
 
+def test_find_two_metaitems(tsx):
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2023, 1, 1), freq='d', periods=3)
+    )
+    tsx.update(
+        'formetaitem.1',
+        ts,
+        'Babar'
+    )
+    tsx.update(
+        'formetaitem.2',
+        ts,
+        'Celeste'
+    )
+    tsx.replace_metadata(
+        'formetaitem.1',
+        {
+            'foo': 42,
+            'outages': 'entsoe',
+            'country': 'FR'
+        }
+    )
+    tsx.replace_metadata(
+        'formetaitem.2',
+        {
+            'bar': 'Hello',
+            'outages': 'rte',
+            'country': 'FR',
+            'foo': 43
+        }
+    )
+
+    r = tsx.find(
+        '(by.and '
+        '  (by.metaitem "outages" "entsoe") '
+        '  (by.metaitem "country" "FR"))'
+    )
+    # BAD, we expect only find.me.1 series to be selected
+    assert r == ['formetaitem.1', 'formetaitem.2']
+
+
 def test_basket(tsx):
     ts = pd.Series(
         [1, 2, 3],
