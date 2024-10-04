@@ -1006,8 +1006,7 @@ def test_find_two_metaitems(tsx):
         '  (by.metaitem "outages" "entsoe") '
         '  (by.metaitem "country" "FR"))'
     )
-    # BAD, we expect only find.me.1 series to be selected
-    assert r == ['formetaitem.1', 'formetaitem.2']
+    assert r == ['formetaitem.1']
 
 
 def test_basket(tsx):

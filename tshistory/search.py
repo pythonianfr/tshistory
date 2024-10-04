@@ -410,21 +410,23 @@ class _comparator(query):
         return cls(*tree[1:])
 
     def sql(self, namespace='tsh'):
-        vid = usym('value')
         if isinstance(self.value, str):
+            kid = usym('key')
+            jid = usym('json')
             return (
                 # issue: " (double quotes) in json vs plain sql means
                 # something different - we have to use a concatenation
                 # trick to have it
                 f'jsonb_path_match({self._field}, '
-                f'(\'$."\' || %(key)s || \'" {self._op} $value\')::jsonpath, '
-                f'%(json)s)',
+                f'(\'$."\' || %({kid})s || \'" {self._op} $value\')::jsonpath, '
+                f'%({jid})s)',
                 {
-                    'key': self.key,
-                    'json': json.dumps({'value': self.value})
+                    kid: self.key,
+                    jid: json.dumps({'value': self.value})
                 }
             )
 
+        vid = usym('value')
         return (
             f'jsonb_path_match(metadata, \'$.{self.key} {self._op} %({vid})s\')',
             {vid: self.value}
