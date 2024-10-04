@@ -44,7 +44,7 @@ def test_no_series_meta(engine, tsh):
 def test_bad_name(engine, tsh):
     ts = pd.Series(
         [1, 2, 3],
-        index=pd.date_range(utcdt(2020, 1, 1), freq='D', periods=3)
+        index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
     )
 
     with pytest.raises(AssertionError):
@@ -60,11 +60,11 @@ def test_bad_name(engine, tsh):
 def test_tzaware_non_monotonic(engine, tsh):
     ts1 = pd.Series(
         [1, 2, 3],
-        index=pd.date_range(utcdt(2020, 1, 1), freq='D', periods=3)
+        index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
     )
     ts2 = pd.Series(
         [1, 2, 3],
-        index=pd.date_range(utcdt(2019, 1, 1), freq='D', periods=3)
+        index=pd.date_range(utcdt(2019, 1, 1), freq='d', periods=3)
     )
     ts = pd.concat([ts1, ts2])
     tsh.update(engine, ts, 'non-monotonic', 'Babar')
@@ -81,7 +81,7 @@ def test_tzaware_non_monotonic(engine, tsh):
 def test_naive_vs_tzaware_query(engine, tsh):
     ts = pd.Series(
         [1, 2, 3],
-        index=pd.date_range(datetime(2020, 1, 1), freq='D', periods=3)
+        index=pd.date_range(datetime(2020, 1, 1), freq='d', periods=3)
     )
     tsh.update(engine, ts, 'naive-tzaware-query', 'Babar')
 
@@ -95,7 +95,7 @@ def test_naive_vs_tzaware_query(engine, tsh):
 def test_tzaware_vs_tzaware_query(engine, tsh):
     ts = pd.Series(
         [1, 2, 3],
-        index=pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+        index=pd.date_range(utcdt(2023, 1, 1), freq='d', periods=3)
     )
     tsh.update(engine, ts, 'tzaware-tzaware-query', 'Babar')
 
@@ -110,7 +110,7 @@ def test_tzaware_vs_tzaware_query(engine, tsh):
 def test_float32_dtype(engine, tsh):
     ts = pd.Series(
         [1, 2, 3],
-        index=pd.date_range(utcdt(2021, 1, 1), freq='D', periods=3),
+        index=pd.date_range(utcdt(2021, 1, 1), freq='d', periods=3),
         dtype='float32'
     )
     tsh.update(engine, ts, 'float32', 'Babar')
@@ -140,7 +140,7 @@ def test_bogus_index(engine, tsh):
 def test_tzaware_vs_naive_query(engine, tsh):
     ts = pd.Series(
         [1, 2, 3],
-        index=pd.date_range(utcdt(2020, 1, 1), freq='D', periods=3)
+        index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
     )
     tsh.update(engine, ts, 'tzaware-naive-query', 'Babar')
 
@@ -157,7 +157,7 @@ def test_guard_query_dates(engine, tsh):
 
     ts = pd.Series(
         [1, 2, 3],
-        index=pd.date_range(datetime(2020, 1, 1), freq='D', periods=3)
+        index=pd.date_range(datetime(2020, 1, 1), freq='d', periods=3)
     )
     tsh.update(engine, ts, 'guard-datetime', 'Babar')
 
@@ -268,7 +268,7 @@ insertion_date             value_date
 
 
 def test_base_diff(engine, tsh):
-    ts_begin = genserie(datetime(2010, 1, 1), 'D', 10)
+    ts_begin = genserie(datetime(2010, 1, 1), 'd', 10)
     tsh.update(engine, ts_begin, 'ts_test', 'test')
 
     id1 = tsh.last_id(engine, 'ts_test')
@@ -345,7 +345,7 @@ def test_base_diff(engine, tsh):
 2010-01-10    9.0
 """, tsh.get(engine, 'ts_test'))
 
-    ts_longer = genserie(datetime(2010, 1, 3), 'D', 15)
+    ts_longer = genserie(datetime(2010, 1, 3), 'd', 15)
     ts_longer.iloc[1] = 2.48
     ts_longer.iloc[3] = 3.14
     ts_longer.iloc[5] = ts_begin.iloc[7]
@@ -383,7 +383,7 @@ def test_base_diff(engine, tsh):
     )
 
     # insert single data, in override of previous one
-    ts_begin = genserie(datetime(2010, 1, 1), 'D', 5, initval=[2])
+    ts_begin = genserie(datetime(2010, 1, 1), 'd', 5, initval=[2])
     ts_begin.loc['2010-01-04'] = -1
     tsh.update(engine, ts_begin, 'ts_mixte', 'test')
 
@@ -396,7 +396,7 @@ def test_base_diff(engine, tsh):
 """, tsh.get(engine, 'ts_mixte'))
 
     # add new series with one additional values
-    ts_more = genserie(datetime(2010, 1, 2), 'D', 5, [2])
+    ts_more = genserie(datetime(2010, 1, 2), 'd', 5, [2])
     ts_more.loc['2010-01-04'] = -1
     tsh.update(engine, ts_more, 'ts_mixte', 'test')
 
@@ -411,7 +411,7 @@ def test_base_diff(engine, tsh):
 
     # just append an extra data point
     # with no intersection with the previous ts
-    ts_one_more = genserie(datetime(2010, 1, 7), 'D', 1, [3])
+    ts_one_more = genserie(datetime(2010, 1, 7), 'd', 1, [3])
     tsh.update(engine, ts_one_more, 'ts_mixte', 'test')
 
     assert_df("""
@@ -455,7 +455,7 @@ def test_base_diff(engine, tsh):
 
 
 def test_update_with_nothing(engine, tsh):
-    series = genserie(datetime(2020, 1, 1), 'D', 3)
+    series = genserie(datetime(2020, 1, 1), 'd', 3)
     diff = tsh.update(engine, series, 'ts-up-nothing', 'babar')
     assert len(diff) == 3
 
@@ -512,7 +512,7 @@ def test_update_na_vs_hole(engine, tsh):
 
 
 def test_serie_metadata(engine, tsh):
-    serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
+    serie = genserie(datetime(2010, 1, 1), 'd', 1, initval=[1])
     tsh.update(engine, serie, 'ts-metadata', 'babar')
 
     initialmeta = tsh.internal_metadata(engine, 'ts-metadata')
@@ -546,7 +546,7 @@ def test_serie_metadata(engine, tsh):
 
 
 def test_changeset_metadata(engine, tsh):
-    serie = genserie(datetime(2010, 1, 1), 'D', 1, initval=[1])
+    serie = genserie(datetime(2010, 1, 1), 'd', 1, initval=[1])
     tsh.update(
         engine, serie, 'ts-cs-metadata', 'babar',
         {'foo': 'A', 'bar': 42},
@@ -567,30 +567,30 @@ def test_changeset_metadata(engine, tsh):
 def test_revision_date(engine, tsh):
     for i in range(1, 5):
         with engine.begin() as cn:
-            tsh.update(cn, genserie(datetime(2017, 1, i), 'D', 3, [i]), 'revdate',
+            tsh.update(cn, genserie(datetime(2017, 1, i), 'd', 3, [i]), 'revdate',
                        'test', insertion_date=utcdt(2016, 1, i))
 
     # end of prologue, now some real meat
     idate0 = pd.Timestamp('2015-1-1 00:00:00', tz='UTC')
-    ts = genserie(datetime(2010, 1, 4), 'D', 4, [0], name='truc')
+    ts = genserie(datetime(2010, 1, 4), 'd', 4, [0], name='truc')
     tsh.update(engine, ts, 'ts_through_time',
                'test', insertion_date=idate0)
     assert idate0 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate1 = pd.Timestamp('2015-1-1 15:45:23', tz='UTC')
-    ts = genserie(datetime(2010, 1, 4), 'D', 4, [1], name='truc')
+    ts = genserie(datetime(2010, 1, 4), 'd', 4, [1], name='truc')
     tsh.update(engine, ts, 'ts_through_time',
                'test', insertion_date=idate1)
     assert idate1 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate2 = pd.Timestamp('2015-1-2 15:43:23', tz='UTC')
-    ts = genserie(datetime(2010, 1, 4), 'D', 4, [2], name='truc')
+    ts = genserie(datetime(2010, 1, 4), 'd', 4, [2], name='truc')
     tsh.update(engine, ts, 'ts_through_time',
                'test', insertion_date=idate2)
     assert idate2 == tsh.latest_insertion_date(engine, 'ts_through_time')
 
     idate3 = pd.Timestamp('2015-1-3', tz='UTC')
-    ts = genserie(datetime(2010, 1, 4), 'D', 4, [3], name='truc')
+    ts = genserie(datetime(2010, 1, 4), 'd', 4, [3], name='truc')
     tsh.update(engine, ts, 'ts_through_time',
                'test', insertion_date=idate3)
     assert idate3 == tsh.latest_insertion_date(engine, 'ts_through_time')
@@ -652,7 +652,7 @@ def test_insertion_dates(engine, tsh):
     for i in range(10):
         ts = pd.Series(
             np.array([1, 2, 3]) + i*2,
-            pd.date_range(utcdt(2024, 4, 1+i), freq='D', periods=3)
+            pd.date_range(utcdt(2024, 4, 1+i), freq='d', periods=3)
         )
         tsh.update(
             engine,
@@ -946,7 +946,7 @@ def test_first_latest_insertion_date(engine, tsh):
             [i] * 3,
             index=pd.date_range(
                 utcdt(2022, 1, i+1),
-                freq='D',
+                freq='d',
                 periods=3
             )
         )
@@ -969,7 +969,7 @@ def test_diffs(engine, tsh):
             [i],
             index=pd.date_range(
                 pd.Timestamp(f'2024-1-{i+1}'),
-                freq='D',
+                freq='d',
                 periods=1
             )
         )
@@ -1022,7 +1022,7 @@ insertion_date             value_date
         [-1, -1],
         index=pd.date_range(
             pd.Timestamp('2024-1-1'),
-            freq='D',
+            freq='d',
             periods=2
         )
     )
@@ -1048,7 +1048,7 @@ def test_infer_freq(engine, tsh):
         [1, 2, 3],
         index=pd.date_range(
             pd.Timestamp('2023-1-1'),
-            freq='D',
+            freq='d',
             periods=3
         )
     )
@@ -1104,7 +1104,7 @@ def test_infer_freq(engine, tsh):
 
 
 def test_empty_update(engine, tsh):
-    ts = genserie(datetime(2010, 1, 1), 'D', 11)
+    ts = genserie(datetime(2010, 1, 1), 'd', 11)
     d1 = tsh.update(engine, ts, 'empty-update', 'Babar')
     assert len(d1)
     d2 = tsh.update(engine, ts, 'empty-update', 'Babar')
@@ -1112,7 +1112,7 @@ def test_empty_update(engine, tsh):
 
 
 def test_point_deletion(engine, tsh):
-    ts_begin = genserie(datetime(2010, 1, 1), 'D', 11)
+    ts_begin = genserie(datetime(2010, 1, 1), 'd', 11)
     ts_begin.iloc[-1] = np.nan
     tsh.update(engine, ts_begin, 'ts_del', 'test', keepnans=True)
 
@@ -1162,7 +1162,7 @@ def test_point_deletion(engine, tsh):
 
     # now with string!
 
-    ts_string = genserie(datetime(2010, 1, 1), 'D', 10, ['machin'], dtype='object')
+    ts_string = genserie(datetime(2010, 1, 1), 'd', 10, ['machin'], dtype='object')
     tsh.update(engine, ts_string, 'ts_string_del', 'test')
 
     ts_string.iloc[4] = None
@@ -1213,12 +1213,12 @@ def test_point_deletion(engine, tsh):
 
 def test_nan_first(engine, tsh):
     # first insertion with only nan
-    ts_begin = genserie(datetime(2010, 1, 1), 'D', 10, [np.nan])
+    ts_begin = genserie(datetime(2010, 1, 1), 'd', 10, [np.nan])
     assert tsh.update(engine, ts_begin, 'ts_null', 'test') is None
 
 
 def test_more_point_deletion(engine, tsh):
-    ts_nans = genserie(datetime(2010, 1, 1), 'D', 11)
+    ts_nans = genserie(datetime(2010, 1, 1), 'd', 11)
     ts_nans.iloc[0:3] = np.nan
 
     assert_df("""
@@ -1243,7 +1243,7 @@ Freq: D
     # there is no difference
     assert 0 == len(diff(ts_nans, ts_nans))
 
-    ts_add = genserie(datetime(2010, 1, 1), 'D', 15)
+    ts_add = genserie(datetime(2010, 1, 1), 'd', 15)
     ts_add.iloc[0] = np.nan
     ts_add.iloc[13:] = np.nan
     ts_add.iloc[8] = np.nan
@@ -1279,19 +1279,19 @@ Freq: D
 
     # full erasing
     # numeric
-    ts_begin = genserie(datetime(2010, 1, 1), 'D', 4)
+    ts_begin = genserie(datetime(2010, 1, 1), 'd', 4)
     tsh.update(engine, ts_begin, 'ts_full_del', 'test')
 
     ts_begin.iloc[:] = np.nan
     with pytest.raises(ValueError):
         tsh.update(engine, ts_begin, 'ts_full_del', 'test', keepnans=True)
 
-    ts_end = genserie(datetime(2010, 1, 1), 'D', 4)
+    ts_end = genserie(datetime(2010, 1, 1), 'd', 4)
     tsh.update(engine, ts_end, 'ts_full_del', 'test')
 
     # string
 
-    ts_begin = genserie(datetime(2010, 1, 1), 'D', 4, ['text'], dtype='object')
+    ts_begin = genserie(datetime(2010, 1, 1), 'd', 4, ['text'], dtype='object')
     tsh.update(engine, ts_begin, 'ts_full_del_str', 'test')
 
     ts_begin = pd.Series([np.nan] * 4, name='ts_full_del_str',
@@ -1300,7 +1300,7 @@ Freq: D
     with pytest.raises(ValueError):
         tsh.update(engine, ts_begin, 'ts_full_del_str', 'test', keepnans=True)
 
-    ts_end = genserie(datetime(2010, 1, 1), 'D', 4, ['text'], dtype='object')
+    ts_end = genserie(datetime(2010, 1, 1), 'd', 4, ['text'], dtype='object')
     tsh.update(engine, ts_end, 'ts_full_del_str', 'test')
 
 
@@ -1308,7 +1308,7 @@ def test_deletion_over_horizon(engine, tsh):
     idate = utcdt(2018, 2, 1)
     ts = pd.Series(
         [1, 2, 3],
-        index=pd.date_range(datetime(2018, 1, 1), freq='D', periods=3)
+        index=pd.date_range(datetime(2018, 1, 1), freq='d', periods=3)
     )
 
     name = 'delete_over_hz'
@@ -1317,7 +1317,7 @@ def test_deletion_over_horizon(engine, tsh):
 
     ts = pd.Series(
         [np.nan, np.nan, np.nan],
-        index=pd.date_range(datetime(2018, 1, 3), freq='D', periods=3)
+        index=pd.date_range(datetime(2018, 1, 3), freq='d', periods=3)
     )
 
     tsh.update(engine, ts, name, 'Celeste',
@@ -1329,7 +1329,7 @@ def test_deletion_over_horizon(engine, tsh):
 
     ts = pd.Series(
         [np.nan, np.nan, np.nan],
-        index=pd.date_range(datetime(2017, 12, 30), freq='D', periods=3)
+        index=pd.date_range(datetime(2017, 12, 30), freq='d', periods=3)
     )
     tsh.update(engine, ts, name, 'Arthur',
                insertion_date=idate.replace(day=3),
@@ -1342,7 +1342,7 @@ def test_deletion_over_horizon(engine, tsh):
 def test_history(engine, tsh):
     for numserie in (1, 2, 3):
         with engine.begin() as cn:
-            tsh.update(cn, genserie(datetime(2017, 1, 1), 'D', numserie), 'smallserie',
+            tsh.update(cn, genserie(datetime(2017, 1, 1), 'd', numserie), 'smallserie',
                        'aurelien.campeas@pythonian.fr',
                        insertion_date=utcdt(2017, 2, numserie))
 
@@ -1611,14 +1611,14 @@ def test_nr_gethistory(engine, tsh):
     s0 = pd.Series([-1, 0, 0, -1],
                    index=pd.date_range(start=datetime(2016, 12, 29),
                                        end=datetime(2017, 1, 1),
-                                       freq='D'))
+                                       freq='d'))
     tsh.update(engine, s0, 'foo', 'zogzog',
                insertion_date=utcdt(2015, 12, 31))
 
     s1 = pd.Series([1, 0, 0, 1],
                    index=pd.date_range(start=datetime(2017, 1, 1),
                                        end=datetime(2017, 1, 4),
-                                       freq='D'))
+                                       freq='d'))
     idate = utcdt(2016, 1, 1)
     for i in range(5):
         with engine.begin() as cn:
@@ -1646,17 +1646,17 @@ insertion_date             value_date
 
 
 def test_add_na(engine, tsh):
-    ts_nan = genserie(datetime(2010, 1, 1), 'D', 5)
+    ts_nan = genserie(datetime(2010, 1, 1), 'd', 5)
     ts_nan[[True] * len(ts_nan)] = np.nan
 
     diff = tsh.update(engine, ts_nan, 'ts_add_na', 'test')
     assert diff is None
 
     # in case of insertion in existing data
-    ts_begin = genserie(datetime(2010, 1, 1), 'D', 5)
+    ts_begin = genserie(datetime(2010, 1, 1), 'd', 5)
     tsh.update(engine, ts_begin, 'ts_add_na', 'test')
 
-    ts_nan = genserie(datetime(2010, 1, 6), 'D', 5)
+    ts_nan = genserie(datetime(2010, 1, 6), 'd', 5)
     ts_nan[[True] * len(ts_nan)] = np.nan
     ts_nan = pd.concat([ts_begin, ts_nan])
 
@@ -1669,13 +1669,13 @@ def test_add_na(engine, tsh):
 
 def test_dtype_mismatch(engine, tsh):
     tsh.update(engine,
-               genserie(datetime(2015, 1, 1), 'D', 11).astype('str'),
+               genserie(datetime(2015, 1, 1), 'd', 11).astype('str'),
                'error1',
                'test')
 
     with pytest.raises(Exception) as excinfo:
         tsh.update(engine,
-                   genserie(datetime(2015, 1, 1), 'D', 11),
+                   genserie(datetime(2015, 1, 1), 'd', 11),
                    'error1',
                    'test')
     assert excinfo.value.args[0] == (
@@ -1684,13 +1684,13 @@ def test_dtype_mismatch(engine, tsh):
     )
 
     tsh.update(engine,
-               genserie(datetime(2015, 1, 1), 'D', 11),
+               genserie(datetime(2015, 1, 1), 'd', 11),
                'error2',
                'test')
 
     with pytest.raises(Exception) as excinfo:
         tsh.update(engine,
-                   genserie(datetime(2015, 1, 1), 'D', 11).astype('str'),
+                   genserie(datetime(2015, 1, 1), 'd', 11).astype('str'),
                    'error2',
                    'test')
     assert excinfo.value.args[0] == (
@@ -1700,7 +1700,7 @@ def test_dtype_mismatch(engine, tsh):
 
     with pytest.raises(Exception) as excinfo:
         tsh.update(engine,
-                   genserie(utcdt(2015, 1, 1), 'D', 11),
+                   genserie(utcdt(2015, 1, 1), 'd', 11),
                    'error2',
                    'test')
     assert excinfo.value.args[0] == (
@@ -1711,7 +1711,7 @@ def test_dtype_mismatch(engine, tsh):
 
 def test_precision(engine, tsh):
     floaty = 0.123456789123456789
-    ts = genserie(datetime(2015, 1, 1), 'D', 5, initval=[floaty])
+    ts = genserie(datetime(2015, 1, 1), 'd', 5, initval=[floaty])
 
     tsh.update(engine, ts, 'precision', 'test')
     ts_round = tsh.get(engine, 'precision')
@@ -1752,7 +1752,7 @@ def test_serie_deletion(engine, tsh):
     ts = pd.Series(
         [1, 2, 3],
         index=pd.date_range(start=utcdt(2018, 1, 1),
-                            freq='D', periods=3)
+                            freq='d', periods=3)
     )
     with engine.begin() as cn:
         tsh.update(cn, ts, 'deleteme', 'Celeste')
@@ -1773,7 +1773,7 @@ def test_strip(engine, tsh):
         ts = genserie(datetime(2017, 1, 10), 'h', 1 + i)
         tsh.update(engine, ts, 'xserie', 'babar', insertion_date=pubdate)
         # also insert something completely unrelated
-        tsh.update(engine, genserie(datetime(2018, 1, 1), 'D', 1 + i),
+        tsh.update(engine, genserie(datetime(2018, 1, 1), 'd', 1 + i),
                    'yserie', 'celeste')
 
     csida = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3))
@@ -1860,7 +1860,7 @@ insertion_date             value_date
 
 
 def test_long_name(engine, tsh):
-    serie = genserie(datetime(2010, 1, 1), 'D', 40)
+    serie = genserie(datetime(2010, 1, 1), 'd', 40)
 
     name = 'a' * 64
     tsh.update(engine, serie, name, 'babar')
@@ -1944,7 +1944,7 @@ def test_staircase_2_tzaware(engine, tsh):
     # maybe a more interesting example, each days we insert 7 data points
     for idate in pd.date_range(start=utcdt(2015, 1, 1),
                                end=utcdt(2015, 1, 4),
-                               freq='D'):
+                               freq='d'):
         ts = genserie(start=idate, freq='h', repeat=7)
         tsh.update(engine, ts, 'repu2', 'test', insertion_date=idate)
 
@@ -2006,7 +2006,7 @@ def test_staircase_2_tznaive(engine, tsh):
     # same as above, with naive dates
     for idate in pd.date_range(start=utcdt(2015, 1, 1),
                                end=utcdt(2015, 1, 4),
-                               freq='D'):
+                               freq='d'):
         ts = genserie(start=idate.replace(tzinfo=None), freq='h', repeat=7)
         tsh.update(engine, ts, 'repu-tz-naive', 'test', insertion_date=idate)
 
@@ -2068,7 +2068,7 @@ def test_staircase_tzaware_funny_bug(engine, tsh):
     # naive first
     for idate in pd.date_range(start=utcdt(2015, 1, 1),
                                end=utcdt(2015, 1, 4),
-                               freq='D'):
+                               freq='d'):
         ts = genserie(start=idate.tz_convert(None), freq='h', repeat=7)
         tsh.update(
             engine, ts, 'funny-staircase-naive', 'test', insertion_date=idate
@@ -2112,7 +2112,7 @@ def test_staircase_tzaware_funny_bug(engine, tsh):
     # tzaware
     for idx, idate in enumerate(pd.date_range(start=utcdt(2015, 1, 1),
                                               end=utcdt(2015, 1, 4),
-                                              freq='D')):
+                                              freq='d')):
         ts = genserie(start=idate, freq='h', repeat=7)
         tsh.update(engine, ts, 'funny-staircase', 'test', insertion_date=idate)
 
@@ -2164,7 +2164,7 @@ def test_block_staircase_no_series(engine, tsh):
 
 def test_block_staircase_empty_series(engine, tsh):
     insert_date = pd.Timestamp('2021-10-15', tz='Europe/Brussels')
-    value_start_date = insert_date + pd.Timedelta(1, 'D')
+    value_start_date = insert_date + pd.Timedelta(1, 'd')
     ts = genserie(start=value_start_date, freq='h', repeat=24)
     tsh.update(
         engine, ts, 'staircase-missed-insertion', 'test', insertion_date=insert_date
@@ -2175,7 +2175,7 @@ def test_block_staircase_empty_series(engine, tsh):
         engine,
         name='staircase-missed-insertion',
         from_value_date=value_start_date,
-        to_value_date=value_start_date + pd.Timedelta(1, 'D'),
+        to_value_date=value_start_date + pd.Timedelta(1, 'd'),
         revision_freq={'days': 1},
         revision_time={'hour': 9},
         revision_tz='Europe/Brussels',
@@ -2187,8 +2187,8 @@ def test_block_staircase_empty_series(engine, tsh):
     ts = tsh.block_staircase(
         engine,
         name='staircase-missed-insertion',
-        from_value_date=value_start_date + pd.Timedelta(2, 'D'),
-        to_value_date=value_start_date + pd.Timedelta(3, 'D'),
+        from_value_date=value_start_date + pd.Timedelta(2, 'd'),
+        to_value_date=value_start_date + pd.Timedelta(3, 'd'),
         revision_freq={'days': 1},
         revision_time={'hour': 9},
         revision_tz='Europe/Brussels',
@@ -2201,7 +2201,7 @@ def test_block_staircase_empty_series(engine, tsh):
         engine,
         name='staircase-missed-insertion',
         from_value_date=value_start_date,
-        to_value_date=value_start_date + pd.Timedelta(1, 'D'),
+        to_value_date=value_start_date + pd.Timedelta(1, 'd'),
         revision_freq={'days': 1},
         revision_time={'hour': 9},
         revision_tz='Europe/Brussels',
@@ -2223,7 +2223,7 @@ def test_block_staircase_output_timezone(
     engine, tsh, ts_name, source_ts_is_tz_aware, revision_tz, expected_output_tz
 ):
     insert_date = pd.Timestamp('2021-10-15', tz='utc')
-    value_start_date = insert_date + pd.Timedelta(1, 'D')
+    value_start_date = insert_date + pd.Timedelta(1, 'd')
     ts = genserie(start=value_start_date, freq='h', repeat=24)
     ts = ts if source_ts_is_tz_aware else ts.tz_localize(None)
     tsh.update(engine, ts, ts_name, 'test', insertion_date=insert_date)
@@ -2231,7 +2231,7 @@ def test_block_staircase_output_timezone(
         engine,
         ts_name,
         from_value_date=value_start_date,
-        to_value_date=value_start_date + pd.Timedelta(1, 'D'),
+        to_value_date=value_start_date + pd.Timedelta(1, 'd'),
         revision_freq={'days': 1},
         revision_time={'hour': 9},
         maturity_offset={'days': 1},
@@ -2259,7 +2259,7 @@ def test_block_staircase_revision_error(engine, tsh):
             engine,
             name='staircase-revision-error',
             from_value_date=start_date,
-            to_value_date=start_date + pd.Timedelta(1, 'D'),
+            to_value_date=start_date + pd.Timedelta(1, 'd'),
             revision_freq={'days': 0},
             revision_time={'hour': 9},
             revision_tz='Europe/Brussels',
@@ -2270,7 +2270,7 @@ def test_block_staircase_revision_error(engine, tsh):
             engine,
             name='staircase-revision-error',
             from_value_date=start_date,
-            to_value_date=start_date + pd.Timedelta(1, 'D'),
+            to_value_date=start_date + pd.Timedelta(1, 'd'),
             revision_freq={'days': 1},
             revision_time={'hour': 9},
             revision_tz='Europe/Brussels',
@@ -2593,7 +2593,7 @@ def test_rename(engine, tsh):
     if tsh.namespace == 'zzz':
         return  # this test can only run once
 
-    serie = genserie(datetime(2020, 1, 1), 'D', 3)
+    serie = genserie(datetime(2020, 1, 1), 'd', 3)
 
     tsh.update(engine, serie, 'foo', 'Babar')
     tsh.update(engine, serie, 'bar', 'Babar')
@@ -2610,7 +2610,7 @@ def test_rename(engine, tsh):
         assert tsh.get(engine, name) is not None
 
     # check we can safely re-use 'foo'
-    serie = genserie(datetime(2025, 1, 1), 'D', 3)
+    serie = genserie(datetime(2025, 1, 1), 'd', 3)
     tsh.update(engine, serie, 'foo', 'Babar')
     ts = tsh.get(engine, 'foo')
     assert_df("""
@@ -2628,7 +2628,7 @@ def test_rename(engine, tsh):
 
 
 def test_index_order(engine, tsh):
-    ts = genserie(datetime(2020, 1, 1), 'D', 3)
+    ts = genserie(datetime(2020, 1, 1), 'd', 3)
 
     # will be sorted for us as needed
     tsh.update(engine, ts.sort_index(ascending=False),
@@ -2636,7 +2636,7 @@ def test_index_order(engine, tsh):
 
 
 def test_parallel(engine, tsh):
-    ts = genserie(datetime(2010, 1, 1), 'D', 10)
+    ts = genserie(datetime(2010, 1, 1), 'd', 10)
 
     pool = threadpool(4)
 
@@ -2697,7 +2697,7 @@ def test_null_serie(engine, tsh):
 def test_na_at_boundaries(engine, tsh):
     ts = pd.Series([np.nan] * 3 + [3] * 5 + [np.nan] * 2,
                    index=pd.date_range(start=datetime(2010, 1, 10),
-                                       freq='D', periods=10))
+                                       freq='d', periods=10))
     tsh.update(engine, ts, 'test_nan', 'test', keepnans=True)
     result = tsh.get(engine, 'test_nan')
     assert_df("""
@@ -2729,7 +2729,7 @@ def test_na_at_boundaries(engine, tsh):
     # now, let's update with useless nans
     ts = pd.Series([np.nan] * 3 + [4] * 5 + [np.nan] * 2,
                    index=pd.date_range(start=datetime(2010, 1, 10),
-                                       freq='D', periods=10))
+                                       freq='d', periods=10))
     tsh.update(engine, ts, 'test_nan', 'test')
     result = tsh.get(engine, 'test_nan', _keep_nans=True)
     # they don't show up
@@ -2753,7 +2753,7 @@ def test_na_at_boundaries(engine, tsh):
     # let's really shorten the series
     ts = pd.Series([np.nan] * 4 + [5] * 3 + [np.nan] * 3,
                    index=pd.date_range(start=datetime(2010, 1, 10),
-                                       freq='D', periods=10))
+                                       freq='d', periods=10))
     tsh.update(engine, ts, 'test_nan', 'test', keepnans=True)
     result = tsh.get(engine, 'test_nan', _keep_nans=True)
     assert_df("""
@@ -2781,7 +2781,7 @@ def test_no_series(engine, tsh):
 def test_update_errors(engine, tsh):
     ts = pd.Series([1, 2, 3],
                    index=pd.date_range(start=utcdt(2018, 1, 1),
-                                       freq='D', periods=3))
+                                       freq='d', periods=3))
 
     with pytest.raises(TypeError) as err:
         tsh.update(engine, 42, 'error', 'Babar')
@@ -2833,7 +2833,7 @@ def test_update_errors(engine, tsh):
 
 def test_index_with_nat(engine, tsh):
     index = list(pd.date_range(start=utcdt(2018, 1, 1),
-                               freq='D', periods=3))
+                               freq='d', periods=3))
     index[1] = pd.NaT
     ts = pd.Series([1, 2, 3], index=index)
 
@@ -2844,7 +2844,7 @@ def test_index_with_nat(engine, tsh):
 def test_replace(engine, tsh):
     index = pd.date_range(
         start=utcdt(2020, 1, 1),
-        freq='D', periods=3
+        freq='d', periods=3
     )
 
     seriesa = pd.Series(
@@ -2926,7 +2926,7 @@ insertion_date             value_date
 def test_replace_reuse(engine, tsh):
     index = pd.date_range(
         start=utcdt(2020, 1, 1),
-        freq='D', periods=3
+        freq='d', periods=3
     )
 
     seriesa = pd.Series(
@@ -2961,7 +2961,7 @@ def test_revisions_callback(engine, tsh):
             [1, 2, 3],
             index=pd.date_range(
                 start=utcdt(2020, 1, daystart),
-                freq='D', periods=3
+                freq='d', periods=3
             )
         )
 
@@ -3029,7 +3029,7 @@ def test_revisions_callback(engine, tsh):
 def test_find(engine, cleanup, tsh):
     ts = pd.Series(
         [1, 2, 3],
-        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+        pd.date_range(utcdt(2023, 1, 1), freq='d', periods=3)
     )
     tsh.update(
         engine,
@@ -3097,7 +3097,7 @@ def test_find(engine, cleanup, tsh):
     # tzaware
     ts = pd.Series(
         [1, 2, 3],
-        pd.date_range(datetime(2023, 1, 1), freq='D', periods=3)
+        pd.date_range(datetime(2023, 1, 1), freq='d', periods=3)
     )
     tsh.update(
         engine,
@@ -3184,7 +3184,7 @@ def test_find(engine, cleanup, tsh):
 def test_search_inequalities(engine, tsh):
     ts = pd.Series(
         [1, 2, 3],
-        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+        pd.date_range(utcdt(2023, 1, 1), freq='d', periods=3)
     )
     tsh.update(
         engine,
@@ -3263,7 +3263,7 @@ def test_search_inequalities(engine, tsh):
 def test_basket(engine, tsh):
     ts = pd.Series(
         [1, 2, 3],
-        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+        pd.date_range(utcdt(2023, 1, 1), freq='d', periods=3)
     )
     tsh.update(
         engine,
@@ -3308,7 +3308,7 @@ def test_primary_group(engine, tsh):
         n_scenarios=3,
         from_date=datetime(2021, 1, 1),
         length=5,
-        freq='D',
+        freq='d',
         seed=2
     )
 
@@ -3372,7 +3372,7 @@ def test_primary_group(engine, tsh):
         n_scenarios=3,
         from_date=datetime(2021, 1, 2),
         length=5,
-        freq='D',
+        freq='d',
         seed=-1
     )
     df.columns = colnames
@@ -3439,13 +3439,13 @@ def test_group_history(engine, tsh):
     for idx, idate in enumerate(
             pd.date_range(start=utcdt(2022, 1, 1),
                           end=utcdt(2022, 1, 5),
-                          freq='D')
+                          freq='d')
     ):
         df = gengroup(
             n_scenarios=3,
             from_date=idate.date(), #tz-naive because daily
             length=3,
-            freq='D',
+            freq='d',
             seed=10 * idx
         )
         tsh.group_replace(engine, df, 'history_group', 'test', insertion_date=idate)
@@ -3502,7 +3502,7 @@ def test_group_bad_data(engine, tsh):
         n_scenarios=3,
         from_date=datetime(2021, 1, 2),
         length=5,
-        freq='D',
+        freq='d',
         seed=-1
     )
     df.columns = ['a', 'b', 'c']
@@ -3567,7 +3567,7 @@ def test_group_bad_data(engine, tsh):
         n_scenarios=3,
         from_date=datetime(2021, 1, 1),
         length=5,
-        freq='D',
+        freq='d',
         seed=2
     )
 
@@ -3585,7 +3585,7 @@ def test_group_other_operations(engine, tsh):
         n_scenarios=4,
         from_date=datetime(2021, 1, 1),
         length=4,
-        freq='D',
+        freq='d',
         seed=4
     )
 
