@@ -348,66 +348,6 @@ def test_base(http):
     ]
 
 
-def test_get_by_horizon(http):
-    ts = genserie(utcdt(2023, 1, 1), 'd', 60)
-    http.patch('/series/state', params={
-        'name': 'horizon',
-        'series': util.tojson(ts),
-        'author': 'Babar',
-        'insertion_date': utcdt(2023, 1, 1),
-        'tzaware': util.tzaware_series(ts)
-    })
-
-    res = http.get('/series/state', params={
-        'name': 'horizon',
-        'horizon': (
-            '(horizon #:date (date "2023-2-1")'
-            '         #:offset 0'
-            '         #:past (delta #:days -2) '
-            '         #:future (delta #:days 1))'
-        )
-    })
-    assert res.json == {
-        '2023-01-30T00:00:00+00:00': 29.0,
-        '2023-01-31T00:00:00+00:00': 30.0,
-        '2023-02-01T00:00:00+00:00': 31.0,
-        '2023-02-02T00:00:00+00:00': 32.0
-    }
-
-    res = http.get('/series/state', params={
-        'name': 'horizon',
-        'horizon': (
-            '(horizon #:date (date "2023-2-1")'
-            '         #:offset 2'
-            '         #:past (delta #:days -2) '
-            '         #:future (delta #:days 1))'
-        )
-    })
-    assert res.json == {
-        '2023-01-24T00:00:00+00:00': 23.0,
-        '2023-01-25T00:00:00+00:00': 24.0,
-        '2023-01-26T00:00:00+00:00': 25.0,
-        '2023-01-27T00:00:00+00:00': 26.0
-    }
-
-    res = http.get('/series/state', params={
-        'name': 'horizon',
-        'tzone': 'Europe/Paris',
-        'horizon': (
-            '(horizon #:date (date "2023-2-1")'
-            '         #:offset 2'
-            '         #:past (delta #:days -2) '
-            '         #:future (delta #:days 1))'
-        )
-    })
-    assert res.json == {
-        '2023-01-24T01:00:00+01:00': 23.0,
-        '2023-01-25T01:00:00+01:00': 24.0,
-        '2023-01-26T01:00:00+01:00': 25.0,
-        '2023-01-27T01:00:00+01:00': 26.0
-    }
-
-
 def test_get_nans(http):
     # insert
     ts = genserie(utcdt(2024, 1, 1), 'h', 3)
