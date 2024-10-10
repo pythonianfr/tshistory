@@ -3,7 +3,6 @@ from random import sample
 
 from pkg_resources import iter_entry_points
 import click
-import pandas as pd
 from sqlalchemy import create_engine
 
 from dbcache import api as storeapi
