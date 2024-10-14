@@ -10,7 +10,6 @@ import numpy as np
 
 from sqlhelp import sqlfile, select, insert
 
-from tshistory import search
 from tshistory.util import (
     closed_overlaps,
     compatible_date,
@@ -823,11 +822,6 @@ class timeseries:
             name=name,
             query=query
         )
-
-    @tx
-    def basket(self, cn, name):
-        query = self.basket_definition(cn, name)
-        return self.find(cn, search.query.fromexpr(query))
 
     @tx
     def basket_definition(self, cn, name):

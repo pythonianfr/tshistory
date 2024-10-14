@@ -839,13 +839,8 @@ class mainsource:
 
         """
         with self.engine.begin() as cn:
-            localnames = self.tsh.basket(cn, name)
-        remotenames = self.othersources.find(
-            self.basket_definition(name)
-        )
-        return sorted(
-            localnames + remotenames
-        )
+            query = self.tsh.basket_definition(cn, name)
+        return self.find(query)
 
     def basket_definition(self, name: str) -> str:
         """Returns the query string associated with a basket."""

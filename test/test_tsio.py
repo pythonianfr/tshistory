@@ -3292,9 +3292,7 @@ def test_basket(engine, tsh):
     )
     assert tsh.list_baskets(engine) == ['b1', 'b2']
 
-    assert tsh.basket(engine, 'b1') == ['basket.1']
     assert tsh.basket_definition(engine, 'b1') == '(by.name "t.1")'
-    assert tsh.basket(engine, 'b2') == ['basket.1', 'basket.2']
 
     tsh.delete_basket(engine, 'b1')
     assert tsh.list_baskets(engine) == ['b2']
