@@ -1162,6 +1162,31 @@ def test_federated_find(mapi):
     )
     assert names == ['remote.basket.fed']
 
+    names = mapi.find(
+        '(by.and '
+        '  (by.name "basket.fed")'
+        '  (by.source "remote"))'
+    )
+    assert names == ['remote.basket.fed']
+
+    names = mapi.find(
+        '(by.and '
+        '  (by.source "local")'
+        '  (by.name "basket.fed"))'
+    )
+    assert names == ['local.basket.fed']
+
+    names = mapi.find(
+        '(by.or '
+        '  (by.and '
+        '    (by.source "local")'
+        '    (by.name "basket.fed"))'
+        '  (by.and '
+        '    (by.source "remote")'
+        '    (by.name "basket.fed")))'
+    )
+    assert names == ['local.basket.fed', 'remote.basket.fed']
+
 
 def test_replicate_series(tsx):
     insertion_dates = pd.date_range(
