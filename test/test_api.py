@@ -1085,6 +1085,15 @@ def test_federated_basket(mapi):
     r = b[1]
     assert r.source == 'remote'
 
+    with pytest.raises(Exception):
+        mapi.register_basket(
+            'mybasket',
+            '(by.and '
+            '  (by.source "local")'
+            '  (by.name "basket.fed"))'
+        )
+        names = mapi.basket('mybasket')
+
 
 def test_federated_find(mapi):
     # cleanup
