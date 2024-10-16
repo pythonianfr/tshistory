@@ -11,7 +11,7 @@ from collections import defaultdict
 import warnings
 
 from psyl import lisp
-from sqlalchemy import create_engine
+from sqlhelp.pgapi import pgdb
 import pandas as pd
 
 from tshistory.config import configuration
@@ -100,7 +100,7 @@ class mainsource:
                  othersources=None):
         self.uri = uri
         self.namespace = namespace
-        self.engine = create_engine(uri, max_overflow=100)
+        self.engine = pgdb(uri)
         self.tsh = tshclass(namespace, othersources, uri=uri)
         self.othersources = othersources
 
@@ -155,15 +155,15 @@ class mainsource:
         """
         insertion_date = ensuretz(insertion_date)
 
-        # check local existence
-        if not self.tsh.exists(self.engine, name):
-            # give a chance to say *no*
-            self.othersources.forbidden(
-                name,
-                'not allowed to update to a secondary source'
-            )
-
         with self.engine.begin() as cn:
+        # check local existence
+            if not self.tsh.exists(cn, name):
+                # give a chance to say *no*
+                self.othersources.forbidden(
+                    name,
+                    'not allowed to update to a secondary source'
+                )
+
             return self.tsh.update(
                 cn,
                 updatets,
@@ -198,30 +198,32 @@ class mainsource:
         insertion_date = ensuretz(insertion_date)
 
         # check local existence
-        if not self.tsh.exists(self.engine, name):
-            # give a chance to say *no*
-            self.othersources.forbidden(
-                name,
-                'not allowed to replace to a secondary source'
-            )
+        with self.engine.begin() as cn:
+            if not self.tsh.exists(cn, name):
+                # give a chance to say *no*
+                self.othersources.forbidden(
+                    name,
+                    'not allowed to replace to a secondary source'
+                )
 
-        return self.tsh.replace(
-            self.engine,
-            replacets,
-            name,
-            author,
-            metadata=metadata,
-            insertion_date=insertion_date,
-            **kw
-        )
+            return self.tsh.replace(
+                cn,
+                replacets,
+                name,
+                author,
+                metadata=metadata,
+                insertion_date=insertion_date,
+                **kw
+            )
 
     def exists(self, name: str) -> bool:
         """Checks the existence of a series with a given name.
 
         """
-        if (not self.tsh.exists(self.engine, name) and
-            not self.othersources.exists(name)):
-            return False
+        with self.engine.begin() as cn:
+            if (not self.tsh.exists(cn, name) and
+                not self.othersources.exists(name)):
+                return False
 
         return True
 
@@ -231,13 +233,13 @@ class mainsource:
         When coming from the main source, it returns 'local'.
 
         """
-        if self.tsh.exists(self.engine, name):
-            return 'local'
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return 'local'
 
         for source in self.othersources.sources:
             if source.tsa.exists(name):
                 return source.name
-
 
     def get(self, name: str,
             revision_date: Optional[datetime]=None,
@@ -272,15 +274,16 @@ class mainsource:
         """
         revision_date = ensuretz(revision_date)
 
-        ts = self.tsh.get(
-            self.engine,
-            name,
-            revision_date=revision_date,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            keepnans=keepnans,
-            **kw
-        )
+        with self.engine.begin() as cn:
+            ts = self.tsh.get(
+                cn,
+                name,
+                revision_date=revision_date,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                keepnans=keepnans,
+                **kw
+            )
 
         if ts is not None:
             if inferred_freq:
@@ -313,16 +316,17 @@ class mainsource:
         from_insertion_date = ensuretz(from_insertion_date)
         to_insertion_date = ensuretz(to_insertion_date)
 
-        if self.tsh.exists(self.engine, name):
-            return self.tsh.insertion_dates(
-                self.engine,
-                name,
-                from_insertion_date=from_insertion_date,
-                to_insertion_date=to_insertion_date,
-                from_value_date=from_value_date,
-                to_value_date=to_value_date,
-                **kw
-            )
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return self.tsh.insertion_dates(
+                    cn,
+                    name,
+                    from_insertion_date=from_insertion_date,
+                    to_insertion_date=to_insertion_date,
+                    from_value_date=from_value_date,
+                    to_value_date=to_value_date,
+                    **kw
+                )
 
         return self.othersources.insertion_dates(
             name,
@@ -384,17 +388,18 @@ class mainsource:
         from_insertion_date = ensuretz(from_insertion_date)
         to_insertion_date = ensuretz(to_insertion_date)
 
-        hist = self.tsh.history(
-            self.engine,
-            name,
-            from_insertion_date=from_insertion_date,
-            to_insertion_date=to_insertion_date,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            diffmode=diffmode,
-            keepnans=keepnans,
-            **kw
-        )
+        with self.engine.begin() as cn:
+            hist = self.tsh.history(
+                cn,
+                name,
+                from_insertion_date=from_insertion_date,
+                to_insertion_date=to_insertion_date,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                diffmode=diffmode,
+                keepnans=keepnans,
+                **kw
+            )
 
         if hist is None:
             hist = self.othersources.history(
@@ -422,14 +427,14 @@ class mainsource:
         is sound.
 
         """
-
-        sc = self.tsh.staircase(
-            self.engine,
-            name,
-            delta,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date
-        )
+        with self.engine.begin() as cn:
+            sc = self.tsh.staircase(
+                cn,
+                name,
+                delta,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date
+            )
 
         if sc is None:
             sc = self.othersources.staircase(
@@ -494,17 +499,18 @@ class mainsource:
             `maturity_offset`
 
         """
-        bsc = self.tsh.block_staircase(
-            self.engine,
-            name,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            revision_freq=revision_freq,
-            revision_time=revision_time,
-            revision_tz=revision_tz,
-            maturity_offset=maturity_offset,
-            maturity_time=maturity_time,
-        )
+        with self.engine.begin() as cn:
+            bsc = self.tsh.block_staircase(
+                cn,
+                name,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                revision_freq=revision_freq,
+                revision_time=revision_time,
+                revision_tz=revision_tz,
+                maturity_offset=maturity_offset,
+                maturity_time=maturity_time,
+            )
         if bsc is None:
             bsc = self.othersources.block_staircase(
                 name,
@@ -529,8 +535,9 @@ class mainsource:
         """
         instancename = self._instancename()
         cat = defaultdict(list)
-        for name, kind in self.tsh.list_series(self.engine).items():
-            cat[(instancename, self.namespace)].append((name, kind))
+        with self.engine.begin() as cn:
+            for name, kind in self.tsh.list_series(cn).items():
+                cat[(instancename, self.namespace)].append((name, kind))
         if allsources:
             for key, val in self.othersources.catalog(False).items():
                 assert key not in cat, f'{key} already in {cat}'
@@ -621,7 +628,8 @@ class mainsource:
 
         """
         try:
-            ival = self.tsh.interval(self.engine, name)
+            with self.engine.begin() as cn:
+                ival = self.tsh.interval(cn, name)
         except ValueError:
             return self.othersources.interval(name)
         return ival
@@ -660,7 +668,9 @@ class mainsource:
             )
             imeta = self.internal_metadata(name)
 
-        meta = self.tsh.metadata(self.engine, name)
+        with self.engine.begin() as cn:
+            meta = self.tsh.metadata(cn, name)
+
         if meta is None:
             meta = self.othersources.metadata(name)
             if meta is None:
@@ -675,7 +685,8 @@ class mainsource:
     def internal_metadata(self,
                           name: str) -> Dict[str, Any]:
         """Return a series internal metadata dictionary."""
-        meta = self.tsh.internal_metadata(self.engine, name)
+        with self.engine.begin() as cn:
+            meta = self.tsh.internal_metadata(cn, name)
         if not meta:
             meta = self.othersources.internal_metadata(name)
         return meta
@@ -721,8 +732,9 @@ class mainsource:
         """Return the type of a series, for instance 'primary' or 'formula'.
 
         """
-        if self.tsh.exists(self.engine, name):
-            return self.tsh.type(self.engine, name)
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return self.tsh.type(cn, name)
 
         return self.othersources.type(name)
 
@@ -741,21 +753,23 @@ class mainsource:
         * meta: the revision metadata
 
         """
-        if not self.tsh.exists(self.engine, name):
-            return self.othersources.log(
-                name,
-                limit=limit,
-                fromdate=fromdate,
-                todate=todate
-            )
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return self.tsh.log(
+                    cn,
+                    name,
+                    limit=limit,
+                    fromdate=fromdate,
+                    todate=todate
+                )
 
-        return self.tsh.log(
-            self.engine,
+        return self.othersources.log(
             name,
             limit=limit,
             fromdate=fromdate,
             todate=todate
         )
+
 
     def rename(self,
                currname: str,
@@ -772,7 +786,8 @@ class mainsource:
             'not allowed to rename to a secondary source'
         )
 
-        return self.tsh.rename(self.engine, currname, newname, propagate=propagate)
+        with self.engine.begin() as cn:
+            return self.tsh.rename(cn, currname, newname, propagate=propagate)
 
     def delete(self, name: str):
         """Delete a series.
@@ -798,10 +813,10 @@ class mainsource:
         """
 
         insertion_date = ensuretz(insertion_date)
-        if not self.tsh.exists(self.engine, name):
-            raise Exception(f'no series {name} exists')
-
         with self.engine.begin() as cn:
+            if not self.tsh.exists(cn, name):
+                raise Exception(f'no series {name} exists')
+
             return self.tsh.strip(cn, name, insertion_date)
 
     def register_basket(self, name: str, query: str) -> NONETYPE:
@@ -852,9 +867,10 @@ class mainsource:
         """Checks the existence of a group with a given name.
 
         """
-        if not (self.tsh.group_exists(self.engine, name) or
-                self.othersources.group_exists(name)):
-            return False
+        with self.engine.begin() as cn:
+            if not (self.tsh.group_exists(cn, name) or
+                    self.othersources.group_exists(name)):
+                return False
 
         return True
 

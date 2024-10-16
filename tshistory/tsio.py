@@ -133,7 +133,7 @@ class base:
             f'from "{self.namespace}".registry '
             'group by key '
             'order by key'
-        ).scalars().all()
+        ).scalars()
 
     def _validate(self, cn, ts, name):
         if ts.isnull().all():
@@ -151,14 +151,16 @@ class base:
                 f'ref=`{meta["index_type"]}`, new=`{ts.index.dtype.name}`'
             )
 
+    @tx
     def list_series(self, cn):
         """Return the mapping of all series to their type"""
         sql = f'select name from "{self.namespace}".registry '
         return {
-            row.name: 'primary'
-            for row in cn.execute(sql)
+            row: 'primary'
+            for row in cn.execute(sql).scalars()
         }
 
+    @tx
     def tzaware(self, cn, name):
         return cn.execute(
             'select internal_metadata->\'tzaware\' '
@@ -202,7 +204,7 @@ class base:
         if not meta:
             return [
                 ts(name, source=source)
-                for name, in q.do(cn).fetchall()
+                for name in q.do(cn).scalars()
             ]
 
         return [
@@ -236,10 +238,7 @@ class base:
     @tx
     def list_baskets(self, cn):
         q = select('name').table(f'"{self.namespace}".basket').order('name')
-        return [
-            name for name, in
-            q.do(cn).fetchall()
-        ]
+        return q.do(cn).scalars()
 
     @tx
     def delete_basket(self, cn, name):
@@ -496,7 +495,7 @@ class base:
             init_rev_date = prev_rev_date
             init_block_start = prev_block_start
 
-        # assemble blocks by looping over successive revisions
+        # assemble blocks by looping over successive revisions
         revision_date = init_rev_date
         block_start = init_block_start
         res_ts = empty_series(tzaware, name=name)
@@ -561,9 +560,9 @@ class base:
     def list_groups(self, cn):
         cat = {
             name: 'primary'
-            for name, in cn.execute(
+            for name in cn.execute(
                 f'select name from "{self.namespace}".group_registry'
-            ).fetchall()
+            ).scalars()
         }
         return cat
 
@@ -1215,16 +1214,16 @@ class timeseries(base):
         if not self.exists(cn, name):
             return []
 
-        log = []
         q = self._log_series_query(
             cn, name, limit, authors,
             fromdate, todate
         )
-        rset = q.do(cn)
-        for csetid, author, revdate, meta in rset.fetchall():
-            log.append({'rev': csetid, 'author': author,
-                        'date': pd.Timestamp(revdate).tz_convert('utc'),
-                        'meta': meta if meta else {}})
+        log = [
+            {'rev': csetid, 'author': author,
+             'date': pd.Timestamp(revdate).tz_convert('utc'),
+             'meta': meta if meta else {}}
+            for csetid, author, revdate, meta in q.do(cn).fetchall()
+        ]
 
         log.sort(key=lambda rev: rev['rev'])
         return log

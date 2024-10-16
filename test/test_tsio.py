@@ -6,7 +6,7 @@ import pytz
 import pytest
 import numpy as np
 import pandas as pd
-from sqlalchemy.exc import IntegrityError
+from psycopg.errors import ForeignKeyViolation
 
 from tshistory.storage import Postgres
 from tshistory.util import (
@@ -240,6 +240,16 @@ Freq: H
 2017-10-29 04:00:00+00:00    3.0
 """, ts)
 
+    ts = tsh.get(engine, 'tztest', revision_date=pd.Timestamp('2018-1-3'))
+    assert_df("""
+2017-10-28 23:00:00+00:00    0.0
+2017-10-29 00:00:00+00:00    1.0
+2017-10-29 01:00:00+00:00    0.0
+2017-10-29 02:00:00+00:00    1.0
+2017-10-29 03:00:00+00:00    2.0
+2017-10-29 04:00:00+00:00    3.0
+""", ts)
+
     hist = tsh.history(engine, 'tztest')
     assert_hist("""
 insertion_date             value_date               
@@ -279,11 +289,12 @@ def test_base_diff(engine, tsh):
     if not isinstance(tsh, timeseries):
         return
     id1 = tsh.last_id(engine, 'ts_test')
-    assert tsh._previous_cset(
-        _set_cache(engine),
-        'ts_test',
-        id1
-    ) is None
+    with engine.begin() as cn:
+        assert tsh._previous_cset(
+            _set_cache(cn),
+            'ts_test',
+            id1
+        ) is None
 
     assert tsh.exists(engine, 'ts_test')
     assert not tsh.exists(engine, 'this_does_not_exist')
@@ -333,11 +344,13 @@ def test_base_diff(engine, tsh):
     ts_slight_variation.iloc[6] = 0
     tsh.update(engine, ts_slight_variation, 'ts_test', 'celeste')
     id2 = tsh.last_id(engine, 'ts_test')
-    assert tsh._previous_cset(
-        _set_cache(engine),
-        'ts_test',
-        id2
-    ) == id1
+
+    with engine.begin() as cn:
+        assert tsh._previous_cset(
+            _set_cache(cn),
+            'ts_test',
+            id2
+        ) == id1
 
     assert_df("""
 2010-01-01    0.0
@@ -2956,9 +2969,10 @@ def test_replace_reuse(engine, tsh):
         insertion_date=utcdt(2019, 1, 1)
     )
     if isinstance(tsh, timeseries):
-        snap = Postgres(_set_cache(engine), tsh, 'replace-reuse')
-        chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(1)]
-        assert chunks == [(1, None)]
+        with engine.begin() as cn:
+            snap = Postgres(_set_cache(cn), tsh, 'replace-reuse')
+            chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(1)]
+            assert chunks == [(1, None)]
 
     tsh.replace(
         engine, seriesa, 'replace-reuse', 'Babar',
@@ -3353,7 +3367,8 @@ def test_primary_group(engine, tsh):
         insertion_date=pd.Timestamp('2021-01-01', tz='UTC')
     )
 
-    infos = tsh._group_info(engine, 'first_group')
+    with engine.begin() as cn:
+        infos = tsh._group_info(cn, 'first_group')
     assert ['a', 'b', 'c'] == [col for col, _name in infos]
     infonames = [sid for name, sid in infos]
 
@@ -3363,7 +3378,8 @@ def test_primary_group(engine, tsh):
     name = infos[0][1]
     tsh_group = tsh.__class__(namespace=f'{tsh.namespace}.group')
 
-    names = list(tsh_group.list_series(engine).keys())
+    with engine.begin() as cn:
+        names = list(tsh_group.list_series(cn).keys())
     assert names == infonames
 
     ts = tsh_group.get(engine, name)
@@ -3637,7 +3653,8 @@ def test_group_other_operations(engine, tsh):
     lgroups = tsh.list_groups(engine)
     assert 'third_group' in lgroups
 
-    infos = tsh._group_info(engine, 'third_group')
+    with engine.begin() as cn:
+        infos = tsh._group_info(cn, 'third_group')
     names = [name for _, name in infos]
 
     for name in names:
@@ -3646,7 +3663,7 @@ def test_group_other_operations(engine, tsh):
     # if someone tries to delete a group item, an error is raised as
     # it should be -- this is handled by the referential integrity constraint
     # on group <-> series
-    with pytest.raises(IntegrityError):
+    with pytest.raises(ForeignKeyViolation):
         tsh.tsh_group.delete(engine, names[0])
 
     meta = tsh.group_metadata(engine, 'third_group')

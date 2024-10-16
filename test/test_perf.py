@@ -6,7 +6,7 @@ from time import time
 import pandas as pd
 import pytest
 from pytest_sa_pg import db as dbsetup
-from sqlalchemy import create_engine
+from sqlhelp.pgapi import pgdb as create_engine
 
 from tshistory import schema, tsio
 from tshistory.testutil import tempconfig

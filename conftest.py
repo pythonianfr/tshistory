@@ -1,7 +1,7 @@
 from pathlib import Path
 import shutil
 
-from sqlalchemy import create_engine
+from sqlhelp.pgapi import pgdb
 import pandas as pd
 import webtest
 
@@ -50,7 +50,7 @@ def db(request):
 
 @pytest.fixture(scope='session')
 def engine(db):
-    return create_engine(DBURI)
+    return pgdb(DBURI)
 
 
 # api fixtures
@@ -130,7 +130,7 @@ def pure(engine):
 @pytest.fixture(scope='session')
 def cleanup(engine, tsh):
     with engine.begin() as cn:
-        for name in tsh.list_series(engine):
+        for name in tsh.list_series(cn):
             tsh.delete(cn, name)
 
 

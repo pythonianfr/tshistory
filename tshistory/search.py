@@ -468,10 +468,10 @@ class _comparator(query):
                 }
             )
 
-        vid = usym('value')
+        assert isinstance(self.value, (int, float))
         return (
-            f'jsonb_path_match(metadata, \'$.{self.key} {self._op} %({vid})s\')',
-            {vid: self.value}
+            f"jsonb_path_match(metadata, '$.{self.key} {self._op} {self.value}')",
+            {}
         )
 
 

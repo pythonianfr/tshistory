@@ -15,6 +15,7 @@ from tshistory.util import (
     diff,
     fromjson,
     infer_freq,
+    make_url,
     objects,
     patch,
     patchmany,
@@ -27,6 +28,17 @@ from tshistory.testutil import (
     tables,
     utcdt
 )
+
+
+def test_make_url():
+    uri = (
+        'postgresql://becurvemanager:5ewjI}kxI:&8[(<dO~}Lk*g1WT?8a"{0'
+        '@host.docker.internal:5432/becurvemanager'
+    )
+    u = make_url(uri)
+    assert str(u) == (
+        'postgresql://becurvemanager:***@host.docker.internal:5432/becurvemanager'
+    )
 
 
 def test_safe_urlparse():
@@ -409,31 +421,28 @@ def test_bisect():
 
 
 def test_tables(engine, pure):
-    assert tables(engine) == [
-        ('pure', 'basket'),
-        ('pure', 'group_registry'),
-        ('pure', 'groupmap'),
-        ('pure', 'registry'),
-        ('pure', 'revision_metadata'),
-        ('pure-kvstore', 'kvstore'),
-        ('pure-kvstore', 'things'),
-        ('pure-kvstore', 'version'),
-        ('pure-kvstore', 'vkvstore'),
-        ('pure.group', 'registry'),
-        ('pure.group', 'revision_metadata'),
-        ('pure.group-kvstore', 'kvstore'),
-        ('pure.group-kvstore', 'things'),
-        ('pure.group-kvstore', 'version'),
-        ('pure.group-kvstore', 'vkvstore')
-    ]
+    with engine.begin() as cn:
+        assert tables(cn) == [
+            ('pure', 'basket'),
+            ('pure', 'group_registry'),
+            ('pure', 'groupmap'),
+            ('pure', 'registry'),
+            ('pure', 'revision_metadata'),
+            ('pure-kvstore', 'kvstore'),
+            ('pure-kvstore', 'things'),
+            ('pure-kvstore', 'version'),
+            ('pure-kvstore', 'vkvstore'),
+            ('pure.group', 'registry'),
+            ('pure.group', 'revision_metadata'),
+            ('pure.group-kvstore', 'kvstore'),
+            ('pure.group-kvstore', 'things'),
+            ('pure.group-kvstore', 'version'),
+            ('pure.group-kvstore', 'vkvstore')
+        ]
 
 
 def test_in_tx(tsh, engine):
     assert tsh.type(engine, 'foo') == 'primary'
-
-    with pytest.raises(TypeError) as err:
-        tsh.update(engine.connect(), 0, 0, 0)
-    assert err.value.args[0] == 'You must use a transaction object'
 
     ts = genserie(datetime(2017, 10, 28, 23),
                   'h', 4, tz='UTC')

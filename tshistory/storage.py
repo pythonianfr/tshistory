@@ -299,12 +299,10 @@ class Postgres(base):
         """
 
         reachable_chunks = {
-            rev for rev, in self.cn.execute(reachablesql)
+            rev for rev in self.cn.execute(reachablesql).scalars()
         }
         allsql = f'select id from "{self.tsh.namespace}.snapshot"."{self.tablename}" '
-        allchuks = {
-            rev for rev, in self.cn.execute(allsql).fetchall()
-        }
+        allchuks = set(self.cn.execute(allsql).scalars())
 
         return allchuks - reachable_chunks
 

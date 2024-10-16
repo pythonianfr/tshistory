@@ -1,10 +1,7 @@
 from json import dumps
 import os
 
-from sqlalchemy import (
-    create_engine,
-    exc
-)
+from sqlhelp.pgapi import pgdb
 
 from version_parser import Version as _Version
 from dbcache import (
@@ -64,7 +61,7 @@ class Migrator:
 
     @property
     def engine(self):
-        return create_engine(self.uri)
+        return pgdb(self.uri)
 
     @property
     def storens(self):
@@ -86,7 +83,7 @@ class Migrator:
                 self._package,
                 self.store.get(self.versionkey)
             )
-        except (exc.ProgrammingError, ValueError):
+        except Exception:
             # bootstrap: we're in a stage where this was never installed
             # yes, this is a bit aggressive for a propery, but that
             # happens only once ...
@@ -270,7 +267,6 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive, onlydata=False
     import signal
     import sys
     import multiprocessing
-    from sqlalchemy import create_engine
 
     if onlydata:
         print(f'data migration for columns `diffstart` and `diffend` to {namespace}.revision')
@@ -353,7 +349,7 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive, onlydata=False
 
     def migrate(url, names):
         pid = os.getpid()
-        engine = create_engine(url)
+        engine = pgdb(url)
         for name in names:
             with engine.begin() as cn:
                 cn.cache = {'series_tablename': {}}

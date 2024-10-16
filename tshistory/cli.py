@@ -2,7 +2,7 @@ from collections import defaultdict
 
 from pkg_resources import iter_entry_points
 import click
-from sqlalchemy import create_engine
+from sqlhelp.pgapi import pgdb as create_engine
 
 from dbcache import api as storeapi
 from tshistory.api import timeseries
