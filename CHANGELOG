@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.1]
+### Fixed
+- api/inferred_freq: fix some edge cases
+- api/baskets: fix by.source handling
+- api/get: remove experimental horizon parameter
+- api/find: fix queries with by.metaitem
+
 ## [0.20.0]
 ### Added
 - api/inferred_freq: get the inferred frequency (and a quality
