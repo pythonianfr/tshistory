@@ -652,14 +652,18 @@ class httpapi:
                     # because there is a lack of coherency between
                     # what webtest does and the rest (flask, gunicorn)
                     # at http patch time ...
-                    if isinstance(args.series, str):
-                        # webtest
-                        series = pd.Series(json.loads(args.series))
+                    meta = tsa.internal_metadata(args.name)
+                    if args.series is not None:
+                        if isinstance(args.series, str):
+                            # webtest
+                            series = pd.Series(json.loads(args.series))
+                        else:
+                            # gunicorn
+                            assert isinstance(args.series, dict)
+                            series = pd.Series(args.series, dtype=meta['value_dtype'])
                     else:
-                        # gunicorn
-                        assert isinstance(args.series, dict)
-                        meta = tsa.internal_metadata(args.name)
-                        series = pd.Series(args.series, dtype=meta['value_dtype'])
+                        dtype = meta and meta['value_dtype'] or None
+                        series = pd.Series(json.loads(args.bseries.stream.read()), dtype=dtype)
 
                     series.index = pd.to_datetime(
                         series.index,

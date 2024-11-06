@@ -406,6 +406,83 @@ def test_patch_nonutc_tzaware(http):
     }
 
 
+def test_patch_nonutc_tzaware_bseries(http):
+    ts = genserie(utcdt(2024, 1, 1), 'd', 5)
+    ts.index = ts.index.tz_convert('Europe/Paris')
+    # create
+    res = http.patch(
+        '/series/state',
+        params={
+            'name': 'patchnonutc-tzaware2',
+            'tzone': 'Europe/Paris',
+            'author': 'Babar',
+            'insertion_date': utcdt(2024, 1, 1),
+            'tzaware': util.tzaware_series(ts)
+        },
+        upload_files=[
+            ('bseries', 'bseries', json.dumps(util.tojson2(ts)).encode('utf-8'))
+        ]
+    )
+    assert res.status_code == 201
+
+    res = http.get('/series/state', params={
+        'name': 'patchnonutc-tzaware2',
+        'tzone': 'Europe/Paris'
+    })
+    assert res.json == {
+        '2024-01-01T01:00:00+01:00': 0.0,
+        '2024-01-02T01:00:00+01:00': 1.0,
+        '2024-01-03T01:00:00+01:00': 2.0,
+        '2024-01-04T01:00:00+01:00': 3.0,
+        '2024-01-05T01:00:00+01:00': 4.0
+    }
+
+    res = http.get('/series/state', params={
+        'name': 'patchnonutc-tzaware2'
+    })
+    assert res.json == {
+        '2024-01-01T00:00:00+00:00': 0.0,
+        '2024-01-02T00:00:00+00:00': 1.0,
+        '2024-01-03T00:00:00+00:00': 2.0,
+        '2024-01-04T00:00:00+00:00': 3.0,
+        '2024-01-05T00:00:00+00:00': 4.0
+    }
+
+    # update
+    ts = genserie(utcdt(2024, 2, 1), 'd', 5)
+    ts.index = ts.index.tz_convert('Europe/Paris')
+    res = http.patch(
+        '/series/state',
+        params={
+            'name': 'patchnonutc-tzaware2',
+            'tzone': 'Europe/Paris',
+            'author': 'Babar',
+            'insertion_date': utcdt(2024, 2, 1),
+            'tzaware': util.tzaware_series(ts)
+        },
+        upload_files=[
+            ('bseries', 'bseries', json.dumps(util.tojson2(ts)).encode('utf-8'))
+        ]
+    )
+    assert res.status_code == 200
+
+    res = http.get('/series/state', params={
+        'name': 'patchnonutc-tzaware2'
+    })
+    assert res.json == {
+        '2024-01-01T00:00:00+00:00': 0.0,
+        '2024-01-02T00:00:00+00:00': 1.0,
+        '2024-01-03T00:00:00+00:00': 2.0,
+        '2024-01-04T00:00:00+00:00': 3.0,
+        '2024-01-05T00:00:00+00:00': 4.0,
+        '2024-02-01T00:00:00+00:00': 0.0,
+        '2024-02-02T00:00:00+00:00': 1.0,
+        '2024-02-03T00:00:00+00:00': 2.0,
+        '2024-02-04T00:00:00+00:00': 3.0,
+        '2024-02-05T00:00:00+00:00': 4.0
+    }
+
+
 def test_patch_nonutc_naive(http):
     ts = genserie(pd.Timestamp('2023-1-1'), 'd', 5)
     res = http.patch('/series/state', params={
