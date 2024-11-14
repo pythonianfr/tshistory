@@ -519,6 +519,46 @@ def test_patch_nonutc_naive(http):
     }
 
 
+def test_apply_tz_on_bounds(client, http):
+    ts = pd.Series(
+        range(73),
+        index = pd.date_range(
+            start=pd.Timestamp('2023-01-01', tz='UTC'),
+            end=pd.Timestamp('2023-01-04', tz='UTC'),
+            freq='h'
+        )
+    )
+    client.update(
+        'ts-aware-bounds',
+        ts,
+        'test'
+    )
+    # We request a tz-aware timeseries
+    # We provide a tzone parameter (from the UI)
+    # We provide bounds without offset (also from the UI)
+    from_naive = pd.Timestamp('2023-01-02')
+    to_naive = pd.Timestamp('2023-01-03')
+    result = http.get(
+        '/series/state',
+        params={
+            'name': 'ts-aware-bounds',
+            'tzone': 'CET',
+            'from_value_date': from_naive,
+            'to_value_date': to_naive,
+        }
+    )
+    tsr = pd.Series(result.json)
+
+    # The bounds have been interpreted as tz-aware with no timezone.
+    #
+    # Hence, we receive the date at 01H in the requested tzone instead
+    # of 00H
+    assert tsr.index[0] == '2023-01-02T01:00:00+01:00'
+    assert tsr.index[-1] == '2023-01-03T01:00:00+01:00'
+    # We would prefer that these naive bounds are interpreted as
+    # tz-aware in the selected tzone, i.e. T00:00:00+01:00
+
+
 def test_delete(http):
     series_in = genserie(utcdt(2018, 1, 1), 'h', 3)
     res = http.patch('/series/state', params={
