@@ -549,14 +549,12 @@ def test_apply_tz_on_bounds(client, http):
     )
     tsr = pd.Series(result.json)
 
-    # The bounds have been interpreted as tz-aware with no timezone.
+    # The bounds gave been interpreted as tz-aware in the specified
+    # timezone.
     #
-    # Hence, we receive the date at 01H in the requested tzone instead
-    # of 00H
-    assert tsr.index[0] == '2023-01-02T01:00:00+01:00'
-    assert tsr.index[-1] == '2023-01-03T01:00:00+01:00'
-    # We would prefer that these naive bounds are interpreted as
-    # tz-aware in the selected tzone, i.e. T00:00:00+01:00
+    # Hence, we receive the date at midnight in the requested tzone
+    assert tsr.index[0] == '2023-01-02T00:00:00+01:00'
+    assert tsr.index[-1] == '2023-01-03T00:00:00+01:00'
 
 
 def test_delete(http):

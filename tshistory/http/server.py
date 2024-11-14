@@ -24,7 +24,8 @@ from tshistory.http.util import (
     group_response,
     required_roles,
     todict,
-    utcdt
+    utcdt,
+    convert_bounds
 )
 
 
@@ -775,12 +776,17 @@ class httpapi:
                 args = get.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
+                from_value_date, to_value_date = convert_bounds(
+                    args.from_value_date,
+                    args.to_value_date,
+                    args.tzone
+                )
 
                 series = tsa.get(
                     args.name,
                     revision_date=args.insertion_date,
-                    from_value_date=args.from_value_date,
-                    to_value_date=args.to_value_date,
+                    from_value_date=from_value_date,
+                    to_value_date=to_value_date,
                     nocache=args.nocache,
                     live=args.live,
                     inferred_freq=args.inferred_freq,

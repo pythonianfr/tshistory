@@ -61,6 +61,14 @@ def utcdt(dtstr):
     return pd.Timestamp(dtstr)
 
 
+def convert_bounds(from_value_date, to_value_date, tzone):
+    if from_value_date and from_value_date.tz is None and tzone is not None:
+        from_value_date = from_value_date.tz_localize(tzone)
+    if to_value_date and to_value_date.tz is None and tzone is not None:
+        to_value_date = to_value_date.tz_localize(tzone)
+    return from_value_date, to_value_date
+
+
 def todict(dictstr):
     if dictstr is None:
         return None
