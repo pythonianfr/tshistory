@@ -968,14 +968,23 @@ class mainsource:
               `from_value_date` and `to_value_date`.
         """
         with self.engine.begin() as cn:
-            return self.tsh.group_history(
-                cn,
-                name,
-                from_value_date=from_value_date,
-                to_value_date=to_value_date,
-                from_insertion_date=from_insertion_date,
-                to_insertion_date=to_insertion_date,
-            )
+            if self.tsh.group_exists(cn, name):
+                return self.tsh.group_history(
+                    cn,
+                    name,
+                    from_value_date=from_value_date,
+                    to_value_date=to_value_date,
+                    from_insertion_date=from_insertion_date,
+                    to_insertion_date=to_insertion_date,
+                )
+
+        return self.othersources.group_history(
+            name,
+            from_value_date,
+            to_value_date,
+            from_insertion_date,
+            to_insertion_date
+        )
 
     def group_replace(self,
                       name: str,
@@ -1357,6 +1366,25 @@ class altsources:
             from_insertion_date,
             to_insertion_date
         )
+
+    def group_history(self,
+                      name,
+                      from_value_date,
+                      to_value_date,
+                      from_insertion_date,
+                      to_insertion_date):
+        source = self._findsourceforgroup(name)
+        if source is None:
+            return
+
+        return source.tsa.group_history(
+            name,
+            from_value_date,
+            to_value_date,
+            from_insertion_date,
+            to_insertion_date
+        )
+
 
     def group_catalog(self, allsources=False):
         cats = []

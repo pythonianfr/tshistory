@@ -1437,6 +1437,16 @@ def test_remote_group(engine, tsx):
         'value_type': 'float64'
     }
 
+    h = tsx.group_history('remote-group')
+    assert_hist("""
+                                        0    1    2
+insertion_date            value_date               
+2024-01-01 00:00:00+00:00 2021-01-01  2.0  3.0  4.0
+                          2021-01-02  3.0  4.0  5.0
+                          2021-01-03  4.0  5.0  6.0
+                          2021-01-04  5.0  6.0  7.0
+                          2021-01-05  6.0  7.0  8.0
+""", h)
 
     cat = tsx.group_catalog()
     assert cat == {('postgres@remote', 'remote'): [('remote-group', 'primary')]}
