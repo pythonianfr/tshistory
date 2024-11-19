@@ -1157,6 +1157,7 @@ class timeseries:
             return None
 
         return infer_freq(ts)
+
     # groups
 
     @tx

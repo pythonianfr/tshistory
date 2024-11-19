@@ -180,6 +180,7 @@ def client(engine):
 
 def _initschema(engine):
     schema.tsschema().create(engine, reset=True)
+    schema.tsschema('remote').create(engine, reset=True)
 
 
 tsx = make_tsx(
@@ -187,5 +188,6 @@ tsx = make_tsx(
     _initschema,
     tsio.timeseries,
     http_server.httpapi,
-    http_client.httpclient
+    http_client.httpclient,
+    sources={'remote': (DBURI, 'remote')}
 )

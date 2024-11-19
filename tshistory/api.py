@@ -863,8 +863,11 @@ class mainsource:
         """Checks the existence of a group with a given name.
 
         """
-        with self.engine.begin() as cn:
-            return self.tsh.group_exists(cn, name)
+        if not (self.tsh.group_exists(self.engine, name) or
+                self.othersources.group_exists(name)):
+            return False
+
+        return True
 
     def group_type(self, name: str) -> str:
         """Return the type of a group, for instance 'primary', 'formula' or
@@ -903,14 +906,25 @@ class mainsource:
         If the group does not exists, a None is returned.
 
         """
+        revision_date = ensuretz(revision_date)
+
         with self.engine.begin() as cn:
-            return self.tsh.group_get(
+            group = self.tsh.group_get(
                 cn,
                 name,
                 revision_date,
                 from_value_date,
                 to_value_date
             )
+            if group is not None:
+                return group
+
+        return self.othersources.group_get(
+            name,
+            revision_date,
+            from_value_date,
+            to_value_date
+        )
 
     def group_insertion_dates(self,
                               name: str,
@@ -1002,7 +1016,11 @@ class mainsource:
         """Return a group metadata dictionary.
 
         """
-        return self.tsh.group_metadata(self.engine, name)
+        with self.engine.begin() as cn:
+            if self.tsh.group_exists(cn, name):
+                return self.tsh.group_metadata(cn, name)
+
+        return self.othersources.group_metadata(name)
 
     def update_group_metadata(self, name: str, meta: Dict[str, Any]) -> NONETYPE:
         """Update a group metadata with a dictionary from strings to anything
@@ -1012,7 +1030,7 @@ class mainsource:
         with self.engine.begin() as cn:
             self.tsh.update_group_metadata(cn, name, meta)
 
-    def group_catalog(self) -> Dict[Tuple[str, str], List[Tuple[str,str]]]:
+    def group_catalog(self, allsources: bool=True) -> Dict[Tuple[str, str], List[Tuple[str,str]]]:
         """Produces a catalog of all groups in the form of a mapping from
         source to a list of (name, kind) pair.
 
@@ -1021,6 +1039,10 @@ class mainsource:
         cat = defaultdict(list)
         for name, kind in self.tsh.list_groups(self.engine).items():
             cat[(instancename, self.namespace)].append((name, kind))
+        if allsources:
+            for key, val in self.othersources.group_catalog(False).items():
+                assert key not in cat, f'{key} already in {cat}'
+                cat[key] = val
         return dict(cat)
 
 
@@ -1062,6 +1084,14 @@ class altsources:
                     return source
             except Exception as err :
                 print(f'findsource: source {source} currently unavailable (cause: {err})')
+
+    def _findsourceforgroup(self, name):
+        for source in self.sources:
+            try:
+                if source.tsa.group_exists(name):
+                    return source
+            except Exception as err :
+                print(f'findsource[group]: source {source} currently unavailable (cause: {err})')
 
     def exists(self, name):
         for source in self.sources:
@@ -1252,3 +1282,53 @@ class altsources:
                 maturity_offset,
                 maturity_time
             )
+
+    # groups
+
+    def group_exists(self, name):
+        source = self._findsourceforgroup(name)
+        if source is None:
+            return
+
+        return source.tsa.group_exists(name)
+
+    def group_metadata(self, name):
+        source = self._findsourceforgroup(name)
+        if source is None:
+            return
+        meta = source.tsa.group_metadata(name)
+        return meta
+
+    def group_get(self,
+                  name,
+                  revision_date,
+                  from_value_date,
+                  to_value_date):
+        source = self._findsourceforgroup(name)
+        if source is None:
+            return
+
+        return source.tsa.group_get(
+            name,
+            revision_date=revision_date,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date
+        )
+
+    def group_catalog(self, allsources=False):
+        cats = []
+        pool = threadpool(len(self.sources))
+        def getcat(source):
+            try:
+                cats.append(
+                    source.tsa.group_catalog(allsources)
+                )
+            except:
+                import traceback as tb; tb.print_exc()
+                print(f'source {source} temporarily unavailable')
+
+        pool(getcat, [(s,) for s in self.sources])
+        cat = {}
+        for c in cats:
+            cat.update(c)
+        return cat

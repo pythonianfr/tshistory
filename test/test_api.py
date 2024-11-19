@@ -1401,6 +1401,38 @@ def test_insertion_dates_tznaive(tsx):
 
 # groups
 
+def test_remote_group(engine, tsx):
+    tsr = timeseries(str(engine.url), 'remote', sources={})
+    df = gengroup(
+        n_scenarios=3,
+        from_date=dt(2021, 1, 1),
+        length=5,
+        freq='D',
+        seed=2
+    )
+    tsr.group_replace('remote-group', df, 'Babar')
+
+    assert tsx.group_exists('remote-group')
+
+    meta = tsx.group_metadata('remote-group')
+    assert meta == {}
+
+    cat = tsx.group_catalog()
+    assert cat == {('postgres@remote', 'remote'): [('remote-group', 'primary')]}
+
+    gr = tsx.group_get('remote-group')
+    assert_df("""
+              0    1    2
+2021-01-01  2.0  3.0  4.0
+2021-01-02  3.0  4.0  5.0
+2021-01-03  4.0  5.0  6.0
+2021-01-04  5.0  6.0  7.0
+2021-01-05  6.0  7.0  8.0
+""", gr)
+
+    tsr.group_delete('remote-group')
+
+
 def test_primary_group(tsx):
     for name in ('first_group_api',):
         tsx.group_delete(name)

@@ -1289,9 +1289,10 @@ class httpapi:
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
+                args = groupcatalog.parse_args()
                 cat = {
                     f'{uri}': series
-                    for (uri, ns), series in tsa.group_catalog().items()
+                    for (uri, ns), series in tsa.group_catalog(allsources=args.allsources).items()
                 }
                 return cat
 
@@ -1315,7 +1316,7 @@ class httpapi:
                     return meta, 200
 
                 assert args.type == 'standard'
-                meta = tsa.group_metadata(args.name, all=args.all)
+                meta = tsa.group_metadata(args.name, all=args.all) or {}
                 return meta, 200
 
             @api.expect(put_groupmetadata)
