@@ -1018,7 +1018,11 @@ class mainsource:
         """Return a group internal metadata dictionary.
 
         """
-        return self.tsh.group_internal_metadata(self.engine, name)
+        with self.engine.begin() as cn:
+            if self.tsh.group_exists(cn, name):
+                return self.tsh.group_internal_metadata(cn, name)
+
+        return self.othersources.group_internal_metadata(name)
 
     def group_metadata(self,
                        name: str,
@@ -1309,6 +1313,13 @@ class altsources:
             return
 
         return source.tsa.group_type(name)
+
+    def group_internal_metadata(self, name):
+        source = self._findsourceforgroup(name)
+        if source is None:
+            return
+        meta = source.tsa.group_internal_metadata(name)
+        return meta
 
     def group_metadata(self, name):
         source = self._findsourceforgroup(name)

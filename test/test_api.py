@@ -1427,6 +1427,16 @@ def test_remote_group(engine, tsx):
 
     meta = tsx.group_metadata('remote-group')
     assert meta == {}
+    imeta = tsx.group_internal_metadata('remote-group')
+    imeta.pop('tablename')
+    assert imeta == {
+        'index_dtype': '<M8[ns]',
+        'index_type': 'datetime64[ns]',
+        'tzaware': False,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+
 
     cat = tsx.group_catalog()
     assert cat == {('postgres@remote', 'remote'): [('remote-group', 'primary')]}
