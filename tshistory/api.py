@@ -937,12 +937,19 @@ class mainsource:
         """Get the list of all insertion dates for any given group
         """
         with self.engine.begin() as cn:
-            return self.tsh.group_insertion_dates(
-                cn,
-                name,
-                from_insertion_date=from_insertion_date,
-                to_insertion_date=to_insertion_date
-            )
+            if self.tsh.group_exists(cn, name):
+                return self.tsh.group_insertion_dates(
+                    cn,
+                    name,
+                    from_insertion_date=from_insertion_date,
+                    to_insertion_date=to_insertion_date
+                )
+
+        return self.othersources.group_insertion_dates(
+            name,
+            from_insertion_date,
+            to_insertion_date
+        )
 
     def group_history(self,
                       name: str,
@@ -1095,6 +1102,7 @@ class altsources:
                     return source
             except Exception as err :
                 print(f'findsource[group]: source {source} currently unavailable (cause: {err})')
+                raise
 
     def exists(self, name):
         for source in self.sources:
@@ -1323,6 +1331,20 @@ class altsources:
             revision_date=revision_date,
             from_value_date=from_value_date,
             to_value_date=to_value_date
+        )
+
+    def group_insertion_dates(self,
+                              name,
+                              from_insertion_date,
+                              to_insertion_date):
+        source = self._findsourceforgroup(name)
+        if source is None:
+            return
+
+        return source.tsa.group_insertion_dates(
+            name,
+            from_insertion_date,
+            to_insertion_date
         )
 
     def group_catalog(self, allsources=False):

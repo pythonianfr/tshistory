@@ -1410,10 +1410,20 @@ def test_remote_group(engine, tsx):
         freq='D',
         seed=2
     )
-    tsr.group_replace('remote-group', df, 'Babar')
+    tsr.group_replace(
+        'remote-group', df, 'Babar', insertion_date=pd.Timestamp('2024-1-1', tz='UTC')
+    )
 
     assert tsx.group_exists('remote-group')
     assert tsx.group_type('remote-group') == 'primary'
+    assert tsx.group_insertion_dates('remote-group') == [
+        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC')
+    ]
+    assert tsx.group_insertion_dates(
+        'remote-group',
+        from_insertion_date=pd.Timestamp('2023-1-1', tz='UTC'),
+        to_insertion_date=pd.Timestamp('2023-1-2', tz='UTC'),
+    ) == []
 
     meta = tsx.group_metadata('remote-group')
     assert meta == {}
