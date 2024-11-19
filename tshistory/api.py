@@ -875,7 +875,10 @@ class mainsource:
 
         """
         with self.engine.begin() as cn:
-            return self.tsh.group_type(cn, name)
+            if self.tsh.group_exists(cn, name):
+                return self.tsh.group_type(cn, name)
+
+        return self.othersources.group_type(name)
 
     def group_rename(self, oldname: str, newname: str) -> NONETYPE:
         """Rename a group.
@@ -1291,6 +1294,13 @@ class altsources:
             return
 
         return source.tsa.group_exists(name)
+
+    def group_type(self, name):
+        source = self._findsourceforgroup(name)
+        if source is None:
+            return
+
+        return source.tsa.group_type(name)
 
     def group_metadata(self, name):
         source = self._findsourceforgroup(name)

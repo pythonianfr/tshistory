@@ -1413,6 +1413,7 @@ def test_remote_group(engine, tsx):
     tsr.group_replace('remote-group', df, 'Babar')
 
     assert tsx.group_exists('remote-group')
+    assert tsx.group_type('remote-group') == 'primary'
 
     meta = tsx.group_metadata('remote-group')
     assert meta == {}
