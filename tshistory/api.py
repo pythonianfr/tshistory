@@ -601,26 +601,14 @@ class mainsource:
 
         """
         with self.engine.begin() as cn:
-            localquery = search.prunebysource(
-                'local',
-                lisp.parse(query)
+            localnames = search.local_search(
+                cn,
+                self.tsh,
+                query,
+                _source,
+                limit,
+                meta
             )
-            if localquery is None:
-                localnames = []
-            else:
-                # purge all bysource remnants
-                localquery = search.removebysource(localquery)
-                if localquery is None:
-                    localquery = ['by.everything']
-                localnames = self.tsh.find(
-                    cn,
-                    search.query.fromexpr(
-                        lisp.serialize(localquery)
-                    ),
-                    limit=limit,
-                    meta=meta,
-                    source=_source
-                )
 
         remotenames = self.othersources.find(query, limit, meta)
         return sorted(
@@ -1244,6 +1232,8 @@ class altsources:
         parsedquery = lisp.parse(query)
 
         def readbasket(source):
+            # this looks 90% like search.local_search
+            # but not easy to factor this in ...
             localquery = search.prunebysource(
                 source.name, parsedquery
             )

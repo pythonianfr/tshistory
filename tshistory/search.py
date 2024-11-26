@@ -1,7 +1,10 @@
 import json
 import uuid
 import typing
-from psyl.lisp import parse
+from psyl.lisp import (
+    parse,
+    serialize
+)
 
 from tshistory.util import (
     all_subclasses,
@@ -40,6 +43,8 @@ _OPMAP = {
     '=': 'eq'
 }
 
+
+# source handling
 
 def _has_bysource(tree):
     if not isinstance(tree, list):
@@ -141,6 +146,35 @@ def removebysource(querytree: list) -> typing.Optional[list]:
     )
 
 
+def local_search(cn, tsh, q, source, limit=None, meta=False):
+    """
+    Take a query with parameters (and utilities) and execute it
+    locally after having handled the "by.source" clauses
+
+    """
+    localquery = prunebysource(
+        source,
+        parse(q)
+    )
+    if localquery is None:
+        return []
+
+    # purge all bysource remnants
+    localquery = removebysource(localquery)
+    if localquery is None:
+        localquery = ['by.everything']
+
+    return tsh.find(
+        cn,
+        query.fromexpr(
+            serialize(localquery)
+        ),
+        limit=limit,
+        meta=meta,
+        source=source
+    )
+
+# /source
 
 
 class query:
