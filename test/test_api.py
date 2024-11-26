@@ -1009,6 +1009,23 @@ def test_find_two_metaitems(tsx):
     assert r == ['formetaitem.1']
 
 
+def test_find_and_byname(tsx):
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(pd.Timestamp('2024-1-1'), freq='D', periods=3)
+    )
+    tsx.update(
+        'beginning.end',
+        ts,
+        'Babar'
+    )
+
+    r = tsx.find(
+        '(by.and (by.name "begin") (by.name "end"))'
+    )
+    assert r == ['beginning.end']
+
+
 def test_basket(tsx):
     ts = pd.Series(
         [1, 2, 3],
