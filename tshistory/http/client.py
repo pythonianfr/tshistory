@@ -17,13 +17,15 @@ from tshistory.util import (
     guard_insert,
     guard_query_dates,
     logme,
-    pack_group,
-    pack_series,
     parse_delta,
     pruned_history,
     series_metadata,
     ts,
     tzaware_series,
+)
+from tshistory.codecs import (
+    pack_group,
+    pack_series,
     unpack_group_history,
     unpack_group,
     unpack_series

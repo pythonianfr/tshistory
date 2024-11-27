@@ -4,10 +4,10 @@ import pandas as pd
 
 from sqlhelp import select
 
-from tshistory.util import (
+from tshistory.util import patch
+from tshistory.codecs import (
     binary_pack,
     binary_unpack,
-    patch,
     numpy_serialize,
     numpy_deserialize,
 )

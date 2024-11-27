@@ -13,8 +13,10 @@ from tshistory.util import (
     _set_cache,
     diff,
     empty_series,
-    pack_history,
     threadpool,
+)
+from tshistory.codecs import (
+    pack_history,
     unpack_history
 )
 from tshistory import search

@@ -7,7 +7,11 @@ import numpy as np
 import pandas as pd
 import webtest
 
-from tshistory import util, tsio
+from tshistory import (
+    codecs,
+    util,
+    tsio
+)
 from tshistory.testutil import (
     assert_df,
     utcdt,
@@ -694,9 +698,9 @@ def test_staircase(http):
         'to_value_date': utcdt(2015, 1, 2, 5),
         'format': 'tshpack'
     })
-    meta, index, values = util.nary_unpack(zlib.decompress(res.body))
+    meta, index, values = codecs.nary_unpack(zlib.decompress(res.body))
     meta = json.loads(meta)
-    index, values = util.numpy_deserialize(index, values, meta)
+    index, values = codecs.numpy_deserialize(index, values, meta)
     series = pd.Series(values, index=index)
     series = series.tz_localize('UTC')
 
@@ -762,7 +766,7 @@ datetime,               value
     res = http.get('/series/block_staircase', params=dict(
         name='test_b_staircase', **sc_kwargs, format='tshpack'
     ))
-    computed_ts = util.unpack_series('test_b_staircase', res.body)
+    computed_ts = codecs.unpack_series('test_b_staircase', res.body)
     pd.testing.assert_series_equal(computed_ts, expected_ts, check_names=False)
 
 
@@ -782,9 +786,9 @@ def test_get_fast_path(http):
         'name': 'test_fast',
         'format': 'tshpack'
     })
-    meta, index, values = util.nary_unpack(zlib.decompress(out.body))
+    meta, index, values = codecs.nary_unpack(zlib.decompress(out.body))
     meta = json.loads(meta)
-    index, values = util.numpy_deserialize(index, values, meta)
+    index, values = codecs.numpy_deserialize(index, values, meta)
     series = pd.Series(values, index=index)
     series = series.tz_localize('UTC')
 
@@ -1030,7 +1034,7 @@ def test_naive_group(http):
 
     df.columns = ['a', 'b', 'c']
 
-    bgroup = util.pack_group(df)
+    bgroup = codecs.pack_group(df)
     res = http.patch('/group/state', {
         'name': 'test_group',
         'author': 'Babar',
@@ -1046,7 +1050,7 @@ def test_naive_group(http):
 
     # binary format
     res = http.get('/group/state', {'name': 'test_group', 'format': 'tshpack'})
-    df2 = util.unpack_group(res.body)
+    df2 = codecs.unpack_group(res.body)
     assert df.equals(df2)
 
     # json format
@@ -1077,7 +1081,7 @@ def test_naive_group(http):
     df2json = pd.read_json(io.BytesIO(res.body), dtype='float64')
     assert df.equals(df2json)
 
-    bgroup = util.pack_group(df*2)
+    bgroup = codecs.pack_group(df*2)
     res = http.patch('/group/state', {
         'name': 'test_group',
         'author': 'Babar',
@@ -1089,7 +1093,7 @@ def test_naive_group(http):
     assert res.status_code == 200
 
     res = http.get('/group/state', {'name': 'test_group', 'format': 'tshpack'})
-    df3 = util.unpack_group(res.body)
+    df3 = codecs.unpack_group(res.body)
 
     res = http.get('/group/insertion_dates', params={
         'name': 'test_group'
@@ -1106,7 +1110,7 @@ def test_naive_group(http):
     res = http.get('/group/history',params={
         'name': 'test_group'
     })
-    hist = util.unpack_group_history(res.body)
+    hist = codecs.unpack_group_history(res.body)
 
     assert hist[idates[0]].equals(df)
     assert hist[idates[1]].equals(df3)
@@ -1146,7 +1150,7 @@ def test_tzaware_json_group(http):
 
     df.columns = ['a', 'b', 'c']
 
-    bgroup = util.pack_group(df)
+    bgroup = codecs.pack_group(df)
     res = http.patch('/group/state', {
         'name': 'test_group',
         'author': 'Babar',
@@ -1162,7 +1166,7 @@ def test_tzaware_json_group(http):
 
     # binary format
     res = http.get('/group/state', {'name': 'test_group', 'format': 'tshpack'})
-    df2 = util.unpack_group(res.body)
+    df2 = codecs.unpack_group(res.body)
     assert df.equals(df2)
 
     # json format

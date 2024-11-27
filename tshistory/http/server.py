@@ -15,6 +15,7 @@ from flask_restx import (
 
 from tshistory import (
     api as tsapi,
+    codecs,
     util
 )
 from tshistory.http.util import (
@@ -676,7 +677,7 @@ class httpapi:
                     )
                 else:
                     assert args.format == 'tshpack'
-                    series = util.unpack_series(
+                    series = codecs.unpack_series(
                         args.name,
                         args.bseries.stream.read()
                     )
@@ -930,7 +931,7 @@ class httpapi:
                     return response
 
                 response = make_response(
-                    util.pack_series(metadata, series)
+                    codecs.pack_series(metadata, series)
                 )
                 response.headers['Content-Type'] = 'application/octet-stream'
                 return response
@@ -970,7 +971,7 @@ class httpapi:
                     return response
 
                 response = make_response(
-                    util.pack_series(metadata, series)
+                    codecs.pack_series(metadata, series)
                 )
                 response.headers['Content-Type'] = 'application/octet-stream'
                 return response
@@ -1172,7 +1173,7 @@ class httpapi:
             def patch(self):
                 args = groupupdate.parse_args()
 
-                df = util.unpack_group(
+                df = codecs.unpack_group(
                     args.bgroup.stream.read()
                 )
 
@@ -1294,7 +1295,7 @@ class httpapi:
                 )
 
                 response = make_response(
-                    util.pack_group_history(hist)
+                    codecs.pack_group_history(hist)
                 )
                 response.headers['Content-Type'] = 'application/octet-stream'
                 return response

@@ -10,7 +10,10 @@ from flask import (
 from werkzeug.exceptions import HTTPException
 import pandas as pd
 
-from tshistory import util
+from tshistory import (
+    codecs,
+    util
+)
 
 
 def get_auth(uri, config):
@@ -140,7 +143,7 @@ def series_response(format, series, metadata, code):
 
     assert format == 'tshpack'
     response = make_response(
-        util.pack_series(metadata, series)
+        codecs.pack_series(metadata, series)
     )
     response.headers['Content-Type'] = 'application/octet-stream'
     response.status_code = code
@@ -160,7 +163,7 @@ def group_response(format, df, code):
         return response
 
     response = make_response(
-        util.pack_group(df)
+        codecs.pack_group(df)
     )
     response.headers['Content-Type'] = 'application/octet-stream'
     response.status_code = code
