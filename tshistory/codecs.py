@@ -390,6 +390,17 @@ def unpack_group_history(bytestring):
 
 # file binary serialisation
 
+def pack_datetime_into(buff, dt, offset):
+    struct.pack_into('!I', buff, offset, int(dt.timestamp()))
+
+
+def unpack_datetime_from(buff, offset, tz=pytz.UTC):
+    return datetime.fromtimestamp(
+        float(struct.unpack_from('!I', buff, offset)[0]),
+        tz=tz
+    )
+
+
 def make_snapshot_record(lastid, start, end, parent, packed, bstart, offset):
     if start.tzinfo is None:
         start = start.replace(tzinfo=pytz.utc)

@@ -1,4 +1,5 @@
 from datetime import datetime
+import pytz
 
 import pandas as pd
 
@@ -13,11 +14,13 @@ from tshistory.codecs import (
     make_snapshot_record,
     nary_pack,
     nary_unpack,
+    pack_datetime_into,
     pack_group,
     pack_group_history,
     pack_history,
     pack_many_series,
     pack_series,
+    unpack_datetime_from,
     unpack_group,
     unpack_group_history,
     unpack_history,
@@ -290,3 +293,20 @@ def test_make_snapshot_record():
     assert packed
     assert bstart == 42
     assert offset == 155
+
+
+def test_tstamp_roundtrip():
+    from array import array
+
+    buff = bytearray(42)
+
+    dt = datetime(2024, 1, 1, 1, 35, 59)
+    dtz = datetime(2024, 1, 1, 1, 35, 59, tzinfo=pytz.UTC)
+    pack_datetime_into(buff, dt, 7)
+    pack_datetime_into(buff, dtz, 11)
+
+    obuff = array('B', buff)
+    dt2 = unpack_datetime_from(obuff, 7, None)
+    assert dt == dt2
+    dtz2 = unpack_datetime_from(obuff, 11)
+    assert dtz == dtz2
