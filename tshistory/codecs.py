@@ -409,8 +409,8 @@ def make_snapshot_record(lastid, start, end, parent, packed, bstart, offset):
     # everything consumes 4 octets
     buff = bytearray(28)
     struct.pack_into('!I', buff, 0, lastid + 1)
-    struct.pack_into('!f', buff, 4, start.timestamp())
-    struct.pack_into('!f', buff, 8, end.timestamp())
+    pack_datetime_into(buff, start, 4)
+    pack_datetime_into(buff, end, 8)
     struct.pack_into('!I', buff, 12, parent)
     struct.pack_into('!?', buff, 16, packed)
     struct.pack_into('!I', buff, 20, bstart)
@@ -421,14 +421,8 @@ def make_snapshot_record(lastid, start, end, parent, packed, bstart, offset):
 def unpack_snapshot_record(bytestr):
     buff = array('B', bytestr)
     rid = struct.unpack_from('!I', buff, 0)[0]
-    start = datetime.fromtimestamp(
-        struct.unpack_from('!f', buff, 4)[0],
-        tz=pytz.utc
-    )
-    end = datetime.fromtimestamp(
-        struct.unpack_from('!f', buff, 8)[0],
-        tz=pytz.utc
-    )
+    start = unpack_datetime_from(buff, 4)
+    end = unpack_datetime_from(buff, 8)
     parent = struct.unpack_from('!I', buff, 12)[0]
     packed = struct.unpack_from('!?', buff, 16)[0]
     bstart = struct.unpack_from('!i', buff, 20)[0]
