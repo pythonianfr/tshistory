@@ -11,6 +11,7 @@ from tshistory.testutil import (
     utcdt
 )
 from tshistory.codecs import (
+    make_version_record,
     make_snapshot_record,
     nary_pack,
     nary_unpack,
@@ -25,6 +26,7 @@ from tshistory.codecs import (
     unpack_group_history,
     unpack_history,
     unpack_many_series,
+    unpack_version_record,
     unpack_series,
     unpack_snapshot_record
 )
@@ -310,3 +312,30 @@ def test_tstamp_roundtrip():
     assert dt == dt2
     dtz2 = unpack_datetime_from(obuff, 11)
     assert dtz == dtz2
+
+
+def test_version_record():
+    rec = make_version_record(
+        utcdt(2024, 1, 1),
+        utcdt(2020, 12, 31),
+        utcdt(2023, 12, 31, 2),
+        utcdt(2023, 12, 31, 0),
+        utcdt(2023, 12, 31, 2),
+        0,
+        1,
+        2
+    )
+    assert len(rec) == 32
+    assert isinstance(rec, bytearray)
+
+    rdate, tsstart, tsend, dstart, dend, id1, id2, id3 = unpack_version_record(
+        bytes(rec)
+    )
+    assert rdate == utcdt(2024, 1, 1)
+    assert tsstart == utcdt(2020, 12, 31)
+    assert tsend == utcdt(2023, 12, 31, 2)
+    assert dstart == utcdt(2023, 12, 31, 0)
+    assert dend == utcdt(2023, 12, 31, 2)
+    assert id1 == 0
+    assert id2 == 1
+    assert id3 == 2

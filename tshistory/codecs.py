@@ -401,6 +401,32 @@ def unpack_datetime_from(buff, offset, tz=pytz.UTC):
     )
 
 
+def make_version_record(revdate, tsstart, tsend, diffstart, diffend, blockid, authorid, metaid):
+    buff = bytearray(32)
+    pack_datetime_into(buff, revdate, 0)
+    pack_datetime_into(buff, tsstart, 4)
+    pack_datetime_into(buff, tsend, 8)
+    pack_datetime_into(buff, diffstart, 12)
+    pack_datetime_into(buff, diffend, 16)
+    struct.pack_into('!I', buff, 20, blockid)
+    struct.pack_into('!I', buff, 24, authorid)
+    struct.pack_into('!I', buff, 28, metaid)
+    return buff
+
+
+def unpack_version_record(bytestr):
+    buff = array('B', bytestr)
+    revdate = unpack_datetime_from(buff, 0)
+    tsstart = unpack_datetime_from(buff, 4)
+    tsend = unpack_datetime_from(buff, 8)
+    diffstart = unpack_datetime_from(buff, 12)
+    diffend = unpack_datetime_from(buff, 16)
+    blockid = struct.unpack_from('!I', buff, 20)[0]
+    authorid = struct.unpack_from('!I', buff, 24)[0]
+    metaid = struct.unpack_from('!I', buff, 28)[0]
+    return revdate, tsstart, tsend, diffstart, diffend, blockid, authorid, metaid
+
+
 def make_snapshot_record(lastid, start, end, parent, packed, bstart, offset):
     if start.tzinfo is None:
         start = start.replace(tzinfo=pytz.utc)
