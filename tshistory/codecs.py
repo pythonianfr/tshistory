@@ -427,30 +427,25 @@ def unpack_version_record(bytestr):
     return revdate, tsstart, tsend, diffstart, diffend, blockid, authorid, metaid
 
 
-def make_snapshot_record(lastid, start, end, parent, packed, bstart, offset):
+def make_snapshot_record(start, end, parent, data):
     if start.tzinfo is None:
         start = start.replace(tzinfo=pytz.utc)
     if end.tzinfo is None:
         end = end.replace(tzinfo=pytz.utc)
-    # everything consumes 4 octets
-    buff = bytearray(28)
-    struct.pack_into('!I', buff, 0, lastid + 1)
-    pack_datetime_into(buff, start, 4)
-    pack_datetime_into(buff, end, 8)
-    struct.pack_into('!I', buff, 12, parent)
-    struct.pack_into('!?', buff, 16, packed)
-    struct.pack_into('!I', buff, 20, bstart)
-    struct.pack_into('!h', buff, 24, offset)
+    buff = bytearray(16 + len(data))
+    pack_datetime_into(buff, start, 0)
+    pack_datetime_into(buff, end, 4)
+    struct.pack_into('!I', buff, 8, parent)
+    struct.pack_into('!h', buff, 12, len(data))
+    struct.pack_into(f'{len(data)}s', buff, 14, data)
     return buff
 
 
 def unpack_snapshot_record(bytestr):
     buff = array('B', bytestr)
-    rid = struct.unpack_from('!I', buff, 0)[0]
-    start = unpack_datetime_from(buff, 4)
-    end = unpack_datetime_from(buff, 8)
-    parent = struct.unpack_from('!I', buff, 12)[0]
-    packed = struct.unpack_from('!?', buff, 16)[0]
-    bstart = struct.unpack_from('!i', buff, 20)[0]
-    offset = struct.unpack_from('!h', buff, 24)[0]
-    return rid, start, end, parent, packed, bstart, offset
+    start = unpack_datetime_from(buff, 0)
+    end = unpack_datetime_from(buff, 4)
+    parent = struct.unpack_from('!I', buff, 8)[0]
+    size = struct.unpack_from('!h', buff, 12)[0]
+    data = struct.unpack_from(f'{size}s', buff, 14)[0]
+    return start, end, parent, data

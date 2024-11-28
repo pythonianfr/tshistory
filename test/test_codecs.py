@@ -250,51 +250,53 @@ def test_pack_tzaware_history_group():
 
 
 def test_make_snapshot_record():
+    ts = pd.Series(
+        [1., 2., 3.],
+        index=pd.date_range(utcdt(2024, 1, 1), periods=3, freq='D')
+    )
+    meta = {
+        'tzaware': True,
+        'index_type': 'datetime64[ns, UTC]',
+        'value_type': 'float64',
+        'index_dtype': '|M8[ns]',
+        'value_dtype': '<f8'
+    }
+    packed_ts = pack_series(meta, ts)
     rec = make_snapshot_record(
-        1,
         utcdt(2020, 1, 1),
         utcdt(2020, 1, 2),
         0,
-        True,
-        42,
-        155
+        packed_ts
     )
-    assert len(rec) == 28
+    assert len(rec) == 155
     assert isinstance(rec, bytearray)
 
-    rid, start, end, parent, packed, bstart, offset = unpack_snapshot_record(
+    start, end, parent, data = unpack_snapshot_record(
         bytes(rec)
     )
-    assert rid == 2
     assert start == utcdt(2020, 1, 1)
     assert end == utcdt(2020, 1, 2)
     assert parent == 0
-    assert packed
-    assert bstart == 42
-    assert offset == 155
+    ts2 = unpack_series('hello', data)
+    assert ts2.equals(ts)
 
     rec = make_snapshot_record(
-        1,
         datetime(2020, 1, 1),
         datetime(2020, 1, 2),
-        0,
-        True,
-        42,
-        155
+        1,
+        packed_ts
     )
-    assert len(rec) == 28
+    assert len(rec) == 155
     assert isinstance(rec, bytearray)
 
-    rid, start, end, parent, packed, bstart, offset = unpack_snapshot_record(
+    start, end, parent, data = unpack_snapshot_record(
         bytes(rec)
     )
-    assert rid == 2
     assert start == utcdt(2020, 1, 1)
     assert end == utcdt(2020, 1, 2)
-    assert parent == 0
-    assert packed
-    assert bstart == 42
-    assert offset == 155
+    assert parent == 1
+    ts2 = unpack_series('hello', data)
+    assert ts2.equals(ts)
 
 
 def test_tstamp_roundtrip():
