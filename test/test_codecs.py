@@ -375,7 +375,7 @@ def test_read_write_2_versions():
         with open(tmp + '/tree', 'wb') as tree:
             # write the snapshots (using prepared chunks)
             # v1
-            packed1 = pack_series(meta, ts1)
+            packed1 = iohelper.serialize_ts(meta, ts1)
             rec1 = iohelper.make_snapshot_record(
                 ts1.index[0],
                 ts1.index[-1],
@@ -385,7 +385,7 @@ def test_read_write_2_versions():
             )
             tree.write(rec1)
             # v2
-            packed2 = pack_series(meta, ts2)
+            packed2 = iohelper.serialize_ts(meta, ts2)
             rec2 = iohelper.make_snapshot_record(
                 ts2.index[0],
                 ts2.index[-1],
@@ -402,7 +402,7 @@ def test_read_write_2_versions():
 
         # check the size
         assert os.stat(tmp + '/tree').st_size == 36
-        assert os.stat(tmp + '/chunks').st_size == 279
+        assert os.stat(tmp + '/chunks').st_size == 89
 
         with open(tmp + '/revs', 'wb') as revs:
             # now, having written the tree let's write the revs
@@ -458,18 +458,12 @@ def test_read_write_2_versions():
             chunks.seek(chunkaddress1)
             chunk1 = chunks.read(size1)
 
-    ts1 = unpack_series('1', chunk1)
+    fullts = iohelper.chunks_to_ts(meta, [chunk1, chunk2])
     assert_df("""
 2024-01-01 00:00:00+00:00    1.0
 2024-01-02 00:00:00+00:00    2.0
 2024-01-03 00:00:00+00:00    3.0
-""", ts1)
-
-    ts2 = unpack_series('2', chunk2)
-    assert_df("""
 2024-01-04 00:00:00+00:00    4.0
 2024-01-05 00:00:00+00:00    5.0
 2024-01-06 00:00:00+00:00    6.0
-""", ts2)
-
-    # Yes, we should write/extract the assembly routine from storage.py
+""", fullts)

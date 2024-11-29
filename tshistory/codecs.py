@@ -393,6 +393,34 @@ def unpack_group_history(bytestring):
 class iohelper:
 
     @staticmethod
+    def serialize_ts(meta, ts):
+        isstr = meta['value_type'] == 'object'
+        index, values = numpy_serialize(ts, isstr)
+        return zlib.compress(binary_pack(index, values))
+
+    @staticmethod
+    def chunks_to_ts(metadata, chunks):
+        chunks = (
+            binary_unpack(zlib.decompress(chunk))
+            for chunk in chunks
+        )
+        bseparator = b'\0' if metadata['value_type'] == 'object' else b''
+        indexchunks, valueschunks = list(zip(*chunks))
+        index, values = numpy_deserialize(
+            b''.join(indexchunks),
+            bseparator.join(valueschunks),
+            metadata
+        )
+
+        assert len(values) == len(index)
+        ts = pd.Series(values, index=index)
+        assert ts.index.is_monotonic_increasing
+
+        if metadata.get('tzaware', False):
+            return ts.tz_localize('UTC')
+        return ts
+
+    @staticmethod
     def pack_datetime_into(buff, dt, offset):
         struct.pack_into('!I', buff, offset, int(dt.timestamp()))
 
