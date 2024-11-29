@@ -1,5 +1,7 @@
 from datetime import datetime
+import os
 import pytz
+import tempfile
 
 import pandas as pd
 
@@ -28,7 +30,7 @@ from tshistory.codecs import (
     unpack_many_series,
     unpack_version_record,
     unpack_series,
-    unpack_snapshot_record
+    unpack_snapshot_record,
 )
 
 
@@ -265,38 +267,40 @@ def test_make_snapshot_record():
     rec = make_snapshot_record(
         utcdt(2020, 1, 1),
         utcdt(2020, 1, 2),
-        0,
-        packed_ts
+        0, # parent
+        0, # start
+        len(packed_ts) # offset
     )
-    assert len(rec) == 155
+    assert len(rec) == 18
     assert isinstance(rec, bytearray)
 
-    start, end, parent, data = unpack_snapshot_record(
+    start, end, parent, chunkaddress, chunksize = unpack_snapshot_record(
         bytes(rec)
     )
     assert start == utcdt(2020, 1, 1)
     assert end == utcdt(2020, 1, 2)
     assert parent == 0
-    ts2 = unpack_series('hello', data)
-    assert ts2.equals(ts)
+    assert chunkaddress == 0
+    assert chunksize == 139
 
     rec = make_snapshot_record(
         datetime(2020, 1, 1),
         datetime(2020, 1, 2),
         1,
-        packed_ts
+        0,
+        len(packed_ts)
     )
-    assert len(rec) == 155
+    assert len(rec) == 18
     assert isinstance(rec, bytearray)
 
-    start, end, parent, data = unpack_snapshot_record(
+    start, end, parent, chunkaddress, chunksize = unpack_snapshot_record(
         bytes(rec)
     )
     assert start == utcdt(2020, 1, 1)
     assert end == utcdt(2020, 1, 2)
     assert parent == 1
-    ts2 = unpack_series('hello', data)
-    assert ts2.equals(ts)
+    assert chunkaddress == 0
+    assert chunksize == 139
 
 
 def test_tstamp_roundtrip():
@@ -341,3 +345,134 @@ def test_version_record():
     assert id1 == 0
     assert id2 == 1
     assert id3 == 2
+
+
+def test_read_write_2_versions():
+    meta = {
+        'tzaware': True,
+        'index_type': 'datetime64[ns, UTC]',
+        'value_type': 'float64',
+        'index_dtype': '|M8[ns]',
+        'value_dtype': '<f8'
+    }
+    # this will be a pure append scenario
+    ts1 = pd.Series(
+        [1., 2., 3.],
+        index=pd.date_range(utcdt(2024, 1, 1), periods=3, freq='D')
+    )
+    ts2 = pd.Series(
+        [4., 5., 6.],
+        index=pd.date_range(utcdt(2024, 1, 4), periods=3, freq='D')
+    )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        # Plan:
+        # * write two snapshots and their blocks
+        # * then write the associated revisions
+        # * then read the full series (made of 2 revs)
+        with open(tmp + '/revs', mode='x'):
+            pass
+        with open(tmp + '/tree', mode='x'):
+            pass
+        with open(tmp + '/chunks', mode='x'):
+            pass
+
+        with open(tmp + '/tree', 'wb') as tree:
+            # write the snapshots (using prepared chunks)
+            # v1
+            packed1 = pack_series(meta, ts1)
+            rec1 = make_snapshot_record(
+                ts1.index[0],
+                ts1.index[-1],
+                0, # indice of the parent in the tree file (0 means no parent)
+                0, # address of the block in the chunks file
+                len(packed1) # offset of the block in the chunks file
+            )
+            tree.write(rec1)
+            # v2
+            packed2 = pack_series(meta, ts2)
+            rec2 = make_snapshot_record(
+                ts2.index[0],
+                ts2.index[-1],
+                1, # indicates the first block
+                len(packed1),
+                len(packed2)
+            )
+            tree.write(rec2)
+
+        with open(tmp + '/chunks', 'wb') as chunks:
+            # write the two chunks also
+            chunks.write(packed1)
+            chunks.write(packed2)
+
+        # check the size
+        assert os.stat(tmp + '/tree').st_size == 36
+        assert os.stat(tmp + '/chunks').st_size == 279
+
+        with open(tmp + '/revs', 'wb') as revs:
+            # now, having written the tree let's write the revs
+            rec = make_version_record(
+                utcdt(2024, 2, 1),
+                ts1.index[0],
+                ts1.index[-1],
+                ts1.index[0],
+                ts1.index[-1],
+                0, # index in tree obviously starts at zero
+                42, # we don't care much about authorid ...
+                42  # or metaid at this point
+            )
+            revs.write(rec)
+            rec = make_version_record(
+                utcdt(2024, 2, 2),
+                ts1.index[0], # complete series start
+                ts2.index[-1],
+                ts2.index[0],
+                ts2.index[-1],
+                1, # second record in tree
+                42,
+                42
+            )
+            revs.write(rec)
+
+        # now, let's read the complete version back
+        with open(tmp + '/revs', 'rb') as revs:
+            # rev block is of size 32
+            revs.seek(32) # seek to the beginning of the last block
+            bytestr = revs.read(32)
+            rdate, tsstart, tsend, dstart, dend, treeindex, *_ = unpack_version_record(bytestr)
+            assert treeindex == 1
+
+        # ok, let's dig the chunks from this blockid and rebuild the
+        # whole series from chunks
+        with open(tmp + '/tree', 'rb') as tree:
+            # we start with using the tree index
+            tree.seek(treeindex * 18) # move to last block
+            fixed = tree.read(18)
+            start2, end2, parent2, chunkaddress2, size2 = unpack_snapshot_record(fixed)
+
+            tree.seek(0)
+            fixed = tree.read(18)
+            start1, end1, parent1, chunkaddress1, size1 = unpack_snapshot_record(fixed)
+
+        with open(tmp + '/chunks', 'rb') as chunks:
+            chunks.seek(chunkaddress2)
+            chunk2 = chunks.read(size2)
+
+            chunks.seek(chunkaddress1)
+            chunk1 = chunks.read(size1)
+
+    ts1 = unpack_series('1', chunk1)
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+2024-01-02 00:00:00+00:00    2.0
+2024-01-03 00:00:00+00:00    3.0
+""", ts1)
+
+    ts2 = unpack_series('2', chunk2)
+    assert_df("""
+2024-01-04 00:00:00+00:00    4.0
+2024-01-05 00:00:00+00:00    5.0
+2024-01-06 00:00:00+00:00    6.0
+""", ts2)
+
+    # Yes, we should write/extract the assembly routine from storage.py

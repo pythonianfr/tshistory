@@ -401,14 +401,14 @@ def unpack_datetime_from(buff, offset, tz=pytz.UTC):
     )
 
 
-def make_version_record(revdate, tsstart, tsend, diffstart, diffend, blockid, authorid, metaid):
+def make_version_record(revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid):
     buff = bytearray(32)
     pack_datetime_into(buff, revdate, 0)
     pack_datetime_into(buff, tsstart, 4)
     pack_datetime_into(buff, tsend, 8)
     pack_datetime_into(buff, diffstart, 12)
     pack_datetime_into(buff, diffend, 16)
-    struct.pack_into('!I', buff, 20, blockid)
+    struct.pack_into('!I', buff, 20, address)
     struct.pack_into('!I', buff, 24, authorid)
     struct.pack_into('!I', buff, 28, metaid)
     return buff
@@ -421,23 +421,23 @@ def unpack_version_record(bytestr):
     tsend = unpack_datetime_from(buff, 8)
     diffstart = unpack_datetime_from(buff, 12)
     diffend = unpack_datetime_from(buff, 16)
-    blockid = struct.unpack_from('!I', buff, 20)[0]
+    address = struct.unpack_from('!I', buff, 20)[0]
     authorid = struct.unpack_from('!I', buff, 24)[0]
     metaid = struct.unpack_from('!I', buff, 28)[0]
-    return revdate, tsstart, tsend, diffstart, diffend, blockid, authorid, metaid
+    return revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid
 
 
-def make_snapshot_record(start, end, parent, data):
+def make_snapshot_record(start, end, parent, adress, datasize):
     if start.tzinfo is None:
         start = start.replace(tzinfo=pytz.utc)
     if end.tzinfo is None:
         end = end.replace(tzinfo=pytz.utc)
-    buff = bytearray(16 + len(data))
+    buff = bytearray(18)
     pack_datetime_into(buff, start, 0)
     pack_datetime_into(buff, end, 4)
     struct.pack_into('!I', buff, 8, parent)
-    struct.pack_into('!h', buff, 12, len(data))
-    struct.pack_into(f'{len(data)}s', buff, 14, data)
+    struct.pack_into('!I', buff, 12, adress)
+    struct.pack_into('!h', buff, 16, datasize)
     return buff
 
 
@@ -446,6 +446,6 @@ def unpack_snapshot_record(bytestr):
     start = unpack_datetime_from(buff, 0)
     end = unpack_datetime_from(buff, 4)
     parent = struct.unpack_from('!I', buff, 8)[0]
-    size = struct.unpack_from('!h', buff, 12)[0]
-    data = struct.unpack_from(f'{size}s', buff, 14)[0]
-    return start, end, parent, data
+    address = struct.unpack_from('!I', buff, 12)[0]
+    size = struct.unpack_from('!h', buff, 16)[0]
+    return start, end, parent, address, size
