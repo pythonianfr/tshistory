@@ -393,8 +393,7 @@ def unpack_group_history(bytestring):
 class iohelper:
 
     @staticmethod
-    def serialize_ts(meta, ts):
-        isstr = meta['value_type'] == 'object'
+    def serialize_ts(ts, isstr):
         index, values = numpy_serialize(ts, isstr)
         return zlib.compress(binary_pack(index, values))
 

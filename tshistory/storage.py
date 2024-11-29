@@ -1,16 +1,7 @@
-import zlib
-
-import pandas as pd
-
 from sqlhelp import select
 
 from tshistory.util import patch
-from tshistory.codecs import (
-    binary_pack,
-    binary_unpack,
-    numpy_serialize,
-    numpy_deserialize,
-)
+from tshistory.codecs import iohelper
 
 
 class Postgres:
@@ -99,55 +90,11 @@ class Postgres:
         self.name = name
         self.tablename = self.tsh._series_to_tablename(cn, name)
 
-    # optimized/asymmetric de/serialisation
-
     @property
     def isstr(self):
         return self.tsh.internal_metadata(
             self.cn, self.name
         )['value_type'] == 'object'
-
-    def _serialize(self, ts):
-        if ts is None:
-            return None
-
-        index, values = numpy_serialize(ts, self.isstr)
-        return zlib.compress(binary_pack(index, values))
-
-    def _ensure_tz_consistency(self, ts):
-        """Return timeserie with tz aware index or not depending on metadata
-        tzaware.
-        """
-        assert ts.name is not None
-        metadata = self.tsh.internal_metadata(self.cn, ts.name)
-        if metadata and metadata.get('tzaware', False):
-            return ts.tz_localize('UTC')
-        return ts
-
-    def _chunks_to_ts(self, chunks):
-        chunks = (
-            binary_unpack(zlib.decompress(chunk))
-            for chunk in chunks
-        )
-        indexchunks, valueschunks = list(zip(*chunks))
-
-        meta = self.tsh.internal_metadata(self.cn, self.name)
-        bseparator = b'\0' if meta['value_type'] == 'object' else b''
-
-        index, values = numpy_deserialize(
-            b''.join(indexchunks),
-            bseparator.join(valueschunks),
-            meta
-        )
-
-        assert len(values) == len(index)
-        ts = pd.Series(values, index=index)
-        assert ts.index.is_monotonic_increasing
-        ts.name = self.name
-
-        return self._ensure_tz_consistency(ts)
-
-    # /serialisation
 
     def buckets(self, ts):
         if len(ts) < self._max_bucket_size:
@@ -160,6 +107,7 @@ class Postgres:
         return buckets
 
     def insert_buckets(self, parent, ts):
+        isstr = self.isstr
         for bucket in self.buckets(ts):
             start = bucket.index.min()
             end = bucket.index.max()
@@ -172,7 +120,7 @@ class Postgres:
                 start,
                 end,
                 parent,
-                self._serialize(bucket)
+                iohelper.serialize_ts(bucket, isstr)
             ).scalar()
 
         return parent
@@ -181,6 +129,7 @@ class Postgres:
         return self.insert_buckets(None, initial_ts)
 
     def update(self, series_diff):
+        meta = self.tsh.internal_metadata(self.cn, self.name)
         # get last chunkhead for cset
         tablename = self.tsh._series_to_tablename(self.cn, self.name)
         headsql = ('select snapshot '
@@ -192,7 +141,10 @@ class Postgres:
         diffstart = series_diff.index.min()
         rawchunks = self.rawchunks(head, diffstart)
         cid, parent, _ = rawchunks[0]
-        oldsnapshot = self._chunks_to_ts(row[2] for row in rawchunks)
+        oldsnapshot = iohelper.chunks_to_ts(
+            meta,
+            (row[2] for row in rawchunks)
+        )
 
         if diffstart > oldsnapshot.index.max():
             # append: let't not rewrite anything
@@ -239,8 +191,10 @@ class Postgres:
         return chunks
 
     def chunk(self, head, from_value_date=None, to_value_date=None):
-        snapdata = self._chunks_to_ts(
-            raw[2] for raw in self.rawchunks(head, from_value_date)
+        meta = self.tsh.internal_metadata(self.cn, self.name)
+        snapdata = iohelper.chunks_to_ts(
+            meta,
+            (raw[2] for raw in self.rawchunks(head, from_value_date))
         )
         try:
             return snapdata.loc[from_value_date:to_value_date]

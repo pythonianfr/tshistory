@@ -375,7 +375,7 @@ def test_read_write_2_versions():
         with open(tmp + '/tree', 'wb') as tree:
             # write the snapshots (using prepared chunks)
             # v1
-            packed1 = iohelper.serialize_ts(meta, ts1)
+            packed1 = iohelper.serialize_ts(ts1, False)
             rec1 = iohelper.make_snapshot_record(
                 ts1.index[0],
                 ts1.index[-1],
@@ -385,7 +385,7 @@ def test_read_write_2_versions():
             )
             tree.write(rec1)
             # v2
-            packed2 = iohelper.serialize_ts(meta, ts2)
+            packed2 = iohelper.serialize_ts(ts2, False)
             rec2 = iohelper.make_snapshot_record(
                 ts2.index[0],
                 ts2.index[-1],

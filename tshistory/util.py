@@ -585,7 +585,8 @@ def diff(base, other, _precision=1e-14):
 # stuff
 
 def diffs(cn, tsh, name, tablename, from_idate, to_idate):
-    sto = tsh.storageclass(cn, tsh, name)
+    from tshistory.codecs import iohelper
+    meta = tsh.internal_metadata(cn, name)
     tzaware = tsh.tzaware(cn, name)
     if from_idate:
         ts = tsh.get(
@@ -644,7 +645,7 @@ def diffs(cn, tsh, name, tablename, from_idate, to_idate):
                 _cache.pop(ci)
         out = _cache[top] = patch(
             prev,
-            sto._chunks_to_ts(items)
+            iohelper.chunks_to_ts(meta, items)
         )
         return out
 

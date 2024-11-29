@@ -11,11 +11,12 @@ from tshistory.testutil import (
     tempattr,
     utcdt
 )
+from tshistory.codecs import iohelper
 
 
-def chunksize(snap, head, from_value_date=None):
+def chunksize(meta, snap, head, from_value_date=None):
     return {
-        parent: len(snap._chunks_to_ts([rawchunk]))
+        parent: len(iohelper.chunks_to_ts(meta, [rawchunk]))
         for _, parent, rawchunk in snap.rawchunks(
                 head, from_value_date=from_value_date
         )
@@ -46,9 +47,10 @@ def test_chunks(engine, tsh):
         assert chunks[1].parent == 1
         assert chunks[2].parent == 2
         snap = Postgres(engine, tsh, 'chunks')
-        ts0 = snap._chunks_to_ts([chunks[0].chunk])
-        ts1 = snap._chunks_to_ts([chunks[1].chunk])
-        ts2 = snap._chunks_to_ts([chunks[2].chunk])
+        meta = tsh.internal_metadata(engine, 'chunks')
+        ts0 = iohelper.chunks_to_ts(meta, [chunks[0].chunk])
+        ts1 = iohelper.chunks_to_ts(meta, [chunks[1].chunk])
+        ts2 = iohelper.chunks_to_ts(meta, [chunks[2].chunk])
 
         assert_df("""
 2010-01-01    0.0
@@ -101,11 +103,11 @@ def test_chunks(engine, tsh):
         }
 
         snap = Postgres(engine, tsh, 'chunks')
-        ts0 = snap._chunks_to_ts([chunks[0].chunk])
-        ts1 = snap._chunks_to_ts([chunks[1].chunk])
-        ts2 = snap._chunks_to_ts([chunks[2].chunk])
-        ts3 = snap._chunks_to_ts([chunks[3].chunk])
-        ts4 = snap._chunks_to_ts([chunks[4].chunk])
+        ts0 = iohelper.chunks_to_ts(meta, [chunks[0].chunk])
+        ts1 = iohelper.chunks_to_ts(meta, [chunks[1].chunk])
+        ts2 = iohelper.chunks_to_ts(meta, [chunks[2].chunk])
+        ts3 = iohelper.chunks_to_ts(meta, [chunks[3].chunk])
+        ts4 = iohelper.chunks_to_ts(meta, [chunks[4].chunk])
 
         assert_df("""
 2010-01-01    0.0
@@ -181,7 +183,7 @@ def test_chunks(engine, tsh):
 
         # 2nd commit chunks without filtering
         snap = Postgres(engine, tsh, 'chunks')
-        chunks = chunksize(snap, 5)
+        chunks = chunksize(meta, snap, 5)
         assert chunks == {
             None: 2,
             1: 2,
@@ -191,11 +193,11 @@ def test_chunks(engine, tsh):
         }
 
         # 2nd commit chunks with filtering
-        chunks = chunksize(snap, 6, datetime(2010, 1, 5))
+        chunks = chunksize(meta, snap, 6, datetime(2010, 1, 5))
         assert chunks == {1: 2}
 
         # 3rd commit chunks without filtering
-        chunks = chunksize(snap, 9)
+        chunks = chunksize(meta, snap, 9)
         assert chunks == {
             None: 2,
             1: 2,
@@ -205,7 +207,7 @@ def test_chunks(engine, tsh):
         }
 
         # 3rd commit chunks with filtering
-        chunks = chunksize(snap, 9, datetime(2010, 1, 5))
+        chunks = chunksize(meta, snap, 9, datetime(2010, 1, 5))
         assert chunks == {
             6: 2,
             7: 2,
@@ -265,6 +267,7 @@ def test_prepend(engine, tsh):
 def test_get_from_to(engine, tsh):
     ts = genserie(datetime(2015, 1, 1), 'D', 365)
     tsh.update(engine, ts, 'quitelong', 'aurelien.campeas@pythonian.fr')
+    meta = tsh.internal_metadata(engine, 'quitelong')
 
     snap = Postgres(engine, tsh, 'quitelong')
     if tsh.namespace == 'z-z':
@@ -278,7 +281,7 @@ def test_get_from_to(engine, tsh):
         assert all(k == v+1 for k, v in chunks.items())
 
         snap = Postgres(engine, tsh, 'quitelong')
-        chunks = chunksize(snap, 73)
+        chunks = chunksize(meta, snap, 73)
         assert chunks == {None: 5, 1: 5, 2: 5, 3: 5, 4: 5, 5: 5, 6: 5, 7: 5,
                           8: 5, 9: 5, 10: 5, 11: 5, 12: 5, 13: 5, 14: 5, 15: 5,
                           16: 5, 17: 5, 18: 5, 19: 5, 20: 5, 21: 5, 22: 5,
@@ -289,7 +292,7 @@ def test_get_from_to(engine, tsh):
                           53: 5, 54: 5, 55: 5, 56: 5, 57: 5, 58: 5, 59: 5, 60: 5,
                           61: 5, 62: 5, 63: 5, 64: 5, 65: 5, 66: 5, 67: 5, 68: 5,
                           69: 5, 70: 5, 71: 5, 72: 5}
-        chunks = chunksize(snap, 73, datetime(2015, 5, 1))
+        chunks = chunksize(meta, snap, 73, datetime(2015, 5, 1))
         assert chunks == {24: 5, 25: 5, 26: 5, 27: 5, 28: 5, 29: 5, 30: 5, 31: 5,
                           32: 5, 33: 5, 34: 5, 35: 5, 36: 5, 37: 5, 38: 5, 39: 5,
                           40: 5, 41: 5, 42: 5, 43: 5, 44: 5, 45: 5, 46: 5, 47: 5,
