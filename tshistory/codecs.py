@@ -390,62 +390,65 @@ def unpack_group_history(bytestring):
 
 # file binary serialisation
 
-def pack_datetime_into(buff, dt, offset):
-    struct.pack_into('!I', buff, offset, int(dt.timestamp()))
+class iohelper:
 
+    @staticmethod
+    def pack_datetime_into(buff, dt, offset):
+        struct.pack_into('!I', buff, offset, int(dt.timestamp()))
 
-def unpack_datetime_from(buff, offset, tz=pytz.UTC):
-    return datetime.fromtimestamp(
-        float(struct.unpack_from('!I', buff, offset)[0]),
-        tz=tz
-    )
+    @staticmethod
+    def unpack_datetime_from(buff, offset, tz=pytz.UTC):
+        return datetime.fromtimestamp(
+            float(struct.unpack_from('!I', buff, offset)[0]),
+            tz=tz
+        )
 
+    @staticmethod
+    def make_version_record(revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid):
+        buff = bytearray(32)
+        iohelper.pack_datetime_into(buff, revdate, 0)
+        iohelper.pack_datetime_into(buff, tsstart, 4)
+        iohelper.pack_datetime_into(buff, tsend, 8)
+        iohelper.pack_datetime_into(buff, diffstart, 12)
+        iohelper.pack_datetime_into(buff, diffend, 16)
+        struct.pack_into('!I', buff, 20, address)
+        struct.pack_into('!I', buff, 24, authorid)
+        struct.pack_into('!I', buff, 28, metaid)
+        return buff
 
-def make_version_record(revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid):
-    buff = bytearray(32)
-    pack_datetime_into(buff, revdate, 0)
-    pack_datetime_into(buff, tsstart, 4)
-    pack_datetime_into(buff, tsend, 8)
-    pack_datetime_into(buff, diffstart, 12)
-    pack_datetime_into(buff, diffend, 16)
-    struct.pack_into('!I', buff, 20, address)
-    struct.pack_into('!I', buff, 24, authorid)
-    struct.pack_into('!I', buff, 28, metaid)
-    return buff
+    @staticmethod
+    def unpack_version_record(bytestr):
+        buff = array('B', bytestr)
+        revdate = iohelper.unpack_datetime_from(buff, 0)
+        tsstart = iohelper.unpack_datetime_from(buff, 4)
+        tsend = iohelper.unpack_datetime_from(buff, 8)
+        diffstart = iohelper.unpack_datetime_from(buff, 12)
+        diffend = iohelper.unpack_datetime_from(buff, 16)
+        address = struct.unpack_from('!I', buff, 20)[0]
+        authorid = struct.unpack_from('!I', buff, 24)[0]
+        metaid = struct.unpack_from('!I', buff, 28)[0]
+        return revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid
 
+    @staticmethod
+    def make_snapshot_record(start, end, parent, adress, datasize):
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=pytz.utc)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=pytz.utc)
+        buff = bytearray(18)
+        iohelper.pack_datetime_into(buff, start, 0)
+        iohelper.pack_datetime_into(buff, end, 4)
+        struct.pack_into('!I', buff, 8, parent)
+        struct.pack_into('!I', buff, 12, adress)
+        struct.pack_into('!h', buff, 16, datasize)
+        return buff
 
-def unpack_version_record(bytestr):
-    buff = array('B', bytestr)
-    revdate = unpack_datetime_from(buff, 0)
-    tsstart = unpack_datetime_from(buff, 4)
-    tsend = unpack_datetime_from(buff, 8)
-    diffstart = unpack_datetime_from(buff, 12)
-    diffend = unpack_datetime_from(buff, 16)
-    address = struct.unpack_from('!I', buff, 20)[0]
-    authorid = struct.unpack_from('!I', buff, 24)[0]
-    metaid = struct.unpack_from('!I', buff, 28)[0]
-    return revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid
-
-
-def make_snapshot_record(start, end, parent, adress, datasize):
-    if start.tzinfo is None:
-        start = start.replace(tzinfo=pytz.utc)
-    if end.tzinfo is None:
-        end = end.replace(tzinfo=pytz.utc)
-    buff = bytearray(18)
-    pack_datetime_into(buff, start, 0)
-    pack_datetime_into(buff, end, 4)
-    struct.pack_into('!I', buff, 8, parent)
-    struct.pack_into('!I', buff, 12, adress)
-    struct.pack_into('!h', buff, 16, datasize)
-    return buff
-
-
-def unpack_snapshot_record(bytestr):
-    buff = array('B', bytestr)
-    start = unpack_datetime_from(buff, 0)
-    end = unpack_datetime_from(buff, 4)
-    parent = struct.unpack_from('!I', buff, 8)[0]
-    address = struct.unpack_from('!I', buff, 12)[0]
-    size = struct.unpack_from('!h', buff, 16)[0]
-    return start, end, parent, address, size
+    @staticmethod
+    def unpack_snapshot_record(bytestr):
+        buff = array('B', bytestr)
+        start = iohelper.unpack_datetime_from(buff, 0)
+        end = iohelper.unpack_datetime_from(buff, 4)
+        parent = struct.unpack_from('!I', buff, 8)[0]
+        address = struct.unpack_from('!I', buff, 12)[0]
+        size = struct.unpack_from('!h', buff, 16)[0]
+        return start, end, parent, address, size

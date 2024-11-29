@@ -13,24 +13,19 @@ from tshistory.testutil import (
     utcdt
 )
 from tshistory.codecs import (
-    make_version_record,
-    make_snapshot_record,
+    iohelper,
     nary_pack,
     nary_unpack,
-    pack_datetime_into,
     pack_group,
     pack_group_history,
     pack_history,
     pack_many_series,
     pack_series,
-    unpack_datetime_from,
     unpack_group,
     unpack_group_history,
     unpack_history,
     unpack_many_series,
-    unpack_version_record,
     unpack_series,
-    unpack_snapshot_record,
 )
 
 
@@ -264,7 +259,7 @@ def test_make_snapshot_record():
         'value_dtype': '<f8'
     }
     packed_ts = pack_series(meta, ts)
-    rec = make_snapshot_record(
+    rec = iohelper.make_snapshot_record(
         utcdt(2020, 1, 1),
         utcdt(2020, 1, 2),
         0, # parent
@@ -274,7 +269,7 @@ def test_make_snapshot_record():
     assert len(rec) == 18
     assert isinstance(rec, bytearray)
 
-    start, end, parent, chunkaddress, chunksize = unpack_snapshot_record(
+    start, end, parent, chunkaddress, chunksize = iohelper.unpack_snapshot_record(
         bytes(rec)
     )
     assert start == utcdt(2020, 1, 1)
@@ -283,7 +278,7 @@ def test_make_snapshot_record():
     assert chunkaddress == 0
     assert chunksize == 139
 
-    rec = make_snapshot_record(
+    rec = iohelper.make_snapshot_record(
         datetime(2020, 1, 1),
         datetime(2020, 1, 2),
         1,
@@ -293,7 +288,7 @@ def test_make_snapshot_record():
     assert len(rec) == 18
     assert isinstance(rec, bytearray)
 
-    start, end, parent, chunkaddress, chunksize = unpack_snapshot_record(
+    start, end, parent, chunkaddress, chunksize = iohelper.unpack_snapshot_record(
         bytes(rec)
     )
     assert start == utcdt(2020, 1, 1)
@@ -310,18 +305,18 @@ def test_tstamp_roundtrip():
 
     dt = datetime(2024, 1, 1, 1, 35, 59)
     dtz = datetime(2024, 1, 1, 1, 35, 59, tzinfo=pytz.UTC)
-    pack_datetime_into(buff, dt, 7)
-    pack_datetime_into(buff, dtz, 11)
+    iohelper.pack_datetime_into(buff, dt, 7)
+    iohelper.pack_datetime_into(buff, dtz, 11)
 
     obuff = array('B', buff)
-    dt2 = unpack_datetime_from(obuff, 7, None)
+    dt2 = iohelper.unpack_datetime_from(obuff, 7, None)
     assert dt == dt2
-    dtz2 = unpack_datetime_from(obuff, 11)
+    dtz2 = iohelper.unpack_datetime_from(obuff, 11)
     assert dtz == dtz2
 
 
 def test_version_record():
-    rec = make_version_record(
+    rec = iohelper.make_version_record(
         utcdt(2024, 1, 1),
         utcdt(2020, 12, 31),
         utcdt(2023, 12, 31, 2),
@@ -334,7 +329,7 @@ def test_version_record():
     assert len(rec) == 32
     assert isinstance(rec, bytearray)
 
-    rdate, tsstart, tsend, dstart, dend, id1, id2, id3 = unpack_version_record(
+    rdate, tsstart, tsend, dstart, dend, id1, id2, id3 = iohelper.unpack_version_record(
         bytes(rec)
     )
     assert rdate == utcdt(2024, 1, 1)
@@ -381,7 +376,7 @@ def test_read_write_2_versions():
             # write the snapshots (using prepared chunks)
             # v1
             packed1 = pack_series(meta, ts1)
-            rec1 = make_snapshot_record(
+            rec1 = iohelper.make_snapshot_record(
                 ts1.index[0],
                 ts1.index[-1],
                 0, # indice of the parent in the tree file (0 means no parent)
@@ -391,7 +386,7 @@ def test_read_write_2_versions():
             tree.write(rec1)
             # v2
             packed2 = pack_series(meta, ts2)
-            rec2 = make_snapshot_record(
+            rec2 = iohelper.make_snapshot_record(
                 ts2.index[0],
                 ts2.index[-1],
                 1, # indicates the first block
@@ -411,7 +406,7 @@ def test_read_write_2_versions():
 
         with open(tmp + '/revs', 'wb') as revs:
             # now, having written the tree let's write the revs
-            rec = make_version_record(
+            rec = iohelper.make_version_record(
                 utcdt(2024, 2, 1),
                 ts1.index[0],
                 ts1.index[-1],
@@ -422,7 +417,7 @@ def test_read_write_2_versions():
                 42  # or metaid at this point
             )
             revs.write(rec)
-            rec = make_version_record(
+            rec = iohelper.make_version_record(
                 utcdt(2024, 2, 2),
                 ts1.index[0], # complete series start
                 ts2.index[-1],
@@ -439,7 +434,9 @@ def test_read_write_2_versions():
             # rev block is of size 32
             revs.seek(32) # seek to the beginning of the last block
             bytestr = revs.read(32)
-            rdate, tsstart, tsend, dstart, dend, treeindex, *_ = unpack_version_record(bytestr)
+            rdate, tsstart, tsend, dstart, dend, treeindex, *_ = iohelper.unpack_version_record(
+                bytestr
+            )
             assert treeindex == 1
 
         # ok, let's dig the chunks from this blockid and rebuild the
@@ -448,11 +445,11 @@ def test_read_write_2_versions():
             # we start with using the tree index
             tree.seek(treeindex * 18) # move to last block
             fixed = tree.read(18)
-            start2, end2, parent2, chunkaddress2, size2 = unpack_snapshot_record(fixed)
+            start2, end2, parent2, chunkaddress2, size2 = iohelper.unpack_snapshot_record(fixed)
 
             tree.seek(0)
             fixed = tree.read(18)
-            start1, end1, parent1, chunkaddress1, size1 = unpack_snapshot_record(fixed)
+            start1, end1, parent1, chunkaddress1, size1 = iohelper.unpack_snapshot_record(fixed)
 
         with open(tmp + '/chunks', 'rb') as chunks:
             chunks.seek(chunkaddress2)
