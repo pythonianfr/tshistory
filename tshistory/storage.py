@@ -35,12 +35,12 @@ class Postgres:
     2019-1-7   7.0
     2019-1-8   8.0
 
-    Now let's look at the logical organisation: we have two tables
+    Now let's look at the logical organisation: we have two relations
     `Revision` (which tracks all successive versions of a series) and
-    `Snapshot` (which actually stores the series data using a tree
+    `Tree` (which actually stores the series data using a tree
     structure).
 
-    Series values   | Insertion table | Snapshot/storage table
+    Series values   | Revisions table | Tree of chunks table
                     +-----------------+------------------------
                     | id | snapshot   | id | parent | chunk
                     +----+------------+----+--------+----------
