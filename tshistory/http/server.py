@@ -335,6 +335,10 @@ groupget.add_argument(
 groupget.add_argument(
     'format', type=enum('json', 'tshpack'), default='json'
 )
+groupget.add_argument(
+    'tzone', type=str, default='UTC' ,
+    help = 'Convert tz-aware group into this time zone before sending'
+)
 
 group_insertion_dates = base.copy()
 group_insertion_dates.add_argument(
@@ -1187,16 +1191,23 @@ class httpapi:
             @required_roles('admin', 'rw', 'ro')
             def get(self):
                 args = groupget.parse_args()
-
+                from_value_date, to_value_date = convert_bounds(
+                    args.from_value_date,
+                    args.to_value_date,
+                    args.tzone
+                )
                 df = tsa.group_get(
                     args.name,
                     revision_date=args.insertion_date,
-                    from_value_date=args.from_value_date,
-                    to_value_date=args.to_value_date
+                    from_value_date=from_value_date,
+                    to_value_date=to_value_date
                 )
                 if df is None:
                     api.abort(404, f'`{args.name}` does not exists')
+                metadata = tsa.group_internal_metadata(args.name)
 
+                if metadata['tzaware'] and args.tzone.upper() != 'UTC':
+                    df.index = df.index.tz_convert(args.tzone)
                 return group_response(
                     args.format,
                     df,

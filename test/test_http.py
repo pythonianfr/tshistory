@@ -1225,5 +1225,5 @@ def test_apply_tz_on_group_bounds(client, http):
     tsr = pd.Series(result.json['a'])
 
     # the tz has no effect
-    assert tsr.index[0] == '2024-01-02T00:00:00.000Z'
-    assert tsr.index[-1] == '2024-01-03T00:00:00.000Z'
+    assert tsr.index[0] == '2024-01-01T23:00:00.000Z'
+    assert tsr.index[-1] == '2024-01-02T23:00:00.000Z'
