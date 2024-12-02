@@ -1191,3 +1191,39 @@ def test_tzaware_json_group(http):
 
     df2json = pd.read_json(io.BytesIO(res.body), dtype='float64')
     assert df.equals(df2json)
+
+
+def test_apply_tz_on_group_bounds(client, http):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=utcdt(2024, 1, 1),
+        length=73,
+        freq='h',
+        seed=2.
+    )
+
+    df.columns = ['a', 'b', 'c']
+    client.group_replace(
+        'group-aware-bounds',
+        df,
+        'test'
+    )
+    # We request a tz-aware group
+    # We provide a tzone parameter (from the UI)
+    # We provide bounds without offset (also from the UI)
+    from_naive = pd.Timestamp('2024-01-02')
+    to_naive = pd.Timestamp('2024-01-03')
+    result = http.get(
+        '/group/state',
+        params={
+            'name': 'group-aware-bounds',
+            'tzone': 'CET',
+            'from_value_date': from_naive,
+            'to_value_date': to_naive,
+        }
+    )
+    tsr = pd.Series(result.json['a'])
+
+    # the tz has no effect
+    assert tsr.index[0] == '2024-01-02T00:00:00.000Z'
+    assert tsr.index[-1] == '2024-01-03T00:00:00.000Z'
