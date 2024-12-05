@@ -35,6 +35,7 @@ SERIESSCHEMA = Path(__file__).parent / 'series.sql'
 
 
 class timeseries:
+    storage = 'postgresql'
     index = 0
     namespace = 'tsh'
     schema = None

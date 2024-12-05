@@ -40,16 +40,19 @@ class timeseries:
                 handler=None,
                 sources=None,
                 clientclass=None):
+        cfg = configuration()
         if uri is None:
-            uri = configuration().find_first_uri()
+            uri = cfg.find_first_uri()
             print(f'timeseries picked this uri: {uri}')
         parseduri = urlparse(uri)
         if parseduri.scheme.startswith('postgres'):
             if handler is None:
-                handler = find_most_specific_tshclass()
+                handler = find_most_specific_tshclass(
+                    cfg.storage(uri)
+                )
             ensure_versions(uri, namespace)
             if sources is None:
-                sources = configuration().find_sources(uri)
+                sources = cfg.find_sources(uri)
             return mainsource(
                 uri,
                 namespace,

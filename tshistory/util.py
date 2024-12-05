@@ -138,9 +138,12 @@ def ensure_versions(uri, namespace):
 
 # find available components
 
-def find_most_specific_tshclass():
+def find_most_specific_tshclass(storage):
     objs = sorted(
-        objects('tshclass'),
+        [
+            obj for obj in objects('tshclass')
+            if obj.storage == storage
+        ],
         key=lambda x:x.index
     )
     return objs[-1]

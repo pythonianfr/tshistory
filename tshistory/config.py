@@ -8,8 +8,9 @@ from tshistory.util import unflatten
 
 
 class configuration:
-    optsections = ('sources', 'auth', 'server-auth')
+    optsections = ('storage', 'sources', 'auth', 'server-auth')
     defaults = {
+        'storage': {},
         'sources': {},
         'auth': {},
         'server-auth': {}
@@ -120,3 +121,12 @@ class configuration:
             )
         except KeyError:
             return {}
+
+    def _find_name_by_uri(self, uri):
+        for name, dburi in self.cfg['dburi'].items():
+            if uri == dburi:
+                return name
+
+    def storage(self, uri):
+        name = self._find_name_by_uri(uri)
+        return self.cfg['storage'].get(name, 'postgresql')

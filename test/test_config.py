@@ -29,6 +29,7 @@ def test_simple_config():
         cfg = configuration()
         assert cfg.cfg._data == {
             'dburi': {'foo': 'postgresql:///refinery'},
+            'storage': {},
             'sources': {},
             'auth': {},
             'server-auth': {}
@@ -54,7 +55,8 @@ def test_sources_auth():
                 'bar.uri': 'https://bar.io',
                 'bar.login': 'babar',
                 'bar.password': 'celeste'},
-            'server-auth': {}
+            'server-auth': {},
+            'storage': {}
         }
 
 
@@ -79,6 +81,7 @@ def test_sources_server_auth():
         assert cfg.cfg._data == {
             'dburi': {'foo': 'postgresql:///refinery'},
             'sources': {'foo.bar': 'https://bar.io'},
+            'storage': {},
             'auth': {
                 'bar.uri': 'https://bar.io',
                 'bar.login': 'babar',

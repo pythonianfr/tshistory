@@ -57,12 +57,17 @@ def mapi(engine):
     schema.tsschema('ns-test-mapi').create(engine, reset=True)
     schema.tsschema('ns-test-mapi-2').create(engine, reset=True)
 
-    return tsh_api.timeseries(
-        DBURI,
-        namespace='ns-test-mapi',
-        handler=tsio.timeseries,
-        sources={'remote': (DBURI, 'ns-test-mapi-2')}
-    )
+    config = (
+        f'[dburi]\n'
+        f'test = {str(engine.url)}\n'
+    ).encode()
+    with tempconfig(config):
+        yield tsh_api.timeseries(
+            DBURI,
+            namespace='ns-test-mapi',
+            handler=tsio.timeseries,
+            sources={'remote': (DBURI, 'ns-test-mapi-2')}
+        )
 
 
 @pytest.fixture(scope='session')

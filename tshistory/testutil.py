@@ -407,17 +407,18 @@ def make_tsx(uri,
     @pytest.fixture(params=['pg', 'http'])
     def tsx(request, engine):
         initschemafunc(engine)
-
-        tsa = tsh_api.timeseries(
-            str(engine.url),
-            handler=tsioclass,
-            sources=sources
-        )
-
         config = (
             f'[dburi]\n'
             f'test = {str(engine.url)}\n'
         ).encode()
+
+        with tempconfig(config):
+            tsa = tsh_api.timeseries(
+                str(engine.url),
+                handler=tsioclass,
+                sources=sources
+            )
+
         if request.param == 'pg':
             # direct mode
             with tempconfig(config):
