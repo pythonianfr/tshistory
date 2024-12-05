@@ -11,3 +11,4 @@ unit-test-job:
     - pip install -e .
     - ruff check .
     - pytest
+    - pytype

@@ -243,6 +243,13 @@ def find_most_specific_http_client():
 class ts(str):
     __slots__ = 'name', 'imeta', 'meta', 'source', 'kind'
 
+    def __init__(self, _name, *_a, **_kw):
+        # this is useless but it helps pytype understand
+        # what is going on on the call sites
+        # (pytype visibly doesnt know how to exploit __new__
+        # for this purpose)
+        super().__init__()
+
     def __new__(cls, name, imeta=None, meta=None, source='local', kind='primary'):
         obj = str.__new__(cls, name)
         obj.imeta = imeta

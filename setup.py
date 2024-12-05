@@ -18,6 +18,7 @@ setup(name='tshistory',
       packages=find_packages(),
       python_requires='>= 3.9',
       install_requires=[
+          'ipdb',
           'simplejson',
           'pandas >= 1.5.3, < 2.3',
           'numpy < 2',
