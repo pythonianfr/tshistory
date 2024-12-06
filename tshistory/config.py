@@ -130,3 +130,7 @@ class configuration:
     def storage(self, uri):
         name = self._find_name_by_uri(uri)
         return self.cfg['storage'].get(name, 'postgresql')
+
+    def storage_path(self, uri):
+        name = self.storage(uri)
+        return self.cfg['storage'].get(f'{name}.path')

@@ -10,6 +10,7 @@ import numpy as np
 
 from sqlhelp import sqlfile, select, insert
 
+from tshistory.config import configuration
 from tshistory.util import (
     closed_overlaps,
     compatible_date,
@@ -52,7 +53,7 @@ class timeseries:
     storageclass = Postgres
 
     def __init__(self, namespace='tsh', othersources=None,
-                 _groups=True):
+                 _groups=True, **_kw):
         self.namespace = namespace
         self.create_lock_id = sum(ord(c) for c in namespace)
         self.delete_lock_id = sum(ord(c) for c in namespace)
@@ -1452,3 +1453,20 @@ class BlockStaircaseRevisionError(Exception):
             [str(rd) for rd in revision_dates],
             [str(bs) for bs in block_start_dates]
         ))
+
+
+class timeseriesfs1:
+    storage = 'filesystem1'
+
+    def __init__(self, namespace='tsh', othersources=None, _groups=True, uri=None):
+        assert uri is not None
+        self.namespace = namespace
+        self.othersources = othersources
+        if _groups:
+            self.tsh_group = timeseriesfs1(
+                namespace=f'{self.namespace}.group',
+                _groups=False,
+                uri=uri
+            )
+        # look up the data path
+        self.path = configuration().storage_path(uri)

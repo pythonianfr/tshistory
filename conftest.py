@@ -203,3 +203,19 @@ tsx = make_tsx(
     http_client.httpclient,
     sources={'remote': (DBURI, 'remote')}
 )
+
+
+# for the alternative storage, we need a humble beginning
+
+
+@pytest.fixture(scope='session')
+def tsf(engine):
+    ns = 'fsns'
+    schema.tsschema(ns).create(engine, reset=True)
+    conf = (
+        f'[dburi]\n'
+        f'test = {DBURI}\n'
+    )
+
+    with tempconfig(conf.encode()):
+        return tsio.timeseriesfs1(ns, None, uri=DBURI)

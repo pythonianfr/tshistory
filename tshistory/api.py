@@ -103,7 +103,7 @@ class mainsource:
         self.uri = uri
         self.namespace = namespace
         self.engine = create_engine(uri, max_overflow=100)
-        self.tsh = tshclass(namespace, othersources)
+        self.tsh = tshclass(namespace, othersources, uri=uri)
         self.othersources = othersources
 
     def update(self,
