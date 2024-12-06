@@ -1,5 +1,7 @@
 import pandas as pd
 
+from tshistory.testutil import assert_df
+
 
 def test_exists(engine, tsf):
     assert not tsf.exists(engine, 'hello')
@@ -15,3 +17,30 @@ def test_create_empty(engine, tsf):
         'Babar'
     )
 
+
+def test_create_initial(engine, tsf):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=3,
+            freq='D'
+        )
+    )
+
+    assert not tsf.exists(engine, 'fs-first')
+
+    diff = tsf.update(
+        engine,
+        ts,
+        'fs-first',
+        'Babar'
+    )
+
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+2024-01-02 00:00:00+00:00    2.0
+2024-01-03 00:00:00+00:00    3.0
+""", diff)
+
+    assert tsf.exists(engine, 'fs-first')

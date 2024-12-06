@@ -133,4 +133,4 @@ class configuration:
 
     def storage_path(self, uri):
         name = self._find_name_by_uri(uri)
-        return self.cfg['storage'].get(f'{name}.path')
+        return Path(self.cfg['storage'].get(f'{name}.path'))

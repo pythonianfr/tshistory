@@ -3,6 +3,7 @@ import logging
 import hashlib
 import uuid
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -20,6 +21,7 @@ from tshistory.util import (
     ensuretz,
     guard_insert,
     guard_query_dates,
+    hash64,
     infer_freq,
     patch,
     pruned_history,
@@ -112,6 +114,7 @@ class timeseries:
                 'datetime' in str(updatets.index.dtype) and not
                 isinstance(updatets.index, pd.MultiIndex))
 
+        # NOTE: we should be doing that earlier
         if not keepnans:
             updatets = updatets.dropna()
 
@@ -1469,8 +1472,8 @@ class timeseriesfs1:
                 uri=uri
             )
         # look up the data path
-        self.path = configuration().storage_path(uri)
-        assert self.path, f'You should specify a storage path for `{uri}`'
+        self.root = configuration().storage_path(uri)
+        assert self.root, f'You should specify a storage path for `{uri}`'
 
     @tx
     def exists(self, cn, name):
@@ -1491,3 +1494,84 @@ class timeseriesfs1:
         if not len(ts):
             return ts
 
+        ts = guard_insert(
+            ts, name, author, metadata,
+            insertion_date
+        )
+        ts.name = name
+        assert (
+            '<M8[ns]' == ts.index.dtype or
+            'datetime' in str(ts.index.dtype) and not
+            isinstance(ts.index, pd.MultiIndex)
+        )
+
+        if not keepnans:
+            ts = ts.dropna()
+
+        if not self.exists(cn, name):
+            seriesmeta = series_metadata(ts)
+            return self._create(
+                cn, ts, name, author, seriesmeta,
+                metadata, insertion_date
+            )
+
+    def _create(self, cn, ts, name, author, seriesmeta,
+                metadata=None, insertion_date=None):
+        start, end = start_end(ts, notz=False)
+        # at creation time we take an exclusive lock to avoid
+        # race conditions on the storage files
+        cn.execute(
+            f'select pg_advisory_xact_lock({hash64(name)})'
+        )
+
+        # create the directory and empty files
+        path = (self.root / name)
+        path.mkdir()
+        revs = path / 'revs'
+        tree = path / 'tree'
+        chunks = path / 'chunks'
+
+        from tshistory.codecs import iohelper
+
+        packed = iohelper.serialize_ts(ts, False)
+        node = iohelper.make_snapshot_record(
+            ts.index[0],
+            ts.index[-1],
+            0,
+            0,
+            len(packed)
+        )
+        with open(tree, 'wb') as ftree:
+            ftree.seek(0, os.SEEK_END)
+            ftree.write(node)
+
+        with open(chunks, 'wb') as fchunks:
+            fchunks.seek(0, os.SEEK_END)
+            fchunks.write(packed)
+
+        ver = iohelper.make_version_record(
+            insertion_date or pd.Timestamp.utcnow(),
+            ts.index[0],
+            ts.index[-1],
+            ts.index[0],
+            ts.index[-1],
+            0,
+            42,  # AUTHORID
+            42   # METAID
+        )
+
+        with open(revs, 'wb') as frevs:
+            frevs.write(ver)
+
+        # register
+        cn.execute(
+            f'insert into "{self.namespace}".registry '
+            '(name, internal_metadata, metadata) '
+            'values (%s, %s, %s) '
+            'returning id',
+            name,
+            json.dumps(seriesmeta),
+            json.dumps({})
+        ).scalar()
+
+        return ts

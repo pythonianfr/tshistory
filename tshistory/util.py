@@ -1,3 +1,4 @@
+import hashlib
 import io
 import math
 import re
@@ -352,6 +353,13 @@ def guard_query_dates(*dates):
         isinstance(dt, datetime)
         for dt in filter(None, dates)
     ), 'all query dates must be datetime-compatible objects'
+
+
+def hash64(text: str) -> int:
+    # hasher from text to 64 bits ints
+    seed = text.encode('utf-8')
+    hash_digest = hashlib.shake_128(seed).digest(8)
+    return int.from_bytes(hash_digest, byteorder='big', signed=True)
 
 
 # timedelta (de)serialisation
