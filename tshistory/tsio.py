@@ -1470,3 +1470,12 @@ class timeseriesfs1:
             )
         # look up the data path
         self.path = configuration().storage_path(uri)
+        assert self.path, f'You should specify a storage path for `{uri}`'
+
+    @tx
+    def exists(self, cn, name):
+        return cn.execute(
+            f'select id from "{self.namespace}".registry '
+            f'where name = %(name)s',
+            name=name
+        ).scalar()

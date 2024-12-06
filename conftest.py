@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 
 from sqlalchemy import create_engine
 import pandas as pd
@@ -212,10 +213,18 @@ tsx = make_tsx(
 def tsf(engine):
     ns = 'fsns'
     schema.tsschema(ns).create(engine, reset=True)
+    datapath = DATADIR/ns
+    shutil.rmtree(datapath, ignore_errors=True)
+    if not datapath.exists():
+        datapath.mkdir()
+
     conf = (
         f'[dburi]\n'
         f'test = {DBURI}\n'
+        f'[storage]\n'
+        f'test = filesystem1\n'
+        f'test.path = {datapath}'
     )
 
     with tempconfig(conf.encode()):
-        return tsio.timeseriesfs1(ns, None, uri=DBURI)
+        yield tsio.timeseriesfs1(ns, None, uri=DBURI)
