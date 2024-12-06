@@ -1479,3 +1479,15 @@ class timeseriesfs1:
             f'where name = %(name)s',
             name=name
         ).scalar()
+
+    @tx
+    def update(self, cn, ts, name, author,
+               metadata=None,
+               insertion_date=None,
+               keepnans=False,
+               **k):
+        assert isinstance(name, str), 'Name is not a string'
+        name = name.strip()
+        if not len(ts):
+            return ts
+
