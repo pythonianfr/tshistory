@@ -7,10 +7,9 @@ from sqlalchemy import create_engine
 
 from dbcache import api as storeapi
 from tshistory.api import timeseries
+from tshistory.config import configuration
 from tshistory.util import (
     checkdiffs_for_name,
-    find_dburi,
-    get_cfg_path,
     objects
 )
 from tshistory.schema import tsschema
@@ -23,7 +22,7 @@ def tsh():
 
 @tsh.command()
 def configpath():
-    print(get_cfg_path())
+    print(configuration.path())
 
 
 # migration
@@ -33,7 +32,7 @@ def configpath():
 @click.option('--deletebroken', default=False, is_flag=True)
 @click.option('--namespace', default='tsh')
 def fix_groups_metadata_(db_uri, deletebroken=False, namespace='tsh'):
-    engine = create_engine(find_dburi(db_uri))
+    engine = create_engine(configuration().find_dburi(db_uri))
 
     from tshistory.migrate import fix_groups_metadata
     fix_groups_metadata(
@@ -45,7 +44,7 @@ def fix_groups_metadata_(db_uri, deletebroken=False, namespace='tsh'):
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
 def migrate_to_groups(db_uri, namespace='tsh'):
-    engine = create_engine(find_dburi(db_uri))
+    engine = create_engine(configuration().find_dburi(db_uri))
     sch = tsschema(namespace)
     sch._create_group(engine)
 
@@ -57,7 +56,7 @@ def migrate_to_groups(db_uri, namespace='tsh'):
 @click.option('--namespace', default='tsh')
 def init_db(db_uri, namespace='tsh'):
     """initialize an new db."""
-    engine = create_engine(find_dburi(db_uri))
+    engine = create_engine(configuration().find_dburi(db_uri))
     schem = tsschema(namespace)
     schem.create(engine)
 
@@ -69,7 +68,7 @@ def init_db(db_uri, namespace='tsh'):
 @click.option('--force')
 @click.option('--namespace', default='tsh')
 def migrate(db_uri, interactive=True, initial=None, force=None, namespace='tsh'):
-    uri = find_dburi(db_uri)
+    uri = configuration().find_dburi(db_uri)
     # call the plugins
     for migrator in sorted(objects('migrator'), key=lambda x: x._order):
         migrator(
@@ -81,7 +80,7 @@ def migrate(db_uri, interactive=True, initial=None, force=None, namespace='tsh')
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
 def dbversions(db_uri, namespace='tsh'):
-    uri = find_dburi(db_uri)
+    uri = configuration().find_dburi(db_uri)
     store = storeapi.kvstore(
         uri,
         namespace=f'{namespace}-kvstore'
@@ -95,7 +94,7 @@ def dbversions(db_uri, namespace='tsh'):
 @click.argument('name')
 @click.option('--namespace', default='tsh')
 def checkdiffs(db_uri, name, namespace='tsh'):
-    uri = find_dburi(db_uri)
+    uri = configuration().find_dburi(db_uri)
     tsa = timeseries(uri, namespace)
     engine = create_engine(uri)
 
@@ -107,7 +106,7 @@ def checkdiffs(db_uri, name, namespace='tsh'):
 @click.argument('number', type=int)
 @click.option('--namespace', default='tsh')
 def random_checkdiffs(db_uri, number, namespace='tsh'):
-    uri = find_dburi(db_uri)
+    uri = configuration().find_dburi(db_uri)
     tsa = timeseries(uri, namespace)
     engine = create_engine(uri)
 
@@ -125,7 +124,7 @@ def random_checkdiffs(db_uri, number, namespace='tsh'):
 @click.argument('db-uri')
 @click.option('--namespace', default='tsh')
 def shell(db_uri, namespace='tsh'):
-    uri = find_dburi(db_uri)
+    uri = configuration().find_dburi(db_uri)
     tsa = timeseries(  # noqa
         uri,
         namespace

@@ -15,13 +15,12 @@ from psyl import lisp
 from sqlalchemy import create_engine
 import pandas as pd
 
+from tshistory.config import configuration
 from tshistory.util import (
     ensuretz,
     ensure_versions,
     find_most_specific_tshclass,
     find_most_specific_http_client,
-    find_sources,
-    find_first_uri,
     threadpool,
     ts,
     with_inferred_freq
@@ -42,7 +41,7 @@ class timeseries:
                 sources=None,
                 clientclass=None):
         if uri is None:
-            uri = find_first_uri()
+            uri = configuration().find_first_uri()
             print(f'timeseries picked this uri: {uri}')
         parseduri = urlparse(uri)
         if parseduri.scheme.startswith('postgres'):
@@ -50,7 +49,7 @@ class timeseries:
                 handler = find_most_specific_tshclass()
             ensure_versions(uri, namespace)
             if sources is None:
-                sources = find_sources(uri)
+                sources = configuration().find_sources(uri)
             return mainsource(
                 uri,
                 namespace,

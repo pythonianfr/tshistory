@@ -2,7 +2,6 @@ import json
 import warnings
 from datetime import timedelta
 
-import inireader
 import requests
 import pandas as pd
 import numpy as np
@@ -12,9 +11,9 @@ from requests_auth import (
 )
 
 from tshistory.tsio import timeseries
+from tshistory.config import configuration
 from tshistory.util import (
     diff,
-    get_cfg_path,
     guard_insert,
     guard_query_dates,
     logme,
@@ -116,10 +115,7 @@ class httpclient:
     def __init__(self, uri):
         self.uri = uri
         self.session = requests.Session()
-        auth = get_auth(
-            uri,
-            inireader.reader(get_cfg_path())
-        )
+        auth = get_auth(uri, configuration())
         if 'login' in auth:
             self.session.auth = auth['login'], auth['password']
         elif 'pkce' in auth:

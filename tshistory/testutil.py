@@ -2,6 +2,9 @@ import io
 from datetime import datetime
 from contextlib import contextmanager
 from functools import partial
+import os
+from pathlib import Path
+import tempfile
 
 import pandas as pd
 import responses
@@ -54,6 +57,25 @@ def assert_group_equals(g1, g2):
                                   sorted(g2.items())):
         assert n1 == n2
         assert s1.equals(s2)
+
+
+@contextmanager
+def tempenv(**env):
+    oldenv = os.environ.copy()
+    os.environ.update(env)
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(oldenv)
+
+
+@contextmanager
+def tempconfig(bconfig):
+    with tempfile.TemporaryDirectory() as d:
+        with tempenv(HOME=d):
+            Path(d + '/tshistory.cfg').write_bytes(bconfig)
+            yield
 
 
 def genserie(start, freq, repeat, initval=None, tz=None, name=None, dtype='float64'):
@@ -392,9 +414,14 @@ def make_tsx(uri,
             sources=sources
         )
 
+        config = (
+            f'[dburi]\n'
+            f'test = {str(engine.url)}\n'
+        ).encode()
         if request.param == 'pg':
             # direct mode
-            yield tsa
+            with tempconfig(config):
+                yield tsa
 
         else:
             app = nosecurity(
@@ -413,12 +440,13 @@ def make_tsx(uri,
                     passthru(resp)
                 # will query the app created above (which in turn uses
                 # the direct mode tsa)
-                http_tsa = tsh_api.timeseries(
-                    uri,
-                    handler=tsioclass,
-                    clientclass=clientclass
-                )
+                with tempconfig(config):
+                    http_tsa = tsh_api.timeseries(
+                        uri,
+                        handler=tsioclass,
+                        clientclass=clientclass
+                    )
 
-                yield http_tsa
+                    yield http_tsa
 
     return tsx

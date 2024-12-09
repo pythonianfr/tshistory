@@ -24,6 +24,7 @@ from tshistory.http.util import nosecurity
 from tshistory.storage import Postgres
 from tshistory.testutil import (
     make_tsx,
+    tempconfig,
     with_http_bridge,
     WebTester
 )
@@ -173,7 +174,13 @@ def client(engine):
     )
     with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
         with_http_bridge(uri, resp, wsgitester)
-        yield http_client.httpclient(uri)
+        config = (
+            f'[dburi]\n'
+            f'test = {str(engine.url)}\n'
+        ).encode()
+
+        with tempconfig(config):
+            yield http_client.httpclient(uri)
 
 
 # federation api (direct + http)

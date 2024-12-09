@@ -1,5 +1,4 @@
 import io
-import os
 import math
 import struct
 import json
@@ -24,11 +23,9 @@ from warnings import warn
 import pytz
 import numpy as np
 import pandas as pd
-from sqlalchemy.engine import url
 from sqlalchemy.engine.base import Engine
 from sqlalchemy import exc
 from sqlhelp import select
-from inireader import reader
 from dbcache.api import kvstore
 
 
@@ -102,87 +99,6 @@ def ensure_plugin_registration():
     for ep in entry_points(group='forceimports'):
         ep.load()
     _DONE = True
-
-
-# config stuff
-
-def get_cfg_path():
-    if 'TSHISTORYCFGPATH' in os.environ:
-        cfgpath = Path(os.environ['TSHISTORYCFGPATH'])
-        if cfgpath.exists():
-            return cfgpath
-    cfgpath = Path('tshistory.cfg')
-    if cfgpath.exists():
-        return cfgpath
-    cfgpath = Path('~/tshistory.cfg').expanduser()
-    if cfgpath.exists():
-        return cfgpath
-    cfgpath = Path(
-        os.environ.get('XDG_CONFIG_HOME', '~/.config'),
-        'tshistory.cfg'
-    ).expanduser()
-    if cfgpath.exists():
-        return cfgpath
-
-
-def config():
-    cfgpath = get_cfg_path()
-    if cfgpath:
-        return reader(cfgpath)
-    raise Exception('No `tshistory.cfg` file could be found.')
-
-
-def find_dburi(something: str) -> str:
-    if something.startswith('http'):
-        return something
-    try:
-        url.make_url(something)
-    except Exception:
-        pass
-    else:
-        return something
-
-    try:
-        cfg = config()
-        return cfg['dburi'][something]
-    except Exception as exc:
-        raise Exception(
-            f'could not find the `{something}` entry in the '
-            f'[dburi] section of the tshistory.cfg '
-            f'conf file (cause: {exc.__class__.__name__} -> {exc})'
-        )
-
-
-def find_first_uri(cfg=None):
-    if cfg is None:
-        cfg = config()
-    assert 'dburi' in cfg, 'Your tshistory.cfg file does not contain a [dburi] section.'
-    return next(iter(cfg['dburi'].values()))
-
-
-def find_first_uriname(cfg=None):
-    if cfg is None:
-        cfg = config()
-    assert 'dburi' in cfg, 'Your tshistory.cfg file does not contain a [dburi] section.'
-    return next(iter(cfg['dburi'].keys()))
-
-
-def find_sources(uri):
-    # The [db] section may contain several name -> uri entries. We find
-    # the matching name and then we can find the associated sources.
-    cfg = config()
-    for localname, dburi in cfg['dburi'].items():
-        if uri == dburi:
-            break
-    else:
-        raise Exception(f'No match for {uri} in the tshistory.cfg file.')
-
-    allsources = unflatten(cfg['sources'])
-    sources = {}
-    for name, source in allsources.get(localname, {}).items():
-        uri, ns = source.split(',')
-        sources[name] = (uri.strip(), ns.strip())
-    return sources
 
 
 # versions
