@@ -12,6 +12,7 @@ import numpy as np
 from sqlhelp import sqlfile, select, insert
 
 from tshistory.config import configuration
+from tshistory.codecs import iohelper
 from tshistory.util import (
     closed_overlaps,
     compatible_date,
@@ -1484,6 +1485,50 @@ class timeseriesfs1:
         ).scalar()
 
     @tx
+    def internal_metadata(self, cn, name):
+        if name in cn.cache['internal_metadata']:
+            return cn.cache['internal_metadata'][name]
+        meta = cn.cache['internal_metadata'][name] = cn.execute(
+            f'select internal_metadata '
+            f'from "{self.namespace}".registry '
+            f'where name = %(name)s',
+            name=name
+        ).scalar()
+        return meta
+
+    @tx
+    def get(self, cn, name):  # incomplete signature for now
+        if not self.exists(cn, name):
+            return
+
+        root = self.root / name
+        # we will just get the only one existing revision
+        with open(root / 'revs', 'rb') as frevs:
+            brev = frevs.read(32)
+
+        rev = iohelper.unpack_version_record(brev)
+        address = rev[5]
+
+        # let's fetch the relevant tree node
+        with open(root / 'tree', 'rb') as ftree:
+            ftree.seek(address)
+            bnode = ftree.read(18)
+
+        node = iohelper.unpack_snapshot_record(bnode)
+        parent = node[2]
+        assert parent == 0
+        blockaddr = node[3]
+        blocksize = node[4]
+
+        # let's get the meat
+        with open(root / 'chunks', 'rb') as fchunks:
+            fchunks.seek(blockaddr)
+            bchunk = fchunks.read(blocksize)
+
+        meta = self.internal_metadata(cn, name)
+        return iohelper.chunks_to_ts(meta, [bchunk])
+
+    @tx
     def update(self, cn, ts, name, author,
                metadata=None,
                insertion_date=None,
@@ -1530,8 +1575,6 @@ class timeseriesfs1:
         revs = path / 'revs'
         tree = path / 'tree'
         chunks = path / 'chunks'
-
-        from tshistory.codecs import iohelper
 
         packed = iohelper.serialize_ts(ts, False)
         node = iohelper.make_snapshot_record(

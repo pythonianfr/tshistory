@@ -44,3 +44,10 @@ def test_create_initial(engine, tsf):
 """, diff)
 
     assert tsf.exists(engine, 'fs-first')
+
+    out = tsf.get(engine, 'fs-first')
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+2024-01-02 00:00:00+00:00    2.0
+2024-01-03 00:00:00+00:00    3.0
+""", out)
