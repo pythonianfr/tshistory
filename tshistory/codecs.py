@@ -399,12 +399,12 @@ class iohelper:
 
     @staticmethod
     def chunks_to_ts(metadata, chunks):
-        chunks = (
+        nchunks = (
             binary_unpack(zlib.decompress(chunk))
             for chunk in chunks
         )
         bseparator = b'\0' if metadata['value_type'] == 'object' else b''
-        indexchunks, valueschunks = list(zip(*chunks))
+        indexchunks, valueschunks = list(zip(*nchunks))
         index, values = numpy_deserialize(
             b''.join(indexchunks),
             bseparator.join(valueschunks),

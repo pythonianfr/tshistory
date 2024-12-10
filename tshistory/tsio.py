@@ -3,7 +3,6 @@ import logging
 import hashlib
 import uuid
 import json
-import os
 from pathlib import Path
 
 import pandas as pd
@@ -12,7 +11,6 @@ import numpy as np
 from sqlhelp import sqlfile, select, insert
 
 from tshistory.config import configuration
-from tshistory.codecs import iohelper
 from tshistory.util import (
     closed_overlaps,
     compatible_date,
@@ -31,7 +29,7 @@ from tshistory.util import (
     ts,
     tx
 )
-from tshistory.storage import Postgres
+from tshistory.storage import Postgres, FS1
 
 
 L = logging.getLogger('tshistory.tsio')
@@ -174,7 +172,7 @@ class timeseries:
         if current.equals(newts):
             L.info('no difference in %s by %s (for ts of size %s)',
                    name, author, len(newts))
-            return
+            return  # NOTE: why not empty_series ? looks like an error ...
 
         # compute series start/end stamps
         start, end = start_end(newts)
@@ -1461,6 +1459,7 @@ class BlockStaircaseRevisionError(Exception):
 
 class timeseriesfs1:
     storage = 'filesystem1'
+    storageclass = FS1
 
     def __init__(self, namespace='tsh', othersources=None, _groups=True, uri=None):
         assert uri is not None
@@ -1496,37 +1495,32 @@ class timeseriesfs1:
         ).scalar()
         return meta
 
+    def tzaware(self, cn, name):
+        return cn.execute(
+            'select internal_metadata->\'tzaware\' '
+            f'from "{self.namespace}".registry '
+            'where name = %(name)s',
+            name=name
+        ).scalar()
+
+    @tx
+    def interval(self, cn, name, notz=True):
+        sto = self.storageclass(self.root, name)
+        rev = sto.last_rev
+        tz = None
+        if self.tzaware(cn, name) and not notz:
+            tz = 'UTC'
+        start, end = pd.Timestamp(rev[3], tz=tz), pd.Timestamp(rev[4], tz=tz)
+        return pd.Interval(left=start, right=end,closed='both')
+
     @tx
     def get(self, cn, name):  # incomplete signature for now
         if not self.exists(cn, name):
             return
 
-        root = self.root / name
-        # we will just get the only one existing revision
-        with open(root / 'revs', 'rb') as frevs:
-            brev = frevs.read(32)
-
-        rev = iohelper.unpack_version_record(brev)
-        address = rev[5]
-
-        # let's fetch the relevant tree node
-        with open(root / 'tree', 'rb') as ftree:
-            ftree.seek(address)
-            bnode = ftree.read(18)
-
-        node = iohelper.unpack_snapshot_record(bnode)
-        parent = node[2]
-        assert parent == 0
-        blockaddr = node[3]
-        blocksize = node[4]
-
-        # let's get the meat
-        with open(root / 'chunks', 'rb') as fchunks:
-            fchunks.seek(blockaddr)
-            bchunk = fchunks.read(blocksize)
-
-        meta = self.internal_metadata(cn, name)
-        return iohelper.chunks_to_ts(meta, [bchunk])
+        sto = self.storageclass(self.root, name)
+        imeta = self.internal_metadata(cn, name)
+        return sto.last(imeta)
 
     @tx
     def update(self, cn, ts, name, author,
@@ -1553,6 +1547,11 @@ class timeseriesfs1:
         if not keepnans:
             ts = ts.dropna()
 
+        # at creation/update time we take an exclusive lock to avoid
+        # race conditions on the storage files
+        cn.execute(
+            f'select pg_advisory_xact_lock({hash64(name)})'
+        )
         if not self.exists(cn, name):
             seriesmeta = series_metadata(ts)
             return self._create(
@@ -1560,51 +1559,16 @@ class timeseriesfs1:
                 metadata, insertion_date
             )
 
+        return self._update(
+            cn, ts, name, author,
+            metadata, insertion_date
+        )
+
     def _create(self, cn, ts, name, author, seriesmeta,
                 metadata=None, insertion_date=None):
-        start, end = start_end(ts, notz=False)
-        # at creation time we take an exclusive lock to avoid
-        # race conditions on the storage files
-        cn.execute(
-            f'select pg_advisory_xact_lock({hash64(name)})'
-        )
-
-        # create the directory and empty files
-        path = (self.root / name)
-        path.mkdir()
-        revs = path / 'revs'
-        tree = path / 'tree'
-        chunks = path / 'chunks'
-
-        packed = iohelper.serialize_ts(ts, False)
-        node = iohelper.make_snapshot_record(
-            ts.index[0],
-            ts.index[-1],
-            0,
-            0,
-            len(packed)
-        )
-        with open(tree, 'wb') as ftree:
-            ftree.seek(0, os.SEEK_END)
-            ftree.write(node)
-
-        with open(chunks, 'wb') as fchunks:
-            fchunks.seek(0, os.SEEK_END)
-            fchunks.write(packed)
-
-        ver = iohelper.make_version_record(
-            insertion_date or pd.Timestamp.utcnow(),
-            ts.index[0],
-            ts.index[-1],
-            ts.index[0],
-            ts.index[-1],
-            0,
-            42,  # AUTHORID
-            42   # METAID
-        )
-
-        with open(revs, 'wb') as frevs:
-            frevs.write(ver)
+        sto = self.storageclass(self.root, name)
+        sto.initialize()
+        sto.initial_update(ts, 42, 42)
 
         # register
         cn.execute(
@@ -1618,3 +1582,38 @@ class timeseriesfs1:
         ).scalar()
 
         return ts
+
+    def _update(self, cn, ts, name, author,
+                metadata=None, insertion_date=None):
+        if not len(ts):
+            return empty_series(self.tzaware(cn, name))
+
+        sto = self.storageclass(self.root, name)
+        imeta = self.internal_metadata(cn, name)
+        # we will want to pass ts.index.min() as `minindex`
+        # to limit the search
+        last = sto.last(imeta)
+
+        series_diff = diff(last, ts)
+        if not len(series_diff):
+            L.info('no difference in %s by %s (for ts of size %s)',
+                   name, author, len(ts))
+            return
+
+        # compute series start/end stamps
+        diffstart = series_diff.index[0]
+        diffend = series_diff.index[-1]
+        tsstart, tsend = start_end(series_diff, notz=False)
+        ival = self.interval(cn, name, notz=True)
+        start = min(tsstart or ival.left, ival.left)
+        end = max(tsend or ival.right, ival.right)
+
+        sto.update(
+            ts, start, end, diffstart, diffend, 0, 0
+        )
+
+        L.info(
+            'inserted diff (size=%s) for ts %s by %s',
+            len(series_diff), name, author
+        )
+        return series_diff

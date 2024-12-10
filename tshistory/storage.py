@@ -1,6 +1,12 @@
+import os
+
+import pandas as pd
 from sqlhelp import select
 
-from tshistory.util import patch
+from tshistory.util import (
+    empty_series,
+    patch
+)
 from tshistory.codecs import iohelper
 
 
@@ -297,3 +303,155 @@ class Postgres:
         sql = (f'delete from "{self.tsh.namespace}.snapshot"."{self.tablename}" '
                f'where id in ({todelete})')
         self.cn.execute(sql)
+
+
+class FS1:
+    _rev_size = 32
+    _node_size = 18
+
+    def __init__(self, root, name):
+        self.name = name
+        self.root = root / name
+        self.revs = self.root / 'revs'
+        self.tree = self.root / 'tree'
+        self.chunks = self.root / 'chunks'
+
+    def initialize(self):
+        self.root.mkdir()
+        open(self.revs, mode='x')
+        open(self.tree, mode='x')
+        open(self.chunks, mode='x')
+
+    @property
+    def revs_size(self):
+        return os.stat(self.revs).st_size
+
+    @property
+    def revs_entries(self):
+        return self.revs_size // self._rev_size
+
+    @property
+    def last_rev(self):
+        with open(self.revs, 'rb') as frevs:
+            frevs.seek(self.revs_size - self._rev_size)  # end of penultimate rev
+            brev = frevs.read(self._rev_size)
+            return iohelper.unpack_version_record(brev)
+
+    @property
+    def tree_size(self):
+        return os.stat(self.tree).st_size
+
+    @property
+    def tree_entries(self):
+        return self.tree_size // self._node_size
+
+    @property
+    def chunks_size(self):
+        return os.stat(self.chunks).st_size
+
+    def node_at(self, node_index):
+        with open(self.tree, 'rb') as ftree:
+            ftree.seek((node_index - 1) * self._node_size)
+            bnode = ftree.read(self._node_size)
+
+        return iohelper.unpack_snapshot_record(bnode)
+
+    def chunk_at(self, start, size):
+        with open(self.chunks, 'rb') as fchunks:
+            fchunks.seek(start)
+            return fchunks.read(size)
+
+    def initial_update(self, ts, authorid, metaid):
+        packed = iohelper.serialize_ts(ts, False)
+        with open(self.chunks, 'ab') as fchunks:
+            fchunks.write(packed)
+
+        node = iohelper.make_snapshot_record(
+            ts.index[0],
+            ts.index[-1],
+            0,  # no parent
+            0,  # initial chunk
+            len(packed)
+        )
+        with open(self.tree, 'ab') as ftree:
+            ftree.write(node)
+
+        ver = iohelper.make_version_record(
+            pd.Timestamp.utcnow(),
+            ts.index[0],
+            ts.index[-1],
+            ts.index[0],
+            ts.index[-1],
+            1,  # index of the node, starts at 1
+            authorid,
+            metaid
+        )
+
+        with open(self.revs, 'ab') as frevs:
+            frevs.write(ver)
+
+    def last(self, imeta):
+        rev = self.last_rev
+        index = rev[5]
+        node = self.node_at(index)
+        chunks = []
+        # walk the tree downwards
+        while True:
+            chunks.append(
+                self.chunk_at(node[3], node[4])
+            )
+            parent = node[2]
+            if not parent:
+                break
+            node = self.node_at(parent)
+
+        if not chunks:
+            return empty_series(imeta['tzaware'])
+        chunks.reverse()
+        return iohelper.chunks_to_ts(imeta, chunks)
+
+    def update(self, ts, start, end, diffstart, diffend, authorid, metaid):
+        """We will build a new node, whith a parent node.
+
+        The parent may be immediate or older (at worst there is no parent)
+
+        A node is a 18 bytes record. They are addressed from their
+        index in the rev.
+
+        """
+        # fetch the latest node, which will be our parent
+        rev = self.last_rev
+
+        # we can now have our tree node
+        packed = iohelper.serialize_ts(ts, False)
+        newbnode = iohelper.make_snapshot_record(
+            diffstart,
+            diffend,
+            rev[5],  # index of the parent node
+            self.chunks_size,
+            len(packed)
+        )
+
+        # build and write the chunk
+        # do this *after* the previous step
+        # to have the correct chunks size
+        with open(self.chunks, 'ab') as fchunks:
+            fchunks.write(packed)
+
+        # write it and get the index
+        with open(self.tree, 'ab') as ftree:
+            ftree.write(newbnode)
+
+        # let's create the rev
+        newbrev = iohelper.make_version_record(
+            pd.Timestamp.utcnow(),
+            start,
+            end,
+            diffstart,
+            diffend,
+            self.tree_entries,
+            authorid,
+            metaid
+        )
+        with open(self.revs, 'ab') as frevs:
+            frevs.write(newbrev)
