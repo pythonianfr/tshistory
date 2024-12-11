@@ -335,7 +335,7 @@ class FS1:
         with open(self.revs, 'rb') as frevs:
             frevs.seek(self.revs_size - self._rev_size)  # end of penultimate rev
             brev = frevs.read(self._rev_size)
-            return iohelper.unpack_version_record(brev)
+            return iohelper.unpack_rev(brev)
 
     @property
     def tree_size(self):
@@ -354,7 +354,7 @@ class FS1:
             ftree.seek((node_index - 1) * self._node_size)
             bnode = ftree.read(self._node_size)
 
-        return iohelper.unpack_snapshot_record(bnode)
+        return iohelper.unpack_node(bnode)
 
     def chunk_at(self, start, size):
         with open(self.chunks, 'rb') as fchunks:
@@ -366,7 +366,7 @@ class FS1:
         with open(self.chunks, 'ab') as fchunks:
             fchunks.write(packed)
 
-        node = iohelper.make_snapshot_record(
+        bnode = iohelper.pack_node(
             ts.index[0],
             ts.index[-1],
             0,  # no parent
@@ -374,9 +374,9 @@ class FS1:
             len(packed)
         )
         with open(self.tree, 'ab') as ftree:
-            ftree.write(node)
+            ftree.write(bnode)
 
-        ver = iohelper.make_version_record(
+        brev = iohelper.pack_rev(
             pd.Timestamp.utcnow(),
             ts.index[0],
             ts.index[-1],
@@ -388,7 +388,7 @@ class FS1:
         )
 
         with open(self.revs, 'ab') as frevs:
-            frevs.write(ver)
+            frevs.write(brev)
 
     def last(self, imeta):
         node = self.node_at(self.last_rev.index)
@@ -422,7 +422,7 @@ class FS1:
 
         # we can now have our tree node
         packed = iohelper.serialize_ts(ts, False)
-        newbnode = iohelper.make_snapshot_record(
+        newbnode = iohelper.pack_node(
             diffstart,
             diffend,
             rev.index,  # index of the parent node
@@ -441,7 +441,7 @@ class FS1:
             ftree.write(newbnode)
 
         # let's create the rev
-        newbrev = iohelper.make_version_record(
+        newbrev = iohelper.pack_rev(
             pd.Timestamp.utcnow(),
             start,
             end,

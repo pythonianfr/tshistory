@@ -456,7 +456,7 @@ class iohelper:
         )
 
     @staticmethod
-    def make_version_record(revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid):
+    def pack_rev(revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid):
         buff = bytearray(32)
         iohelper.pack_datetime_into(buff, revdate, 0)
         iohelper.pack_datetime_into(buff, tsstart, 4)
@@ -469,7 +469,7 @@ class iohelper:
         return buff
 
     @staticmethod
-    def unpack_version_record(bytestr):
+    def unpack_rev(bytestr):
         buff = array('B', bytestr)
         revdate = iohelper.unpack_datetime_from(buff, 0)
         tsstart = iohelper.unpack_datetime_from(buff, 4)
@@ -482,7 +482,7 @@ class iohelper:
         return rev(revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid)
 
     @staticmethod
-    def make_snapshot_record(start, end, parent, adress, datasize):
+    def pack_node(start, end, parent, adress, datasize):
         if start.tzinfo is None:
             start = start.replace(tzinfo=pytz.utc)
         if end.tzinfo is None:
@@ -496,7 +496,7 @@ class iohelper:
         return buff
 
     @staticmethod
-    def unpack_snapshot_record(bytestr):
+    def unpack_node(bytestr):
         buff = array('B', bytestr)
         start = iohelper.unpack_datetime_from(buff, 0)
         end = iohelper.unpack_datetime_from(buff, 4)
