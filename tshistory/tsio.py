@@ -1510,7 +1510,7 @@ class timeseriesfs1:
         tz = None
         if self.tzaware(cn, name) and not notz:
             tz = 'UTC'
-        start, end = pd.Timestamp(rev[3], tz=tz), pd.Timestamp(rev[4], tz=tz)
+        start, end = pd.Timestamp(rev.diffstart, tz=tz), pd.Timestamp(rev.diffend, tz=tz)
         return pd.Interval(left=start, right=end,closed='both')
 
     @tx

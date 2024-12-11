@@ -269,14 +269,14 @@ def test_make_snapshot_record():
     assert len(rec) == 18
     assert isinstance(rec, bytearray)
 
-    start, end, parent, chunkaddress, chunksize = iohelper.unpack_snapshot_record(
+    node = iohelper.unpack_snapshot_record(
         bytes(rec)
     )
-    assert start == utcdt(2020, 1, 1)
-    assert end == utcdt(2020, 1, 2)
-    assert parent == 0
-    assert chunkaddress == 0
-    assert chunksize == 139
+    assert node.start == utcdt(2020, 1, 1)
+    assert node.end == utcdt(2020, 1, 2)
+    assert node.parent == 0
+    assert node.address == 0
+    assert node.size == 139
 
     rec = iohelper.make_snapshot_record(
         datetime(2020, 1, 1),
@@ -288,14 +288,14 @@ def test_make_snapshot_record():
     assert len(rec) == 18
     assert isinstance(rec, bytearray)
 
-    start, end, parent, chunkaddress, chunksize = iohelper.unpack_snapshot_record(
+    node = iohelper.unpack_snapshot_record(
         bytes(rec)
     )
-    assert start == utcdt(2020, 1, 1)
-    assert end == utcdt(2020, 1, 2)
-    assert parent == 1
-    assert chunkaddress == 0
-    assert chunksize == 139
+    assert node.start == utcdt(2020, 1, 1)
+    assert node.end == utcdt(2020, 1, 2)
+    assert node.parent == 1
+    assert node.address == 0
+    assert node.size == 139
 
 
 def test_tstamp_roundtrip():
@@ -329,17 +329,17 @@ def test_version_record():
     assert len(rec) == 32
     assert isinstance(rec, bytearray)
 
-    rdate, tsstart, tsend, dstart, dend, id1, id2, id3 = iohelper.unpack_version_record(
+    rev = iohelper.unpack_version_record(
         bytes(rec)
     )
-    assert rdate == utcdt(2024, 1, 1)
-    assert tsstart == utcdt(2020, 12, 31)
-    assert tsend == utcdt(2023, 12, 31, 2)
-    assert dstart == utcdt(2023, 12, 31, 0)
-    assert dend == utcdt(2023, 12, 31, 2)
-    assert id1 == 0
-    assert id2 == 1
-    assert id3 == 2
+    assert rev.revdate == utcdt(2024, 1, 1)
+    assert rev.tsstart == utcdt(2020, 12, 31)
+    assert rev.tsend == utcdt(2023, 12, 31, 2)
+    assert rev.diffstart == utcdt(2023, 12, 31, 0)
+    assert rev.diffend == utcdt(2023, 12, 31, 2)
+    assert rev.index == 0
+    assert rev.authorid == 1
+    assert rev.metaid == 2
 
 
 def test_read_write_2_versions():
@@ -434,29 +434,29 @@ def test_read_write_2_versions():
             # rev block is of size 32
             revs.seek(32) # seek to the beginning of the last block
             bytestr = revs.read(32)
-            rdate, tsstart, tsend, dstart, dend, treeindex, *_ = iohelper.unpack_version_record(
+            rev = iohelper.unpack_version_record(
                 bytestr
             )
-            assert treeindex == 1
+            assert rev.index == 1
 
         # ok, let's dig the chunks from this blockid and rebuild the
         # whole series from chunks
         with open(tmp + '/tree', 'rb') as tree:
             # we start with using the tree index
-            tree.seek(treeindex * 18) # move to last block
+            tree.seek(rev.index * 18) # move to last block
             fixed = tree.read(18)
-            start2, end2, parent2, chunkaddress2, size2 = iohelper.unpack_snapshot_record(fixed)
+            node2 = iohelper.unpack_snapshot_record(fixed)
 
             tree.seek(0)
             fixed = tree.read(18)
-            start1, end1, parent1, chunkaddress1, size1 = iohelper.unpack_snapshot_record(fixed)
+            node1 = iohelper.unpack_snapshot_record(fixed)
 
         with open(tmp + '/chunks', 'rb') as chunks:
-            chunks.seek(chunkaddress2)
-            chunk2 = chunks.read(size2)
+            chunks.seek(node2.address)
+            chunk2 = chunks.read(node2.size)
 
-            chunks.seek(chunkaddress1)
-            chunk1 = chunks.read(size1)
+            chunks.seek(node1.address)
+            chunk1 = chunks.read(node2.size)
 
     fullts = iohelper.chunks_to_ts(meta, [chunk1, chunk2])
     assert_df("""

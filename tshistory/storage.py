@@ -391,16 +391,14 @@ class FS1:
             frevs.write(ver)
 
     def last(self, imeta):
-        rev = self.last_rev
-        index = rev[5]
-        node = self.node_at(index)
+        node = self.node_at(self.last_rev.index)
         chunks = []
         # walk the tree downwards
         while True:
             chunks.append(
-                self.chunk_at(node[3], node[4])
+                self.chunk_at(node.address, node.size)
             )
-            parent = node[2]
+            parent = node.parent
             if not parent:
                 break
             node = self.node_at(parent)
@@ -427,7 +425,7 @@ class FS1:
         newbnode = iohelper.make_snapshot_record(
             diffstart,
             diffend,
-            rev[5],  # index of the parent node
+            rev.index,  # index of the parent node
             self.chunks_size,
             len(packed)
         )

@@ -390,6 +390,31 @@ def unpack_group_history(bytestring):
 
 # file binary serialisation
 
+class rev:
+    __slots__ = 'revdate', 'tsstart', 'tsend', 'diffstart', 'diffend', 'index', 'authorid', 'metaid'
+
+    def __init__(self, revdate, tsstart, tsend, diffstart, diffend, index, authorid, metaid):
+        self.revdate = revdate
+        self.tsstart = tsstart
+        self.tsend = tsend
+        self.diffstart = diffstart
+        self.diffend = diffend
+        self.index = index
+        self.authorid = authorid
+        self.metaid = metaid
+
+
+class node:
+    __slots__ = 'start', 'end', 'parent', 'address', 'size'
+
+    def __init__(self, start, end, parent, address, size):
+        self.start = start
+        self.end = end
+        self.parent = parent
+        self.address = address
+        self.size = size
+
+
 class iohelper:
 
     @staticmethod
@@ -454,7 +479,7 @@ class iohelper:
         address = struct.unpack_from('!I', buff, 20)[0]
         authorid = struct.unpack_from('!I', buff, 24)[0]
         metaid = struct.unpack_from('!I', buff, 28)[0]
-        return revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid
+        return rev(revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid)
 
     @staticmethod
     def make_snapshot_record(start, end, parent, adress, datasize):
@@ -478,4 +503,4 @@ class iohelper:
         parent = struct.unpack_from('!I', buff, 8)[0]
         address = struct.unpack_from('!I', buff, 12)[0]
         size = struct.unpack_from('!h', buff, 16)[0]
-        return start, end, parent, address, size
+        return node(start, end, parent, address, size)
