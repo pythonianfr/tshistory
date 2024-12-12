@@ -308,6 +308,7 @@ class Postgres:
 class FS1:
     _rev_size = 32
     _node_size = 18
+    _max_bucket_size = 150
 
     def __init__(self, root, name):
         self.name = name
@@ -371,20 +372,36 @@ class FS1:
             fchunks.seek(start)
             return fchunks.read(size)
 
-    def initial_update(self, ts, revdate, authorid, metaid):
-        packed = iohelper.serialize_ts(ts, False)
-        with open(self.chunks, 'ab') as fchunks:
-            fchunks.write(packed)
+    def buckets(self, ts):
+        if len(ts) < self._max_bucket_size:
+            return [ts]
 
-        bnode = iohelper.pack_node(
-            ts.index[0],
-            ts.index[-1],
-            0,  # no parent
-            0,  # initial chunk
-            len(packed)
-        )
-        with open(self.tree, 'ab') as ftree:
-            ftree.write(bnode)
+        buckets = []
+        for start in range(0, len(ts), self._max_bucket_size):
+            buckets.append(ts[start:start + self._max_bucket_size])
+        return buckets
+
+    def initial_update(self, ts, revdate, authorid, metaid):
+        buckets = self.buckets(ts)
+
+        parent = 0  # no parent
+        address = 0  # initial chunk
+        for idx, bucket in enumerate(buckets, start=1):
+            packed = iohelper.serialize_ts(bucket, False)
+            with open(self.chunks, 'ab') as fchunks:
+                fchunks.write(packed)
+
+            bnode = iohelper.pack_node(
+                bucket.index[0],
+                bucket.index[-1],
+                parent,
+                address,
+                len(packed)
+            )
+            parent = idx
+            address = len(packed)
+            with open(self.tree, 'ab') as ftree:
+                ftree.write(bnode)
 
         brev = iohelper.pack_rev(
             revdate or pd.Timestamp.utcnow(),
@@ -392,7 +409,7 @@ class FS1:
             ts.index[-1],
             ts.index[0],
             ts.index[-1],
-            1,  # index of the node, starts at 1
+            idx,
             authorid,
             metaid
         )
@@ -443,6 +460,8 @@ class FS1:
             chunk = self.chunk_at(node.address, node.size)
             base = iohelper.chunks_to_ts(imeta, [chunk])
             ts = patch(base, ts)
+            # this node with which we just merge cannot be our parent
+            # so we take its parent
             nodeindex = node.parent
 
         # we can now have our tree node

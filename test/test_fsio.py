@@ -1,6 +1,7 @@
 import pandas as pd
 
 from tshistory.testutil import assert_df
+from tshistory.storage import FS1
 
 
 def test_exists(engine, tsf):
@@ -153,3 +154,28 @@ def test_two_overlapping_revisions(engine, tsf):
 2024-01-03 00:00:00+00:00    3.0
 2024-01-04 00:00:00+00:00    4.0
 """, ts)
+
+
+def test_one_multi_chunks_revision(engine, tsf):
+    ts = pd.Series(
+        [1] * 300,  # two chunks
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=300,
+            freq='h'
+        )
+    )
+
+    tsf.update(
+        engine,
+        ts,
+        'fs-multichunks',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1', tz='utc')
+    )
+
+    ts = tsf.get(engine, 'fs-multichunks')
+    assert len(ts) == 300
+
+    sto = FS1(tsf.root, 'fs-multichunks')
+    assert sto.tree_entries == 2
