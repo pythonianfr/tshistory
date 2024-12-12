@@ -1514,13 +1514,13 @@ class timeseriesfs1:
         return pd.Interval(left=start, right=end,closed='both')
 
     @tx
-    def get(self, cn, name):  # incomplete signature for now
+    def get(self, cn, name, from_value_date=None):  # incomplete signature for now
         if not self.exists(cn, name):
             return
 
         sto = self.storageclass(self.root, name)
         imeta = self.internal_metadata(cn, name)
-        return sto.last(imeta)
+        return sto.last(imeta, from_value_date)
 
     @tx
     def insertion_dates(self, cn, name):

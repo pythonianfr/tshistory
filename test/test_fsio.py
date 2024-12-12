@@ -181,7 +181,7 @@ def test_one_multi_chunks_revision(engine, tsf):
     assert sto.tree_entries == 2
 
 
-def test_two_chunks_two_revision(engine, tsf):
+def test_two_chunks_three_revision(engine, tsf):
     ts = pd.Series(
         [1] * 300,  # two chunks
         index=pd.date_range(
@@ -194,7 +194,7 @@ def test_two_chunks_two_revision(engine, tsf):
     tsf.update(
         engine,
         ts,
-        'fs-2chunks2revs',
+        'fs-2chunks3revs',
         'Babar',
         insertion_date=pd.Timestamp('2024-1-1', tz='utc')
     )
@@ -203,13 +203,31 @@ def test_two_chunks_two_revision(engine, tsf):
     tsf.update(
         engine,
         ts,
-        'fs-2chunks2revs',
+        'fs-2chunks3revs',
         'Babar',
         insertion_date=pd.Timestamp('2024-1-2', tz='utc')
     )
 
-    ts = tsf.get(engine, 'fs-2chunks2revs')
+    ts = tsf.get(engine, 'fs-2chunks3revs')
     assert len(ts) == 300
 
-    sto = FS1(tsf.root, 'fs-2chunks2revs')
+    sto = FS1(tsf.root, 'fs-2chunks3revs')
     assert sto.tree_entries == 4
+
+    ts = ts * 2
+    ts = ts[-10:]
+
+    tsf.update(
+        engine,
+        ts,
+        'fs-2chunks3revs',
+        'Celeste',
+        insertion_date=pd.Timestamp('2024-1-3', tz='utc')
+    )
+
+    ts = tsf.get(
+        engine,
+        'fs-2chunks3revs',
+        from_value_date=pd.Timestamp('2024-1-13', tz='utc')
+    )
+    assert len(ts) == 150

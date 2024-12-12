@@ -417,7 +417,7 @@ class FS1:
         with open(self.revs, 'ab') as frevs:
             frevs.write(brev)
 
-    def last(self, imeta):
+    def last(self, imeta, from_value_date=None):
         node = self.node_at(self.last_rev.index)
         chunks = []
         # walk the tree downwards
@@ -427,6 +427,8 @@ class FS1:
             )
             parent = node.parent
             if not parent:
+                break
+            if from_value_date and from_value_date >= node.start:
                 break
             node = self.node_at(parent)
 
