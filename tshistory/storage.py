@@ -337,6 +337,16 @@ class FS1:
             brev = frevs.read(self._rev_size)
             return iohelper.unpack_rev(brev)
 
+    def revisions(self):
+        revs = []
+        with open(self.revs, 'rb') as frevs:
+            while True:
+                brev = frevs.read(self._rev_size)
+                if not brev:
+                    break
+                revs.append(iohelper.unpack_rev(brev))
+        return revs
+
     @property
     def tree_size(self):
         return os.stat(self.tree).st_size
@@ -361,7 +371,7 @@ class FS1:
             fchunks.seek(start)
             return fchunks.read(size)
 
-    def initial_update(self, ts, authorid, metaid):
+    def initial_update(self, ts, revdate, authorid, metaid):
         packed = iohelper.serialize_ts(ts, False)
         with open(self.chunks, 'ab') as fchunks:
             fchunks.write(packed)
@@ -377,7 +387,7 @@ class FS1:
             ftree.write(bnode)
 
         brev = iohelper.pack_rev(
-            pd.Timestamp.utcnow(),
+            revdate or pd.Timestamp.utcnow(),
             ts.index[0],
             ts.index[-1],
             ts.index[0],
@@ -408,7 +418,7 @@ class FS1:
         chunks.reverse()
         return iohelper.chunks_to_ts(imeta, chunks)
 
-    def update(self, ts, start, end, diffstart, diffend, authorid, metaid):
+    def update(self, ts, revdate, start, end, diffstart, diffend, authorid, metaid):
         """We will build a new node, whith a parent node.
 
         The parent may be immediate or older (at worst there is no parent)
@@ -442,7 +452,7 @@ class FS1:
 
         # let's create the rev
         newbrev = iohelper.pack_rev(
-            pd.Timestamp.utcnow(),
+            revdate or pd.Timestamp.utcnow(),
             start,
             end,
             diffstart,

@@ -34,7 +34,8 @@ def test_create_initial(engine, tsf):
         engine,
         ts,
         'fs-first',
-        'Babar'
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1', tz='utc')
     )
 
     assert_df("""
@@ -52,6 +53,11 @@ def test_create_initial(engine, tsf):
 2024-01-03 00:00:00+00:00    3.0
 """, out)
 
+    idates = tsf.insertion_dates(engine, 'fs-first')
+    assert idates == [
+        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC')
+    ]
+
 
 def test_two_mono_chunk_revisions(engine, tsf):
     ts0 = pd.Series(
@@ -67,7 +73,8 @@ def test_two_mono_chunk_revisions(engine, tsf):
         engine,
         ts0,
         'fs-2revs',
-        'Babar'
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1', tz='utc')
     )
 
     ts1 = pd.Series(
@@ -83,7 +90,8 @@ def test_two_mono_chunk_revisions(engine, tsf):
         engine,
         ts1,
         'fs-2revs',
-        'Celeste'
+        'Celeste',
+        insertion_date=pd.Timestamp('2024-1-2', tz='utc')
     )
 
     out = tsf.get(engine, 'fs-2revs')
@@ -95,3 +103,9 @@ def test_two_mono_chunk_revisions(engine, tsf):
 2024-01-05 00:00:00+00:00    5.0
 2024-01-06 00:00:00+00:00    6.0
 """, out)
+
+    idates = tsf.insertion_dates(engine, 'fs-2revs')
+    assert idates == [
+        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC')
+    ]

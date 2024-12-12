@@ -1523,6 +1523,14 @@ class timeseriesfs1:
         return sto.last(imeta)
 
     @tx
+    def insertion_dates(self, cn, name):
+        sto = self.storageclass(self.root, name)
+        return [
+            pd.Timestamp(rev.revdate)
+            for rev in sto.revisions()
+        ]
+
+    @tx
     def update(self, cn, ts, name, author,
                metadata=None,
                insertion_date=None,
@@ -1568,7 +1576,7 @@ class timeseriesfs1:
                 metadata=None, insertion_date=None):
         sto = self.storageclass(self.root, name)
         sto.initialize()
-        sto.initial_update(ts, 42, 42)
+        sto.initial_update(ts, insertion_date, 42, 42)
 
         # register
         cn.execute(
@@ -1609,7 +1617,7 @@ class timeseriesfs1:
         end = max(tsend or ival.right, ival.right)
 
         sto.update(
-            ts, start, end, diffstart, diffend, 0, 0
+            ts, insertion_date, start, end, diffstart, diffend, 0, 0
         )
 
         L.info(
