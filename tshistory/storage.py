@@ -465,24 +465,26 @@ class FS1:
             nodeindex = node.parent
 
         # we can now have our tree node
-        packed = iohelper.serialize_ts(ts, False)
-        newbnode = iohelper.pack_node(
-            diffstart,
-            diffend,
-            nodeindex,  # index of the parent node
-            self.chunks_size,
-            len(packed)
-        )
+        for index, bucket in enumerate(self.buckets(ts), start=nodeindex):
+            packed = iohelper.serialize_ts(bucket, False)
 
-        # build and write the chunk
-        # do this *after* the previous step
-        # to have the correct chunks size
-        with open(self.chunks, 'ab') as fchunks:
-            fchunks.write(packed)
+            newbnode = iohelper.pack_node(
+                bucket.index.min(),
+                bucket.index.max(),
+                index,  # index of the parent node
+                self.chunks_size,
+                len(packed)
+            )
 
-        # write it and get the index
-        with open(self.tree, 'ab') as ftree:
-            ftree.write(newbnode)
+            # build and write the chunk
+            # do this *after* the previous step
+            # to have the correct chunks size
+            with open(self.chunks, 'ab') as fchunks:
+                fchunks.write(packed)
+
+            # write it and get the index
+            with open(self.tree, 'ab') as ftree:
+                ftree.write(newbnode)
 
         # let's create the rev
         newbrev = iohelper.pack_rev(

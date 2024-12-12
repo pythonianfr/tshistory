@@ -179,3 +179,37 @@ def test_one_multi_chunks_revision(engine, tsf):
 
     sto = FS1(tsf.root, 'fs-multichunks')
     assert sto.tree_entries == 2
+
+
+def test_two_chunks_two_revision(engine, tsf):
+    ts = pd.Series(
+        [1] * 300,  # two chunks
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=300,
+            freq='h'
+        )
+    )
+
+    tsf.update(
+        engine,
+        ts,
+        'fs-2chunks2revs',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1', tz='utc')
+    )
+
+    ts = ts * 2
+    tsf.update(
+        engine,
+        ts,
+        'fs-2chunks2revs',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-2', tz='utc')
+    )
+
+    ts = tsf.get(engine, 'fs-2chunks2revs')
+    assert len(ts) == 300
+
+    sto = FS1(tsf.root, 'fs-2chunks2revs')
+    assert sto.tree_entries == 4
