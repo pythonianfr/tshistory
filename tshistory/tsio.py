@@ -1617,7 +1617,7 @@ class timeseriesfs1:
         end = max(tsend or ival.right, ival.right)
 
         sto.update(
-            ts, insertion_date, start, end, diffstart, diffend, 0, 0
+            ts, imeta, insertion_date, start, end, diffstart, diffend, 0, 0
         )
 
         L.info(

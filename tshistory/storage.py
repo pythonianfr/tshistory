@@ -418,7 +418,13 @@ class FS1:
         chunks.reverse()
         return iohelper.chunks_to_ts(imeta, chunks)
 
-    def update(self, ts, revdate, start, end, diffstart, diffend, authorid, metaid):
+    def find_node_index_matching(self, nodeindex, mindate):
+        node = self.node_at(nodeindex)
+        if mindate < node.start:
+            return self.find_node_index_matching(node.parent, mindate)
+        return nodeindex, True  # we found the base node
+
+    def update(self, ts, imeta, revdate, start, end, diffstart, diffend, authorid, metaid):
         """We will build a new node, whith a parent node.
 
         The parent may be immediate or older (at worst there is no parent)
@@ -429,13 +435,22 @@ class FS1:
         """
         # fetch the latest node, which will be our parent
         rev = self.last_rev
+        nodeindex, patchme = self.find_node_index_matching(rev.index, ts.index.min())
+
+        if patchme:
+            # we found a parent node, and we need to patch our series with it
+            node = self.node_at(nodeindex)
+            chunk = self.chunk_at(node.address, node.size)
+            base = iohelper.chunks_to_ts(imeta, [chunk])
+            ts = patch(base, ts)
+            nodeindex = node.parent
 
         # we can now have our tree node
         packed = iohelper.serialize_ts(ts, False)
         newbnode = iohelper.pack_node(
             diffstart,
             diffend,
-            rev.index,  # index of the parent node
+            nodeindex,  # index of the parent node
             self.chunks_size,
             len(packed)
         )

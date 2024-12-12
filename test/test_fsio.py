@@ -109,3 +109,47 @@ def test_two_mono_chunk_revisions(engine, tsf):
         pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
         pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC')
     ]
+
+
+def test_two_overlapping_revisions(engine, tsf):
+    ts0 = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=3,
+            freq='D'
+        )
+    )
+
+    tsf.update(
+        engine,
+        ts0,
+        'fs-2overlap',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1', tz='utc')
+    )
+
+    ts1 = pd.Series(
+        [2.2, 3, 4],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-2', tz='utc'),
+            periods=3,
+            freq='D'
+        )
+    )
+
+    tsf.update(
+        engine,
+        ts1,
+        'fs-2overlap',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-2', tz='utc')
+    )
+
+    ts = tsf.get(engine, 'fs-2overlap')
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+2024-01-02 00:00:00+00:00    2.2
+2024-01-03 00:00:00+00:00    3.0
+2024-01-04 00:00:00+00:00    4.0
+""", ts)

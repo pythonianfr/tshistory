@@ -403,6 +403,12 @@ class rev:
         self.authorid = authorid
         self.metaid = metaid
 
+    def __repr__(self):
+        return (
+            f'rev({self.revdate},{self.tsstart},{self.tsend},{self.diffstart},{self.diffend},'
+            f'{self.index},{self.authorid},{self.metaid})'
+        )
+
 
 class node:
     __slots__ = 'start', 'end', 'parent', 'address', 'size'
@@ -413,6 +419,9 @@ class node:
         self.parent = parent
         self.address = address
         self.size = size
+
+    def __repr__(self):
+        return f'node({self.start},{self.end},{self.parent},{self.address},{self.size})'
 
 
 class iohelper:
