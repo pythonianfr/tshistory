@@ -244,3 +244,16 @@ def test_two_chunks_three_revision(engine, tsf):
 2024-01-13 10:00:00+00:00    4.0
 2024-01-13 11:00:00+00:00    4.0
 """, ts)
+
+    ts = tsf.get(
+        engine,
+        'fs-2chunks3revs',
+        from_value_date=pd.Timestamp('2024-1-13', tz='utc'),
+        to_value_date=pd.Timestamp('2024-1-13 03:00:00+00:00', tz='utc')
+    )
+    assert_df("""
+2024-01-13 00:00:00+00:00    2.0
+2024-01-13 01:00:00+00:00    2.0
+2024-01-13 02:00:00+00:00    4.0
+2024-01-13 03:00:00+00:00    4.0
+""", ts)

@@ -417,14 +417,16 @@ class FS1:
         with open(self.revs, 'ab') as frevs:
             frevs.write(brev)
 
-    def last(self, imeta, from_value_date=None):
+    def last(self, imeta, from_value_date=None, to_value_date=None):
         node = self.node_at(self.last_rev.index)
         chunks = []
         # walk the tree downwards
         while True:
-            chunks.append(
-                self.chunk_at(node.address, node.size)
-            )
+            if not (to_value_date and to_value_date < node.start):
+                # we can skip collecting irrelevant chunks
+                chunks.append(
+                    self.chunk_at(node.address, node.size)
+                )
             parent = node.parent
             if not parent:
                 break
@@ -435,7 +437,7 @@ class FS1:
         if not chunks:
             return empty_series(imeta['tzaware'])
         chunks.reverse()
-        return iohelper.chunks_to_ts(imeta, chunks)[from_value_date:]
+        return iohelper.chunks_to_ts(imeta, chunks)[from_value_date:to_value_date]
 
     def find_node_index_matching(self, nodeindex, mindate):
         node = self.node_at(nodeindex)
