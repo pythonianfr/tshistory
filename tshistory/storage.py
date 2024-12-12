@@ -435,7 +435,7 @@ class FS1:
         if not chunks:
             return empty_series(imeta['tzaware'])
         chunks.reverse()
-        return iohelper.chunks_to_ts(imeta, chunks)
+        return iohelper.chunks_to_ts(imeta, chunks)[from_value_date:]
 
     def find_node_index_matching(self, nodeindex, mindate):
         node = self.node_at(nodeindex)
