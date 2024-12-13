@@ -417,8 +417,48 @@ class FS1:
         with open(self.revs, 'ab') as frevs:
             frevs.write(brev)
 
+    def find_rev(self, revdate):
+        with open(self.revs, 'rb') as frevs:
+            endrev = iohelper.unpack_rev(frevs.read(self._rev_size))
+            frevs.seek(self.revs_size - self._rev_size)
+            startrev = iohelper.unpack_rev(frevs.read(self._rev_size))
+
+            if revdate >= startrev.revdate:
+                return startrev
+            if revdate == endrev.revdate:
+                return endrev
+            if revdate < endrev.revdate:
+                return None
+
+            # now, let's bisect between these points to find the best
+            # candidate
+            start = 0
+            end = self.revs_entries - 1
+            while end - start > 1:
+                middle = (start + end) >> 1
+
+                # seek + read
+                frevs.seek(middle * self._rev_size)
+                rev = iohelper.unpack_rev(frevs.read(self._rev_size))
+
+                if revdate >= rev.revdate:
+                    start = middle
+                else:
+                    end = middle
+
+            frevs.seek(start * self._rev_size)
+            rev = iohelper.unpack_rev(frevs.read(self._rev_size))
+            return rev
+
     def last(self, imeta, from_value_date=None, to_value_date=None):
-        node = self.node_at(self.last_rev.index)
+        return self.get(imeta, self.last_rev.revdate, from_value_date, to_value_date)
+
+    def get(self, imeta, revdate, from_value_date=None, to_value_date=None):
+        rev = self.find_rev(revdate)
+        if rev is None:
+            return empty_series(imeta['tzaware'])
+        node = self.node_at(rev.index)
+
         chunks = []
         # walk the tree downwards
         while True:

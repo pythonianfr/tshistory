@@ -1514,14 +1514,17 @@ class timeseriesfs1:
         return pd.Interval(left=start, right=end,closed='both')
 
     @tx
-    def get(self, cn, name, from_value_date=None, to_value_date=None):
+    def get(self, cn, name, revision_date=None,
+            from_value_date=None, to_value_date=None):
         # still mising some parameters
         if not self.exists(cn, name):
             return
 
         sto = self.storageclass(self.root, name)
         imeta = self.internal_metadata(cn, name)
-        return sto.last(imeta, from_value_date, to_value_date)
+        if revision_date is None:
+            return sto.last(imeta, from_value_date, to_value_date)
+        return sto.get(imeta, revision_date, from_value_date, to_value_date)
 
     @tx
     def insertion_dates(self, cn, name):

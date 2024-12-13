@@ -59,6 +59,13 @@ def test_create_initial(engine, tsf):
         pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC')
     ]
 
+    ts = tsf.get(
+        engine,
+        'fs-first',
+        revision_date=pd.Timestamp('2023-12-31', tz='UTC')
+    )
+    assert not len(ts)
+
 
 def test_two_mono_chunk_revisions(engine, tsf):
     ts0 = pd.Series(
@@ -110,6 +117,17 @@ def test_two_mono_chunk_revisions(engine, tsf):
         pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
         pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC')
     ]
+
+    ts = tsf.get(
+        engine,
+        'fs-2revs',
+        revision_date=pd.Timestamp('2024-1-1 12:00:00+0000', tz='UTC')
+    )
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+2024-01-02 00:00:00+00:00    2.0
+2024-01-03 00:00:00+00:00    3.0
+""", ts)
 
 
 def test_two_overlapping_revisions(engine, tsf):
@@ -256,4 +274,56 @@ def test_two_chunks_three_revision(engine, tsf):
 2024-01-13 01:00:00+00:00    2.0
 2024-01-13 02:00:00+00:00    4.0
 2024-01-13 03:00:00+00:00    4.0
+""", ts)
+
+
+def test_get_revision_date(engine, tsf):
+    for i in range(5):
+        ts = pd.Series(
+            [i],
+            index=[pd.Timestamp('2024-1-1', tz='utc')]
+        )
+        tsf.update(
+            engine,
+            ts,
+            'fs-revdate',
+            'Babar',
+            insertion_date=pd.Timestamp(f'2024-1-{i+1}', tz='utc')
+        )
+
+    idates = tsf.insertion_dates(engine, 'fs-revdate')
+    assert idates == [
+        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-05 00:00:00+0000', tz='UTC')
+    ]
+
+    ts = tsf.get(engine, 'fs-revdate', revision_date=pd.Timestamp('2023-12-31', tz='utc'))
+    assert not len(ts)
+
+    ts = tsf.get(engine, 'fs-revdate', revision_date=pd.Timestamp('2024-1-1', tz='utc'))
+    assert_df("""
+2024-01-01 00:00:00+00:00    0.0
+""", ts)
+
+    ts = tsf.get(engine, 'fs-revdate', revision_date=pd.Timestamp('2024-1-2', tz='utc'))
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+""", ts)
+
+    ts = tsf.get(engine, 'fs-revdate', revision_date=pd.Timestamp('2024-1-3', tz='utc'))
+    assert_df("""
+2024-01-01 00:00:00+00:00    2.0
+""", ts)
+
+    ts = tsf.get(engine, 'fs-revdate', revision_date=pd.Timestamp('2024-1-4', tz='utc'))
+    assert_df("""
+2024-01-01 00:00:00+00:00    3.0
+""", ts)
+
+    ts = tsf.get(engine, 'fs-revdate', revision_date=pd.Timestamp('2024-1-5', tz='utc'))
+    assert_df("""
+2024-01-01 00:00:00+00:00    4.0
 """, ts)
