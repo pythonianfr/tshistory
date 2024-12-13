@@ -327,3 +327,83 @@ def test_get_revision_date(engine, tsf):
     assert_df("""
 2024-01-01 00:00:00+00:00    4.0
 """, ts)
+
+    idates = tsf.insertion_dates(
+        engine,
+        'fs-revdate',
+        from_insertion_date=pd.Timestamp('2023-12-31', tz='utc'),
+        to_insertion_date=pd.Timestamp('2024-1-1', tz='utc')
+    )
+    assert idates == [
+        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC')
+    ]
+
+    idates = tsf.insertion_dates(
+        engine,
+        'fs-revdate',
+        from_insertion_date=pd.Timestamp('2024-1-1', tz='utc'),
+        to_insertion_date=pd.Timestamp('2024-1-3', tz='utc')
+    )
+    assert idates == [
+        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-03 00:00:00+0000', tz='UTC')
+    ]
+
+    idates = tsf.insertion_dates(
+        engine,
+        'fs-revdate',
+        from_insertion_date=pd.Timestamp('2024-1-1', tz='utc'),
+        to_insertion_date=pd.Timestamp('2024-1-4', tz='utc')
+    )
+    assert idates == [
+        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-04 00:00:00+0000', tz='UTC')
+    ]
+
+    idates = tsf.insertion_dates(
+        engine,
+        'fs-revdate',
+        from_insertion_date=pd.Timestamp('2024-1-2', tz='utc'),
+        to_insertion_date=pd.Timestamp('2024-1-5', tz='utc')
+    )
+    assert idates == [
+        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-05 00:00:00+0000', tz='UTC')
+    ]
+
+    idates = tsf.insertion_dates(
+        engine,
+        'fs-revdate',
+        from_insertion_date=pd.Timestamp('2024-1-4', tz='utc'),
+        to_insertion_date=pd.Timestamp('2024-1-6', tz='utc')
+    )
+    assert idates == [
+        pd.Timestamp('2024-01-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-05 00:00:00+0000', tz='UTC')
+    ]
+
+    idates = tsf.insertion_dates(
+        engine,
+        'fs-revdate',
+        from_insertion_date=pd.Timestamp('2024-1-4', tz='utc')
+    )
+    assert idates == [
+        pd.Timestamp('2024-01-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-05 00:00:00+0000', tz='UTC')
+    ]
+
+    idates = tsf.insertion_dates(
+        engine,
+        'fs-revdate',
+        to_insertion_date=pd.Timestamp('2024-1-2', tz='utc')
+    )
+    assert idates == [
+        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC')
+    ]
+

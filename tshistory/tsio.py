@@ -1527,11 +1527,13 @@ class timeseriesfs1:
         return sto.get(imeta, revision_date, from_value_date, to_value_date)
 
     @tx
-    def insertion_dates(self, cn, name):
+    def insertion_dates(self, cn, name,
+                        from_insertion_date=None,
+                        to_insertion_date=None):
         sto = self.storageclass(self.root, name)
         return [
             pd.Timestamp(rev.revdate)
-            for rev in sto.revisions()
+            for rev in sto.revs_range(from_insertion_date, to_insertion_date)
         ]
 
     @tx

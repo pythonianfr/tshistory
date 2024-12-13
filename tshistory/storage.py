@@ -331,22 +331,36 @@ class FS1:
     def revs_entries(self):
         return self.revs_size // self._rev_size
 
+    def revs_range(self, fromdate=None, todate=None):
+        with open(self.revs, 'rb') as frevs:
+            index = None
+            if fromdate is not None:
+                index, startrev = self.find_rev(fromdate)
+            if fromdate is None or index is None:
+                index = 0
+                frevs.seek(0)
+                startrev = iohelper.unpack_rev(frevs.read(self._rev_size))
+
+            revs = [startrev]
+            frevs.seek(self._rev_size * (index + 1))
+
+            while True:
+                brev = frevs.read(self._rev_size)
+                if brev == b'':
+                    break
+                rev = iohelper.unpack_rev(brev)
+                if todate is not None and todate < rev.revdate:
+                    break
+                revs.append(rev)
+
+            return revs
+
     @property
     def last_rev(self):
         with open(self.revs, 'rb') as frevs:
             frevs.seek(self.revs_size - self._rev_size)  # end of penultimate rev
             brev = frevs.read(self._rev_size)
             return iohelper.unpack_rev(brev)
-
-    def revisions(self):
-        revs = []
-        with open(self.revs, 'rb') as frevs:
-            while True:
-                brev = frevs.read(self._rev_size)
-                if not brev:
-                    break
-                revs.append(iohelper.unpack_rev(brev))
-        return revs
 
     @property
     def tree_size(self):
@@ -419,21 +433,25 @@ class FS1:
 
     def find_rev(self, revdate):
         with open(self.revs, 'rb') as frevs:
-            endrev = iohelper.unpack_rev(frevs.read(self._rev_size))
-            frevs.seek(self.revs_size - self._rev_size)
-            startrev = iohelper.unpack_rev(frevs.read(self._rev_size))
+            start = 0
+            end = self.revs_entries - 1
 
-            if revdate >= startrev.revdate:
-                return startrev
+            frevs.seek(start)
+            startrev = iohelper.unpack_rev(frevs.read(self._rev_size))
+            frevs.seek(self.revs_size - self._rev_size)
+            endrev = iohelper.unpack_rev(frevs.read(self._rev_size))
+
+            if revdate < startrev.revdate:
+                return None, None
+            if revdate == startrev.revdate:
+                return start, startrev
             if revdate == endrev.revdate:
-                return endrev
-            if revdate < endrev.revdate:
-                return None
+                return end, endrev
+            if revdate > endrev.revdate:
+                return None, None
 
             # now, let's bisect between these points to find the best
             # candidate
-            start = 0
-            end = self.revs_entries - 1
             while end - start > 1:
                 middle = (start + end) >> 1
 
@@ -448,13 +466,13 @@ class FS1:
 
             frevs.seek(start * self._rev_size)
             rev = iohelper.unpack_rev(frevs.read(self._rev_size))
-            return rev
+            return start, rev
 
     def last(self, imeta, from_value_date=None, to_value_date=None):
         return self.get(imeta, self.last_rev.revdate, from_value_date, to_value_date)
 
     def get(self, imeta, revdate, from_value_date=None, to_value_date=None):
-        rev = self.find_rev(revdate)
+        _, rev = self.find_rev(revdate)
         if rev is None:
             return empty_series(imeta['tzaware'])
         node = self.node_at(rev.index)
