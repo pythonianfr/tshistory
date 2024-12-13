@@ -1533,7 +1533,7 @@ class timeseriesfs1:
         sto = self.storageclass(self.root, name)
         return [
             pd.Timestamp(rev.revdate)
-            for rev in sto.revs_range(from_insertion_date, to_insertion_date)
+            for _index, rev in sto.revs_range(from_insertion_date, to_insertion_date)
         ]
 
     @tx
@@ -1578,13 +1578,39 @@ class timeseriesfs1:
             metadata, insertion_date
         )
 
+    def _prepare_revision(self, cn, name, author, metadata):
+        seriesid = cn.execute(
+            f'select id from "{self.namespace}".registry '
+            f'where name = %(name)s',
+            name=name
+        ).scalar()
+        return cn.execute(
+            f'insert into "{self.namespace}".revision_metadata '
+            f'(series, author, metadata) '
+            f'values (%(seriesid)s, %(author)s, %(meta)s) '
+            f'returning id',
+            seriesid=seriesid,
+            name=name,
+            author=author,
+            meta=metadata
+        ).scalar()
+
+    def _revision_metadata(self, cn, name, metaid):
+        res = cn.execute(
+            f'select m.author, m.metadata '
+            f'from "{self.namespace}".revision_metadata as m, '
+            f'     "{self.namespace}".registry as reg '
+            f'where m.series = reg.id and '
+            f'      reg.name = %(name)s and'
+            f'      m.id = %(mid)s',
+            name=name,
+            mid=metaid
+        ).fetchone()
+        return res
+
     def _create(self, cn, ts, name, author, seriesmeta,
                 metadata=None, insertion_date=None):
-        sto = self.storageclass(self.root, name)
-        sto.initialize()
-        sto.initial_update(ts, insertion_date, 42, 42)
-
-        # register
+        # register first
         cn.execute(
             f'insert into "{self.namespace}".registry '
             '(name, internal_metadata, metadata) '
@@ -1594,6 +1620,11 @@ class timeseriesfs1:
             json.dumps(seriesmeta),
             json.dumps({})
         ).scalar()
+
+        metaid = self._prepare_revision(cn, name, author, metadata)
+        sto = self.storageclass(self.root, name)
+        sto.initialize()
+        sto.initial_update(ts, insertion_date, metaid)
 
         return ts
 
@@ -1614,6 +1645,7 @@ class timeseriesfs1:
                    name, author, len(ts))
             return
 
+        metaid = self._prepare_revision(cn, name, author, metadata)
         # compute series start/end stamps
         diffstart = series_diff.index[0]
         diffend = series_diff.index[-1]
@@ -1623,7 +1655,7 @@ class timeseriesfs1:
         end = max(tsend or ival.right, ival.right)
 
         sto.update(
-            ts, imeta, insertion_date, start, end, diffstart, diffend, 0, 0
+            ts, imeta, insertion_date, start, end, diffstart, diffend, metaid
         )
 
         L.info(
@@ -1631,3 +1663,24 @@ class timeseriesfs1:
             len(series_diff), name, author
         )
         return series_diff
+
+    @tx
+    def log(self, cn, name, limit=None,
+            fromdate=None, todate=None):
+        if not self.exists(cn, name):
+            return []
+
+        sto = self.storageclass(self.root, name)
+        log = []
+        for index, rev in sto.revs_range(fromdate, todate, limit):
+            author, meta = self._revision_metadata(cn, name, rev.metaid)
+            log.append(
+                {
+                    'date': pd.Timestamp(rev.revdate),
+                    'author': author,
+                    'meta': meta or {},
+                    'rev': index
+                }
+            )
+
+        return log

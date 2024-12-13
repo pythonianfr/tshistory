@@ -306,7 +306,7 @@ class Postgres:
 
 
 class FS1:
-    _rev_size = 32
+    _rev_size = 28
     _node_size = 18
     _max_bucket_size = 150
 
@@ -331,7 +331,10 @@ class FS1:
     def revs_entries(self):
         return self.revs_size // self._rev_size
 
-    def revs_range(self, fromdate=None, todate=None):
+    def revs_range(self, fromdate=None, todate=None, limit=None):
+        if limit == 0:
+            return []
+
         with open(self.revs, 'rb') as frevs:
             index = None
             if fromdate is not None:
@@ -341,17 +344,22 @@ class FS1:
                 frevs.seek(0)
                 startrev = iohelper.unpack_rev(frevs.read(self._rev_size))
 
-            revs = [startrev]
+            count = 1
+            revs = [(index, startrev)]
             frevs.seek(self._rev_size * (index + 1))
 
             while True:
+                if limit and count >= limit:
+                    break
                 brev = frevs.read(self._rev_size)
                 if brev == b'':
                     break
                 rev = iohelper.unpack_rev(brev)
                 if todate is not None and todate < rev.revdate:
                     break
-                revs.append(rev)
+                count += 1
+                index += 1
+                revs.append((index, rev))
 
             return revs
 
@@ -395,7 +403,7 @@ class FS1:
             buckets.append(ts[start:start + self._max_bucket_size])
         return buckets
 
-    def initial_update(self, ts, revdate, authorid, metaid):
+    def initial_update(self, ts, revdate, metaid):
         buckets = self.buckets(ts)
 
         parent = 0  # no parent
@@ -424,7 +432,6 @@ class FS1:
             ts.index[0],
             ts.index[-1],
             idx,
-            authorid,
             metaid
         )
 
@@ -503,7 +510,7 @@ class FS1:
             return self.find_node_index_matching(node.parent, mindate)
         return nodeindex, True  # we found the base node
 
-    def update(self, ts, imeta, revdate, start, end, diffstart, diffend, authorid, metaid):
+    def update(self, ts, imeta, revdate, start, end, diffstart, diffend, metaid):
         """We will build a new node, whith a parent node.
 
         The parent may be immediate or older (at worst there is no parent)
@@ -556,7 +563,6 @@ class FS1:
             diffstart,
             diffend,
             self.tree_entries,
-            authorid,
             metaid
         )
         with open(self.revs, 'ab') as frevs:

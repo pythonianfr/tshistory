@@ -407,3 +407,58 @@ def test_get_revision_date(engine, tsf):
         pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC')
     ]
 
+    log = tsf.log(engine, 'fs-revdate')
+    assert log == [
+        {
+            'date': pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
+            'author': 'Babar',
+            'meta': {},
+            'rev': 0
+        },
+        {
+            'date': pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC'),
+            'author': 'Babar',
+            'meta': {},
+            'rev': 1
+        },
+        {
+            'date': pd.Timestamp('2024-01-03 00:00:00+0000', tz='UTC'),
+            'author': 'Babar',
+            'meta': {},
+            'rev': 2
+        },
+        {
+            'date': pd.Timestamp('2024-01-04 00:00:00+0000', tz='UTC'),
+            'author': 'Babar',
+            'meta': {},
+            'rev': 3
+        },
+        {
+            'date': pd.Timestamp('2024-01-05 00:00:00+0000', tz='UTC'),
+            'author': 'Babar',
+            'meta': {},
+            'rev': 4
+        }
+    ]
+
+    log = tsf.log(
+        engine,
+        'fs-revdate',
+        fromdate=pd.Timestamp('2024-01-02', tz='utc'),
+        todate=pd.Timestamp('2024-01-04', tz='utc'),
+        limit=2
+    )
+    assert log == [
+        {
+            'author': 'Babar',
+            'date': pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 1
+        },
+        {
+            'author': 'Babar',
+            'date': pd.Timestamp('2024-01-03 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 2
+        }
+    ]

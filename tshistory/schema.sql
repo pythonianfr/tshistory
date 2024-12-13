@@ -18,3 +18,15 @@ create table "{ns}".basket (
   "query" text not null,
   unique(name)
 );
+
+
+-- commit author + metadata (for the fs backend)
+
+create table "{ns}".revision_metadata (
+  id serial primary key,
+  series integer not null references "{ns}".registry(id),
+  author text not null,
+  metadata jsonb
+);
+
+create index on "{ns}".revision_metadata(series);

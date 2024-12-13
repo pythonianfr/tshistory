@@ -391,22 +391,21 @@ def unpack_group_history(bytestring):
 # file binary serialisation
 
 class rev:
-    __slots__ = 'revdate', 'tsstart', 'tsend', 'diffstart', 'diffend', 'index', 'authorid', 'metaid'
+    __slots__ = 'revdate', 'tsstart', 'tsend', 'diffstart', 'diffend', 'index', 'metaid'
 
-    def __init__(self, revdate, tsstart, tsend, diffstart, diffend, index, authorid, metaid):
+    def __init__(self, revdate, tsstart, tsend, diffstart, diffend, index, metaid):
         self.revdate = revdate
         self.tsstart = tsstart
         self.tsend = tsend
         self.diffstart = diffstart
         self.diffend = diffend
         self.index = index
-        self.authorid = authorid
         self.metaid = metaid
 
     def __repr__(self):
         return (
             f'rev({self.revdate},{self.tsstart},{self.tsend},{self.diffstart},{self.diffend},'
-            f'{self.index},{self.authorid},{self.metaid})'
+            f'{self.index},{self.metaid})'
         )
 
 
@@ -465,16 +464,15 @@ class iohelper:
         )
 
     @staticmethod
-    def pack_rev(revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid):
-        buff = bytearray(32)
+    def pack_rev(revdate, tsstart, tsend, diffstart, diffend, address, metaid):
+        buff = bytearray(28)
         iohelper.pack_datetime_into(buff, revdate, 0)
         iohelper.pack_datetime_into(buff, tsstart, 4)
         iohelper.pack_datetime_into(buff, tsend, 8)
         iohelper.pack_datetime_into(buff, diffstart, 12)
         iohelper.pack_datetime_into(buff, diffend, 16)
         struct.pack_into('!I', buff, 20, address)
-        struct.pack_into('!I', buff, 24, authorid)
-        struct.pack_into('!I', buff, 28, metaid)
+        struct.pack_into('!I', buff, 24, metaid)
         return buff
 
     @staticmethod
@@ -486,9 +484,8 @@ class iohelper:
         diffstart = iohelper.unpack_datetime_from(buff, 12)
         diffend = iohelper.unpack_datetime_from(buff, 16)
         address = struct.unpack_from('!I', buff, 20)[0]
-        authorid = struct.unpack_from('!I', buff, 24)[0]
-        metaid = struct.unpack_from('!I', buff, 28)[0]
-        return rev(revdate, tsstart, tsend, diffstart, diffend, address, authorid, metaid)
+        metaid = struct.unpack_from('!I', buff, 24)[0]
+        return rev(revdate, tsstart, tsend, diffstart, diffend, address, metaid)
 
     @staticmethod
     def pack_node(start, end, parent, adress, datasize):
