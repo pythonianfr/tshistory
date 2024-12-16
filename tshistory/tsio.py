@@ -1521,6 +1521,13 @@ class timeseriesfs1(base):
             return idate.astimezone('UTC')
 
     @tx
+    def first_insertion_date(self, cn, name):
+        sto = self.storageclass(self.root, name)
+        idate = pd.Timestamp(sto.first_rev.revdate)
+        if not pd.isnull(idate):
+            return idate.astimezone('UTC')
+
+    @tx
     def update(self, cn, ts, name, author,
                metadata=None,
                insertion_date=None,

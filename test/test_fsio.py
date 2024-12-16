@@ -418,6 +418,7 @@ def test_insertion_dates(engine, tsf):
     ]
 
     assert tsf.latest_insertion_date(engine, name) == pd.Timestamp('2024-1-5', tz='utc')
+    assert tsf.first_insertion_date(engine, name) == pd.Timestamp('2024-1-1', tz='utc')
 
 
 def test_log(engine, tsf):

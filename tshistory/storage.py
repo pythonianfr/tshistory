@@ -367,8 +367,17 @@ class FS1:
     def last_rev(self):
         with open(self.revs, 'rb') as frevs:
             frevs.seek(self.revs_size - self._rev_size)  # end of penultimate rev
-            brev = frevs.read(self._rev_size)
-            return iohelper.unpack_rev(brev)
+            return iohelper.unpack_rev(
+                frevs.read(self._rev_size)
+            )
+
+    @property
+    def first_rev(self):
+        with open(self.revs, 'rb') as frevs:
+            frevs.seek(0)
+            return iohelper.unpack_rev(
+                frevs.read(self._rev_size)
+            )
 
     @property
     def tree_size(self):
