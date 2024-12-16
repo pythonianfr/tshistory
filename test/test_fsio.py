@@ -277,7 +277,7 @@ def test_two_chunks_three_revision(engine, tsf):
 """, ts)
 
 
-def test_get_revision_date(engine, tsf):
+def _prepare_revs(engine, tsf, name):
     for i in range(5):
         ts = pd.Series(
             [i],
@@ -286,19 +286,15 @@ def test_get_revision_date(engine, tsf):
         tsf.update(
             engine,
             ts,
-            'fs-revdate',
+            name,
             'Babar',
             insertion_date=pd.Timestamp(f'2024-1-{i+1}', tz='utc')
         )
 
-    idates = tsf.insertion_dates(engine, 'fs-revdate')
-    assert idates == [
-        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
-        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC'),
-        pd.Timestamp('2024-01-03 00:00:00+0000', tz='UTC'),
-        pd.Timestamp('2024-01-04 00:00:00+0000', tz='UTC'),
-        pd.Timestamp('2024-01-05 00:00:00+0000', tz='UTC')
-    ]
+
+def test_get_revision_date(engine, tsf):
+    name = 'fs-revdate'
+    _prepare_revs(engine, tsf, name)
 
     ts = tsf.get(engine, 'fs-revdate', revision_date=pd.Timestamp('2023-12-31', tz='utc'))
     assert not len(ts)
@@ -328,9 +324,23 @@ def test_get_revision_date(engine, tsf):
 2024-01-01 00:00:00+00:00    4.0
 """, ts)
 
+
+def test_insertion_dates(engine, tsf):
+    name = 'fs-idates'
+    _prepare_revs(engine, tsf, name)
+
+    idates = tsf.insertion_dates(engine, name)
+    assert idates == [
+        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-05 00:00:00+0000', tz='UTC')
+    ]
+
     idates = tsf.insertion_dates(
         engine,
-        'fs-revdate',
+        name,
         from_insertion_date=pd.Timestamp('2023-12-31', tz='utc'),
         to_insertion_date=pd.Timestamp('2024-1-1', tz='utc')
     )
@@ -340,7 +350,7 @@ def test_get_revision_date(engine, tsf):
 
     idates = tsf.insertion_dates(
         engine,
-        'fs-revdate',
+        name,
         from_insertion_date=pd.Timestamp('2024-1-1', tz='utc'),
         to_insertion_date=pd.Timestamp('2024-1-3', tz='utc')
     )
@@ -352,7 +362,7 @@ def test_get_revision_date(engine, tsf):
 
     idates = tsf.insertion_dates(
         engine,
-        'fs-revdate',
+        name,
         from_insertion_date=pd.Timestamp('2024-1-1', tz='utc'),
         to_insertion_date=pd.Timestamp('2024-1-4', tz='utc')
     )
@@ -365,7 +375,7 @@ def test_get_revision_date(engine, tsf):
 
     idates = tsf.insertion_dates(
         engine,
-        'fs-revdate',
+        name,
         from_insertion_date=pd.Timestamp('2024-1-2', tz='utc'),
         to_insertion_date=pd.Timestamp('2024-1-5', tz='utc')
     )
@@ -378,7 +388,7 @@ def test_get_revision_date(engine, tsf):
 
     idates = tsf.insertion_dates(
         engine,
-        'fs-revdate',
+        name,
         from_insertion_date=pd.Timestamp('2024-1-4', tz='utc'),
         to_insertion_date=pd.Timestamp('2024-1-6', tz='utc')
     )
@@ -389,7 +399,7 @@ def test_get_revision_date(engine, tsf):
 
     idates = tsf.insertion_dates(
         engine,
-        'fs-revdate',
+        name,
         from_insertion_date=pd.Timestamp('2024-1-4', tz='utc')
     )
     assert idates == [
@@ -399,7 +409,7 @@ def test_get_revision_date(engine, tsf):
 
     idates = tsf.insertion_dates(
         engine,
-        'fs-revdate',
+        name,
         to_insertion_date=pd.Timestamp('2024-1-2', tz='utc')
     )
     assert idates == [
@@ -407,7 +417,12 @@ def test_get_revision_date(engine, tsf):
         pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC')
     ]
 
-    log = tsf.log(engine, 'fs-revdate')
+
+def test_log(engine, tsf):
+    name = 'fs-logs'
+    _prepare_revs(engine, tsf, name)
+
+    log = tsf.log(engine, name)
     assert log == [
         {
             'date': pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
@@ -443,7 +458,7 @@ def test_get_revision_date(engine, tsf):
 
     log = tsf.log(
         engine,
-        'fs-revdate',
+        name,
         fromdate=pd.Timestamp('2024-01-02', tz='utc'),
         todate=pd.Timestamp('2024-01-04', tz='utc'),
         limit=2
