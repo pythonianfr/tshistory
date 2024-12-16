@@ -37,11 +37,76 @@ SERIESSCHEMA = Path(__file__).parent / 'series.sql'
 
 
 class base:
+    namespace = 'tsh'
+    othersources = None
+
+    def get(self, cn, name, *a, **kw):
+        raise NotImplementedError
 
     def __repr__(self):
         return (
             f'tsio.{self.__class__.__name__}'
             f'({self.namespace},othersources={self.othersources})'
+        )
+
+    def type(self, cn, name):
+        return 'primary'
+
+    @tx
+    def internal_metadata(self, cn, name):
+        if name in cn.cache['internal_metadata']:
+            return cn.cache['internal_metadata'][name]
+        meta = cn.cache['internal_metadata'][name] = cn.execute(
+            f'select internal_metadata '
+            f'from "{self.namespace}".registry '
+            f'where name = %(name)s',
+            name=name
+        ).scalar()
+        return meta
+
+    @tx
+    def update_internal_metadata(self, cn, name, metadata):
+        imeta = self.internal_metadata(cn, name) or {}
+        imeta.update(metadata)
+        cn.execute(
+            f'update "{self.namespace}".registry '
+            'set internal_metadata = %(metadata)s '
+            'where name = %(name)s',
+            metadata=json.dumps(imeta),
+            name=name
+        )
+
+    @tx
+    def metadata(self, cn, name):
+        return cn.execute(
+            f'select metadata from "{self.namespace}".registry '
+            'where name = %(name)s',
+            name=name
+        ).scalar()
+
+    @tx
+    def update_metadata(self, cn, name, metadata):
+        assert isinstance(metadata, dict)
+        existing_metadata = self.metadata(cn, name) or {}
+
+        existing_metadata.update(metadata)
+        cn.execute(
+            f'update "{self.namespace}".registry '
+            'set metadata = %(metadata)s '
+            'where registry.name = %(name)s',
+            metadata=json.dumps(existing_metadata),
+            name=name
+        )
+
+    @tx
+    def replace_metadata(self, cn, name, metadata):
+        assert isinstance(metadata, dict)
+        cn.execute(
+            f'update "{self.namespace}".registry '
+            'set metadata = %(metadata)s '
+            'where registry.name = %(name)s',
+            metadata=json.dumps(metadata),
+            name=name
         )
 
     def _validate(self, cn, ts, name):
@@ -60,11 +125,123 @@ class base:
                 f'ref=`{meta["index_type"]}`, new=`{ts.index.dtype.name}`'
             )
 
+    def list_series(self, cn):
+        """Return the mapping of all series to their type"""
+        sql = f'select name from "{self.namespace}".registry '
+        return {
+            row.name: 'primary'
+            for row in cn.execute(sql)
+        }
+
+    def tzaware(self, cn, name):
+        return cn.execute(
+            'select internal_metadata->\'tzaware\' '
+            f'from "{self.namespace}".registry '
+            'where name = %(name)s',
+            name=name
+        ).scalar()
+
+    @tx
+    def rename(self, cn, oldname, newname, propagate=True):
+        sql = (f'update "{self.namespace}".registry '
+               'set name = %(newname)s '
+               'where name = %(oldname)s')
+        if self.exists(cn, newname):
+            raise ValueError(
+                f'`{newname}` already exists.'
+            )
+        cn.execute(sql, oldname=oldname, newname=newname)
+
+    _find_items = ['name']
+
+    @tx
+    def find(self, cn, query, limit=None, meta=False, source='local'):
+        items = self._find_items[:]
+        if meta:
+            items += ['internal_metadata', 'metadata']
+        q = select(
+            *items
+        ).table(
+            f'"{self.namespace}".registry as reg'
+        ).order('name', 'asc')
+        sql, kw = query.sql(self.namespace)
+        if sql:
+            q.where(sql, **kw)
+        if limit:
+            q.limit(limit)
+
+        return self._finish_find(cn, q, meta, source)
+
+    def _finish_find(self, cn, q, meta, source):
+        if not meta:
+            return [
+                ts(name, source=source)
+                for name, in q.do(cn).fetchall()
+            ]
+
+        return [
+            ts(name, imeta, umeta, source)
+            for name, imeta, umeta in q.do(cn).fetchall()
+        ]
+
+    @tx
+    def register_basket(self, cn, name, query):
+        cn.execute(
+            f'insert into "{self.namespace}".basket '
+            '(name, query) '
+            'values (%(name)s, %(query)s)'
+            'on conflict (name) do update set query = %(query)s',
+            name=name,
+            query=query
+        )
+
+    @tx
+    def basket_definition(self, cn, name):
+        query = select(
+            'query'
+        ).table(
+            f'"{self.namespace}".basket'
+        ).where(
+            name=name
+        ).do(cn).scalar()
+
+        return query
+
+    @tx
+    def list_baskets(self, cn):
+        q = select('name').table(f'"{self.namespace}".basket').order('name')
+        return [
+            name for name, in
+            q.do(cn).fetchall()
+        ]
+
+    @tx
+    def delete_basket(self, cn, name):
+        cn.execute(
+            f'delete from "{self.namespace}".basket where name=%(name)s',
+            name=name
+        )
+
+    def infer_freq(self, cn, name,
+                   revision_date=None,
+                   from_value_date=None,
+                   to_value_date=None):
+        ts = self.get(
+            cn,
+            name,
+            revision_date=revision_date,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date
+        )
+        if ts is None or len(ts) < 2:
+            return None
+
+        return infer_freq(ts)
+
 
 class timeseries(base):
     storage = 'postgresql'
     index = 0
-    namespace = 'tsh'
     schema = None
     metakeys = {
         'tablename',
@@ -205,23 +382,6 @@ class timeseries(base):
                len(newts), name, author)
         return newts
 
-
-    def list_series(self, cn):
-        """Return the mapping of all series to their type"""
-        sql = f'select name from "{self.namespace}".registry '
-        return {
-            row.name: 'primary'
-            for row in cn.execute(sql)
-        }
-
-    def tzaware(self, cn, name):
-        return cn.execute(
-            'select internal_metadata->\'tzaware\' '
-            f'from "{self.namespace}".registry '
-            'where name = %(name)s',
-            name=name
-        ).scalar()
-
     @tx
     def get(self, cn, name, revision_date=None,
             from_value_date=None, to_value_date=None,
@@ -280,64 +440,8 @@ class timeseries(base):
         current.name = name
         return current
 
-    @tx
-    def internal_metadata(self, cn, name):
-        if name in cn.cache['internal_metadata']:
-            return cn.cache['internal_metadata'][name]
-        meta = cn.cache['internal_metadata'][name] = cn.execute(
-            f'select internal_metadata '
-            f'from "{self.namespace}".registry '
-            f'where name = %(name)s',
-            name=name
-        ).scalar()
-        return meta
-
-    @tx
-    def update_internal_metadata(self, cn, name, metadata):
-        imeta = self.internal_metadata(cn, name) or {}
-        imeta.update(metadata)
-        cn.execute(
-            f'update "{self.namespace}".registry '
-            'set internal_metadata = %(metadata)s '
-            'where name = %(name)s',
-            metadata=json.dumps(imeta),
-            name=name
-        )
-
-    @tx
-    def metadata(self, cn, name):
-        return cn.execute(
-            f'select metadata from "{self.namespace}".registry '
-            'where name = %(name)s',
-            name=name
-        ).scalar()
-
-    @tx
-    def update_metadata(self, cn, name, metadata):
-        assert isinstance(metadata, dict)
-        existing_metadata = self.metadata(cn, name) or {}
-
-        existing_metadata.update(metadata)
-        cn.execute(
-            f'update "{self.namespace}".registry '
-            'set metadata = %(metadata)s '
-            'where registry.name = %(name)s',
-            metadata=json.dumps(existing_metadata),
-            name=name
-        )
-
-    @tx
-    def replace_metadata(self, cn, name, metadata):
-        assert isinstance(metadata, dict)
-        cn.execute(
-            f'update "{self.namespace}".registry '
-            'set metadata = %(metadata)s '
-            'where registry.name = %(name)s',
-            metadata=json.dumps(metadata),
-            name=name
-        )
-
     def changeset_metadata(self, cn, csid):
+        # XXX dead code?
         assert isinstance(csid, int)
         q = select(
             'metadata'
@@ -347,9 +451,6 @@ class timeseries(base):
             'id = %(csid)s', csid=csid
         )
         return q.do(cn).scalar()
-
-    def type(self, cn, name):
-        return 'primary'
 
     @tx
     def history(self, cn, name,
@@ -706,17 +807,6 @@ class timeseries(base):
         return q.do(cn).scalar()
 
     @tx
-    def rename(self, cn, oldname, newname, propagate=True):
-        sql = (f'update "{self.namespace}".registry '
-               'set name = %(newname)s '
-               'where name = %(oldname)s')
-        if self.exists(cn, newname):
-            raise ValueError(
-                f'`{newname}` already exists.'
-            )
-        cn.execute(sql, oldname=oldname, newname=newname)
-
-    @tx
     def delete(self, cn, name):
         tablename = self._series_to_tablename(cn, name)
         if tablename is None:
@@ -755,6 +845,7 @@ class timeseries(base):
         snapshot.reclaim()
 
     def info(self, cn):
+        # XXX dead code?
         """Gather global statistics on the current tshistory repository
         """
         sql = f'select count(*) from "{self.namespace}".registry'
@@ -803,77 +894,6 @@ class timeseries(base):
             tz = 'UTC'
         start, end = pd.Timestamp(start, tz=tz), pd.Timestamp(end, tz=tz)
         return pd.Interval(left=start, right=end, closed='both')
-
-    _find_items = ['name']
-
-    @tx
-    def find(self, cn, query, limit=None, meta=False, source='local'):
-        items = self._find_items[:]
-        if meta:
-            items += ['internal_metadata', 'metadata']
-        q = select(
-            *items
-        ).table(
-            f'"{self.namespace}".registry as reg'
-        ).order('name', 'asc')
-        sql, kw = query.sql(self.namespace)
-        if sql:
-            q.where(sql, **kw)
-        if limit:
-            q.limit(limit)
-
-        return self._finish_find(cn, q, meta, source)
-
-    def _finish_find(self, cn, q, meta, source):
-        if not meta:
-            return [
-                ts(name, source=source)
-                for name, in q.do(cn).fetchall()
-            ]
-
-        return [
-            ts(name, imeta, umeta, source)
-            for name, imeta, umeta in q.do(cn).fetchall()
-        ]
-
-    @tx
-    def register_basket(self, cn, name, query):
-        cn.execute(
-            f'insert into "{self.namespace}".basket '
-            '(name, query) '
-            'values (%(name)s, %(query)s)'
-            'on conflict (name) do update set query = %(query)s',
-            name=name,
-            query=query
-        )
-
-    @tx
-    def basket_definition(self, cn, name):
-        query = select(
-            'query'
-        ).table(
-            f'"{self.namespace}".basket'
-        ).where(
-            name=name
-        ).do(cn).scalar()
-
-        return query
-
-
-    @tx
-    def list_baskets(self, cn):
-        q = select('name').table(f'"{self.namespace}".basket').order('name')
-        return [
-            name for name, in
-            q.do(cn).fetchall()
-        ]
-
-    @tx
-    def delete_basket(self, cn, name):
-        cn.execute(
-            f'delete from "{self.namespace}".basket where name=%(name)s',
-            name=name
-        )
 
     # /API
     # Helpers
@@ -1149,22 +1169,6 @@ class timeseries(base):
         if limit:
             q.limit(limit)
         return q
-
-    def infer_freq(self, cn, name,
-                   revision_date=None,
-                   from_value_date=None,
-                   to_value_date=None):
-        ts = self.get(
-            cn,
-            name,
-            revision_date=revision_date,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date
-        )
-        if ts is None or len(ts) < 2:
-            return None
-
-        return infer_freq(ts)
 
     # groups
 
@@ -1498,14 +1502,6 @@ class timeseriesfs1(base):
             name=name
         ).scalar()
         return meta
-
-    def tzaware(self, cn, name):
-        return cn.execute(
-            'select internal_metadata->\'tzaware\' '
-            f'from "{self.namespace}".registry '
-            'where name = %(name)s',
-            name=name
-        ).scalar()
 
     @tx
     def interval(self, cn, name, notz=True):
