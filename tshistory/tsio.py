@@ -36,7 +36,32 @@ L = logging.getLogger('tshistory.tsio')
 SERIESSCHEMA = Path(__file__).parent / 'series.sql'
 
 
-class timeseries:
+class base:
+
+    def __repr__(self):
+        return (
+            f'tsio.{self.__class__.__name__}'
+            f'({self.namespace},othersources={self.othersources})'
+        )
+
+    def _validate(self, cn, ts, name):
+        if ts.isnull().all():
+            # ts erasure
+            return
+        tstype = ts.dtype
+        meta = self.internal_metadata(cn, name)
+        if tstype != meta['value_type']:
+            m = (f'Type error when inserting {name}, '
+                 f'new type is {tstype}, type in base is {meta["value_type"]}')
+            raise Exception(m)
+        if ts.index.dtype.name != meta['index_type']:
+            raise Exception(
+                'Incompatible index types: '
+                f'ref=`{meta["index_type"]}`, new=`{ts.index.dtype.name}`'
+            )
+
+
+class timeseries(base):
     storage = 'postgresql'
     index = 0
     namespace = 'tsh'
@@ -66,11 +91,6 @@ class timeseries:
                 namespace=f'{self.namespace}.group',
                 _groups=False
             )
-
-    def __repr__(self):
-        return (
-            f'tsio.timeseries({self.namespace},othersources={self.othersources})'
-        )
 
     @tx
     def update(self, cn, updatets, name, author,
@@ -1050,22 +1070,6 @@ class timeseries:
 
     # insertion handling
 
-    def _validate(self, cn, ts, name):
-        if ts.isnull().all():
-            # ts erasure
-            return
-        tstype = ts.dtype
-        meta = self.internal_metadata(cn, name)
-        if tstype != meta['value_type']:
-            m = (f'Type error when inserting {name}, '
-                 f'new type is {tstype}, type in base is {meta["value_type"]}')
-            raise Exception(m)
-        if ts.index.dtype.name != meta['index_type']:
-            raise Exception(
-                'Incompatible index types: '
-                f'ref=`{meta["index_type"]}`, new=`{ts.index.dtype.name}`'
-            )
-
     def _revisions(self, cn, name,
                    from_insertion_date=None,
                    to_insertion_date=None,
@@ -1457,7 +1461,7 @@ class BlockStaircaseRevisionError(Exception):
         ))
 
 
-class timeseriesfs1:
+class timeseriesfs1(base):
     storage = 'filesystem1'
     storageclass = FS1
 
@@ -1632,6 +1636,8 @@ class timeseriesfs1:
                 metadata=None, insertion_date=None):
         if not len(ts):
             return empty_series(self.tzaware(cn, name))
+
+        self._validate(cn, ts, name)
 
         sto = self.storageclass(self.root, name)
         imeta = self.internal_metadata(cn, name)
