@@ -1,6 +1,7 @@
+import numpy as np
 import pandas as pd
 
-from tshistory.testutil import assert_df
+from tshistory.testutil import assert_df, utcdt
 from tshistory.storage import FS1
 
 
@@ -419,6 +420,86 @@ def test_insertion_dates(engine, tsf):
 
     assert tsf.latest_insertion_date(engine, name) == pd.Timestamp('2024-1-5', tz='utc')
     assert tsf.first_insertion_date(engine, name) == pd.Timestamp('2024-1-1', tz='utc')
+
+
+def test_insertion_dates_2(engine, tsf):
+    name = 'fs-idates2'
+    for i in range(5):
+        ts = pd.Series(
+            [i],
+            index=[pd.Timestamp(f'2024-1-{i+1}', tz='utc')]
+        )
+        tsf.update(
+            engine,
+            ts,
+            name,
+            'Babar',
+            insertion_date=pd.Timestamp(f'2024-1-{i+1}', tz='utc')
+        )
+
+    idates = tsf.insertion_dates(
+        engine,
+        name,
+        from_value_date=pd.Timestamp('2023-12-31', tz='utc'),
+        to_value_date=pd.Timestamp('2024-1-2', tz='utc')
+    )
+    assert idates == [
+        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC')
+    ]
+
+    idates = tsf.insertion_dates(
+        engine,
+        name,
+        from_value_date=pd.Timestamp('2024-1-2', tz='utc'),
+        to_value_date=pd.Timestamp('2024-1-3', tz='utc')
+    )
+    assert idates == [
+        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-03 00:00:00+0000', tz='UTC')
+    ]
+
+
+def test_insertion_dates_3(engine, tsf):
+    for i in range(10):
+        ts = pd.Series(
+            np.array([1, 2, 3]) + i*2,
+            pd.date_range(utcdt(2024, 4, 1+i), freq='d', periods=3)
+        )
+        tsf.update(
+            engine,
+            ts,
+            'historical-series',
+            'Babar',
+            insertion_date=utcdt(2024, 4, 1+i)
+        )
+
+    revs = tsf.insertion_dates(engine, 'historical-series')
+    assert revs == [
+        pd.Timestamp('2024-04-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-06 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-07 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-08 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-09 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-10 00:00:00+0000', tz='UTC')
+    ]
+
+    revs = tsf.insertion_dates(
+        engine,
+        'historical-series',
+        from_value_date=pd.Timestamp('2024-04-04'),
+        to_value_date=pd.Timestamp('2024-04-05')
+    )
+    assert revs == [
+        pd.Timestamp('2024-04-02 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-03 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
+    ]
 
 
 def test_log(engine, tsf):

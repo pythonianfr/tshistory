@@ -1506,11 +1506,41 @@ class timeseriesfs1(base):
     @tx
     def insertion_dates(self, cn, name,
                         from_insertion_date=None,
-                        to_insertion_date=None):
+                        to_insertion_date=None,
+                        from_value_date=None,
+                        to_value_date=None):
+        guard_query_dates(
+            from_insertion_date, to_insertion_date,
+            from_value_date, to_value_date
+        )
         sto = self.storageclass(self.root, name)
-        return [
-            pd.Timestamp(rev.revdate)
+
+        if from_value_date or to_value_date:
+            if from_value_date and from_value_date.tzinfo is None:
+                from_value_date = ensuretz(from_value_date)
+            if to_value_date and to_value_date.tzinfo is None:
+                to_value_date = ensuretz(to_value_date)
+
+        revs = (
+            (
+                pd.Timestamp(rev.revdate),
+                pd.Timestamp(rev.diffstart),
+                pd.Timestamp(rev.diffend)
+            )
             for _index, rev in sto.revs_range(from_insertion_date, to_insertion_date)
+        )
+        if from_value_date:
+            revs = (
+                rev for rev in revs
+                if rev[2] >= from_value_date
+            )
+        if to_value_date:
+            revs = (
+                rev for rev in revs
+                if rev[1] <= to_value_date
+            )
+        return [
+            rev[0] for rev in revs
         ]
 
     @tx
