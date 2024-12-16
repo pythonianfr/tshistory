@@ -342,7 +342,9 @@ class base:
                 chunks.append(ts)
 
         if chunks:
-            return pd.concat(chunks).dropna()
+            ts = pd.concat(chunks).dropna()
+            ts.name = name
+            return ts
         return empty_series(tzaware, name=name)
 
     @tx
@@ -1459,7 +1461,6 @@ class timeseriesfs1(base):
     storageclass = FS1
 
     def __init__(self, namespace='tsh', othersources=None, _groups=True, uri=None):
-        assert uri is not None
         self.namespace = namespace
         self.othersources = othersources
         if _groups:
@@ -1496,9 +1497,12 @@ class timeseriesfs1(base):
     def get(self, cn, name, revision_date=None,
             from_value_date=None, to_value_date=None,
             _keep_nans=False):
-        # still mising some parameters
         if not self.exists(cn, name):
             return
+
+        guard_query_dates(
+            revision_date, from_value_date, to_value_date
+        )
 
         sto = self.storageclass(cn, self, name)
         # munge query to satisfy pandas idiocy
@@ -1512,11 +1516,13 @@ class timeseriesfs1(base):
         if revision_date is None:
             ts = sto.last(from_value_date, to_value_date)
         else:
+            revision_date = compatible_date(True, revision_date)
             ts = sto.get(revision_date, from_value_date, to_value_date)
 
         if not _keep_nans:
             ts = ts.dropna()
 
+        ts.name = name  # groups need this
         return ts
 
     @tx
@@ -1536,10 +1542,10 @@ class timeseriesfs1(base):
 
         sto = self.storageclass(cn, self, name)
         if from_value_date or to_value_date:
-            if from_value_date and from_value_date.tzinfo is None:
-                from_value_date = ensuretz(from_value_date)
-            if to_value_date and to_value_date.tzinfo is None:
-                to_value_date = ensuretz(to_value_date)
+            if from_value_date:
+                from_value_date = compatible_date(sto.imeta['tzaware'], from_value_date)
+            if to_value_date:
+                to_value_date = compatible_date(sto.imeta['tzaware'], to_value_date)
 
         revs = (
             (
@@ -1608,6 +1614,10 @@ class timeseriesfs1(base):
             f'select pg_advisory_xact_lock({hash64(name)})'
         )
         if not self.exists(cn, name):
+            if not len(ts):
+                # creation of an initially empty series, we don't do that
+                return None
+
             seriesmeta = series_metadata(ts)
             return self._create(
                 cn, ts, name, author, seriesmeta,
@@ -1633,7 +1643,7 @@ class timeseriesfs1(base):
             seriesid=seriesid,
             name=name,
             author=author,
-            meta=metadata
+            meta=json.dumps(metadata)
         ).scalar()
 
     def _revision_metadata(self, cn, name, metaid):
@@ -1690,6 +1700,12 @@ class timeseriesfs1(base):
 
         self._validate(cn, ts, name)
 
+        if insertion_date:
+            latest_idate = self.latest_insertion_date(cn, name)
+            assert insertion_date > latest_idate, (
+                f'"{name}" already has a newer revision than "{insertion_date}"'
+            )
+
         sto = self.storageclass(cn, self, name)
         # we will want to pass ts.index.min() as `minindex`
         # to limit the search
@@ -1699,7 +1715,10 @@ class timeseriesfs1(base):
         if not len(series_diff):
             L.info('no difference in %s by %s (for ts of size %s)',
                    name, author, len(ts))
-            return
+            return empty_series(
+                self.tzaware(cn, name),
+                name=name
+            )
 
         # compute series start/end stamps
         diffstart = series_diff.index[0]
@@ -1787,6 +1806,12 @@ class timeseriesfs1(base):
         start, end = start_end(ts)
         sto.replace(
             ts, insertion_date, start, end, metaid
+        )
+
+        start = start.isoformat() if start else None
+        end = end.isoformat() if end else None
+        self.update_internal_metadata(
+            cn, name, {'left': start, 'right': end}
         )
 
         L.info('inserted series (size=%s) for ts %s by %s',

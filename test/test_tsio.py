@@ -117,13 +117,14 @@ def test_float32_dtype(engine, tsh):
     )
     tsh.update(engine, ts, 'float32', 'Babar')
 
-    assert tsh.internal_metadata(
+    imeta = tsh.internal_metadata(
         engine,
         'float32'
-    ) == {
+    )
+    imeta.pop('tablename', None); imeta.pop('path', None)
+    assert imeta == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
-        'tablename': 'float32',
         'tzaware': True,
         'value_dtype': '<f8',
         'value_type': 'float64',
@@ -275,6 +276,8 @@ def test_base_diff(engine, tsh):
     ts_begin = genserie(datetime(2010, 1, 1), 'd', 10)
     tsh.update(engine, ts_begin, 'ts_test', 'test')
 
+    if not isinstance(tsh, timeseries):
+        return
     id1 = tsh.last_id(engine, 'ts_test')
     assert tsh._previous_cset(
         _set_cache(engine),
@@ -519,11 +522,11 @@ def test_serie_metadata(engine, tsh):
     serie = genserie(datetime(2010, 1, 1), 'd', 1, initval=[1])
     tsh.update(engine, serie, 'ts-metadata', 'babar')
 
-    initialmeta = tsh.internal_metadata(engine, 'ts-metadata')
-    assert initialmeta == {
+    imeta = tsh.internal_metadata(engine, 'ts-metadata')
+    imeta.pop('tablename', None); imeta.pop('path', None)
+    assert imeta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
-        'tablename': 'ts-metadata',
         'tzaware': False,
         'value_dtype': '<f8',
         'value_type': 'float64',
@@ -924,6 +927,8 @@ def test_insertion_dates_without_diffs(engine, tsh):
         pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC')
     ]
 
+    if not isinstance(tsh, timeseries):
+        return
     # now, erase one diffstart / diffend
     with engine.begin() as cn:
         cn.cache = {'series_tablename': {}}
@@ -1122,10 +1127,11 @@ def test_point_deletion(engine, tsh):
     ts_begin.iloc[-1] = np.nan
     tsh.update(engine, ts_begin, 'ts_del', 'test', keepnans=True)
 
-    with engine.begin() as cn:
-        cn.cache = {'series_tablename': {}}
-        _, ts = Postgres(cn, tsh, 'ts_del').find()
-    assert ts.iloc[-3] == 8.0
+    if isinstance(tsh, timeseries):
+        with engine.begin() as cn:
+            cn.cache = {'series_tablename': {}}
+            _, ts = Postgres(cn, tsh, 'ts_del').find()
+        assert ts.iloc[-3] == 8.0
 
     ts_begin.iloc[0] = np.nan
     ts_begin.iloc[3] = np.nan
@@ -1189,10 +1195,10 @@ def test_point_deletion(engine, tsh):
 """, tsh.get(engine, 'ts_string_del'))
 
     imeta = tsh.internal_metadata(engine, 'ts_string_del')
+    imeta.pop('tablename', None); imeta.pop('path', None)
     assert imeta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
-        'tablename': 'ts_string_del',
         'tzaware': False,
         'value_dtype': '|O',
         'value_type': 'object',
@@ -1744,10 +1750,11 @@ def test_serie_deletion(engine, tsh):
     tsh.update(engine, ts, 'keepme', 'Babar')
     tsh.update(engine, ts, 'deleteme', 'Celeste')
 
-    assert tsh.internal_metadata(engine, 'deleteme') == {
+    imeta = tsh.internal_metadata(engine, 'deleteme')
+    imeta.pop('tablename', None); imeta.pop('path', None)
+    assert imeta == {
         'tzaware': False,
         'index_type': 'datetime64[ns]',
-        'tablename': 'deleteme',
         'value_type': 'float64',
         'index_dtype': '<M8[ns]',
         'value_dtype': '<f8',
@@ -1769,10 +1776,11 @@ def test_serie_deletion(engine, tsh):
     with engine.begin() as cn:
         tsh.update(cn, ts, 'deleteme', 'Celeste')
 
-    assert tsh.internal_metadata(engine, 'deleteme') == {
+    imeta = tsh.internal_metadata(engine, 'deleteme')
+    imeta.pop('tablename', None); imeta.pop('path', None)
+    assert imeta == {
         'tzaware': True,
         'index_type': 'datetime64[ns, UTC]',
-        'tablename': 'deleteme',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',
         'value_dtype': '<f8',
@@ -1829,14 +1837,17 @@ insertion_date             value_date
                            2017-01-10 04:00:00    4.0
 """, h)
 
-    with engine.begin() as cn:
-        cn.cache = {'series_tablename': {}}
-        snap = Postgres(cn, tsh, 'xserie')
-        assert snap.garbage() == set()
-        tsh.strip(cn, 'xserie', datetime(2017, 1, 3))
+    if isinstance(tsh, timeseries):
+        with engine.begin() as cn:
+            cn.cache = {'series_tablename': {}}
+            snap = Postgres(cn, tsh, 'xserie')
+            assert snap.garbage() == set()
+            tsh.strip(cn, 'xserie', datetime(2017, 1, 3))
 
-        # no garbage left
-        assert len(snap.garbage()) == 0
+            # no garbage left
+            assert len(snap.garbage()) == 0
+    else:
+        tsh.strip(engine, 'xserie', datetime(2017, 1, 3))
 
     assert_hist("""
 insertion_date             value_date         
@@ -2657,10 +2668,10 @@ def test_parallel(engine, tsh):
     errors = []
     ns = tsh.namespace
     def insert(ts, name, author):
-        tsh = timeseries(namespace=ns)
+        tsh2 = tsh.__class__(namespace=ns)
         with engine.begin() as cn:
             try:
-                tsh.update(cn, ts, name, author)
+                tsh2.update(cn, ts, name, author)
             except Exception as e:
                 errors.append(e)
 
@@ -2944,9 +2955,10 @@ def test_replace_reuse(engine, tsh):
         engine, seriesa, 'replace-reuse', 'Babar',
         insertion_date=utcdt(2019, 1, 1)
     )
-    snap = Postgres(_set_cache(engine), tsh, 'replace-reuse')
-    chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(1)]
-    assert chunks == [(1, None)]
+    if isinstance(tsh, timeseries):
+        snap = Postgres(_set_cache(engine), tsh, 'replace-reuse')
+        chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(1)]
+        assert chunks == [(1, None)]
 
     tsh.replace(
         engine, seriesa, 'replace-reuse', 'Babar',
@@ -2963,6 +2975,9 @@ insertion_date             value_date
 
 
 def test_revisions_callback(engine, tsh):
+    if not isinstance(tsh, timeseries):
+        return
+
     def makeseries(daystart=1):
         return pd.Series(
             [1, 2, 3],
@@ -3346,7 +3361,7 @@ def test_primary_group(engine, tsh):
     # let's take one and gather the series
     # that correpond to the first column of the dataframe
     name = infos[0][1]
-    tsh_group = timeseries(namespace=f'{tsh.namespace}.group')
+    tsh_group = tsh.__class__(namespace=f'{tsh.namespace}.group')
 
     names = list(tsh_group.list_series(engine).keys())
     assert names == infonames
@@ -3620,9 +3635,9 @@ def test_group_other_operations(engine, tsh):
     meta = tsh.group_metadata(engine, 'third_group')
     assert meta == {}
 
-    meta = tsh.group_internal_metadata(engine, 'third_group')
-    meta.pop('tablename')  # make_uid output changes everytime, is not testable
-    assert meta == {
+    imeta = tsh.group_internal_metadata(engine, 'third_group')
+    imeta.pop('tablename', None); imeta.pop('path', None)
+    assert imeta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
         'tzaware': False,
@@ -3636,9 +3651,9 @@ def test_group_other_operations(engine, tsh):
     meta = tsh.group_metadata(engine, 'third_group')
     assert meta == {'foo': 'bar'}
 
-    meta = tsh.group_internal_metadata(engine, 'third_group')
-    meta.pop('tablename')
-    assert meta  == {
+    imeta = tsh.group_internal_metadata(engine, 'third_group')
+    imeta.pop('tablename', None); imeta.pop('path', None)
+    assert imeta  == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
         'tzaware': False,

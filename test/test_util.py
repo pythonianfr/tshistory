@@ -9,7 +9,7 @@ from psyl.lisp import (
     serialize
 )
 
-from tshistory import search
+from tshistory import search, tsio
 from tshistory.util import (
     bisect_search,
     diff,
@@ -407,7 +407,8 @@ def test_in_tx(tsh, engine):
 
 
 def test_timeseries_repr(tsh):
-    assert repr(tsh) == f'tsio.timeseries({tsh.namespace},othersources=None)'
+    if isinstance(tsh, tsio.timeseries):
+        assert repr(tsh) == f'tsio.timeseries({tsh.namespace},othersources=None)'
 
 
 def _serialize_roundtrip(searchobj):

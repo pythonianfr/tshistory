@@ -22,7 +22,10 @@ from tshistory.http import (
     server as http_server
 )
 from tshistory.http.util import nosecurity
-from tshistory.storage import Postgres
+from tshistory.storage import (
+    FS1,
+    Postgres
+)
 from tshistory.testutil import (
     make_tsx,
     tempconfig,
@@ -82,9 +85,37 @@ def tsh(request, engine):
     namespace = request.param
     schema.tsschema(namespace).create(engine, reset=True)
 
+    datapath = DATADIR/namespace
+    shutil.rmtree(datapath, ignore_errors=True)
+    if not datapath.exists():
+        datapath.mkdir()
+
+    conf = (
+        f'[dburi]\n'
+        f'test = {DBURI}\n'
+        f'[storage]\n'
+        f'test = filesystem1\n'
+        f'test.path = {datapath}'
+    )
+
     if namespace == 'z-z':
         Postgres._max_bucket_size = 5
-    yield tsio.timeseries(namespace)
+        FS1._max_bucket_size = 5
+
+        with tempconfig(conf.encode()):
+            yield tsio.timeseriesfs1(namespace, None, uri=DBURI)
+
+        Postgres._max_bucket_size = 150
+        FS1._max_bucket_size = 150
+
+    else:
+        yield tsio.timeseries(namespace)
+
+
+@pytest.fixture(scope='session')
+def tsp(engine):
+    schema.tsschema('tsh').create(engine, reset=True)
+    yield tsio.timeseries('tsh')
 
 
 @pytest.fixture(scope='session')

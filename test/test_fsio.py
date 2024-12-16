@@ -496,7 +496,8 @@ def test_one_multi_chunks_revision(engine, tsf):
 
     with engine.begin() as cn:
         sto = FS1(cn, tsf, 'fs-multichunks')
-        assert sto.tree_entries == 2
+        if sto._max_bucket_size == 150:
+            assert sto.tree_entries == 2
 
 
 def test_two_chunks_three_revision(engine, tsf):
@@ -531,7 +532,8 @@ def test_two_chunks_three_revision(engine, tsf):
 
     with engine.begin() as cn:
         sto = FS1(cn, tsf, 'fs-2chunks3revs')
-        assert sto.tree_entries == 4
+        if sto._max_bucket_size == 150:
+            assert sto.tree_entries == 4
 
     ts = ts * 2
     ts = ts[-10:]

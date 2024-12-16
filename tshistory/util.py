@@ -332,8 +332,12 @@ def guard_insert(newts, name, author, metadata, insertion_date):
     assert metadata is None or isinstance(metadata, dict), (
         f'Bad format for metadata ({repr(metadata)})'
     )
-    assert (insertion_date is None or
-            isinstance(insertion_date, datetime)), 'Bad format for insertion date'
+    if insertion_date is not None:
+        assert isinstance(insertion_date, datetime), 'Bad format for insertion date'
+        assert insertion_date.tzinfo is not None, (
+            f'for "{name}", the specified revision date '
+            f'"{insertion_date}" must be tzaware'
+        )
     assert isinstance(newts, pd.Series), 'Not a pd.Series'
     index = newts.index
     assert isinstance(index, pd.DatetimeIndex), 'You must provide a DatetimeIndex'

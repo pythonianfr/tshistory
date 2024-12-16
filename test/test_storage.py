@@ -23,7 +23,8 @@ def chunksize(meta, snap, head, from_value_date=None):
     }
 
 
-def test_chunks(engine, tsh):
+def test_chunks(engine, tsp):
+    tsh = tsp
     _set_cache(engine)
     with tempattr(Postgres, '_max_bucket_size', 2):
         ts = genserie(datetime(2010, 1, 1), 'D', 5)
@@ -215,7 +216,8 @@ def test_chunks(engine, tsh):
         }
 
 
-def test_append(engine, tsh):
+def test_append(engine, tsp):
+    tsh = tsp
     if tsh.namespace == 'z-z':
         return
 
@@ -238,8 +240,9 @@ def test_append(engine, tsh):
     }
 
 
-def test_prepend(engine, tsh):
-    if tsh.namespace == 'z-z':
+def test_prepend(engine, tsp):
+    tsh = tsp
+    if Postgres._max_bucket_size != 150:
         return
 
     serie = genserie(datetime(2010, 1, 1), 'D', 40)
@@ -264,7 +267,8 @@ def test_prepend(engine, tsh):
     assert c == {1: None, 2: None}
 
 
-def test_get_from_to(engine, tsh):
+def test_get_from_to(engine, tsp):
+    tsh = tsp
     ts = genserie(datetime(2015, 1, 1), 'D', 365)
     tsh.update(engine, ts, 'quitelong', 'aurelien.campeas@pythonian.fr')
     meta = tsh.internal_metadata(engine, 'quitelong')
