@@ -417,6 +417,8 @@ def test_insertion_dates(engine, tsf):
         pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC')
     ]
 
+    assert tsf.latest_insertion_date(engine, name) == pd.Timestamp('2024-1-5', tz='utc')
+
 
 def test_log(engine, tsf):
     name = 'fs-logs'
