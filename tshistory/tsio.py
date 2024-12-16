@@ -440,18 +440,6 @@ class timeseries(base):
         current.name = name
         return current
 
-    def changeset_metadata(self, cn, csid):
-        # XXX dead code?
-        assert isinstance(csid, int)
-        q = select(
-            'metadata'
-        ).table(
-            f'"{self.namespace}".changeset'
-        ).where(
-            'id = %(csid)s', csid=csid
-        )
-        return q.do(cn).scalar()
-
     @tx
     def history(self, cn, name,
                 from_insertion_date=None,
@@ -843,17 +831,6 @@ class timeseries(base):
         cn.execute(sql, csid=csid)
         snapshot = self.storageclass(cn, self, name)
         snapshot.reclaim()
-
-    def info(self, cn):
-        # XXX dead code?
-        """Gather global statistics on the current tshistory repository
-        """
-        sql = f'select count(*) from "{self.namespace}".registry'
-        stats = {'series count': cn.execute(sql).scalar()}
-        sql = (f'select distinct name from "{self.namespace}".registry '
-               'order by name')
-        stats['series names'] = [row for row, in cn.execute(sql).fetchall()]
-        return stats
 
     @tx
     def log(self, cn, name,
