@@ -1485,10 +1485,11 @@ class timeseriesfs1(base):
     def interval(self, cn, name, notz=True):
         sto = self.storageclass(self.root, name)
         rev = sto.last_rev
-        tz = None
-        if self.tzaware(cn, name) and not notz:
-            tz = 'UTC'
-        start, end = pd.Timestamp(rev.diffstart, tz=tz), pd.Timestamp(rev.diffend, tz=tz)
+        start = pd.Timestamp(rev.tsstart)
+        end = pd.Timestamp(rev.tsend)
+        if notz:
+            start = start.replace(tzinfo=None)
+            end = end.replace(tzinfo=None)
         return pd.Interval(left=start, right=end,closed='both')
 
     @tx
@@ -1673,10 +1674,14 @@ class timeseriesfs1(base):
         # compute series start/end stamps
         diffstart = series_diff.index[0]
         diffend = series_diff.index[-1]
-        tsstart, tsend = start_end(series_diff, notz=False)
+        tsstart, tsend = start_end(series_diff, notz=imeta['tzaware'])
         ival = self.interval(cn, name, notz=True)
-        start = min(tsstart or ival.left, ival.left)
-        end = max(tsend or ival.right, ival.right)
+        start = compatible_date(imeta['tzaware'], min(tsstart or ival.left, ival.left))
+        end = compatible_date(imeta['tzaware'], max(tsend or ival.right, ival.right))
+
+        # the underlying storage understand only tzaware-utc
+        if not imeta['tzaware']:
+            ts.index = ts.index.tz_localize('utc')
 
         sto.update(
             ts, imeta, insertion_date, start, end, diffstart, diffend, metaid

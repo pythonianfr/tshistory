@@ -171,6 +171,69 @@ def test_two_mono_chunk_revisions(engine, tsf):
 """, ts)
 
 
+def test_naive_two_mono_chunk_revisions(engine, tsf):
+    ts0 = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1'),
+            periods=3,
+            freq='D'
+        )
+    )
+
+    tsf.update(
+        engine,
+        ts0,
+        'fs-naive2revs',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1', tz='utc')
+    )
+
+    ts1 = pd.Series(
+        [4, 5, 6],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-4'),
+            periods=3,
+            freq='D'
+        )
+    )
+
+    tsf.update(
+        engine,
+        ts1,
+        'fs-naive2revs',
+        'Celeste',
+        insertion_date=pd.Timestamp('2024-1-2', tz='utc')
+    )
+
+    out = tsf.get(engine, 'fs-naive2revs')
+    assert_df("""
+2024-01-01    1.0
+2024-01-02    2.0
+2024-01-03    3.0
+2024-01-04    4.0
+2024-01-05    5.0
+2024-01-06    6.0
+""", out)
+
+    idates = tsf.insertion_dates(engine, 'fs-naive2revs')
+    assert idates == [
+        pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC')
+    ]
+
+    ts = tsf.get(
+        engine,
+        'fs-naive2revs',
+        revision_date=pd.Timestamp('2024-1-1 12:00:00+0000', tz='UTC')
+    )
+    assert_df("""
+2024-01-01    1.0
+2024-01-02    2.0
+2024-01-03    3.0
+""", ts)
+
+
 def test_two_overlapping_revisions(engine, tsf):
     ts0 = pd.Series(
         [1, 2, 3],
