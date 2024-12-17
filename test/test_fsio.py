@@ -1,7 +1,11 @@
 import numpy as np
 import pandas as pd
 
-from tshistory.testutil import assert_df, utcdt
+from tshistory.testutil import (
+    assert_df,
+    assert_hist,
+    utcdt
+)
 from tshistory.storage import FS1
 
 
@@ -688,3 +692,18 @@ def test_log(engine, tsf):
             'rev': 2
         }
     ]
+
+
+def test_history(engine, tsf):
+    name = 'fs-history'
+    _prepare_revs(engine, tsf, name)
+
+    hist = tsf.history(engine, name)
+    assert_hist("""
+insertion_date             value_date               
+2024-01-01 00:00:00+00:00  2024-01-01 00:00:00+00:00    0.0
+2024-01-02 00:00:00+00:00  2024-01-01 00:00:00+00:00    1.0
+2024-01-03 00:00:00+00:00  2024-01-01 00:00:00+00:00    2.0
+2024-01-04 00:00:00+00:00  2024-01-01 00:00:00+00:00    3.0
+2024-01-05 00:00:00+00:00  2024-01-01 00:00:00+00:00    4.0
+""", hist)

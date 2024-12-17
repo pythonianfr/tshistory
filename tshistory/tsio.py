@@ -239,6 +239,69 @@ class base:
 
         return infer_freq(ts)
 
+    @tx
+    def history(self, cn, name,
+                from_insertion_date=None,
+                to_insertion_date=None,
+                from_value_date=None,
+                to_value_date=None,
+                diffmode=False,
+                _keep_nans=False,
+                **kw):
+        if not self.exists(cn, name):
+            return
+
+        guard_query_dates(
+            from_insertion_date, to_insertion_date,
+            from_value_date, to_value_date
+        )
+
+        base = None
+        idates = self.insertion_dates(
+            cn,
+            name,
+            from_insertion_date,
+            to_insertion_date,
+            from_value_date,
+            to_value_date,
+            **kw
+        )
+        if diffmode:
+            base = self.get(
+                cn,
+                name,
+                revision_date=idates[0] - timedelta(seconds=1),
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                _keep_nans=_keep_nans,
+                **kw
+            )
+
+        hist = {}
+        for idate in idates:
+            ts = self.get(
+                cn,
+                name,
+                revision_date=idate,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                _keep_nans=_keep_nans,
+                **kw
+            )
+            if diffmode:
+                oldbase = base
+                base = ts
+                ts = diff(oldbase, ts)
+            hist[idate] = ts
+
+        if from_value_date or to_value_date:
+            # now it's possible that the extremities cut
+            # yields similar series for successive idates
+            # and we are not interested in that
+            hist = pruned_history(hist)
+
+        return hist
+
 
 class timeseries(base):
     storage = 'postgresql'
@@ -440,69 +503,6 @@ class timeseries(base):
             current = current.dropna()
         current.name = name
         return current
-
-    @tx
-    def history(self, cn, name,
-                from_insertion_date=None,
-                to_insertion_date=None,
-                from_value_date=None,
-                to_value_date=None,
-                diffmode=False,
-                _keep_nans=False,
-                **kw):
-        if not self.exists(cn, name):
-            return
-
-        guard_query_dates(
-            from_insertion_date, to_insertion_date,
-            from_value_date, to_value_date
-        )
-
-        base = None
-        idates = self.insertion_dates(
-            cn,
-            name,
-            from_insertion_date,
-            to_insertion_date,
-            from_value_date,
-            to_value_date,
-            **kw
-        )
-        if diffmode:
-            base = self.get(
-                cn,
-                name,
-                revision_date=idates[0] - timedelta(seconds=1),
-                from_value_date=from_value_date,
-                to_value_date=to_value_date,
-                _keep_nans=_keep_nans,
-                **kw
-            )
-
-        hist = {}
-        for idate in idates:
-            ts = self.get(
-                cn,
-                name,
-                revision_date=idate,
-                from_value_date=from_value_date,
-                to_value_date=to_value_date,
-                _keep_nans=_keep_nans,
-                **kw
-            )
-            if diffmode:
-                oldbase = base
-                base = ts
-                ts = diff(oldbase, ts)
-            hist[idate] = ts
-
-        if from_value_date or to_value_date:
-            # now it's possible that the extremities cut
-            # yields similar series for successive idates
-            # and we are not interested in that
-            hist = pruned_history(hist)
-
-        return hist
 
     @tx
     def diffs(self, cn, name,
