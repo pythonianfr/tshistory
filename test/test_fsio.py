@@ -162,6 +162,58 @@ def test_replace(engine, tsf):
 """, ts)
 
 
+def test_find_rev(engine, tsf):
+    ts0 = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=3,
+            freq='D'
+        )
+    )
+
+    tsf.replace(
+        engine,
+        ts0,
+        'fs-replace',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1 00:00:00', tz='utc')
+    )
+
+    ts = tsf.get(engine, 'fs-replace')
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+2024-01-02 00:00:00+00:00    2.0
+2024-01-03 00:00:00+00:00    3.0
+""", ts)
+
+    ts1 = pd.Series(
+        [3, 4, 5],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-2', tz='utc'),
+            periods=3,
+            freq='D'
+        )
+    )
+
+    smalldelta = pd.Timedelta(microseconds=1)
+    tsf.replace(
+        engine,
+        ts1,
+        'fs-replace',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1 00:00:00', tz='utc') + smalldelta
+    )
+
+    ts = tsf.get(engine, 'fs-replace')
+    # OUCH !
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+2024-01-02 00:00:00+00:00    2.0
+2024-01-03 00:00:00+00:00    3.0
+""", ts)
+
+
 def test_update_get_keep_nans(engine, tsf):
     ts = pd.Series(
         [1, np.nan, 3],
