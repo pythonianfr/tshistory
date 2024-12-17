@@ -68,6 +68,42 @@ def test_create_initial(engine, tsf):
     assert not len(ts)
 
 
+def test_create_naive(engine, tsf):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1'),
+            periods=3,
+            freq='D'
+        )
+    )
+
+    assert not tsf.exists(engine, 'fs-naive')
+
+    diff = tsf.update(
+        engine,
+        ts,
+        'fs-naive',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1', tz='utc')
+    )
+
+    assert_df("""
+2024-01-01    1.0
+2024-01-02    2.0
+2024-01-03    3.0
+""", diff)
+
+    assert tsf.exists(engine, 'fs-naive')
+
+    out = tsf.get(engine, 'fs-naive')
+    assert_df("""
+2024-01-01    1.0
+2024-01-02    2.0
+2024-01-03    3.0
+""", out)
+
+
 def test_two_mono_chunk_revisions(engine, tsf):
     ts0 = pd.Series(
         [1, 2, 3],
