@@ -103,6 +103,10 @@ def test_create_naive(engine, tsf):
 2024-01-03    3.0
 """, out)
 
+    tsf.delete(engine, 'fs-naive')
+    assert not tsf.exists(engine, 'fs-naive')
+    tsf.delete(engine, 'no-such-series')
+
 
 def test_two_mono_chunk_revisions(engine, tsf):
     ts0 = pd.Series(

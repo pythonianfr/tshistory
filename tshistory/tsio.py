@@ -4,6 +4,7 @@ import hashlib
 import uuid
 import json
 from pathlib import Path
+import shutil
 
 import pandas as pd
 import numpy as np
@@ -1707,3 +1708,20 @@ class timeseriesfs1(base):
             )
 
         return log
+
+    @tx
+    def delete(self, cn, name):
+        if not self.exists(cn, name):
+            print('not deleting unknown series', name, self.namespace)
+            return
+
+        # serialize all deletions to avoid deadlocks
+        cn.execute(
+            f'select pg_advisory_xact_lock({hash64(name)})'
+        )
+        shutil.rmtree(self.root / name, ignore_errors=True)
+        cn.execute(
+            f'delete from "{self.namespace}".registry '
+            'where name = %(name)s',
+            name=name
+        )

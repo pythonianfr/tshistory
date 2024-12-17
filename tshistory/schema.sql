@@ -24,7 +24,7 @@ create table "{ns}".basket (
 
 create table "{ns}".revision_metadata (
   id serial primary key,
-  series integer not null references "{ns}".registry(id),
+  series integer not null references "{ns}".registry(id) on delete cascade,
   author text not null,
   metadata jsonb
 );
