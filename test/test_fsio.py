@@ -108,6 +108,30 @@ def test_create_naive(engine, tsf):
     tsf.delete(engine, 'no-such-series')
 
 
+def test_update_get_keep_nans(engine, tsf):
+    ts = pd.Series(
+        [1, np.nan, 3],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=3,
+            freq='D'
+        )
+    )
+    tsf.update(
+        engine,
+        ts,
+        'fs-withnan',
+        'Babar',
+        keepnans=True
+    )
+    ts = tsf.get(engine, 'fs-withnan', _keep_nans=True)
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+2024-01-02 00:00:00+00:00    NaN
+2024-01-03 00:00:00+00:00    3.0
+""", ts)
+
+
 def test_two_mono_chunk_revisions(engine, tsf):
     ts0 = pd.Series(
         [1, 2, 3],

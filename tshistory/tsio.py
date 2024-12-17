@@ -1494,7 +1494,8 @@ class timeseriesfs1(base):
 
     @tx
     def get(self, cn, name, revision_date=None,
-            from_value_date=None, to_value_date=None):
+            from_value_date=None, to_value_date=None,
+            _keep_nans=False):
         # still mising some parameters
         if not self.exists(cn, name):
             return
@@ -1503,7 +1504,12 @@ class timeseriesfs1(base):
         imeta = self.internal_metadata(cn, name)
         if revision_date is None:
             return sto.last(imeta, from_value_date, to_value_date)
-        return sto.get(imeta, revision_date, from_value_date, to_value_date)
+
+        ts = sto.get(imeta, revision_date, from_value_date, to_value_date)
+        if not _keep_nans:
+            ts = ts.dropna()
+
+        return ts
 
     @tx
     def insertion_dates(self, cn, name,
