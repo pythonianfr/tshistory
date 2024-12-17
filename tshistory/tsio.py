@@ -1700,6 +1700,60 @@ class timeseriesfs1(base):
         return series_diff
 
     @tx
+    def replace(self, cn, ts, name, author,
+                metadata=None,
+                insertion_date=None,
+                **k):
+        assert isinstance(name, str), 'Name is not a string'
+        name = name.strip()
+        ts = ts.dropna()
+        ts = guard_insert(
+            ts, name, author, metadata,
+            insertion_date
+        )
+        if not len(ts):
+            return empty_series(
+                ts.index.tz is not None,
+                dtype=ts.dtype
+            )
+
+        assert ('<M8[ns]' == ts.index.dtype or
+                'datetime' in str(ts.index.dtype) and not
+                isinstance(ts.index, pd.MultiIndex))
+
+        ts.name = name
+        if not self.exists(cn, name):
+            seriesmeta = series_metadata(ts)
+            return self._create(
+                cn, ts, name, author, seriesmeta,
+                metadata, insertion_date
+            )
+
+        self._validate(cn, ts, name)
+
+        # check that we don't insert a duplicate of current value
+        current = self.get(cn, name)
+        if current.equals(ts):
+            L.info('no difference in %s by %s (for ts of size %s)',
+                   name, author, len(ts))
+            return empty_series(
+                ts.index.tz is not None,
+                dtype=ts.dtype
+            )
+
+        sto = self.storageclass(self.root, name)
+        metaid = self._prepare_revision(cn, name, author, metadata)
+        start, end = start_end(ts)
+        imeta = self.internal_metadata(cn, name)
+        sto.replace(
+            ts, imeta, insertion_date, start, end, start, end, metaid
+        )
+
+        L.info('inserted series (size=%s) for ts %s by %s',
+               len(ts), name, author)
+        return ts
+
+    @tx
     def log(self, cn, name, limit=None,
             fromdate=None, todate=None):
         if not self.exists(cn, name):

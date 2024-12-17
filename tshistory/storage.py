@@ -576,3 +576,35 @@ class FS1:
         )
         with open(self.revs, 'ab') as frevs:
             frevs.write(newbrev)
+
+    def replace(self, ts, imeta, revdate, start, end, diffstart, diffend, metaid):
+        for index, bucket in enumerate(self.buckets(ts)):
+            # index always starts at Zero, because we replace everything
+            packed = iohelper.serialize_ts(bucket, False)
+
+            newbnode = iohelper.pack_node(
+                bucket.index.min(),
+                bucket.index.max(),
+                index,
+                self.chunks_size,
+                len(packed)
+            )
+
+            with open(self.chunks, 'ab') as fchunks:
+                fchunks.write(packed)
+
+            with open(self.tree, 'ab') as ftree:
+                ftree.write(newbnode)
+
+        # let's create the rev
+        newbrev = iohelper.pack_rev(
+            revdate or pd.Timestamp.utcnow(),
+            start,
+            end,
+            diffstart,
+            diffend,
+            self.tree_entries,
+            metaid
+        )
+        with open(self.revs, 'ab') as frevs:
+            frevs.write(newbrev)
