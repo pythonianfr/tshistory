@@ -32,7 +32,8 @@ def test_simple_config():
             'storage': {},
             'sources': {},
             'auth': {},
-            'server-auth': {}
+            'server-auth': {},
+            'dashboard': {},
         }
 
 
@@ -56,7 +57,8 @@ def test_sources_auth():
                 'bar.login': 'babar',
                 'bar.password': 'celeste'},
             'server-auth': {},
-            'storage': {}
+            'storage': {},
+            'dashboard': {},
         }
 
 
@@ -91,5 +93,35 @@ def test_sources_server_auth():
                 'client_secret': 'yyy',
                 'domain': 'zzz',
                 'authorize_uri': 'https://foo.io/authorize',
-                'audience': 'https://foo.io/api'}
+                'audience': 'https://foo.io/api'},
+            'dashboard': {},
+        }
+
+
+def test_dashboard_section():
+    with tempconfig(
+            b'[dburi]\n'
+            b'foo=postgresql:///refinery\n'
+            b'[sources]\n'
+            b'foo.bar=https://bar.io\n'
+            b'[dashboard]\n'
+            b'refinery=https://bar.io\n'
+            b'dashboards=https://dashboard.bar.io\n'
+    ):
+        cfg = configuration()
+        assert cfg.cfg._data == {
+            'dburi': {'foo': 'postgresql:///refinery'},
+            'sources': {'foo.bar': 'https://bar.io'},
+            'auth': {},
+            'server-auth': {},
+            'storage': {},
+            'dashboard': {
+                'refinery': 'https://bar.io',
+                'dashboards': 'https://dashboard.bar.io'
+            },
+        }
+
+        assert cfg.dashboard_urls() == {
+            'refinery': 'https://bar.io',
+            'dashboards': 'https://dashboard.bar.io'
         }

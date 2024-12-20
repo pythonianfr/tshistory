@@ -8,12 +8,14 @@ from tshistory.util import unflatten
 
 
 class configuration:
-    optsections = ('storage', 'sources', 'auth', 'server-auth')
+    optsections = ('storage', 'sources', 'auth', 'server-auth', 'dashboard')
     defaults = {
         'storage': {},
         'sources': {},
         'auth': {},
-        'server-auth': {}
+        'server-auth': {},
+        'dashboard': {},
+
     }
 
     @staticmethod
@@ -137,3 +139,9 @@ class configuration:
         else:
             name = self.find_first_uriname()
         return Path(self.cfg['storage'].get(f'{name}.path'))
+
+    def dashboard_urls(self):
+        assert 'dashboard' in self.cfg, (
+            'Your tshistory.cfg file does not contain a [dashboard] section.'
+        )
+        return self.cfg['dashboard']
