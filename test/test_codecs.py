@@ -1,6 +1,5 @@
 from datetime import datetime
 import os
-import pytz
 import tempfile
 
 import pandas as pd
@@ -266,7 +265,7 @@ def test_make_snapshot_record():
         0, # start
         len(packed_ts) # offset
     )
-    assert len(rec) == 18
+    assert len(rec) == 26
     assert isinstance(rec, bytearray)
 
     node = iohelper.unpack_node(
@@ -279,13 +278,13 @@ def test_make_snapshot_record():
     assert node.size == 139
 
     rec = iohelper.pack_node(
-        datetime(2020, 1, 1),
-        datetime(2020, 1, 2),
+        utcdt(2020, 1, 1),
+        utcdt(2020, 1, 2),
         1,
         0,
         len(packed_ts)
     )
-    assert len(rec) == 18
+    assert len(rec) == 26
     assert isinstance(rec, bytearray)
 
     node = iohelper.unpack_node(
@@ -298,23 +297,6 @@ def test_make_snapshot_record():
     assert node.size == 139
 
 
-def test_tstamp_roundtrip():
-    from array import array
-
-    buff = bytearray(42)
-
-    dt = datetime(2024, 1, 1, 1, 35, 59)
-    dtz = datetime(2024, 1, 1, 1, 35, 59, tzinfo=pytz.UTC)
-    iohelper.pack_datetime_into(buff, dt, 7)
-    iohelper.pack_datetime_into(buff, dtz, 11)
-
-    obuff = array('B', buff)
-    dt2 = iohelper.unpack_datetime_from(obuff, 7, None)
-    assert dt == dt2
-    dtz2 = iohelper.unpack_datetime_from(obuff, 11)
-    assert dtz == dtz2
-
-
 def test_version_record():
     rec = iohelper.pack_rev(
         utcdt(2024, 1, 1),
@@ -325,7 +307,7 @@ def test_version_record():
         0,
         1
     )
-    assert len(rec) == 28
+    assert len(rec) == 48
     assert isinstance(rec, bytearray)
 
     rev = iohelper.unpack_rev(
@@ -399,7 +381,7 @@ def test_read_write_2_versions():
             chunks.write(packed2)
 
         # check the size
-        assert os.stat(tmp + '/tree').st_size == 36
+        assert os.stat(tmp + '/tree').st_size == 52
         assert os.stat(tmp + '/chunks').st_size == 89
 
         with open(tmp + '/revs', 'wb') as revs:
@@ -427,9 +409,9 @@ def test_read_write_2_versions():
 
         # now, let's read the complete version back
         with open(tmp + '/revs', 'rb') as revs:
-            # rev block is of size 28
-            revs.seek(28) # seek to the beginning of the last block
-            bytestr = revs.read(28)
+            # rev block is of size 48
+            revs.seek(48) # seek to the beginning of the last block
+            bytestr = revs.read(48)
             rev = iohelper.unpack_rev(
                 bytestr
             )
@@ -439,12 +421,12 @@ def test_read_write_2_versions():
         # whole series from chunks
         with open(tmp + '/tree', 'rb') as tree:
             # we start with using the tree index
-            tree.seek(rev.index * 18) # move to last block
-            fixed = tree.read(18)
+            tree.seek(rev.index * 26) # move to last block
+            fixed = tree.read(26)
             node2 = iohelper.unpack_node(fixed)
 
             tree.seek(0)
-            fixed = tree.read(18)
+            fixed = tree.read(26)
             node1 = iohelper.unpack_node(fixed)
 
         with open(tmp + '/chunks', 'rb') as chunks:

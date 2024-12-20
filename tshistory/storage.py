@@ -306,8 +306,8 @@ class Postgres:
 
 
 class FS1:
-    _rev_size = 28
-    _node_size = 18
+    _rev_size = 48
+    _node_size = 26
     _max_bucket_size = 150
 
     def __init__(self, root, name):
