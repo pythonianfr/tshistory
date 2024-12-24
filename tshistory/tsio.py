@@ -302,6 +302,48 @@ class base:
 
         return hist
 
+    @tx
+    def staircase(self, cn, name, delta,
+                  from_value_date=None,
+                  to_value_date=None):
+        """ compute a series whose value dates are bounded to be
+        `delta` time after the insertion dates and where we
+        keep the most recent ones
+        """
+        if not self.exists(cn, name):
+            return
+
+        guard_query_dates(
+            from_value_date, to_value_date
+        )
+        base = self.get(
+            cn, name,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date,
+            _keep_nans=True
+        )
+        tzaware = self.tzaware(cn, name)
+        if not len(base):
+            return empty_series(tzaware, name=name)
+
+        chunks = []
+        for vdate in base.index:
+            idate = ensuretz(vdate)
+            ts = self.get(
+                cn,
+                name,
+                revision_date=idate - delta,
+                from_value_date=vdate,
+                to_value_date=vdate,
+                _keep_nans=True
+            )
+            if ts is not None and len(ts):
+                chunks.append(ts)
+
+        if chunks:
+            return pd.concat(chunks).dropna()
+        return empty_series(tzaware, name=name)
+
 
 class timeseries(base):
     storage = 'postgresql'
@@ -518,48 +560,6 @@ class timeseries(base):
             out[idate] = tsdiff
 
         return out
-
-    @tx
-    def staircase(self, cn, name, delta,
-                  from_value_date=None,
-                  to_value_date=None):
-        """ compute a series whose value dates are bounded to be
-        `delta` time after the insertion dates and where we
-        keep the most recent ones
-        """
-        if not self.exists(cn, name):
-            return
-
-        guard_query_dates(
-            from_value_date, to_value_date
-        )
-        base = self.get(
-            cn, name,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            _keep_nans=True
-        )
-        tzaware = self.tzaware(cn, name)
-        if not len(base):
-            return empty_series(tzaware, name=name)
-
-        chunks = []
-        for vdate in base.index:
-            idate = ensuretz(vdate)
-            ts = self.get(
-                cn,
-                name,
-                revision_date=idate - delta,
-                from_value_date=vdate,
-                to_value_date=vdate,
-                _keep_nans=True
-            )
-            if ts is not None and len(ts):
-                chunks.append(ts)
-
-        if chunks:
-            return pd.concat(chunks).dropna()
-        return empty_series(tzaware, name=name)
 
     @tx
     def block_staircase(self, cn, name,
