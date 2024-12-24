@@ -28,7 +28,8 @@ from tshistory.util import (
     series_metadata,
     start_end,
     ts,
-    tx
+    tx,
+    tzaware_series
 )
 from tshistory.storage import Postgres, FS1
 
@@ -344,6 +345,24 @@ class base:
             return pd.concat(chunks).dropna()
         return empty_series(tzaware, name=name)
 
+    @tx
+    def interval(self, cn, name, notz=False):
+        if not self.exists(cn, name):
+            raise ValueError(f'no interval for series: {name}')
+
+        imeta = self.internal_metadata(cn, name)
+        start = imeta['left']
+        end = imeta['right']
+        if start is None:
+            # completely erased series !
+            return None
+        tz = None
+        if self.tzaware(cn, name) and not notz:
+            tz = 'UTC'
+        start, end = pd.Timestamp(start, tz=tz), pd.Timestamp(end, tz=tz)
+        return pd.Interval(left=start, right=end, closed='both')
+
+
 
 class timeseries(base):
     storage = 'postgresql'
@@ -479,9 +498,13 @@ class timeseries(base):
 
         # compute series start/end stamps
         start, end = start_end(newts)
+        self.update_internal_metadata(
+            cn, name, {'left': start.isoformat(), 'right': end.isoformat()}
+        )
+
         head = self.storageclass(cn, self, name).create(newts)
         self._new_revision(
-            cn, name, head, start, end, start, end,
+            cn, name, head, start, end,
             author, insertion_date, metadata
         )
         L.info('inserted series (size=%s) for ts %s by %s',
@@ -857,25 +880,6 @@ class timeseries(base):
         log.sort(key=lambda rev: rev['rev'])
         return log
 
-    @tx
-    def interval(self, cn, name, notz=False):
-        tablename = self._series_to_tablename(cn, name)
-        if tablename is None:
-            raise ValueError(f'no interval for series: {name}')
-        sql = (f'select tsstart, tsend '
-               f'from "{self.namespace}.revision"."{tablename}" '
-               f'order by id desc limit 1')
-        res = cn.execute(sql).fetchone()
-        start, end = res.tsstart, res.tsend
-        if start is None:
-            # completely erased series !
-            return None
-        tz = None
-        if self.tzaware(cn, name) and not notz:
-            tz = 'UTC'
-        start, end = pd.Timestamp(start, tz=tz), pd.Timestamp(end, tz=tz)
-        return pd.Interval(left=start, right=end, closed='both')
-
     # /API
     # Helpers
 
@@ -900,8 +904,14 @@ class timeseries(base):
         head = snapshot.create(newts)
         start, end = start_end(newts)
 
+        start = start.isoformat() if start else None
+        end = end.isoformat() if end else None
+        self.update_internal_metadata(
+            cn, name, {'left': start, 'right': end}
+        )
+
         self._new_revision(
-            cn, name, head, start, end, newts.index.min(), newts.index.max(),
+            cn, name, head, newts.index.min(), newts.index.max(),
             author, insertion_date, metadata
         )
 
@@ -952,18 +962,22 @@ class timeseries(base):
             start = patched.index[0]
             end = patched.index[-1]
 
+        start = start.isoformat() if start else None
+        end = end.isoformat() if end else None
+        self.update_internal_metadata(
+            cn, name, {'left': start, 'right': end}
+        )
         head = snapshot.update(series_diff)
 
         self._new_revision(
-            cn, name, head, start, end, diffstart, diffend,
+            cn, name, head, diffstart, diffend,
             author, insertion_date, metadata
         )
         L.info('inserted diff (size=%s) for ts %s by %s',
                len(series_diff), name, author)
         return series_diff
 
-    def _new_revision(self, cn, name, head, tsstart, tsend,
-                      diffstart, diffend,
+    def _new_revision(self, cn, name, head, diffstart, diffend,
                       author, insertion_date, metadata):
         tablename = self._series_to_tablename(cn, name)
         if insertion_date is not None:
@@ -986,8 +1000,6 @@ class timeseries(base):
             f'"{self.namespace}.revision"."{tablename}" '
         ).values(
             snapshot=head,
-            tsstart=tsstart,
-            tsend=tsend,
             diffstart=diffstart,
             diffend=diffend,
             author=author,
@@ -1485,17 +1497,6 @@ class timeseriesfs1(base):
         return meta
 
     @tx
-    def interval(self, cn, name, notz=True):
-        sto = self.storageclass(self.root, name)
-        rev = sto.last_rev
-        start = pd.Timestamp(rev.tsstart)
-        end = pd.Timestamp(rev.tsend)
-        if notz:
-            start = start.replace(tzinfo=None)
-            end = end.replace(tzinfo=None)
-        return pd.Interval(left=start, right=end,closed='both')
-
-    @tx
     def get(self, cn, name, revision_date=None,
             from_value_date=None, to_value_date=None,
             _keep_nans=False):
@@ -1666,6 +1667,13 @@ class timeseriesfs1(base):
         sto.initialize()
         sto.initial_update(ts, insertion_date, metaid)
 
+        start, end = start_end(ts, notz=tzaware_series(ts))
+        start = start.isoformat() if start else None
+        end = end.isoformat() if end else None
+        self.update_internal_metadata(
+            cn, name, {'left': start, 'right': end}
+        )
+
         return ts
 
     def _update(self, cn, ts, name, author,
@@ -1691,17 +1699,32 @@ class timeseriesfs1(base):
         # compute series start/end stamps
         diffstart = series_diff.index[0]
         diffend = series_diff.index[-1]
-        tsstart, tsend = start_end(series_diff, notz=imeta['tzaware'])
-        ival = self.interval(cn, name, notz=True)
-        start = compatible_date(imeta['tzaware'], min(tsstart or ival.left, ival.left))
-        end = compatible_date(imeta['tzaware'], max(tsend or ival.right, ival.right))
+        start, end = start_end(series_diff, notz=False)
+        ival = self.interval(cn, name, notz=False)
+        start = compatible_date(imeta['tzaware'], min(start or ival.left, ival.left))
+        end = compatible_date(imeta['tzaware'], max(end or ival.right, ival.right))
+
+        if pd.isnull(series_diff.iloc[0]) or pd.isnull(series_diff.iloc[-1]):
+            # we *might* be shrinking, let's look at the full series
+            # and yes, shrinkers have a slow path
+            patched = patch(last, series_diff).dropna()
+            if not len(patched):
+                raise ValueError('complete erasure of a series is forbidden')
+            start = patched.index[0]
+            end = patched.index[-1]
+
+        start = start.isoformat() if start else None
+        end = end.isoformat() if end else None
+        self.update_internal_metadata(
+            cn, name, {'left': start, 'right': end}
+        )
 
         # the underlying storage understand only tzaware-utc
         if not imeta['tzaware']:
             ts.index = ts.index.tz_localize('utc')
 
         sto.update(
-            ts, imeta, insertion_date, start, end, diffstart, diffend, metaid
+            ts, imeta, insertion_date, diffstart, diffend, metaid
         )
 
         L.info(
@@ -1757,7 +1780,7 @@ class timeseriesfs1(base):
         start, end = start_end(ts)
         imeta = self.internal_metadata(cn, name)
         sto.replace(
-            ts, imeta, insertion_date, start, end, start, end, metaid
+            ts, imeta, insertion_date, start, end, metaid
         )
 
         L.info('inserted series (size=%s) for ts %s by %s',

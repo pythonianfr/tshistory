@@ -132,7 +132,9 @@ def test_base(client):
         'index_type': 'datetime64[ns, UTC]',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',
-        'value_dtype': '<f8'
+        'value_dtype': '<f8',
+        'left': '2018-01-01T00:00:00',
+        'right': '2018-01-01T02:00:00'
     }
 
     # update

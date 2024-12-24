@@ -161,7 +161,9 @@ insertion_date             value_date
         'index_type': 'datetime64[ns, UTC]',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',
-        'value_dtype': '<f8'
+        'value_dtype': '<f8',
+        'left': '2019-12-31T00:00:00',
+        'right': '2020-01-04T00:00:00',
     }
     meta = tsx.metadata('api-test')
     assert meta == {}
@@ -626,22 +628,28 @@ def test_multisource(mapi):
     with pytest.raises(ValueError) as err:
         mapi.replace_metadata('api-2', {'descr': 'for the mapi test'})
     assert err.value.args[0].startswith('not allowed to replace metadata')
-    assert mapi.internal_metadata('api-2') == {
+    imeta = mapi.internal_metadata('api-2')
+    imeta.pop('tablename', None)
+    assert imeta == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
-        'tablename': 'api-2',
         'tzaware': True,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'left': '2020-01-01T00:00:00',
+        'right': '2020-01-04T00:00:00'
     }
 
-    assert mapi.metadata('api-2', all=True) == {
+    imeta = mapi.metadata('api-2', all=True)
+    imeta.pop('tablename', None)
+    assert imeta == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
-        'tablename': 'api-2',
         'tzaware': True,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'left': '2020-01-01T00:00:00',
+        'right': '2020-01-04T00:00:00'
     }
 
     assert mapi.metadata('api-1') == {'descr': 'for the mapi test'}
@@ -959,7 +967,9 @@ def test_find(tsx):
         'index_type': 'datetime64[ns, UTC]',
         'value_type': 'float64',
         'index_dtype':
-        '|M8[ns]', 'value_dtype': '<f8'
+        '|M8[ns]', 'value_dtype': '<f8',
+        'left': '2023-01-01T00:00:00',
+        'right': '2023-01-03T00:00:00'
     }
     assert ts.meta == {
         'bar': 'Hello',
@@ -1454,7 +1464,8 @@ def test_remote_group(engine, tsx):
         'index_type': 'datetime64[ns]',
         'tzaware': False,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'left': '2021-01-01T00:00:00', 'right': '2021-01-05T00:00:00'
     }
 
     h = tsx.group_history('remote-group')
@@ -1532,7 +1543,9 @@ def test_primary_group(tsx):
         'index_type': 'datetime64[ns]',
         'tzaware': False,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'left': '2021-01-01T00:00:00',
+        'right': '2021-01-05T00:00:00'
     }
 
     assert tsx.group_metadata('no-such-group', all=True) is None

@@ -110,14 +110,15 @@ def test_naive(http):
 
     res = http.get('/series/metadata?name=test-naive&all=1')
     meta = res.json
-    meta.pop('supervision_status', None)
+    meta.pop('tablename', None)
     assert meta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
-        'tablename': 'test-naive',
         'tzaware': False,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'left': '2018-01-01T00:00:00',
+        'right': '2018-01-01T02:00:00'
     }
 
     res = http.get('/series/state?name=test-naive')
@@ -182,25 +183,28 @@ def test_base(http):
 
     res = http.get('/series/metadata?name=test&type=internal')
     meta = res.json
+    meta.pop('tablename', None)
     assert meta == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
-        'tablename': 'test',
         'tzaware': True,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'left': '2018-01-01T00:00:00',
+        'right': '2018-01-01T02:00:00'
     }
 
     res = http.get('/series/metadata?name=test&all=1')
     meta = res.json
-    meta.pop('supervision_status', None)
+    meta.pop('tablename', None)
     assert meta == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
-        'tablename': 'test',
         'tzaware': True,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'left': '2018-01-01T00:00:00',
+        'right': '2018-01-01T02:00:00'
     }
 
     res = http.put('/series/metadata', params={
@@ -798,14 +802,15 @@ def test_get_fast_path(http):
 2018-01-01 02:00:00+00:00    2.0
 """, series)
 
-    meta.pop('supervision_status', None)
+    meta.pop('tablename', None)
     assert meta == {
         'tzaware': True,
-        'tablename': 'test_fast',
         'index_type': 'datetime64[ns, UTC]',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',
-        'value_dtype': '<f8'
+        'value_dtype': '<f8',
+        'left': '2018-01-01T00:00:00',
+        'right': '2018-01-01T02:00:00'
     }
 
 
@@ -870,13 +875,15 @@ def test_multisource(http, engine):
         'all': True
     })
     meta = res.json
+    meta.pop('tablename')
     assert meta == {
         'tzaware': True,
-        'tablename': 'test-other-source',
         'index_type': 'datetime64[ns, UTC]',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',
-        'value_dtype': '<f8'
+        'value_dtype': '<f8',
+        'left': '2020-01-01T00:00:00',
+        'right': '2020-01-03T00:00:00'
     }
 
     res = http.put('/series/metadata', params={

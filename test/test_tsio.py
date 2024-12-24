@@ -126,7 +126,9 @@ def test_float32_dtype(engine, tsh):
         'tablename': 'float32',
         'tzaware': True,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'left': '2021-01-01T00:00:00',
+        'right': '2021-01-03T00:00:00'
     }
 
 
@@ -524,7 +526,9 @@ def test_serie_metadata(engine, tsh):
         'tablename': 'ts-metadata',
         'tzaware': False,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'left': '2010-01-01T00:00:00',
+        'right': '2010-01-01T00:00:00'
     }
 
     tsh.replace_metadata(
@@ -1189,7 +1193,9 @@ def test_point_deletion(engine, tsh):
         'tablename': 'ts_string_del',
         'tzaware': False,
         'value_dtype': '|O',
-        'value_type': 'object'
+        'value_type': 'object',
+        'left': '2010-01-01T00:00:00',
+        'right': '2010-01-10T00:00:00'
     }
 
     ts_string.iloc[4] = 'truc'
@@ -1742,7 +1748,9 @@ def test_serie_deletion(engine, tsh):
         'tablename': 'deleteme',
         'value_type': 'float64',
         'index_dtype': '<M8[ns]',
-        'value_dtype': '<f8'
+        'value_dtype': '<f8',
+        'left': '2018-01-10T00:00:00',
+        'right': '2018-01-12T09:00:00'
     }
 
     with engine.begin() as cn:
@@ -1765,7 +1773,9 @@ def test_serie_deletion(engine, tsh):
         'tablename': 'deleteme',
         'value_type': 'float64',
         'index_dtype': '|M8[ns]',
-        'value_dtype': '<f8'
+        'value_dtype': '<f8',
+        'left': '2018-01-01T00:00:00',
+        'right': '2018-01-03T00:00:00',
     }
 
 
@@ -3622,7 +3632,9 @@ def test_group_other_operations(engine, tsh):
         'index_type': 'datetime64[ns]',
         'tzaware': False,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'left': '2021-01-01T00:00:00',
+        'right': '2021-01-04T00:00:00'
     }
 
     tsh.update_group_metadata(engine, 'third_group', {'foo': 'bar'})
@@ -3636,7 +3648,9 @@ def test_group_other_operations(engine, tsh):
         'index_type': 'datetime64[ns]',
         'tzaware': False,
         'value_dtype': '<f8',
-        'value_type': 'float64'
+        'value_type': 'float64',
+        'left': '2021-01-01T00:00:00',
+        'right': '2021-01-04T00:00:00',
     }
 
     # delete the group

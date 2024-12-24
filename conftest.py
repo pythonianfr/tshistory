@@ -139,10 +139,15 @@ def http(engine):
     schema.tsschema().create(engine, reset=True)
     schema.tsschema(ns='other').create(engine, reset=True)
 
-    tsa = tsh_api.timeseries(
-        str(engine.url),
-        handler=tsio.timeseries,
-        namespace='tsh',
+    config = (
+        f'[dburi]\n'
+        f'test = {str(engine.url)}\n'
+    ).encode()
+    with tempconfig(config):
+        tsa = tsh_api.timeseries(
+            str(engine.url),
+            handler=tsio.timeseries,
+            namespace='tsh',
         sources={'other': (DBURI, 'other')}
     )
 
@@ -166,26 +171,25 @@ def client(engine):
 
     uri = 'http://perdu.com'
 
-    wsgitester = WebTester(
-        nosecurity(
-            appmaker.make_app(
-                tsh_api.timeseries(
-                    str(engine.url),
-                    handler=tsio.timeseries,
-                    sources={'other': (DBURI, 'other')}
-                ),
-                http_server.httpapi
+    config = (
+        f'[dburi]\n'
+        f'test = {str(engine.url)}\n'
+    ).encode()
+    with tempconfig(config):
+        wsgitester = WebTester(
+            nosecurity(
+                appmaker.make_app(
+                    tsh_api.timeseries(
+                        str(engine.url),
+                        handler=tsio.timeseries,
+                        sources={'other': (DBURI, 'other')}
+                    ),
+                    http_server.httpapi
+                )
             )
         )
-    )
-    with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
-        with_http_bridge(uri, resp, wsgitester)
-        config = (
-            f'[dburi]\n'
-            f'test = {str(engine.url)}\n'
-        ).encode()
-
-        with tempconfig(config):
+        with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
+            with_http_bridge(uri, resp, wsgitester)
             yield http_client.httpclient(uri)
 
 

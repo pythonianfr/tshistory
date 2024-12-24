@@ -13,8 +13,6 @@ create index on "{namespace}.snapshot"."{tablename}"(parent);
 
 create table "{namespace}.revision"."{tablename}" (
   id serial primary key,
-  tsstart timestamp, -- whole series index min
-  tsend timestamp,   -- whole series index max
   diffstart timestamptz, -- diff index min
   diffend timestamptz,   -- diff index max
   snapshot integer references "{namespace}.snapshot"."{tablename}"(id),
@@ -24,8 +22,6 @@ create table "{namespace}.revision"."{tablename}" (
 );
 
 create index on "{namespace}.revision"."{tablename}"(snapshot);
-create index on "{namespace}.revision"."{tablename}"(tsstart);
-create index on "{namespace}.revision"."{tablename}"(tsend);
 create index on "{namespace}.revision"."{tablename}"(diffstart);
 create index on "{namespace}.revision"."{tablename}"(diffend);
 create index on "{namespace}.revision"."{tablename}"(insertion_date);

@@ -300,22 +300,18 @@ def test_make_snapshot_record():
 def test_version_record():
     rec = iohelper.pack_rev(
         utcdt(2024, 1, 1),
-        utcdt(2020, 12, 31),
-        utcdt(2023, 12, 31, 2),
         utcdt(2023, 12, 31, 0),
         utcdt(2023, 12, 31, 2),
         0,
         1
     )
-    assert len(rec) == 48
+    assert len(rec) == 32
     assert isinstance(rec, bytearray)
 
     rev = iohelper.unpack_rev(
         bytes(rec)
     )
     assert rev.revdate == utcdt(2024, 1, 1)
-    assert rev.tsstart == utcdt(2020, 12, 31)
-    assert rev.tsend == utcdt(2023, 12, 31, 2)
     assert rev.diffstart == utcdt(2023, 12, 31, 0)
     assert rev.diffend == utcdt(2023, 12, 31, 2)
     assert rev.index == 0
@@ -390,16 +386,12 @@ def test_read_write_2_versions():
                 utcdt(2024, 2, 1),
                 ts1.index[0],
                 ts1.index[-1],
-                ts1.index[0],
-                ts1.index[-1],
                 0, # index in tree obviously starts at zero
                 42, # we don't care much about metaid ...
             )
             revs.write(rec)
             rec = iohelper.pack_rev(
                 utcdt(2024, 2, 2),
-                ts1.index[0], # complete series start
-                ts2.index[-1],
                 ts2.index[0],
                 ts2.index[-1],
                 1, # second record in tree
@@ -409,9 +401,9 @@ def test_read_write_2_versions():
 
         # now, let's read the complete version back
         with open(tmp + '/revs', 'rb') as revs:
-            # rev block is of size 48
-            revs.seek(48) # seek to the beginning of the last block
-            bytestr = revs.read(48)
+            # rev block is of size 32
+            revs.seek(32) # seek to the beginning of the last block
+            bytestr = revs.read(32)
             rev = iohelper.unpack_rev(
                 bytestr
             )

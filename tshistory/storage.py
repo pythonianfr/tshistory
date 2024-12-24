@@ -306,7 +306,7 @@ class Postgres:
 
 
 class FS1:
-    _rev_size = 48
+    _rev_size = 32
     _node_size = 26
     _max_bucket_size = 150
 
@@ -438,8 +438,6 @@ class FS1:
             revdate or pd.Timestamp.utcnow(),
             ts.index[0],
             ts.index[-1],
-            ts.index[0],
-            ts.index[-1],
             idx,
             metaid
         )
@@ -519,7 +517,7 @@ class FS1:
             return self.find_node_index_matching(node.parent, mindate)
         return nodeindex, True  # we found the base node
 
-    def update(self, ts, imeta, revdate, start, end, diffstart, diffend, metaid):
+    def update(self, ts, imeta, revdate, diffstart, diffend, metaid):
         """We will build a new node, whith a parent node.
 
         The parent may be immediate or older (at worst there is no parent)
@@ -567,8 +565,6 @@ class FS1:
         # let's create the rev
         newbrev = iohelper.pack_rev(
             revdate or pd.Timestamp.utcnow(),
-            start,
-            end,
             diffstart,
             diffend,
             self.tree_entries,
@@ -577,7 +573,7 @@ class FS1:
         with open(self.revs, 'ab') as frevs:
             frevs.write(newbrev)
 
-    def replace(self, ts, imeta, revdate, start, end, diffstart, diffend, metaid):
+    def replace(self, ts, imeta, revdate, diffstart, diffend, metaid):
         for index, bucket in enumerate(self.buckets(ts)):
             # index always starts at Zero, because we replace everything
             packed = iohelper.serialize_ts(bucket, False)
@@ -599,8 +595,6 @@ class FS1:
         # let's create the rev
         newbrev = iohelper.pack_rev(
             revdate or pd.Timestamp.utcnow(),
-            start,
-            end,
             diffstart,
             diffend,
             self.tree_entries,
