@@ -1502,6 +1502,14 @@ class timeseriesfs1(base):
 
         sto = self.storageclass(self.root, name)
         imeta = self.internal_metadata(cn, name)
+        # munge query to satisfy pandas idiocy
+        if from_value_date or to_value_date:
+            tzaware = imeta['tzaware']
+            if from_value_date:
+                from_value_date = compatible_date(tzaware, from_value_date)
+            if to_value_date:
+                to_value_date = compatible_date(tzaware, to_value_date)
+
         if revision_date is None:
             return sto.last(imeta, from_value_date, to_value_date)
 

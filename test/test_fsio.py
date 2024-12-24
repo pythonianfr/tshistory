@@ -107,6 +107,12 @@ def test_create_naive(engine, tsf):
 2024-01-03    3.0
 """, out)
 
+    out = tsf.get(engine, 'fs-naive', from_value_date=pd.Timestamp('2024-1-2', tz='utc'))
+    assert_df("""
+2024-01-02    2.0
+2024-01-03    3.0
+""", out)
+
     tsf.delete(engine, 'fs-naive')
     assert not tsf.exists(engine, 'fs-naive')
     tsf.delete(engine, 'no-such-series')
