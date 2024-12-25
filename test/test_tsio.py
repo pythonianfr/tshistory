@@ -1122,7 +1122,9 @@ def test_point_deletion(engine, tsh):
     ts_begin.iloc[-1] = np.nan
     tsh.update(engine, ts_begin, 'ts_del', 'test', keepnans=True)
 
-    _, ts = Postgres(engine, tsh, 'ts_del').find()
+    with engine.begin() as cn:
+        cn.cache = {'series_tablename': {}}
+        _, ts = Postgres(cn, tsh, 'ts_del').find()
     assert ts.iloc[-3] == 8.0
 
     ts_begin.iloc[0] = np.nan
@@ -1215,8 +1217,8 @@ def test_point_deletion(engine, tsh):
 """, tsh.get(engine, 'ts_string_del'))
 
     ts_string[ts_string.index] = np.nan
-    with pytest.raises(ValueError):
-        tsh.update(engine, ts_string, 'ts_string_del', 'test', keepnans=True)
+    tsh.update(engine, ts_string, 'ts_string_del', 'test', keepnans=True)
+    assert not len(tsh.get(engine, 'ts_string_del'))
 
 
 def test_nan_first(engine, tsh):
@@ -1291,25 +1293,25 @@ Freq: D
     tsh.update(engine, ts_begin, 'ts_full_del', 'test')
 
     ts_begin.iloc[:] = np.nan
-    with pytest.raises(ValueError):
-        tsh.update(engine, ts_begin, 'ts_full_del', 'test', keepnans=True)
+    tsh.update(engine, ts_begin, 'ts_full_del', 'test', keepnans=True)
+    assert tsh.interval(engine, 'ts_full_del') is None
 
     ts_end = genserie(datetime(2010, 1, 1), 'd', 4)
     tsh.update(engine, ts_end, 'ts_full_del', 'test')
+    assert tsh.interval(engine, 'ts_full_del').left == pd.Timestamp('2010-01-01 00:00:00')
 
     # string
-
     ts_begin = genserie(datetime(2010, 1, 1), 'd', 4, ['text'], dtype='object')
     tsh.update(engine, ts_begin, 'ts_full_del_str', 'test')
 
     ts_begin = pd.Series([np.nan] * 4, name='ts_full_del_str',
                          index=ts_begin.index)
-
-    with pytest.raises(ValueError):
-        tsh.update(engine, ts_begin, 'ts_full_del_str', 'test', keepnans=True)
+    tsh.update(engine, ts_begin, 'ts_full_del_str', 'test', keepnans=True)
+    assert tsh.interval(engine, 'ts_full_del_str') is None
 
     ts_end = genserie(datetime(2010, 1, 1), 'd', 4, ['text'], dtype='object')
     tsh.update(engine, ts_end, 'ts_full_del_str', 'test')
+    assert tsh.interval(engine, 'ts_full_del_str').left == pd.Timestamp('2010-01-01 00:00:00')
 
 
 def test_deletion_over_horizon(engine, tsh):

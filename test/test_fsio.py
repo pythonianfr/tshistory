@@ -242,6 +242,29 @@ def test_update_get_keep_nans(engine, tsf):
 2024-01-03 00:00:00+00:00    3.0
 """, ts)
 
+    ts = pd.Series(
+        [np.nan, np.nan, np.nan],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=3,
+            freq='D'
+        )
+    )
+    tsf.update(
+        engine,
+        ts,
+        'fs-withnan',
+        'Babar',
+        keepnans=True
+    )
+    ts = tsf.get(engine, 'fs-withnan', _keep_nans=True)
+    assert_df("""
+2024-01-01 00:00:00+00:00   NaN
+2024-01-02 00:00:00+00:00   NaN
+2024-01-03 00:00:00+00:00   NaN
+""", ts)
+    assert tsf.interval(engine, 'fs-withnan') is None
+
 
 def test_two_mono_chunk_revisions(engine, tsf):
     ts0 = pd.Series(

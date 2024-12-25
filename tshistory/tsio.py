@@ -949,8 +949,12 @@ class timeseries(base):
         diffend = series_diff.index[-1]
         tsstart, tsend = start_end(series_diff)
         ival = self.interval(cn, name, notz=True)
-        start = min(tsstart or ival.left, ival.left)
-        end = max(tsend or ival.right, ival.right)
+        if ival:
+            start = min(tsstart or ival.left, ival.left)
+            end = max(tsend or ival.right, ival.right)
+        else:
+            start = tsstart
+            end = tsend
 
         if pd.isnull(series_diff.iloc[0]) or pd.isnull(series_diff.iloc[-1]):
             # we *might* be shrinking, let's look at the full series
@@ -958,9 +962,10 @@ class timeseries(base):
             last = snapshot.last()
             patched = patch(last, series_diff).dropna()
             if not len(patched):
-                raise ValueError('complete erasure of a series is forbidden')
-            start = patched.index[0]
-            end = patched.index[-1]
+                start = end = None
+            else:
+                start = patched.index[0]
+                end = patched.index[-1]
 
         start = start.isoformat() if start else None
         end = end.isoformat() if end else None
@@ -1701,17 +1706,22 @@ class timeseriesfs1(base):
         diffend = series_diff.index[-1]
         start, end = start_end(series_diff, notz=False)
         ival = self.interval(cn, name, notz=False)
-        start = compatible_date(imeta['tzaware'], min(start or ival.left, ival.left))
-        end = compatible_date(imeta['tzaware'], max(end or ival.right, ival.right))
+        if ival:
+            start = compatible_date(imeta['tzaware'], min(start or ival.left, ival.left))
+            end = compatible_date(imeta['tzaware'], max(end or ival.right, ival.right))
+        else:
+            start = diffstart
+            end = diffend
 
         if pd.isnull(series_diff.iloc[0]) or pd.isnull(series_diff.iloc[-1]):
             # we *might* be shrinking, let's look at the full series
             # and yes, shrinkers have a slow path
             patched = patch(last, series_diff).dropna()
             if not len(patched):
-                raise ValueError('complete erasure of a series is forbidden')
-            start = patched.index[0]
-            end = patched.index[-1]
+                start = end = None
+            else:
+                start = patched.index[0]
+                end = patched.index[-1]
 
         start = start.isoformat() if start else None
         end = end.isoformat() if end else None
