@@ -867,6 +867,9 @@ class timeseries(base):
                f'order by id desc limit 1')
         res = cn.execute(sql).fetchone()
         start, end = res.tsstart, res.tsend
+        if start is None:
+            # completely erased series !
+            return None
         tz = None
         if self.tzaware(cn, name) and not notz:
             tz = 'UTC'

@@ -508,13 +508,15 @@ class httpapi:
                     stype = tsa.type(args.name)
                     return stype, 200
 
+                tzaware = imeta.get('tzaware')
                 assert args.type == 'interval'
                 try:
                     ival = tsa.interval(args.name)
+                    if ival is None:
+                        return (tzaware, None, None), 200
                 except ValueError:
                     return no_content()
 
-                tzaware = imeta.get('tzaware')
                 return (tzaware,
                         ival.left.isoformat(),
                         ival.right.isoformat()), 200

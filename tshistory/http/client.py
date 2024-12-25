@@ -535,6 +535,8 @@ class httpclient:
         if res.status_code == 200:
             tzaware, left, right = res.json()
             tz = 'utc' if tzaware else None
+            if left is None:
+                return None
             return pd.Interval(
                 pd.Timestamp(left, tz=tz),
                 pd.Timestamp(right, tz=tz),

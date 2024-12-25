@@ -480,9 +480,8 @@ def test_erasure(tsx):
     tsx.update('erasure', ts, 'Babar', keepnans=True)
     assert len(tsx.insertion_dates('erasure')) == 1
 
-    if tsx.uri.startswith('postgres'):
-        with pytest.raises(ValueError):
-            ival = tsx.interval('erasure')
+    ival = tsx.interval('erasure')
+    assert ival is None
 
     ts = pd.Series(
         [np.nan, 1, 2],
