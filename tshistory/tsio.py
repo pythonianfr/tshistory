@@ -1834,3 +1834,15 @@ class timeseriesfs1(base):
             'where name = %(name)s',
             name=name
         )
+
+    @tx
+    def diffs(self, cn, name,
+              from_insertion_date=None,
+              to_insertion_date=None):
+        return self.history(
+            cn,
+            name,
+            from_insertion_date,
+            to_insertion_date,
+            diffmode=True
+        )
