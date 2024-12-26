@@ -488,7 +488,7 @@ class FS1:
     def get(self, imeta, revdate, from_value_date=None, to_value_date=None):
         _, rev = self.find_rev(revdate)
         if rev is None:
-            rev = self.first_rev
+            rev = self.last_rev
             if revdate < rev.revdate:
                 # that was in the past
                 # for the future, we will provide the last rev
