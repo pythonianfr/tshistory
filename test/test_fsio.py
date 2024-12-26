@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from tshistory.testutil import (
     assert_df,
@@ -913,20 +914,28 @@ def test_erasure(engine, tsf):
             freq='d'
         )
     )
+
     # create outright with a Nan at the end
     ts.iloc[-1] = np.nan
+    assert ts.index.dtype.name == 'datetime64[ns]'
     tsf.update(
         engine, ts, 'ts_erase', 'test',
         keepnans=True, insertion_date=pd.Timestamp('2025-1-1', tz='utc')
     )
 
+    # after creation
+    assert ts.index.dtype.name == 'datetime64[ns]'
+
     # erase in the beginning and middle
     ts.iloc[0] = np.nan
     ts.iloc[3] = np.nan
+    assert ts.index.dtype.name == 'datetime64[ns]'
     tsf.update(
         engine, ts, 'ts_erase', 'test',
         keepnans=True, insertion_date=pd.Timestamp('2025-1-2', tz='utc')
     )
+    # first real update
+    assert ts.index.dtype.name == 'datetime64[ns, UTC]'  # OUCH !
 
     assert_df("""
 2024-01-02    1.0
@@ -977,3 +986,8 @@ insertion_date             value_date
                            2024-01-09    8.0
                            2024-01-10    9.0
 """, tsf.history(engine, 'ts_erase'))
+
+    ts.iloc[0] = 42
+    ts.iloc[3] = 23
+    with pytest.raises(Exception):
+        tsf.update(engine, ts, 'ts_erase', 'test')
