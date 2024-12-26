@@ -456,7 +456,7 @@ class iohelper:
     @staticmethod
     def unpack_datetime_from(buff, offset, tz=pytz.UTC):
         val = struct.unpack_from('!q', buff, offset)[0]
-        return pd.Timestamp(val, 'ns', tz='utc')
+        return pd.Timestamp(val, 'ns', tz=tz)
 
     @staticmethod
     def pack_rev(revdate, diffstart, diffend, address, metaid):
@@ -469,21 +469,17 @@ class iohelper:
         return buff
 
     @staticmethod
-    def unpack_rev(bytestr):
+    def unpack_rev(tz, bytestr):
         buff = array('B', bytestr)
-        revdate = iohelper.unpack_datetime_from(buff, 0)
-        diffstart = iohelper.unpack_datetime_from(buff, 8)
-        diffend = iohelper.unpack_datetime_from(buff, 16)
+        revdate = iohelper.unpack_datetime_from(buff, 0, pytz.utc)
+        diffstart = iohelper.unpack_datetime_from(buff, 8, tz)
+        diffend = iohelper.unpack_datetime_from(buff, 16, tz)
         address = struct.unpack_from('!I', buff, 24)[0]
         metaid = struct.unpack_from('!I', buff, 28)[0]
         return rev(revdate, diffstart, diffend, address, metaid)
 
     @staticmethod
     def pack_node(start, end, parent, adress, datasize):
-        if start.tzinfo is None:
-            start = start.replace(tzinfo=pytz.utc)
-        if end.tzinfo is None:
-            end = end.replace(tzinfo=pytz.utc)
         buff = bytearray(26)
         iohelper.pack_datetime_into(buff, start, 0)
         iohelper.pack_datetime_into(buff, end, 8)
@@ -493,10 +489,10 @@ class iohelper:
         return buff
 
     @staticmethod
-    def unpack_node(bytestr):
+    def unpack_node(tz, bytestr):
         buff = array('B', bytestr)
-        start = iohelper.unpack_datetime_from(buff, 0)
-        end = iohelper.unpack_datetime_from(buff, 8)
+        start = iohelper.unpack_datetime_from(buff, 0, tz)
+        end = iohelper.unpack_datetime_from(buff, 8, tz)
         parent = struct.unpack_from('!I', buff, 16)[0]
         address = struct.unpack_from('!I', buff, 20)[0]
         size = struct.unpack_from('!h', buff, 24)[0]

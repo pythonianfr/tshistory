@@ -997,3 +997,66 @@ insertion_date             value_date
 2024-01-09     8.0
 2024-01-10     9.0
 """, tsf.get(engine, 'ts_erase'))
+
+
+def test_str_series(engine, tsf):
+    ts = pd.Series(
+        list('abc'),
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1'),
+            periods=3,
+            freq='h'
+        )
+    )
+
+    tsf.update(
+        engine,
+        ts,
+        'fs-str',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1', tz='utc')
+    )
+
+    assert_df("""
+2024-01-01 00:00:00    a
+2024-01-01 01:00:00    b
+2024-01-01 02:00:00    c
+""", tsf.get(engine, 'fs-str'))
+
+    ts2 = pd.Series(
+        ['€', 'ça', 'ôlala'],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1 02:00:00'),
+            periods=3,
+            freq='h'
+        )
+    )
+
+    tsf.update(
+        engine, ts2,
+        'fs-str2',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1', tz='utc')
+    )
+
+    assert_df("""
+2024-01-01 02:00:00        €
+2024-01-01 03:00:00       ça
+2024-01-01 04:00:00    ôlala
+""", tsf.get(engine, 'fs-str2'))
+
+    tsf.update(
+        engine,
+        ts2,
+        'fs-str',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-2', tz='utc')
+    )
+
+    assert_df("""
+2024-01-01 00:00:00        a
+2024-01-01 01:00:00        b
+2024-01-01 02:00:00        €
+2024-01-01 03:00:00       ça
+2024-01-01 04:00:00    ôlala
+""", tsf.get(engine, 'fs-str'))

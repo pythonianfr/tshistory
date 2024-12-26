@@ -1540,6 +1540,7 @@ class timeseriesfs1(base):
             from_value_date, to_value_date
         )
         sto = self.storageclass(self.root, name)
+        imeta = self.internal_metadata(cn, name)
 
         if from_value_date or to_value_date:
             if from_value_date and from_value_date.tzinfo is None:
@@ -1553,7 +1554,7 @@ class timeseriesfs1(base):
                 pd.Timestamp(rev.diffstart),
                 pd.Timestamp(rev.diffend)
             )
-            for _index, rev in sto.revs_range(from_insertion_date, to_insertion_date)
+            for _index, rev in sto.revs_range(imeta, from_insertion_date, to_insertion_date)
         )
         if from_value_date:
             revs = (
@@ -1572,14 +1573,14 @@ class timeseriesfs1(base):
     @tx
     def latest_insertion_date(self, cn, name):
         sto = self.storageclass(self.root, name)
-        idate = pd.Timestamp(sto.last_rev.revdate)
+        idate = sto.last_rev({'tzaware': True}).revdate
         if not pd.isnull(idate):
             return idate.astimezone('UTC')
 
     @tx
     def first_insertion_date(self, cn, name):
         sto = self.storageclass(self.root, name)
-        idate = pd.Timestamp(sto.first_rev.revdate)
+        idate = sto.first_rev({'tzaware': True}).revdate
         if not pd.isnull(idate):
             return idate.astimezone('UTC')
 
@@ -1730,12 +1731,6 @@ class timeseriesfs1(base):
             cn, name, {'left': start, 'right': end}
         )
 
-        # the underlying storage understand only tzaware-utc
-        if not imeta['tzaware']:
-            # this is annoying and we mught want to reconsider this
-            ts = ts.copy()
-            ts.index = ts.index.tz_localize('utc')
-
         sto.update(
             ts, imeta, insertion_date, diffstart, diffend, metaid
         )
@@ -1808,7 +1803,8 @@ class timeseriesfs1(base):
 
         sto = self.storageclass(self.root, name)
         log = []
-        for index, rev in sto.revs_range(fromdate, todate, limit):
+        imeta = self.internal_metadata(cn, name)
+        for index, rev in sto.revs_range(imeta, fromdate, todate, limit):
             author, meta = self._revision_metadata(cn, name, rev.metaid)
             log.append(
                 {

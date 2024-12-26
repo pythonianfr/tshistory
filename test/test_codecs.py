@@ -3,6 +3,7 @@ import os
 import tempfile
 
 import pandas as pd
+import pytz
 
 from tshistory.util import series_metadata
 from tshistory.testutil import (
@@ -269,6 +270,7 @@ def test_make_snapshot_record():
     assert isinstance(rec, bytearray)
 
     node = iohelper.unpack_node(
+        pytz.utc,
         bytes(rec)
     )
     assert node.start == utcdt(2020, 1, 1)
@@ -288,6 +290,7 @@ def test_make_snapshot_record():
     assert isinstance(rec, bytearray)
 
     node = iohelper.unpack_node(
+        pytz.utc,
         bytes(rec)
     )
     assert node.start == utcdt(2020, 1, 1)
@@ -309,6 +312,7 @@ def test_version_record():
     assert isinstance(rec, bytearray)
 
     rev = iohelper.unpack_rev(
+        pytz.utc,
         bytes(rec)
     )
     assert rev.revdate == utcdt(2024, 1, 1)
@@ -405,6 +409,7 @@ def test_read_write_2_versions():
             revs.seek(32) # seek to the beginning of the last block
             bytestr = revs.read(32)
             rev = iohelper.unpack_rev(
+                pytz.utc,
                 bytestr
             )
             assert rev.index == 1
@@ -415,11 +420,11 @@ def test_read_write_2_versions():
             # we start with using the tree index
             tree.seek(rev.index * 26) # move to last block
             fixed = tree.read(26)
-            node2 = iohelper.unpack_node(fixed)
+            node2 = iohelper.unpack_node(pytz.utc, fixed)
 
             tree.seek(0)
             fixed = tree.read(26)
-            node1 = iohelper.unpack_node(fixed)
+            node1 = iohelper.unpack_node(pytz.utc, fixed)
 
         with open(tmp + '/chunks', 'rb') as chunks:
             chunks.seek(node2.address)
