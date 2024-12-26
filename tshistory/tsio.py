@@ -1732,6 +1732,8 @@ class timeseriesfs1(base):
 
         # the underlying storage understand only tzaware-utc
         if not imeta['tzaware']:
+            # this is annoying and we mught want to reconsider this
+            ts = ts.copy()
             ts.index = ts.index.tz_localize('utc')
 
         sto.update(
