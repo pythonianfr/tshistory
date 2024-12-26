@@ -1520,9 +1520,10 @@ class timeseriesfs1(base):
                 to_value_date = compatible_date(tzaware, to_value_date)
 
         if revision_date is None:
-            return sto.last(imeta, from_value_date, to_value_date)
+            ts = sto.last(imeta, from_value_date, to_value_date)
+        else:
+            ts = sto.get(imeta, revision_date, from_value_date, to_value_date)
 
-        ts = sto.get(imeta, revision_date, from_value_date, to_value_date)
         if not _keep_nans:
             ts = ts.dropna()
 

@@ -902,3 +902,80 @@ insertion_date             value_date
                            2024-01-02 00:00:00+00:00    5.0
                            2024-01-03 00:00:00+00:00    5.0
 """, diffs)
+
+
+def test_erasure(engine, tsf):
+    ts = pd.Series(
+        list(range(11)),
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1'),
+            periods=11,
+            freq='d'
+        )
+    )
+    # create outright with a Nan at the end
+    ts.iloc[-1] = np.nan
+    tsf.update(
+        engine, ts, 'ts_erase', 'test',
+        keepnans=True, insertion_date=pd.Timestamp('2025-1-1', tz='utc')
+    )
+
+    # erase in the beginning and middle
+    ts.iloc[0] = np.nan
+    ts.iloc[3] = np.nan
+    tsf.update(
+        engine, ts, 'ts_erase', 'test',
+        keepnans=True, insertion_date=pd.Timestamp('2025-1-2', tz='utc')
+    )
+
+    assert_df("""
+2024-01-02    1.0
+2024-01-03    2.0
+2024-01-05    4.0
+2024-01-06    5.0
+2024-01-07    6.0
+2024-01-08    7.0
+2024-01-09    8.0
+2024-01-10    9.0
+""", tsf.get(engine, 'ts_erase'))
+
+    ts2 = tsf.get(
+        engine,
+        'ts_erase',
+        # in the future
+        revision_date=pd.Timestamp('2038-1-1', tz='utc')
+    )
+    assert_df("""
+2024-01-01    0.0
+2024-01-02    1.0
+2024-01-03    2.0
+2024-01-04    3.0
+2024-01-05    4.0
+2024-01-06    5.0
+2024-01-07    6.0
+2024-01-08    7.0
+2024-01-09    8.0
+2024-01-10    9.0
+""", ts2)
+
+    assert_hist("""
+insertion_date             value_date
+2025-01-01 00:00:00+00:00  2024-01-01    0.0
+                           2024-01-02    1.0
+                           2024-01-03    2.0
+                           2024-01-04    3.0
+                           2024-01-05    4.0
+                           2024-01-06    5.0
+                           2024-01-07    6.0
+                           2024-01-08    7.0
+                           2024-01-09    8.0
+                           2024-01-10    9.0
+2025-01-02 00:00:00+00:00  2024-01-02    1.0
+                           2024-01-03    2.0
+                           2024-01-05    4.0
+                           2024-01-06    5.0
+                           2024-01-07    6.0
+                           2024-01-08    7.0
+                           2024-01-09    8.0
+                           2024-01-10    9.0
+""", tsf.history(engine, 'ts_erase'))
