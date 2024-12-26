@@ -72,6 +72,32 @@ def test_create_initial(engine, tsf):
     assert not len(ts)
 
 
+def test_get_future_revdate(engine, tsf):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=3,
+            freq='D'
+        )
+    )
+
+    tsf.update(
+        engine,
+        ts,
+        'fs-future-revdate',
+        'Babar',
+        insertion_date=pd.Timestamp('2024-1-1', tz='utc')
+    )
+
+    ts = tsf.get(
+        engine,
+        'fs-future-revdate',
+        revision_date=pd.Timestamp('2025-1-1', tz='UTC')  # in the future
+    )
+    assert not len(ts)
+
+
 def test_create_naive(engine, tsf):
     ts = pd.Series(
         [1, 2, 3],
