@@ -488,7 +488,11 @@ class FS1:
     def get(self, imeta, revdate, from_value_date=None, to_value_date=None):
         _, rev = self.find_rev(revdate)
         if rev is None:
-            return empty_series(imeta['tzaware'])
+            rev = self.first_rev
+            if revdate < rev.revdate:
+                # that was in the past
+                # for the future, we will provide the last rev
+                return empty_series(imeta['tzaware'])
         node = self.node_at(rev.index)
 
         chunks = []

@@ -95,7 +95,11 @@ def test_get_future_revdate(engine, tsf):
         'fs-future-revdate',
         revision_date=pd.Timestamp('2025-1-1', tz='UTC')  # in the future
     )
-    assert not len(ts)
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+2024-01-02 00:00:00+00:00    2.0
+2024-01-03 00:00:00+00:00    3.0
+""", ts)
 
 
 def test_create_naive(engine, tsf):
