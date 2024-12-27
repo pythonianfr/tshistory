@@ -338,6 +338,7 @@ class FS1:
 
         tz = pytz.utc if imeta['tzaware'] else None
         with open(self.revs, 'rb') as frevs:
+            # long prologue to determine the boundaries
             index = None
             if fromdate is not None:
                 index, startrev = self.find_rev(tz, fromdate)
@@ -351,6 +352,14 @@ class FS1:
                 index = 0
                 frevs.seek(0)
                 startrev = iohelper.unpack_rev(tz, frevs.read(self._rev_size))
+
+            if todate is not None:
+                toindex, endrev = self.find_rev(tz, todate)
+                if toindex is None:
+                    # could not find anything: todate is out of range
+                    # if it is in the past, we can't do much
+                    if todate < self.first_rev(tz).revdate:
+                        return []
 
             count = 1
             revs = [(index, startrev)]

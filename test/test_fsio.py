@@ -1119,7 +1119,7 @@ def test_history_naivequery(engine, tsf):
                 insertion_date=utcdt(2017, 2, idx)
             )
 
-    # out of bounds
+    # out of bounds (right)
     idates = tsf.insertion_dates(
         engine,
         'fs-h2',
@@ -1130,6 +1130,19 @@ def test_history_naivequery(engine, tsf):
     h = tsf.history(engine, 'fs-h2',
                     from_insertion_date=datetime(2017, 2, 4),
                     to_insertion_date=datetime(2017, 2, 4))
+    assert h == {}
+
+    # out of bounds (left)
+    idates = tsf.insertion_dates(
+        engine,
+        'fs-h2',
+        from_insertion_date=datetime(2016, 2, 4),
+        to_insertion_date=datetime(2016, 2, 4)
+    )
+    assert idates == []
+    h = tsf.history(engine, 'fs-h2',
+                    from_insertion_date=datetime(2016, 2, 4),
+                    to_insertion_date=datetime(2016, 2, 4))
     assert h == {}
 
     h = tsf.history(engine, 'fs-h2')
