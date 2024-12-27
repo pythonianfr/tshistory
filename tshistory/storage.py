@@ -340,11 +340,11 @@ class FS1:
         with open(self.revs, 'rb') as frevs:
             index = None
             if fromdate is not None:
-                index, startrev = self.find_rev(imeta, fromdate)
+                index, startrev = self.find_rev(tz, fromdate)
                 if index is None:
                     # could not find anything fromdate is out of range
                     # if it is in the future, we can't do much
-                    if fromdate > self.last_rev(imeta).revdate:
+                    if fromdate > self.last_rev(tz).revdate:
                         return []
             if fromdate is None or index is None:
                 # we then can assume we start from the beginning
@@ -371,21 +371,15 @@ class FS1:
 
             return revs
 
-    def last_rev(self, imeta):
+    def last_rev(self, tz):
         with open(self.revs, 'rb') as frevs:
             frevs.seek(self.revs_size - self._rev_size)  # end of penultimate rev
-            return iohelper.unpack_rev(
-                pytz.utc if imeta['tzaware'] else None,
-                frevs.read(self._rev_size)
-            )
+            return iohelper.unpack_rev(tz, frevs.read(self._rev_size))
 
-    def first_rev(self, imeta):
+    def first_rev(self, tz):
         with open(self.revs, 'rb') as frevs:
             frevs.seek(0)
-            return iohelper.unpack_rev(
-                pytz.utc if imeta['tzaware'] else None,
-                frevs.read(self._rev_size)
-            )
+            return iohelper.unpack_rev(tz, frevs.read(self._rev_size))
 
     @property
     def tree_size(self):
@@ -454,8 +448,7 @@ class FS1:
         with open(self.revs, 'ab') as frevs:
             frevs.write(brev)
 
-    def find_rev(self, imeta, revdate):
-        tz = pytz.utc if imeta['tzaware'] else None
+    def find_rev(self, tz, revdate):
         with open(self.revs, 'rb') as frevs:
             start = 0
             end = self.revs_entries - 1
@@ -493,17 +486,18 @@ class FS1:
             return start, rev
 
     def last(self, imeta, from_value_date=None, to_value_date=None):
-        return self.get(imeta, self.last_rev(imeta).revdate, from_value_date, to_value_date)
+        tz = pytz.utc if imeta['tzaware'] else None
+        return self.get(imeta, self.last_rev(tz).revdate, from_value_date, to_value_date)
 
     def get(self, imeta, revdate, from_value_date=None, to_value_date=None):
-        _, rev = self.find_rev(imeta, revdate)
+        tz = pytz.utc if imeta['tzaware'] else None
+        _, rev = self.find_rev(tz, revdate)
         if rev is None:
-            rev = self.last_rev(imeta)
+            rev = self.last_rev(tz)
             if revdate < rev.revdate:
                 # that was in the past
                 # for the future, we will provide the last rev
                 return empty_series(imeta['tzaware'])
-        tz = pytz.utc if imeta['tzaware'] else None
         node = self.node_at(tz, rev.index)
 
         chunks = []
@@ -544,8 +538,8 @@ class FS1:
 
         """
         # fetch the latest node, which will be our parent
-        rev = self.last_rev(imeta)
         tz = pytz.utc if imeta['tzaware'] else None
+        rev = self.last_rev(tz)
         nodeindex, patchme = self.find_node_index_matching(tz, rev.index, ts.index.min())
 
         if patchme:
