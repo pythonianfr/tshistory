@@ -1539,6 +1539,11 @@ class timeseriesfs1(base):
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date
         )
+        if from_insertion_date:
+            from_insertion_date = compatible_date(True, from_insertion_date)
+        if to_insertion_date:
+            to_insertion_date = compatible_date(True, to_insertion_date)
+
         sto = self.storageclass(self.root, name)
         imeta = self.internal_metadata(cn, name)
 

@@ -341,7 +341,13 @@ class FS1:
             index = None
             if fromdate is not None:
                 index, startrev = self.find_rev(imeta, fromdate)
+                if index is None:
+                    # could not find anything fromdate is out of range
+                    # if it is in the future, we can't do much
+                    if fromdate > self.last_rev(imeta).revdate:
+                        return []
             if fromdate is None or index is None:
+                # we then can assume we start from the beginning
                 index = 0
                 frevs.seek(0)
                 startrev = iohelper.unpack_rev(tz, frevs.read(self._rev_size))

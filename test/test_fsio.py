@@ -1,9 +1,12 @@
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 
 from tshistory.testutil import (
     assert_df,
     assert_hist,
+    genserie,
     utcdt
 )
 from tshistory.storage import FS1
@@ -1103,3 +1106,70 @@ def test_update_noparent(engine, tsf):
 2014-01-02 00:00:00+00:00    2.0
 2014-01-03 00:00:00+00:00    3.0
 """, tsf.get(engine, 'fs-noparent'))
+
+
+def test_history_naivequery(engine, tsf):
+    for idx in (1, 2, 3):
+        with engine.begin() as cn:
+            tsf.update(
+                cn,
+                genserie(datetime(2017, 1, 1), 'd', idx),
+                'fs-h2',
+                'Babar',
+                insertion_date=utcdt(2017, 2, idx)
+            )
+
+    # out of bounds
+    idates = tsf.insertion_dates(
+        engine,
+        'fs-h2',
+        from_insertion_date=datetime(2017, 2, 4),
+        to_insertion_date=datetime(2017, 2, 4)
+    )
+    assert idates == []
+    h = tsf.history(engine, 'fs-h2',
+                    from_insertion_date=datetime(2017, 2, 4),
+                    to_insertion_date=datetime(2017, 2, 4))
+    assert h == {}
+
+    h = tsf.history(engine, 'fs-h2')
+    assert_hist("""
+insertion_date             value_date
+2017-02-01 00:00:00+00:00  2017-01-01    0.0
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+2017-02-03 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+                           2017-01-03    2.0
+""", h)
+
+    # get history ranges
+    h = tsf.history(engine, 'fs-h2',
+                    from_insertion_date=datetime(2017, 2, 2))
+    assert_hist("""
+insertion_date             value_date
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+2017-02-03 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+                           2017-01-03    2.0
+""", h)
+
+    h = tsf.history(engine, 'fs-h2',
+                    to_insertion_date=datetime(2017, 2, 2))
+    assert_hist("""
+insertion_date             value_date
+2017-02-01 00:00:00+00:00  2017-01-01    0.0
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+""", h)
+
+    h = tsf.history(engine, 'fs-h2',
+                    from_insertion_date=datetime(2017, 2, 2),
+                    to_insertion_date=datetime(2017, 2, 2))
+    assert_hist("""
+insertion_date             value_date
+2017-02-02 00:00:00+00:00  2017-01-01    0.0
+                           2017-01-02    1.0
+""", h)
+
