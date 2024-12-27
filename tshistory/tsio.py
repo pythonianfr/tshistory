@@ -346,6 +346,160 @@ class base:
         return empty_series(tzaware, name=name)
 
     @tx
+    def block_staircase(self, cn, name,
+                        from_value_date=None,
+                        to_value_date=None,
+                        revision_freq=None,
+                        revision_time=None,
+                        revision_tz='UTC',
+                        maturity_offset=None,
+                        maturity_time=None):
+
+        if not self.exists(cn, name):
+            return
+        guard_query_dates(from_value_date, to_value_date)
+
+        latest_ts = self.get(
+            cn, name,
+            from_value_date=from_value_date,
+            to_value_date=to_value_date,
+            _keep_nans=True
+        )
+        tzaware = self.tzaware(cn, name)
+        if not len(latest_ts):
+            return empty_series(tzaware, name=name)
+
+        def replacement_offset(offset, name):
+            """pandas.DateOffset that replaces datetime parameters"""
+            if not isinstance(offset, dict):
+                raise TypeError(
+                    f'Expected replacement offset `{name}` as dict but {type(offset)} was'
+                    'given'
+                )
+            if not offset:  # return null offset
+                return pd.DateOffset(hours=0)
+            allowed_keys = ['year', 'month', 'day', 'weekday', 'hour', 'minute', 'second']
+            for k in offset:
+                if k not in allowed_keys:
+                    raise ValueError(
+                        f'Could not convert replacement offset `{name}` from dict with key '
+                        f'{k}, allowed keys are {allowed_keys}'
+                    )
+            return pd.DateOffset(**offset)
+
+        def shift_offset(offset, name):
+            """pandas.DateOffset that shifts datetime parameters"""
+            if not isinstance(offset, dict):
+                raise TypeError(
+                    f'Expected shift offset `{name}` as dict but {type(offset)} was given'
+                )
+            if not offset:  # return null offset
+                return pd.DateOffset(hours=0)
+            allowed_keys = [
+                'years', 'months', 'weeks', 'bdays', 'days', 'hours', 'minutes', 'seconds'
+            ]
+            for k in offset:
+                if k not in allowed_keys:
+                    raise ValueError(
+                        f'Could not convert `{name}` from dict with key {k}, ' +
+                        f'allowed keys are {allowed_keys}'
+                    )
+            if 'bdays' in offset:
+                if len(offset) > 1:
+                    raise ValueError(
+                        f'Shift offset `{name}` cannot combine \'bdays\' with other offset'
+                        'units'
+                    )
+                return pd.offsets.BusinessDay(offset['bdays'])
+            else:
+                return pd.DateOffset(**offset)
+
+        from_value_date = from_value_date or latest_ts.index.min()
+        to_value_date = to_value_date or latest_ts.index.max()
+        from_value_date = compatible_date(tzaware, from_value_date)
+        to_value_date = compatible_date(tzaware, to_value_date)
+
+        revision_freq = revision_freq or {'days': 1}
+        revision_time = revision_time or {'hour': 0}
+        revision_tz = revision_tz or 'UTC'
+        maturity_offset = maturity_offset or {}
+        maturity_time = maturity_time or {}
+
+        sc_kwargs = dict(
+            revision_freq=revision_freq,
+            revision_time=revision_time,
+            revision_tz=revision_tz,
+            maturity_offset=maturity_offset,
+            maturity_time=maturity_time,
+        )
+
+        revision_freq = shift_offset(revision_freq, name='revision_freq')
+        revision_time = replacement_offset(revision_time, name='revision_time')
+        maturity_offset = shift_offset(maturity_offset, name='maturity_offset')
+        maturity_time = replacement_offset(maturity_time, name='maturity_time')
+        if hasattr(maturity_time, 'weekday'):
+            # do not use weekday on maturity time because pd.DateOffset(weekday=n) does
+            # not preserve week number
+            raise ValueError('Parameter \'weekday\' cannot be used for `maturity_time`')
+
+        def get_block_start(rev_date):
+            block_start = (rev_date + maturity_offset) + maturity_time
+            if not tzaware:
+                block_start = block_start.tz_localize(None)
+            return block_start
+
+        if tzaware:
+            from_v_date_aware = pd.Timestamp(from_value_date).tz_convert(revision_tz)
+        else:
+            from_v_date_aware = pd.Timestamp(from_value_date).tz_localize(revision_tz)
+
+        # roll back to earliest revision date to consider
+        init_rev_date = (
+            ((from_v_date_aware + maturity_time) - maturity_offset) + revision_time
+        )
+        init_block_start = get_block_start(init_rev_date)
+        while init_block_start > from_value_date:
+            prev_rev_date = init_rev_date - revision_freq
+            prev_block_start = get_block_start(prev_rev_date)
+            if not (prev_block_start < init_block_start):
+                raise BlockStaircaseRevisionError(
+                    sc_kwargs=sc_kwargs,
+                    revision_dates=[prev_rev_date, init_rev_date],
+                    block_start_dates=[prev_block_start, init_block_start]
+                )
+            init_rev_date = prev_rev_date
+            init_block_start = prev_block_start
+
+        # assemble blocks by looping over successive revisions
+        revision_date = init_rev_date
+        block_start = init_block_start
+        res_ts = empty_series(tzaware, name=name)
+        while block_start <= to_value_date:
+            chunk = self.get(
+                cn,
+                name,
+                revision_date=revision_date,
+                from_value_date=max(block_start, from_value_date),
+                to_value_date=to_value_date,
+            )
+            if chunk is not None and len(chunk):
+                res_ts = patch(res_ts, chunk)
+            next_rev_date = revision_date + revision_freq
+            next_block_start = get_block_start(next_rev_date)
+            if not (block_start < next_block_start):
+                raise BlockStaircaseRevisionError(
+                    sc_kwargs=sc_kwargs,
+                    revision_dates=[revision_date, next_rev_date],
+                    block_start_dates=[block_start, next_block_start],
+                )
+            revision_date = next_rev_date
+            block_start = next_block_start
+
+        if tzaware:
+            res_ts = res_ts.tz_convert(revision_tz)
+        return res_ts
+
+    @tx
     def interval(self, cn, name, notz=False):
         if not self.exists(cn, name):
             raise ValueError(f'no interval for series: {name}')
@@ -583,160 +737,6 @@ class timeseries(base):
             out[idate] = tsdiff
 
         return out
-
-    @tx
-    def block_staircase(self, cn, name,
-                        from_value_date=None,
-                        to_value_date=None,
-                        revision_freq=None,
-                        revision_time=None,
-                        revision_tz='UTC',
-                        maturity_offset=None,
-                        maturity_time=None):
-
-        if not self.exists(cn, name):
-            return
-        guard_query_dates(from_value_date, to_value_date)
-
-        latest_ts = self.get(
-            cn, name,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            _keep_nans=True
-        )
-        tzaware = self.tzaware(cn, name)
-        if not len(latest_ts):
-            return empty_series(tzaware, name=name)
-
-        def replacement_offset(offset, name):
-            """pandas.DateOffset that replaces datetime parameters"""
-            if not isinstance(offset, dict):
-                raise TypeError(
-                    f'Expected replacement offset `{name}` as dict but {type(offset)} was'
-                    'given'
-                )
-            if not offset:  # return null offset
-                return pd.DateOffset(hours=0)
-            allowed_keys = ['year', 'month', 'day', 'weekday', 'hour', 'minute', 'second']
-            for k in offset:
-                if k not in allowed_keys:
-                    raise ValueError(
-                        f'Could not convert replacement offset `{name}` from dict with key '
-                        f'{k}, allowed keys are {allowed_keys}'
-                    )
-            return pd.DateOffset(**offset)
-
-        def shift_offset(offset, name):
-            """pandas.DateOffset that shifts datetime parameters"""
-            if not isinstance(offset, dict):
-                raise TypeError(
-                    f'Expected shift offset `{name}` as dict but {type(offset)} was given'
-                )
-            if not offset:  # return null offset
-                return pd.DateOffset(hours=0)
-            allowed_keys = [
-                'years', 'months', 'weeks', 'bdays', 'days', 'hours', 'minutes', 'seconds'
-            ]
-            for k in offset:
-                if k not in allowed_keys:
-                    raise ValueError(
-                        f'Could not convert `{name}` from dict with key {k}, ' +
-                        f'allowed keys are {allowed_keys}'
-                    )
-            if 'bdays' in offset:
-                if len(offset) > 1:
-                    raise ValueError(
-                        f'Shift offset `{name}` cannot combine \'bdays\' with other offset'
-                        'units'
-                    )
-                return pd.offsets.BusinessDay(offset['bdays'])
-            else:
-                return pd.DateOffset(**offset)
-
-        from_value_date = from_value_date or latest_ts.index.min()
-        to_value_date = to_value_date or latest_ts.index.max()
-        from_value_date = compatible_date(tzaware, from_value_date)
-        to_value_date = compatible_date(tzaware, to_value_date)
-
-        revision_freq = revision_freq or {'days': 1}
-        revision_time = revision_time or {'hour': 0}
-        revision_tz = revision_tz or 'UTC'
-        maturity_offset = maturity_offset or {}
-        maturity_time = maturity_time or {}
-
-        sc_kwargs = dict(
-            revision_freq=revision_freq,
-            revision_time=revision_time,
-            revision_tz=revision_tz,
-            maturity_offset=maturity_offset,
-            maturity_time=maturity_time,
-        )
-
-        revision_freq = shift_offset(revision_freq, name='revision_freq')
-        revision_time = replacement_offset(revision_time, name='revision_time')
-        maturity_offset = shift_offset(maturity_offset, name='maturity_offset')
-        maturity_time = replacement_offset(maturity_time, name='maturity_time')
-        if hasattr(maturity_time, 'weekday'):
-            # do not use weekday on maturity time because pd.DateOffset(weekday=n) does
-            # not preserve week number
-            raise ValueError('Parameter \'weekday\' cannot be used for `maturity_time`')
-
-        def get_block_start(rev_date):
-            block_start = (rev_date + maturity_offset) + maturity_time
-            if not tzaware:
-                block_start = block_start.tz_localize(None)
-            return block_start
-
-        if tzaware:
-            from_v_date_aware = pd.Timestamp(from_value_date).tz_convert(revision_tz)
-        else:
-            from_v_date_aware = pd.Timestamp(from_value_date).tz_localize(revision_tz)
-
-        # roll back to earliest revision date to consider
-        init_rev_date = (
-            ((from_v_date_aware + maturity_time) - maturity_offset) + revision_time
-        )
-        init_block_start = get_block_start(init_rev_date)
-        while init_block_start > from_value_date:
-            prev_rev_date = init_rev_date - revision_freq
-            prev_block_start = get_block_start(prev_rev_date)
-            if not (prev_block_start < init_block_start):
-                raise BlockStaircaseRevisionError(
-                    sc_kwargs=sc_kwargs,
-                    revision_dates=[prev_rev_date, init_rev_date],
-                    block_start_dates=[prev_block_start, init_block_start]
-                )
-            init_rev_date = prev_rev_date
-            init_block_start = prev_block_start
-
-        # assemble blocks by looping over successive revisions
-        revision_date = init_rev_date
-        block_start = init_block_start
-        res_ts = empty_series(tzaware, name=name)
-        while block_start <= to_value_date:
-            chunk = self.get(
-                cn,
-                name,
-                revision_date=revision_date,
-                from_value_date=max(block_start, from_value_date),
-                to_value_date=to_value_date,
-            )
-            if chunk is not None and len(chunk):
-                res_ts = patch(res_ts, chunk)
-            next_rev_date = revision_date + revision_freq
-            next_block_start = get_block_start(next_rev_date)
-            if not (block_start < next_block_start):
-                raise BlockStaircaseRevisionError(
-                    sc_kwargs=sc_kwargs,
-                    revision_dates=[revision_date, next_rev_date],
-                    block_start_dates=[block_start, next_block_start],
-                )
-            revision_date = next_rev_date
-            block_start = next_block_start
-
-        if tzaware:
-            res_ts = res_ts.tz_convert(revision_tz)
-        return res_ts
 
     @tx
     def exists(self, cn, name):
