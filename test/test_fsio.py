@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from tshistory.testutil import (
     assert_df,
@@ -1060,3 +1061,38 @@ def test_str_series(engine, tsf):
 2024-01-01 03:00:00       ça
 2024-01-01 04:00:00    ôlala
 """, tsf.get(engine, 'fs-str'))
+
+
+def test_update_noparent(engine, tsf):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2014-1-1', tz='utc'),
+            periods=3,
+            freq='d'
+        )
+    )
+
+    tsf.update(
+        engine,
+        ts,
+        'fs-noparent',
+        'Babar'
+    )
+
+    ts2 = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2013-1-1', tz='utc'),
+            periods=3,
+            freq='d'
+        )
+    )
+
+    with pytest.raises(OSError):
+        tsf.update(
+            engine,
+            ts2,
+            'fs-noparent',
+            'Celeste'
+        )
