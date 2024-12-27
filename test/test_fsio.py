@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pytest
 
 from tshistory.testutil import (
     assert_df,
@@ -1089,10 +1088,18 @@ def test_update_noparent(engine, tsf):
         )
     )
 
-    with pytest.raises(OSError):
-        tsf.update(
-            engine,
-            ts2,
-            'fs-noparent',
-            'Celeste'
-        )
+    tsf.update(
+        engine,
+        ts2,
+        'fs-noparent',
+        'Celeste'
+    )
+
+    assert_df("""
+2013-01-01 00:00:00+00:00    1.0
+2013-01-02 00:00:00+00:00    2.0
+2013-01-03 00:00:00+00:00    3.0
+2014-01-01 00:00:00+00:00    1.0
+2014-01-02 00:00:00+00:00    2.0
+2014-01-03 00:00:00+00:00    3.0
+""", tsf.get(engine, 'fs-noparent'))

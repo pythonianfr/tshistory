@@ -523,6 +523,8 @@ class FS1:
     def find_node_index_matching(self, tz, nodeindex, mindate):
         node = self.node_at(tz, nodeindex)
         if mindate < node.start:
+            if not node.parent:
+                return 1, True  # no base node
             return self.find_node_index_matching(tz, node.parent, mindate)
         return nodeindex, True  # we found the base node
 
