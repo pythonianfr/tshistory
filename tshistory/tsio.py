@@ -735,10 +735,7 @@ class timeseries(base):
             block_start = next_block_start
 
         if tzaware:
-            try:
-                res_ts = res_ts.tz_convert(revision_tz)
-            except:
-                import ipdb; ipdb.set_trace()
+            res_ts = res_ts.tz_convert(revision_tz)
         return res_ts
 
     @tx
