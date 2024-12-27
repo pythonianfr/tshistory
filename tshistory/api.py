@@ -799,11 +799,7 @@ class mainsource:
             raise Exception(f'no series {name} exists')
 
         with self.engine.begin() as cn:
-            csid = self.tsh.changeset_at(
-                cn, name, insertion_date, 'after'
-            )
-            if csid is not None:
-                return self.tsh.strip(cn, name, csid)
+            return self.tsh.strip(cn, name, insertion_date)
 
     def register_basket(self, name: str, query: str) -> NONETYPE:
         """Register a dynamic series basket using a search query.

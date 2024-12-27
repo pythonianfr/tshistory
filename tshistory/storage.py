@@ -627,3 +627,13 @@ class FS1:
         )
         with open(self.revs, 'ab') as frevs:
             frevs.write(newbrev)
+
+    def strip(self, revdate):
+        index, rev = self.find_rev(None, revdate)
+        # we will remove all that's above, and not touch
+        # the nodes nor the chunks
+        # a garbage collector maye be useful in the future ...
+        with open(self.revs, 'r+b') as frevs:
+            # truncates needs the 'r+b' mode to not mangle the file contents
+            frevs.seek(0)
+            frevs.truncate(index * self._rev_size)

@@ -806,31 +806,31 @@ def test_log(engine, tsf):
             'date': pd.Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
             'author': 'Babar',
             'meta': {},
-            'rev': 0
+            'rev': 1
         },
         {
             'date': pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC'),
             'author': 'Babar',
             'meta': {},
-            'rev': 1
+            'rev': 2
         },
         {
             'date': pd.Timestamp('2024-01-03 00:00:00+0000', tz='UTC'),
             'author': 'Babar',
             'meta': {},
-            'rev': 2
+            'rev': 3
         },
         {
             'date': pd.Timestamp('2024-01-04 00:00:00+0000', tz='UTC'),
             'author': 'Babar',
             'meta': {},
-            'rev': 3
+            'rev': 4
         },
         {
             'date': pd.Timestamp('2024-01-05 00:00:00+0000', tz='UTC'),
             'author': 'Babar',
             'meta': {},
-            'rev': 4
+            'rev': 5
         }
     ]
 
@@ -846,13 +846,13 @@ def test_log(engine, tsf):
             'author': 'Babar',
             'date': pd.Timestamp('2024-01-02 00:00:00+0000', tz='UTC'),
             'meta': {},
-            'rev': 1
+            'rev': 2
         },
         {
             'author': 'Babar',
             'date': pd.Timestamp('2024-01-03 00:00:00+0000', tz='UTC'),
             'meta': {},
-            'rev': 2
+            'rev': 3
         }
     ]
 
@@ -1186,3 +1186,95 @@ insertion_date             value_date
                            2017-01-02    1.0
 """, h)
 
+
+def test_strip(engine, tsf):
+    for i in range(1, 5):
+        pubdate = utcdt(2017, 1, i)
+        ts = genserie(datetime(2017, 1, 10), 'h', 1 + i)
+        tsf.update(engine, ts, 'fs-stripme', 'babar', insertion_date=pubdate)
+
+    log = tsf.log(engine, 'fs-stripme')
+    assert log == [
+        {
+            'author': 'babar',
+            'date': pd.Timestamp('2017-01-01 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 1
+        },
+        {
+            'author': 'babar',
+            'date': pd.Timestamp('2017-01-02 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 2
+        },
+        {
+            'author': 'babar',
+            'date': pd.Timestamp('2017-01-03 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 3
+        },
+        {
+            'author': 'babar',
+            'date': pd.Timestamp('2017-01-04 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 4
+        }
+    ]
+
+    h = tsf.history(engine, 'fs-stripme')
+    assert_hist("""
+insertion_date             value_date         
+2017-01-01 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+2017-01-02 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+                           2017-01-10 02:00:00    2.0
+2017-01-03 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+                           2017-01-10 02:00:00    2.0
+                           2017-01-10 03:00:00    3.0
+2017-01-04 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+                           2017-01-10 02:00:00    2.0
+                           2017-01-10 03:00:00    3.0
+                           2017-01-10 04:00:00    4.0
+""", h)
+
+    idates = tsf.insertion_dates(engine, 'fs-stripme')
+    assert len(idates) == 4
+
+    with engine.begin() as cn:
+        tsf.strip(cn, 'fs-stripme', datetime(2017, 1, 3))
+
+    idates = tsf.insertion_dates(engine, 'fs-stripme')
+    assert idates == [
+        pd.Timestamp('2017-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2017-01-02 00:00:00+0000', tz='UTC')
+    ]
+
+    assert_hist("""
+insertion_date             value_date         
+2017-01-01 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+2017-01-02 00:00:00+00:00  2017-01-10 00:00:00    0.0
+                           2017-01-10 01:00:00    1.0
+                           2017-01-10 02:00:00    2.0
+""", tsf.history(engine, 'fs-stripme'))
+
+    assert_df("""
+2017-01-10 00:00:00    0.0
+2017-01-10 01:00:00    1.0
+2017-01-10 02:00:00    2.0
+""", tsf.get(engine, 'fs-stripme'))
+
+    log = tsf.log(engine, 'fs-stripme')
+    assert log == [
+        {'author': 'babar',
+         'date': pd.Timestamp('2017-01-01 00:00:00+0000', tz='UTC'),
+         'meta': {},
+         'rev': 1},
+        {'author': 'babar',
+         'date': pd.Timestamp('2017-01-02 00:00:00+0000', tz='UTC'),
+         'meta': {},
+         'rev': 2}
+    ]

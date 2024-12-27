@@ -1790,12 +1790,6 @@ def test_strip(engine, tsh):
         tsh.update(engine, genserie(datetime(2018, 1, 1), 'd', 1 + i),
                    'yserie', 'celeste')
 
-    csida = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3))
-    assert csida is not None
-    csidb = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3, 1), mode='before')
-    csidc = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3, 1), mode='after')
-    assert csidb < csida < csidc
-
     log = tsh.log(engine, 'xserie')
     assert log == [
         {'author': 'babar',
@@ -1835,15 +1829,14 @@ insertion_date             value_date
                            2017-01-10 04:00:00    4.0
 """, h)
 
-    snap = Postgres(engine, tsh, 'xserie')
-    assert snap.garbage() == set()
-
-    csid = tsh.changeset_at(engine, 'xserie', datetime(2017, 1, 3))
     with engine.begin() as cn:
-        tsh.strip(cn, 'xserie', csid)
+        cn.cache = {'series_tablename': {}}
+        snap = Postgres(cn, tsh, 'xserie')
+        assert snap.garbage() == set()
+        tsh.strip(cn, 'xserie', datetime(2017, 1, 3))
 
-    # no garbage left
-    assert len(snap.garbage()) == 0
+        # no garbage left
+        assert len(snap.garbage()) == 0
 
     assert_hist("""
 insertion_date             value_date         

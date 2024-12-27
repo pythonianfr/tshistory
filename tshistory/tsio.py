@@ -799,26 +799,6 @@ class timeseries(base):
         return snapshot.last_id()
 
     @tx
-    def changeset_at(self, cn, name, revdate, mode='strict'):
-        operators = {
-            'strict': '=',
-            'before': '<=',
-            'after': '>='
-        }
-        tablename = self._series_to_tablename(cn, name)
-        assert mode in operators
-        q = select(
-            'id'
-        ).table(
-            f'"{self.namespace}.revision"."{tablename}"',
-        ).where(
-            f'insertion_date {operators[mode]} %(revdate)s',
-            revdate=revdate
-        ).order('insertion_date', 'asc'
-        ).limit(1)
-        return q.do(cn).scalar()
-
-    @tx
     def delete(self, cn, name):
         tablename = self._series_to_tablename(cn, name)
         if tablename is None:
@@ -847,11 +827,26 @@ class timeseries(base):
         )
 
     @tx
-    def strip(self, cn, name, csid):
-        # wipe the diffs
+    def strip(self, cn, name, revdate):
         tablename = self._series_to_tablename(cn, name)
-        sql = (f'delete from "{self.namespace}.revision"."{tablename}" '
-               'where id >= %(csid)s')
+        q = select(
+            'id'
+        ).table(
+            f'"{self.namespace}.revision"."{tablename}"',
+        ).where(
+            'insertion_date >= %(revdate)s',
+            revdate=revdate
+        ).order('insertion_date', 'asc'
+        ).limit(1)
+        csid = q.do(cn).scalar()
+        if csid is None:
+            return
+
+        # wipe the diffs
+        sql = (
+            f'delete from "{self.namespace}.revision"."{tablename}" '
+            'where id >= %(csid)s'
+        )
         cn.execute(sql, csid=csid)
         snapshot = self.storageclass(cn, self, name)
         snapshot.reclaim()
@@ -1816,7 +1811,7 @@ class timeseriesfs1(base):
                     'date': pd.Timestamp(rev.revdate),
                     'author': author,
                     'meta': meta or {},
-                    'rev': index
+                    'rev': index + 1
                 }
             )
 
@@ -1850,3 +1845,9 @@ class timeseriesfs1(base):
             to_insertion_date,
             diffmode=True
         )
+
+    @tx
+    def strip(self, cn, name, revdate):
+        revdate = compatible_date(True, revdate)
+        sto = self.storageclass(self.root, name)
+        sto.strip(revdate)
