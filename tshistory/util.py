@@ -721,7 +721,8 @@ def threadpool(maxthreads):
 def _set_cache(txobj):
     txobj.cache = {
         'internal_metadata': {},
-        'series_tablename': {}
+        'series_tablename': {},
+        'series_path': {}
     }
     return txobj
 

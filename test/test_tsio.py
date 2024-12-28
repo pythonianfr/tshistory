@@ -1188,8 +1188,8 @@ def test_point_deletion(engine, tsh):
 2010-01-10    machin
 """, tsh.get(engine, 'ts_string_del'))
 
-    meta = tsh.internal_metadata(engine, 'ts_string_del')
-    assert meta == {
+    imeta = tsh.internal_metadata(engine, 'ts_string_del')
+    assert imeta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
         'tablename': 'ts_string_del',

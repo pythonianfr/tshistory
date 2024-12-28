@@ -1501,20 +1501,19 @@ class timeseriesfs1(base):
         if not self.exists(cn, name):
             return
 
-        sto = self.storageclass(self.root, name)
-        imeta = self.internal_metadata(cn, name)
+        sto = self.storageclass(cn, self, name)
         # munge query to satisfy pandas idiocy
         if from_value_date or to_value_date:
-            tzaware = imeta['tzaware']
+            tzaware = sto.imeta['tzaware']
             if from_value_date:
                 from_value_date = compatible_date(tzaware, from_value_date)
             if to_value_date:
                 to_value_date = compatible_date(tzaware, to_value_date)
 
         if revision_date is None:
-            ts = sto.last(imeta, from_value_date, to_value_date)
+            ts = sto.last(from_value_date, to_value_date)
         else:
-            ts = sto.get(imeta, revision_date, from_value_date, to_value_date)
+            ts = sto.get(revision_date, from_value_date, to_value_date)
 
         if not _keep_nans:
             ts = ts.dropna()
@@ -1536,9 +1535,7 @@ class timeseriesfs1(base):
         if to_insertion_date:
             to_insertion_date = compatible_date(True, to_insertion_date)
 
-        sto = self.storageclass(self.root, name)
-        imeta = self.internal_metadata(cn, name)
-
+        sto = self.storageclass(cn, self, name)
         if from_value_date or to_value_date:
             if from_value_date and from_value_date.tzinfo is None:
                 from_value_date = ensuretz(from_value_date)
@@ -1551,7 +1548,7 @@ class timeseriesfs1(base):
                 pd.Timestamp(rev.diffstart),
                 pd.Timestamp(rev.diffend)
             )
-            for _index, rev in sto.revs_range(imeta, from_insertion_date, to_insertion_date)
+            for _index, rev in sto.revs_range(from_insertion_date, to_insertion_date)
         )
         if from_value_date:
             revs = (
@@ -1569,14 +1566,14 @@ class timeseriesfs1(base):
 
     @tx
     def latest_insertion_date(self, cn, name):
-        sto = self.storageclass(self.root, name)
+        sto = self.storageclass(cn, self, name)
         idate = sto.last_rev(None).revdate
         if not pd.isnull(idate):
             return idate.astimezone('UTC')
 
     @tx
     def first_insertion_date(self, cn, name):
-        sto = self.storageclass(self.root, name)
+        sto = self.storageclass(cn, self, name)
         idate = sto.first_rev(None).revdate
         if not pd.isnull(idate):
             return idate.astimezone('UTC')
@@ -1665,17 +1662,24 @@ class timeseriesfs1(base):
             json.dumps(seriesmeta),
             json.dumps({})
         ).scalar()
-
-        metaid = self._prepare_revision(cn, name, author, metadata)
-        sto = self.storageclass(self.root, name)
-        sto.initialize()
-        sto.initial_update(ts, insertion_date, metaid)
-
+        # meta
         start, end = start_end(ts, notz=tzaware_series(ts))
         start = start.isoformat() if start else None
         end = end.isoformat() if end else None
+        path = self._make_path(cn, name)
         self.update_internal_metadata(
-            cn, name, {'left': start, 'right': end}
+            cn, name, {
+                'path': path,
+                'left': start,
+                'right': end
+            }
+        )
+        # data
+        sto = self.storageclass(cn, self, name, path=path)
+        sto.initial_update(
+            ts,
+            insertion_date,
+            self._prepare_revision(cn, name, author, metadata)
         )
 
         return ts
@@ -1687,11 +1691,10 @@ class timeseriesfs1(base):
 
         self._validate(cn, ts, name)
 
-        sto = self.storageclass(self.root, name)
-        imeta = self.internal_metadata(cn, name)
+        sto = self.storageclass(cn, self, name)
         # we will want to pass ts.index.min() as `minindex`
         # to limit the search
-        last = sto.last(imeta)
+        last = sto.last()
 
         series_diff = diff(last, ts)
         if not len(series_diff):
@@ -1699,15 +1702,14 @@ class timeseriesfs1(base):
                    name, author, len(ts))
             return
 
-        metaid = self._prepare_revision(cn, name, author, metadata)
         # compute series start/end stamps
         diffstart = series_diff.index[0]
         diffend = series_diff.index[-1]
         start, end = start_end(series_diff, notz=False)
         ival = self.interval(cn, name, notz=False)
         if ival:
-            start = compatible_date(imeta['tzaware'], min(start or ival.left, ival.left))
-            end = compatible_date(imeta['tzaware'], max(end or ival.right, ival.right))
+            start = compatible_date(sto.imeta['tzaware'], min(start or ival.left, ival.left))
+            end = compatible_date(sto.imeta['tzaware'], max(end or ival.right, ival.right))
         else:
             start = diffstart
             end = diffend
@@ -1728,8 +1730,9 @@ class timeseriesfs1(base):
             cn, name, {'left': start, 'right': end}
         )
 
+        metaid = self._prepare_revision(cn, name, author, metadata)
         sto.update(
-            ts, imeta, insertion_date, diffstart, diffend, metaid
+            ts, insertion_date, diffstart, diffend, metaid
         )
 
         L.info(
@@ -1780,12 +1783,11 @@ class timeseriesfs1(base):
                 dtype=ts.dtype
             )
 
-        sto = self.storageclass(self.root, name)
+        sto = self.storageclass(cn, self, name)
         metaid = self._prepare_revision(cn, name, author, metadata)
         start, end = start_end(ts)
-        imeta = self.internal_metadata(cn, name)
         sto.replace(
-            ts, imeta, insertion_date, start, end, metaid
+            ts, insertion_date, start, end, metaid
         )
 
         L.info('inserted series (size=%s) for ts %s by %s',
@@ -1798,10 +1800,9 @@ class timeseriesfs1(base):
         if not self.exists(cn, name):
             return []
 
-        sto = self.storageclass(self.root, name)
+        sto = self.storageclass(cn, self, name)
         log = []
-        imeta = self.internal_metadata(cn, name)
-        for index, rev in sto.revs_range(imeta, fromdate, todate, limit):
+        for index, rev in sto.revs_range(fromdate, todate, limit):
             author, meta = self._revision_metadata(cn, name, rev.metaid)
             log.append(
                 {
@@ -1846,5 +1847,43 @@ class timeseriesfs1(base):
     @tx
     def strip(self, cn, name, revdate):
         revdate = compatible_date(True, revdate)
-        sto = self.storageclass(self.root, name)
+        sto = self.storageclass(cn, self, name)
         sto.strip(revdate)
+
+    # series path handling
+
+    def _make_path(self, cn, name):
+        # default
+        path = name
+        if len(name) > 255:
+            hashed = hash64(name)
+            path = path[:-len(hashed)] + hashed
+
+        # collision detection (collision can happen after a rename)
+        if cn.execute(
+                f'select internal_metadata->\'path\' '
+                f'from "{self.namespace}".registry '
+                f'where internal_metadata->>\'path\' = %(path)s',
+                path=path
+        ).scalar():
+            path = str(uuid.uuid4())
+
+        cn.cache['series_path'][name] = path
+        return path
+
+    def _path(self, cn, name):
+        path = cn.cache['series_path'].get(name)
+        if path is not None:
+            return path
+
+        path = cn.execute(
+            f'select internal_metadata->\'path\' '
+            f'from "{self.namespace}".registry '
+            f'where name = %(name)s',
+            name=name
+        ).scalar()
+        if path is None:
+            # bogus series name
+            return
+        cn.cache['series_path'][name] = path
+        return path

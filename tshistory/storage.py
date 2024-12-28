@@ -310,19 +310,29 @@ class FS1:
     _rev_size = 32
     _node_size = 26
     _max_bucket_size = 150
+    __slots__ = 'imeta', 'tz', 'root'
 
-    def __init__(self, root, name):
-        self.name = name
-        self.root = root / name
-        self.revs = self.root / 'revs'
-        self.tree = self.root / 'tree'
-        self.chunks = self.root / 'chunks'
+    def __init__(self, cn, tsh, name, path=None):
+        self.imeta = tsh.internal_metadata(cn, name)
+        self.tz = pytz.utc if self.imeta['tzaware'] else None
+        path = path or tsh._path(cn, name)
+        self.root = tsh.root / path
 
-    def initialize(self):
-        self.root.mkdir()
-        open(self.revs, mode='x')
-        open(self.tree, mode='x')
-        open(self.chunks, mode='x')
+    @property
+    def tzaware(self):
+        return self.imeta['tzaware']
+
+    @property
+    def revs(self):
+        return self.root / 'revs'
+
+    @property
+    def tree(self):
+        return self.root / 'tree'
+
+    @property
+    def chunks(self):
+        return self.root / 'chunks'
 
     @property
     def revs_size(self):
@@ -332,11 +342,11 @@ class FS1:
     def revs_entries(self):
         return self.revs_size // self._rev_size
 
-    def revs_range(self, imeta, fromdate=None, todate=None, limit=None):
+    def revs_range(self, fromdate=None, todate=None, limit=None):
         if limit == 0:
             return []
 
-        tz = pytz.utc if imeta['tzaware'] else None
+        tz = pytz.utc if self.imeta['tzaware'] else None
         with open(self.revs, 'rb') as frevs:
             # long prologue to determine the boundaries
             index = None
@@ -424,6 +434,13 @@ class FS1:
         return buckets
 
     def initial_update(self, ts, revdate, metaid):
+        # I/O prologue
+        self.root.mkdir()
+        open(self.root / 'revs', mode='x')
+        open(self.root / 'tree', mode='x')
+        open(self.root / 'chunks', mode='x')
+
+        # the actual update
         buckets = self.buckets(ts)
 
         parent = 0  # no parent
@@ -494,19 +511,19 @@ class FS1:
             rev = iohelper.unpack_rev(tz, frevs.read(self._rev_size))
             return start, rev
 
-    def last(self, imeta, from_value_date=None, to_value_date=None):
-        tz = pytz.utc if imeta['tzaware'] else None
-        return self.get(imeta, self.last_rev(tz).revdate, from_value_date, to_value_date)
+    def last(self, from_value_date=None, to_value_date=None):
+        tz = pytz.utc if self.imeta['tzaware'] else None
+        return self.get(self.last_rev(tz).revdate, from_value_date, to_value_date)
 
-    def get(self, imeta, revdate, from_value_date=None, to_value_date=None):
-        tz = pytz.utc if imeta['tzaware'] else None
+    def get(self, revdate, from_value_date=None, to_value_date=None):
+        tz = pytz.utc if self.imeta['tzaware'] else None
         _, rev = self.find_rev(tz, revdate)
         if rev is None:
             rev = self.last_rev(tz)
             if revdate < rev.revdate:
                 # that was in the past
                 # for the future, we will provide the last rev
-                return empty_series(imeta['tzaware'])
+                return empty_series(self.imeta['tzaware'])
         node = self.node_at(tz, rev.index)
 
         chunks = []
@@ -525,9 +542,9 @@ class FS1:
             node = self.node_at(tz, parent)
 
         if not chunks:
-            return empty_series(imeta['tzaware'])
+            return empty_series(self.imeta['tzaware'])
         chunks.reverse()
-        return iohelper.chunks_to_ts(imeta, chunks)[from_value_date:to_value_date]
+        return iohelper.chunks_to_ts(self.imeta, chunks)[from_value_date:to_value_date]
 
     def find_node_index_matching(self, tz, nodeindex, mindate):
         node = self.node_at(tz, nodeindex)
@@ -537,7 +554,7 @@ class FS1:
             return self.find_node_index_matching(tz, node.parent, mindate)
         return nodeindex, True  # we found the base node
 
-    def update(self, ts, imeta, revdate, diffstart, diffend, metaid):
+    def update(self, ts, revdate, diffstart, diffend, metaid):
         """We will build a new node, whith a parent node.
 
         The parent may be immediate or older (at worst there is no parent)
@@ -547,7 +564,7 @@ class FS1:
 
         """
         # fetch the latest node, which will be our parent
-        tz = pytz.utc if imeta['tzaware'] else None
+        tz = pytz.utc if self.imeta['tzaware'] else None
         rev = self.last_rev(tz)
         nodeindex, patchme = self.find_node_index_matching(tz, rev.index, ts.index.min())
 
@@ -555,7 +572,7 @@ class FS1:
             # we found a parent node, and we need to patch our series with it
             node = self.node_at(tz, nodeindex)
             chunk = self.chunk_at(node.address, node.size)
-            base = iohelper.chunks_to_ts(imeta, [chunk])
+            base = iohelper.chunks_to_ts(self.imeta, [chunk])
             ts = patch(base, ts)
             # this node with which we just merge cannot be our parent
             # so we take its parent
@@ -597,7 +614,7 @@ class FS1:
         with open(self.revs, 'ab') as frevs:
             frevs.write(newbrev)
 
-    def replace(self, ts, imeta, revdate, diffstart, diffend, metaid):
+    def replace(self, ts, revdate, diffstart, diffend, metaid):
         isstr = ts.values.dtype.name == 'object'
         for index, bucket in enumerate(self.buckets(ts)):
             # index always starts at Zero, because we replace everything

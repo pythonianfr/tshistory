@@ -490,8 +490,9 @@ def test_one_multi_chunks_revision(engine, tsf):
     ts = tsf.get(engine, 'fs-multichunks')
     assert len(ts) == 300
 
-    sto = FS1(tsf.root, 'fs-multichunks')
-    assert sto.tree_entries == 2
+    with engine.begin() as cn:
+        sto = FS1(cn, tsf, 'fs-multichunks')
+        assert sto.tree_entries == 2
 
 
 def test_two_chunks_three_revision(engine, tsf):
@@ -524,8 +525,9 @@ def test_two_chunks_three_revision(engine, tsf):
     ts = tsf.get(engine, 'fs-2chunks3revs')
     assert len(ts) == 300
 
-    sto = FS1(tsf.root, 'fs-2chunks3revs')
-    assert sto.tree_entries == 4
+    with engine.begin() as cn:
+        sto = FS1(cn, tsf, 'fs-2chunks3revs')
+        assert sto.tree_entries == 4
 
     ts = ts * 2
     ts = ts[-10:]
