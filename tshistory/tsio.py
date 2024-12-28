@@ -1850,6 +1850,17 @@ class timeseriesfs1(base):
         sto = self.storageclass(cn, self, name)
         sto.strip(revdate)
 
+    @tx
+    def rename(self, cn, oldname, newname, propagate=True):
+        oldpath = self.internal_metadata(cn, oldname)['path']
+        super().rename(cn, oldname, newname, propagate=propagate)
+        newpath = self._make_path(cn, newname)
+        self.update_internal_metadata(
+            cn, newname, {'path': newpath}
+        )
+        # IO/filesystem rename
+        (self.root / oldpath).rename(self.root / newpath)
+
     # series path handling
 
     def _make_path(self, cn, name):

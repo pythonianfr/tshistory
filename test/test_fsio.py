@@ -1280,3 +1280,32 @@ insertion_date             value_date
          'meta': {},
          'rev': 2}
     ]
+
+
+def test_rename(engine, tsf):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=3,
+            freq='D'
+        )
+    )
+    tsf.update(
+        engine,
+        ts,
+        'fs-rename',
+        'Babar'
+    )
+
+    tsf.rename(engine, 'fs-rename', 'fs-renamed')
+
+    assert not tsf.exists(engine, 'fs-rename')
+    assert tsf.exists(engine, 'fs-renamed')
+
+    assert tsf.get(engine, 'fs-rename') is None
+    assert_df("""
+2024-01-01 00:00:00+00:00    1.0
+2024-01-02 00:00:00+00:00    2.0
+2024-01-03 00:00:00+00:00    3.0
+""", tsf.get(engine, 'fs-renamed'))
