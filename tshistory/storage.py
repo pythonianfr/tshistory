@@ -591,6 +591,7 @@ class FS1:
             nodeindex = node.parent
 
         # we can now have our tree node
+        address = self.chunks_size
         for index, bucket in enumerate(self.buckets(ts), start=nodeindex):
             packed = iohelper.serialize_ts(
                 bucket,
@@ -601,9 +602,10 @@ class FS1:
                 bucket.index.min(),
                 bucket.index.max(),
                 index,  # index of the parent node
-                self.chunks_size,
+                address,
                 len(packed)
             )
+            address = address + len(packed)
 
             # build and write the chunk
             # do this *after* the previous step
