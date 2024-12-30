@@ -379,6 +379,39 @@ def test_get_nans(http):
     assert 'null' in res.text
 
 
+def test_create_with_only_nans(http):
+    ts = pd.Series(
+        [np.nan] * 3,
+        index=pd.date_range(
+            start=utcdt(2024, 1, 1),
+            periods=3,
+            freq='h'
+        )
+    )
+
+    assert ts.dtype == 'float64'
+    http.patch_json(
+        '/series/state',
+        params={
+            'name': 'full-nans',
+            'series': json.loads(util.tojson(ts)),
+            'author': 'Babar',
+            'keepnans': True,
+            'tzaware': util.tzaware_series(ts)
+        }
+    )
+
+    response = http.get(
+        '/series/metadata',
+        params={
+            'name': 'full-nans',
+            'all': json.dumps(True)
+        }
+    )
+    # the stored dtype became an object in the json path
+    assert response.json['value_dtype'] == '|O'
+
+
 def test_patch_nonutc_tzaware(http):
     ts = genserie(utcdt(2023, 1, 1), 'd', 5)
     ts.index = ts.index.tz_convert('Europe/Paris')

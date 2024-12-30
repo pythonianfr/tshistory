@@ -485,15 +485,14 @@ def test_erasure(tsx):
     ival = tsx.interval('erasure')
     assert ival is None
 
-    ts = pd.Series(
-        [np.nan, 1, 2],
-        index=pd.date_range(
-            utcdt(2024, 1, 1),
-            freq='h',
-            periods=3
-        )
-    )
+    empty = tsx.get('erasure', _keep_nans=True)
+    assert_df("""
+2024-01-01 00:00:00+00:00   NaN
+2024-01-01 01:00:00+00:00   NaN
+""", empty)
 
+    meta = tsx.internal_metadata('erasure')
+    assert meta['value_type'] == 'float64'
 
 
 def test_log(tsx):
