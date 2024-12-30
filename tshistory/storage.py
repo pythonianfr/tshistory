@@ -419,6 +419,18 @@ class FS1:
 
         return iohelper.unpack_node(tz, bnode)
 
+    @property
+    def nodes(self):
+        nodes = []
+        with open(self.tree, 'rb') as ftree:
+            while True:
+                bnode = ftree.read(self._node_size)
+                if not len(bnode):
+                    return nodes
+                nodes.append(
+                    iohelper.unpack_node(self.tz, bnode)
+                )
+
     def chunk_at(self, start, size):
         with open(self.chunks, 'rb') as fchunks:
             fchunks.seek(start)
@@ -459,7 +471,7 @@ class FS1:
                 len(packed)
             )
             parent = idx
-            address = len(packed)
+            address = address + len(packed)
             with open(self.tree, 'ab') as ftree:
                 ftree.write(bnode)
 

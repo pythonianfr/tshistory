@@ -1,12 +1,16 @@
 from datetime import datetime
+from pathlib import Path
+import shutil
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from tshistory.testutil import (
     assert_df,
     assert_hist,
     genserie,
+    tempconfig,
     utcdt
 )
 from tshistory.storage import FS1
@@ -1309,3 +1313,70 @@ def test_rename(engine, tsf):
 2024-01-02 00:00:00+00:00    2.0
 2024-01-03 00:00:00+00:00    3.0
 """, tsf.get(engine, 'fs-renamed'))
+
+
+@pytest.fixture(scope='session')
+def tsh1(engine):
+    from tshistory import tsio, schema
+    from tshistory.storage import FS1
+    namespace = 'block1'
+    schema.tsschema(namespace).create(engine, reset=True)
+    dburi = 'postgresql://localhost:5433/postgres'
+    datadir = Path(__file__).parent.parent / 'test' / 'data'
+    datapath = datadir/namespace
+    shutil.rmtree(datapath, ignore_errors=True)
+    if not datapath.exists():
+        datapath.mkdir()
+
+    conf = (
+        f'[dburi]\n'
+        f'test = {dburi}\n'
+        f'[storage]\n'
+        f'test = filesystem1\n'
+        f'test.path = {datadir/namespace}'
+    )
+
+    FS1._max_bucket_size = 1
+
+    with tempconfig(conf.encode()):
+        yield tsio.timeseriesfs1(namespace, None, uri=dburi)
+
+
+def test_blocksize1(engine, tsh1):
+    ts = pd.Series(
+        [0, 1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1', tz='utc'),
+            periods=4,
+            freq='D'
+        )
+    )
+    ts.index = ts.index.tz_convert('Europe/Paris')
+    tsh1.update(
+        engine,
+        ts,
+        'fs-block1',
+        'Babar',
+    )
+
+    assert_df("""
+2024-01-01 00:00:00+00:00    0.0
+2024-01-02 00:00:00+00:00    1.0
+2024-01-03 00:00:00+00:00    2.0
+2024-01-04 00:00:00+00:00    3.0
+""", tsh1.get(engine, 'fs-block1'))
+
+    with engine.begin() as cn:
+        cn.cache = {'series_path': {}}
+        sto = FS1(cn, tsh1, 'fs-block1')
+        nodes = sto.nodes
+        assert [
+            (node.address, node.size)
+            for node in nodes
+        ] == [
+            (0, 22),
+            (22, 25),
+            (47, 23),
+            (70, 25)
+        ]
+
