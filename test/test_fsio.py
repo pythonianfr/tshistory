@@ -1342,13 +1342,23 @@ def tsh1(engine):
         yield tsio.timeseriesfs1(namespace, None, uri=dburi)
 
 
+def assert_nodes(engine, name, tsh, nodes):
+    with engine.begin() as cn:
+        cn.cache = {'series_path': {}}
+        sto = FS1(cn, tsh, name)
+        assert [
+            (node.parent, node.address, node.size)
+            for node in sto.nodes
+        ] == nodes
+
+
 def test_blocksize1(engine, tsh1):
     ts = pd.Series(
         [0, 1, 2, 3],
         index=pd.date_range(
             pd.Timestamp('2024-1-1', tz='utc'),
             periods=4,
-            freq='D'
+            freq='h'
         )
     )
     ts.index = ts.index.tz_convert('Europe/Paris')
@@ -1361,22 +1371,42 @@ def test_blocksize1(engine, tsh1):
 
     assert_df("""
 2024-01-01 00:00:00+00:00    0.0
-2024-01-02 00:00:00+00:00    1.0
-2024-01-03 00:00:00+00:00    2.0
-2024-01-04 00:00:00+00:00    3.0
+2024-01-01 01:00:00+00:00    1.0
+2024-01-01 02:00:00+00:00    2.0
+2024-01-01 03:00:00+00:00    3.0
 """, tsh1.get(engine, 'fs-block1'))
 
-    with engine.begin() as cn:
-        cn.cache = {'series_path': {}}
-        sto = FS1(cn, tsh1, 'fs-block1')
-        nodes = sto.nodes
-        assert [
-            (node.address, node.size)
-            for node in nodes
-        ] == [
-            (0, 22),
-            (22, 25),
-            (47, 23),
-            (70, 25)
+    assert_nodes(
+        engine,
+        'fs-block1',
+        tsh1,
+        [
+            (0, 0, 22),
+            (1, 22, 25),
+            (2, 47, 24),
+            (3, 71, 25)
         ]
+    )
 
+    ts = pd.Series(
+        [0, 1, 2, 3],
+        index=pd.date_range(
+            pd.Timestamp('2024-1-1 02:00:00', tz='utc'),
+            periods=4,
+            freq='h'
+        )
+    )
+    tsh1.update(
+        engine,
+        ts,
+        'fs-block1',
+        'Babar',
+    )
+
+    # OUCH
+    assert_df("""
+2024-01-01 00:00:00+00:00    0.0
+2024-01-01 01:00:00+00:00    1.0
+2024-01-01 02:00:00+00:00    0.0
+2024-01-01 05:00:00+00:00    3.0
+""", tsh1.get(engine, 'fs-block1'))
