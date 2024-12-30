@@ -1694,7 +1694,7 @@ class timeseriesfs1(base):
         sto = self.storageclass(cn, self, name)
         # we will want to pass ts.index.min() as `minindex`
         # to limit the search
-        last = sto.last()
+        last = sto.last(ts.index.min(), ts.index.max())
 
         series_diff = diff(last, ts)
         if not len(series_diff):
