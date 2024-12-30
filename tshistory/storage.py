@@ -419,10 +419,11 @@ class FS1:
 
         return iohelper.unpack_node(tz, bnode)
 
-    @property
-    def nodes(self):
+    def nodes(self, fromindex=1):
         nodes = []
+        fromindex -= 1
         with open(self.tree, 'rb') as ftree:
+            ftree.seek(self._node_size * fromindex)
             while True:
                 bnode = ftree.read(self._node_size)
                 if not len(bnode):
@@ -580,28 +581,31 @@ class FS1:
         # fetch the latest node, which will be our parent
         tz = pytz.utc if self.imeta['tzaware'] else None
         rev = self.last_rev(tz)
-        nodeindex = self.find_node_index_matching(tz, rev.index, ts.index.min())
-        if nodeindex == 0:
+        parentindex = self.find_node_index_matching(tz, rev.index, ts.index.min())
+        if parentindex == 0:
             # O means we didn't find any !
             # we're adding new points in the past
             # That's fine but we will merge
-            nodeindex = 1
-        node = self.node_at(tz, nodeindex)
+            parentindex = 1
+        nodes = self.nodes(parentindex)
         base = iohelper.chunks_to_ts(
             self.imeta,
-            [self.chunk_at(node.address, node.size)]
+            [
+                self.chunk_at(node.address, node.size)
+                for node in nodes
+            ]
         )
 
         if base.index.max() >= ts.index.min():
             # there is an overlap, we need to patch our series with it
             ts = patch(base, ts)
-            # this node with which we just merge cannot be our parent
-            # so we take its parent
-            nodeindex = node.parent
+            # this base node with which we just merge cannot be our
+            # parent so we take its parent
+            parentindex = nodes[0].parent
 
         # we can now have our tree node
         address = self.chunks_size
-        for index, bucket in enumerate(self.buckets(ts), start=nodeindex):
+        for idx, bucket in enumerate(self.buckets(ts)):
             packed = iohelper.serialize_ts(
                 bucket,
                 ts.values.dtype.name == 'object'
@@ -610,7 +614,7 @@ class FS1:
             newbnode = iohelper.pack_node(
                 bucket.index.min(),
                 bucket.index.max(),
-                index,  # index of the parent node
+                parentindex if not idx else self.tree_entries,  # index of the parent node
                 address,
                 len(packed)
             )

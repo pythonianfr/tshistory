@@ -1348,7 +1348,7 @@ def assert_nodes(engine, name, tsh, nodes):
         sto = FS1(cn, tsh, name)
         assert [
             (node.parent, node.address, node.size)
-            for node in sto.nodes
+            for node in sto.nodes()
         ] == nodes
 
 
@@ -1403,11 +1403,12 @@ def test_blocksize1(engine, tsh1):
         'Babar',
     )
 
-    # OUCH
     assert_df("""
 2024-01-01 00:00:00+00:00    0.0
 2024-01-01 01:00:00+00:00    1.0
 2024-01-01 02:00:00+00:00    0.0
+2024-01-01 03:00:00+00:00    1.0
+2024-01-01 04:00:00+00:00    2.0
 2024-01-01 05:00:00+00:00    3.0
 """, tsh1.get(engine, 'fs-block1'))
 
@@ -1499,12 +1500,6 @@ def test_small_steps(engine, tsh1):
         'Babar',
     )
 
-    # looks bad: we didn't merge
-    assert_df("""
-2024-01-01 00:00:00+00:00     0.0
-2024-01-02 00:00:00+00:00    11.0
-""", tsh1.get(engine, name))
-
     assert_nodes(
         engine,
         name,
@@ -1513,6 +1508,15 @@ def test_small_steps(engine, tsh1):
             (0, 0, 22),
             (1, 22, 25),
             (2, 47, 23),
-            (1, 70, 25)
+            (1, 70, 25),
+            (4, 95, 23)
         ]
     )
+
+    # looks good
+    assert_df("""
+2024-01-01 00:00:00+00:00     0.0
+2024-01-02 00:00:00+00:00    11.0
+2024-01-03 00:00:00+00:00     2.0
+""", tsh1.get(engine, name))
+
