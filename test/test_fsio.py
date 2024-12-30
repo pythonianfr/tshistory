@@ -1346,10 +1346,10 @@ def assert_nodes(engine, name, tsh, nodes):
     with engine.begin() as cn:
         cn.cache = {'series_path': {}}
         sto = FS1(cn, tsh, name)
-        assert [
-            (node.parent, node.address, node.size)
-            for node in sto.nodes()
-        ] == nodes
+        assert {
+            idx: (node.parent, node.address, node.size)
+            for idx, node in enumerate(sto.nodes(), start=1)
+        } == nodes
 
 
 def test_blocksize1(engine, tsh1):
@@ -1380,12 +1380,12 @@ def test_blocksize1(engine, tsh1):
         engine,
         'fs-block1',
         tsh1,
-        [
-            (0, 0, 22),
-            (1, 22, 25),
-            (2, 47, 24),
-            (3, 71, 25)
-        ]
+        {
+            1: (0, 0, 22),
+            2: (1, 22, 25),
+            3: (2, 47, 24),
+            4: (3, 71, 25)
+        }
     )
 
     ts = pd.Series(
@@ -1452,10 +1452,10 @@ def test_small_steps(engine, tsh1):
         engine,
         name,
         tsh1,
-        [
-            (0, 0, 22),
-            (1, 22, 25)
-        ]
+        {
+            1: (0, 0, 22),
+            2: (1, 22, 25)
+        }
     )
 
     # another pure append update
@@ -1481,11 +1481,11 @@ def test_small_steps(engine, tsh1):
         engine,
         name,
         tsh1,
-        [
-            (0, 0, 22),
-            (1, 22, 25),
-            (2, 47, 23)
-        ]
+        {
+            1: (0, 0, 22),
+            2: (1, 22, 25),
+            3: (2, 47, 23)
+        }
     )
 
     # edit second node
@@ -1504,13 +1504,13 @@ def test_small_steps(engine, tsh1):
         engine,
         name,
         tsh1,
-        [
-            (0, 0, 22),
-            (1, 22, 25),
-            (2, 47, 23),
-            (1, 70, 25),
-            (4, 95, 23)
-        ]
+        {
+            1: (0, 0, 22),
+            2: (1, 22, 25),
+            3: (2, 47, 23),
+            4: (1, 70, 25),
+            5: (4, 95, 23)
+        }
     )
 
     # looks good
