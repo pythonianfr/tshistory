@@ -1717,7 +1717,7 @@ class timeseriesfs1(base):
         if pd.isnull(series_diff.iloc[0]) or pd.isnull(series_diff.iloc[-1]):
             # we *might* be shrinking, let's look at the full series
             # and yes, shrinkers have a slow path
-            patched = patch(last, series_diff).dropna()
+            patched = patch(sto.last(), series_diff).dropna()
             if not len(patched):
                 start = end = None
             else:
