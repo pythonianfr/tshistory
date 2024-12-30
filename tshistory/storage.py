@@ -562,9 +562,11 @@ class FS1:
         node = self.node_at(tz, nodeindex)
         if mindate < node.start:
             if not node.parent:
-                return 1, True  # no base node
+                return 0  # no base node
             return self.find_node_index_matching(tz, node.parent, mindate)
-        return nodeindex, True  # we found the base node
+
+        assert nodeindex >= 1
+        return nodeindex  # we found the base node
 
     def update(self, ts, revdate, diffstart, diffend, metaid):
         """We will build a new node, whith a parent node.
@@ -578,13 +580,20 @@ class FS1:
         # fetch the latest node, which will be our parent
         tz = pytz.utc if self.imeta['tzaware'] else None
         rev = self.last_rev(tz)
-        nodeindex, patchme = self.find_node_index_matching(tz, rev.index, ts.index.min())
+        nodeindex = self.find_node_index_matching(tz, rev.index, ts.index.min())
+        if nodeindex == 0:
+            # O means we didn't find any !
+            # we're adding new points in the past
+            # That's fine but we will merge
+            nodeindex = 1
+        node = self.node_at(tz, nodeindex)
+        base = iohelper.chunks_to_ts(
+            self.imeta,
+            [self.chunk_at(node.address, node.size)]
+        )
 
-        if patchme:
-            # we found a parent node, and we need to patch our series with it
-            node = self.node_at(tz, nodeindex)
-            chunk = self.chunk_at(node.address, node.size)
-            base = iohelper.chunks_to_ts(self.imeta, [chunk])
+        if base.index.max() >= ts.index.min():
+            # there is an overlap, we need to patch our series with it
             ts = patch(base, ts)
             # this node with which we just merge cannot be our parent
             # so we take its parent

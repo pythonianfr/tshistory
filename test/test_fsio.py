@@ -1447,14 +1447,12 @@ def test_small_steps(engine, tsh1):
 2024-01-02 00:00:00+00:00    1.0
 """, tsh1.get(engine, name))
 
-    # what's going one ?
     assert_nodes(
         engine,
         name,
         tsh1,
         [
             (0, 0, 22),
-            (0, 22, 22), # why did we rewrite the first chunk ?
-            (1, 44, 25)
+            (1, 22, 25)
         ]
     )
