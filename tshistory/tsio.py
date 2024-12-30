@@ -1732,7 +1732,7 @@ class timeseriesfs1(base):
 
         metaid = self._prepare_revision(cn, name, author, metadata)
         sto.update(
-            ts, insertion_date, diffstart, diffend, metaid
+            series_diff, insertion_date, diffstart, diffend, metaid
         )
 
         L.info(
