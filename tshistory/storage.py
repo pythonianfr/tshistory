@@ -419,7 +419,7 @@ class FS1:
 
         return iohelper.unpack_node(tz, bnode)
 
-    def nodes(self, fromindex=1):
+    def nodes(self, fromindex=1, upto=None):
         nodes = []
         fromindex -= 1
         with open(self.tree, 'rb') as ftree:
@@ -428,9 +428,10 @@ class FS1:
                 bnode = ftree.read(self._node_size)
                 if not len(bnode):
                     return nodes
-                nodes.append(
-                    iohelper.unpack_node(self.tz, bnode)
-                )
+                node = iohelper.unpack_node(self.tz, bnode)
+                nodes.append(node)
+                if upto and node.start > upto:
+                    return nodes
 
     def chunk_at(self, start, size):
         with open(self.chunks, 'rb') as fchunks:
@@ -587,7 +588,7 @@ class FS1:
             # we're adding new points in the past
             # That's fine but we will merge
             parentindex = 1
-        nodes = self.nodes(parentindex)
+        nodes = self.nodes(fromindex=parentindex, upto=ts.index.max())
         base = iohelper.chunks_to_ts(
             self.imeta,
             [

@@ -1520,3 +1520,32 @@ def test_small_steps(engine, tsh1):
 2024-01-03 00:00:00+00:00     2.0
 """, tsh1.get(engine, name))
 
+
+def test_erasure_over_horizon(engine, tsh1):
+    idate = utcdt(2018, 2, 1)
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(datetime(2018, 1, 1), freq='d', periods=3)
+    )
+
+    name = 'ersase_over_hz'
+    tsh1.update(engine, ts, name, 'Babar',
+               insertion_date=idate)
+
+    # erase the rightmost part
+    ts = pd.Series(
+        [np.nan, np.nan, np.nan],
+        index=pd.date_range(datetime(2018, 1, 3), freq='d', periods=3)
+    )
+    tsh1.update(engine, ts, name, 'Celeste',
+               insertion_date=idate.replace(day=2),
+               keepnans=True)
+
+    # erase the leftmost part
+    ts = pd.Series(
+        [np.nan, np.nan, np.nan],
+        index=pd.date_range(datetime(2017, 12, 30), freq='d', periods=3)
+    )
+    tsh1.update(engine, ts, name, 'Arthur',
+               insertion_date=idate.replace(day=3),
+               keepnans=True)
