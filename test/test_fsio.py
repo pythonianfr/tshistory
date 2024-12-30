@@ -1410,3 +1410,51 @@ def test_blocksize1(engine, tsh1):
 2024-01-01 02:00:00+00:00    0.0
 2024-01-01 05:00:00+00:00    3.0
 """, tsh1.get(engine, 'fs-block1'))
+
+
+def test_small_steps(engine, tsh1):
+    name = 'fs-smallsteps'
+    ts = pd.Series(
+        [0],
+        [pd.Timestamp('2024-1-1', tz='utc')]
+    )
+    tsh1.update(
+        engine,
+        ts,
+        name,
+        'Babar',
+    )
+
+    assert_df("""
+2024-01-01 00:00:00+00:00    0.0
+""", tsh1.get(engine, name))
+
+    # pure append update
+    ts = pd.Series(
+        [1],
+        [pd.Timestamp('2024-1-2', tz='utc')]
+    )
+    tsh1.update(
+        engine,
+        ts,
+        name,
+        'Babar',
+    )
+
+    # looks good
+    assert_df("""
+2024-01-01 00:00:00+00:00    0.0
+2024-01-02 00:00:00+00:00    1.0
+""", tsh1.get(engine, name))
+
+    # what's going one ?
+    assert_nodes(
+        engine,
+        name,
+        tsh1,
+        [
+            (0, 0, 22),
+            (0, 22, 22), # why did we rewrite the first chunk ?
+            (1, 44, 25)
+        ]
+    )
