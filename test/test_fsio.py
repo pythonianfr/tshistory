@@ -1456,3 +1456,63 @@ def test_small_steps(engine, tsh1):
             (1, 22, 25)
         ]
     )
+
+    # another pure append update
+    ts = pd.Series(
+        [2],
+        [pd.Timestamp('2024-1-3', tz='utc')]
+    )
+    tsh1.update(
+        engine,
+        ts,
+        name,
+        'Babar',
+    )
+
+    # looks good
+    assert_df("""
+2024-01-01 00:00:00+00:00    0.0
+2024-01-02 00:00:00+00:00    1.0
+2024-01-03 00:00:00+00:00    2.0
+""", tsh1.get(engine, name))
+
+    assert_nodes(
+        engine,
+        name,
+        tsh1,
+        [
+            (0, 0, 22),
+            (1, 22, 25),
+            (2, 47, 23)
+        ]
+    )
+
+    # edit second node
+    ts = pd.Series(
+        [11],
+        [pd.Timestamp('2024-1-2', tz='utc')]
+    )
+    tsh1.update(
+        engine,
+        ts,
+        name,
+        'Babar',
+    )
+
+    # looks bad: we didn't merge
+    assert_df("""
+2024-01-01 00:00:00+00:00     0.0
+2024-01-02 00:00:00+00:00    11.0
+""", tsh1.get(engine, name))
+
+    assert_nodes(
+        engine,
+        name,
+        tsh1,
+        [
+            (0, 0, 22),
+            (1, 22, 25),
+            (2, 47, 23),
+            (1, 70, 25)
+        ]
+    )
