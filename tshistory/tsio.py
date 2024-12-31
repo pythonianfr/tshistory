@@ -41,6 +41,7 @@ SERIESSCHEMA = Path(__file__).parent / 'series.sql'
 class base:
     namespace = 'tsh'
     othersources = None
+    tsh_group = None
 
     def get(self, cn, name, *a, **kw):
         raise NotImplementedError
@@ -1892,7 +1893,7 @@ class timeseriesfs1(base):
         path = name
         if len(name) > 255:
             hashed = hash64(name)
-            path = path[:-len(hashed)] + hashed
+            path = path[:-hashed] + str(hashed)
 
         # collision detection (collision can happen after a rename)
         if cn.execute(
