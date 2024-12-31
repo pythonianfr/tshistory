@@ -559,15 +559,34 @@ class FS1:
         chunks.reverse()
         return iohelper.chunks_to_ts(self.imeta, chunks)[from_value_date:to_value_date]
 
-    def find_node_index_matching(self, nodeindex, mindate):
+    def find_nodes_matching(self, nodeindex, mindate):
+        """return nodes (and their index) from a given index, walking
+        down the parent chain until the end or a given date
+        """
         node = self.node_at(nodeindex)
-        if mindate < node.start:
+        nodes = [(nodeindex, node)]
+        while True:
             if not node.parent:
-                return 0  # no base node
-            return self.find_node_index_matching(node.parent, mindate)
+                return nodes
+            nodeindex = node.parent
+            node = self.node_at(nodeindex)
+            if node.end < mindate:
+                return nodes
+            nodes.append((nodeindex, node))
 
-        assert nodeindex >= 1
-        return nodeindex  # we found the base node
+        return nodes
+
+    def series_from_nodes(self, nodes):
+        chunks = []
+        for node in nodes:
+            chunks.append(
+                self.chunk_at(node.address, node.size)
+            )
+
+        chunks.reverse()
+        if not chunks:
+            return empty_series(self.imeta['tzaware'])
+        return iohelper.chunks_to_ts(self.imeta, chunks)
 
     def update(self, ts, revdate, diffstart, diffend, metaid):
         """We will build a new node, whith a parent node.
@@ -578,29 +597,20 @@ class FS1:
         index in the rev.
 
         """
-        # fetch the latest node, which will be our parent
-        rev = self.last_rev
-        parentindex = self.find_node_index_matching(rev.index, ts.index.min())
-        if parentindex == 0:
-            # O means we didn't find any !
-            # we're adding new points in the past
-            # That's fine but we will merge
-            parentindex = 1
-        nodes = self.nodes(fromindex=parentindex, upto=ts.index.max())
-        base = iohelper.chunks_to_ts(
-            self.imeta,
-            [
-                self.chunk_at(node.address, node.size)
-                for node in nodes
-            ]
-        )
+        nodes = self.find_nodes_matching(self.last_rev.index, ts.index.min())
+        assert len(nodes)
+        firstnode = nodes[-1][1]
+        parentindex = nodes[-1][0]
 
-        if base.index.max() >= ts.index.min():
+        if nodes[0][1].end >= ts.index.min():
             # there is an overlap, we need to patch our series with it
+            base = self.series_from_nodes(
+                [node for _, node in nodes]
+            )
             ts = patch(base, ts)
-            # this base node with which we just merge cannot be our
+            # this base node with which we just merged cannot be our
             # parent so we take its parent
-            parentindex = nodes[0].parent
+            parentindex = firstnode.parent
 
         # we can now have our tree node
         address = self.chunks_size
