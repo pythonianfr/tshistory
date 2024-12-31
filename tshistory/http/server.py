@@ -656,21 +656,11 @@ class httpapi:
                 """
                 args = update.parse_args()
                 if args.format == 'json':
-                    # here we get into some tricky-land
-                    # because there is a lack of coherency between
-                    # what webtest does and the rest (flask, gunicorn)
-                    # at http patch time ...
                     meta = tsa.internal_metadata(args.name)
+                    dtype = meta and meta['value_dtype'] or None
                     if args.series is not None:
-                        if isinstance(args.series, str):
-                            # webtest
-                            series = pd.Series(json.loads(args.series))
-                        else:
-                            # gunicorn
-                            assert isinstance(args.series, dict)
-                            series = pd.Series(args.series, dtype=meta['value_dtype'])
+                        series = pd.Series(args.series, dtype=dtype)
                     else:
-                        dtype = meta and meta['value_dtype'] or None
                         series = pd.Series(json.loads(args.bseries.stream.read()), dtype=dtype)
 
                     series.index = pd.to_datetime(

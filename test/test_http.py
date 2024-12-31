@@ -26,11 +26,11 @@ from tshistory.testutil import (
 
 def test_error(http):
     series_in = genserie(pd.Timestamp('2018-1-1'), 'h', 3)
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test-error',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 10),
+        'insertion_date': str(utcdt(2018, 1, 1, 10)),
         'tzaware': util.tzaware_series(series_in)
     })
 
@@ -38,16 +38,18 @@ def test_error(http):
         ['a', 'b', 'c'],
         pd.date_range(pd.Timestamp('2020-1-1'), freq='d', periods=3)
     )
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test-error',
-        'series': util.tojson(v2),
+        'series': json.loads(util.tojson(v2)),
         'author': 'Babar',
         'tzaware': util.tzaware_series(v2)
     })
     assert res.status_code == 418
+    # the error is produced in http/server with the line
+    # series = pd.Series(args.series, dtype=dtype)
+    # when the json series is coerced in another type
     assert res.body == (
-        b'Type error when inserting test-error, new type is object, '
-        b'type in base is float64'
+        b"could not convert string to float: 'a'"
     )
     res = http.delete('/series/state', params={
         'name': 'test-error'
@@ -93,11 +95,11 @@ def test_no_series(http):
 
 def test_naive(http):
     series_in = genserie(pd.Timestamp('2018-1-1'), 'h', 3)
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test-naive',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 10),
+        'insertion_date': str(utcdt(2018, 1, 1, 10)),
         'tzaware': util.tzaware_series(series_in)
     })
 
@@ -142,11 +144,11 @@ def test_naive(http):
 def test_base(http):
     # insert
     series_in = genserie(utcdt(2018, 1, 1), 'h', 3)
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 10),
+        'insertion_date': str(utcdt(2018, 1, 1, 10)),
         'tzaware': util.tzaware_series(series_in)
     })
 
@@ -157,11 +159,11 @@ def test_base(http):
         b'"2018-01-01T02:00:00+00:00": 2.0}'
     )
 
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 10),
+        'insertion_date': str(utcdt(2018, 1, 1, 10)),
         'tzaware': util.tzaware_series(series_in)
     })
     assert res.status_code == 200
@@ -243,11 +245,11 @@ def test_base(http):
 
     # reinsert
     series_in = genserie(utcdt(2018, 1, 1, 3), 'h', 1, [3])
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 13),
+        'insertion_date': str(utcdt(2018, 1, 1, 13)),
         'tzaware': util.tzaware_series(series_in)
     })
 
@@ -293,11 +295,11 @@ def test_base(http):
     }
 
     series_in = genserie(utcdt(2019, 1, 1), 'h', 3)
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 2),
+        'insertion_date': str(utcdt(2018, 1, 2)),
         'tzaware': util.tzaware_series(series_in),
         'replace': True
     })
@@ -380,12 +382,12 @@ def test_get_nans(http):
 def test_patch_nonutc_tzaware(http):
     ts = genserie(utcdt(2023, 1, 1), 'd', 5)
     ts.index = ts.index.tz_convert('Europe/Paris')
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'patchnonutc-tzaware',
         'tzone': 'Europe/Paris',
-        'series': json.dumps(util.tojson2(ts)),
+        'series': util.tojson2(ts),
         'author': 'Babar',
-        'insertion_date': utcdt(2023, 1, 1),
+        'insertion_date': str(utcdt(2023, 1, 1)),
         'tzaware': util.tzaware_series(ts)
     })
     assert res.status_code == 201
@@ -493,12 +495,12 @@ def test_patch_nonutc_tzaware_bseries(http):
 
 def test_patch_nonutc_naive(http):
     ts = genserie(pd.Timestamp('2023-1-1'), 'd', 5)
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'patchnonutc-naive',
         'tzone': 'Europe/Paris',
-        'series': json.dumps(util.tojson2(ts)),
+        'series': util.tojson2(ts),
         'author': 'Babar',
-        'insertion_date': utcdt(2023, 1, 1),
+        'insertion_date': str(utcdt(2023, 1, 1)),
         'tzaware': util.tzaware_series(ts)
     })
     assert res.status_code == 201
@@ -670,11 +672,11 @@ def test_staircase(http):
                                end=utcdt(2015, 1, 4),
                                freq='d'):
         series = genserie(start=idate, freq='h', repeat=7)
-        http.patch('/series/state', params={
+        http.patch_json('/series/state', params={
             'name': 'staircase',
-            'series': util.tojson(series),
+            'series': json.loads(util.tojson(series)),
             'author': 'Babar',
-            'insertion_date': idate,
+            'insertion_date': str(idate),
             'tzaware': util.tzaware_series(series)
         })
 
@@ -731,11 +733,11 @@ datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00
 2020-01-04 16:00+01:00, 8.0,                80.0,               800.0
 """))
     for idate, ts in hist.items():
-        http.patch('/series/state', params={
+        http.patch_json('/series/state', params={
             'name': 'test_b_staircase',
-            'series': util.tojson(ts),
+            'series': json.loads(util.tojson(ts)),
             'author': 'test_http',
-            'insertion_date': idate,
+            'insertion_date': str(idate),
             'tzaware': util.tzaware_series(ts)
         })
     sc_kwargs = dict(
@@ -776,11 +778,11 @@ datetime,               value
 
 def test_get_fast_path(http):
     series_in = genserie(utcdt(2018, 1, 1), 'h', 3)
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test_fast',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 10),
+        'insertion_date': str(utcdt(2018, 1, 1, 10)),
         'tzaware': util.tzaware_series(series_in)
     })
 
@@ -816,11 +818,11 @@ def test_get_fast_path(http):
 
 def test_multisource(http, engine):
     series = genserie(utcdt(2020, 1, 1), 'd', 3)
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test-multi',
-        'series': util.tojson(series),
+        'series': json.loads(util.tojson(series)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 10),
+        'insertion_date': str(utcdt(2018, 1, 1, 10)),
         'tzaware': util.tzaware_series(series)
     })
 
@@ -852,20 +854,20 @@ def test_multisource(http, engine):
         '2020-01-03T00:00:00+00:00': 2.0
     }
 
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test-multi',
-        'series': util.tojson(series),
+        'series': json.loads(util.tojson(series)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 10),
+        'insertion_date': str(utcdt(2018, 1, 1, 10)),
         'tzaware': util.tzaware_series(series)
     })
     assert res.status_code == 200
 
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test-other-source',
-        'series': util.tojson(series),
+        'series': json.loads(util.tojson(series)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 10),
+        'insertion_date': str(utcdt(2018, 1, 1, 10)),
         'tzaware': util.tzaware_series(series)
     })
     assert res.status_code == 405
@@ -944,11 +946,11 @@ def test_multisource(http, engine):
 def test_log(http):
     series = genserie(utcdt(2020, 1, 1), 'd', 5)
     for d in range(5):
-        res = http.patch('/series/state', params={
+        res = http.patch_json('/series/state', params={
             'name': 'test-log',
-            'series': util.tojson(series),
+            'series': json.loads(util.tojson(series)),
             'author': 'Babar',
-            'insertion_date': utcdt(2020, 1, d + 1).isoformat(),
+            'insertion_date': str(utcdt(2020, 1, d + 1)),
             'metadata': json.dumps({'comment': f'day {d+1}'}),
             'tzaware': util.tzaware_series(series)
         })
