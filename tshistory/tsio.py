@@ -516,6 +516,286 @@ class base:
         start, end = pd.Timestamp(start, tz=tz), pd.Timestamp(end, tz=tz)
         return pd.Interval(left=start, right=end, closed='both')
 
+    # groups
+
+    @tx
+    def group_type(self, _cn, _name):
+        return 'primary'
+
+    @tx
+    def group_exists(self, cn, name):
+        return bool(
+            cn.execute(
+                f'select id from "{self.namespace}".group_registry '
+                'where name = %(name)s',
+                name=name
+            ).scalar()
+        )
+
+    @tx
+    def list_groups(self, cn):
+        cat = {
+            name: 'primary'
+            for name, in cn.execute(
+                f'select name from "{self.namespace}".group_registry'
+            ).fetchall()
+        }
+        return cat
+
+    @tx
+    def group_internal_metadata(self, cn, name):
+        return cn.execute(
+            f'select internal_metadata from "{self.namespace}".group_registry '
+            'where name = %(name)s',
+            name=name
+        ).scalar()
+
+    @tx
+    def group_metadata(self, cn, name):
+        return cn.execute(
+            f'select metadata from "{self.namespace}".group_registry '
+            'where name = %(name)s',
+            name=name
+        ).scalar()
+
+    @tx
+    def group_rename(self, cn, oldname, newname):
+        sql = (f'update "{self.namespace}".group_registry '
+               'set name = %(newname)s '
+               'where name = %(oldname)s')
+        cn.execute(sql, oldname=oldname, newname=newname)
+
+    @tx
+    def update_group_metadata(self, cn, name, metadata):
+        assert isinstance(metadata, dict)
+        sql = (
+            f'update "{self.namespace}".group_registry '
+            'set metadata = %(metadata)s '
+            f'where name = %(name)s'
+        )
+        cn.execute(
+            sql,
+            metadata=json.dumps(metadata),
+            name=name
+        )
+
+    def _group_info(self, cn, name):
+        ns = self.namespace
+        sql = (
+            f'select gm.name, sr.name '
+            f'from "{ns}".groupmap as gm '
+            f'join "{ns}".group_registry as gr on gr.id = gm.groupid '
+            f'join "{ns}.group".registry as sr on sr.id = gm.seriesid '
+            f'where gr.name = %(name)s'
+        )
+        return cn.execute(sql, name=name).fetchall()
+
+    def _create_group_item(self, cn, group_id, colname,
+                           series, author, insertion_date):
+        # create unique id for groupmap series
+        seriename = str(uuid.uuid4())
+        # insert series
+        self.tsh_group.replace(
+            cn, series, seriename, author,
+            insertion_date=insertion_date
+        )
+
+        # get registry id of inserted series
+        sql = (
+            f'select id from "{self.namespace}.group".registry '
+            'where name = %(sn)s'
+        )
+        registry_id = cn.execute(sql, sn=seriename).scalar()
+
+        # insert infos in groupmap table
+        sql = (
+            f'insert into "{self.namespace}".groupmap (name, groupid, seriesid) '
+            'values (%(colname)s, %(group_id)s, %(registry_id)s)'
+        )
+        cn.execute(
+            sql,
+            colname=colname,
+            group_id=group_id,
+            registry_id=registry_id
+        )
+
+    def _check_group_columns(self, name, infos, df):
+        colnames = df.columns
+        colrefs = [col for col, _ in infos]
+
+        dupes = colnames.duplicated()
+        if dupes.any():
+            duplicated = colnames[dupes]
+            str_dupes = ', '.join(duplicated)
+            raise Exception(
+                f'group update error for `{name}`: `{str_dupes}` columns are duplicated'
+            )
+
+        col_plus = set(colnames) - set(colrefs)
+        if len(col_plus):
+            str_plus = ', '.join(col_plus)
+            raise Exception(
+                f'group update error for `{name}`: `{str_plus}` columns are in excess'
+            )
+
+        col_minus = set(colrefs) - (set(colnames))
+        if len(col_minus):
+            str_minus = ', '.join(col_minus)
+            raise Exception(
+                f'group update error for `{name}`: `{str_minus}` columns are missing'
+            )
+
+    @tx
+    def group_replace(self, cn, df, name, author,
+                      insertion_date=None):
+        assert isinstance(df, pd.DataFrame), (
+            f'group `{name}` must be updated with a dataframe'
+        )
+        gtype = self.group_type(cn, name)
+        if gtype != 'primary' and self.group_exists(cn, name):
+            raise ValueError(
+                f'cannot group-replace `{name}`: '
+                f'this name has type `{gtype}`'
+            )
+
+        if df.columns.dtype != np.dtype('O'):
+            df.columns = df.columns.astype('str')
+        if insertion_date is None:
+            insertion_date = pd.Timestamp.utcnow()
+
+        infos = self._group_info(cn, name)
+
+        if not len(infos):
+            # first insertion -> register group
+            sql = (
+                f'insert into "{self.namespace}".group_registry (name)'
+                'values (%(name)s)'
+                'returning id'
+            )
+            group_id = cn.execute(sql, name=name).scalar()
+            for colname in df.columns:
+                self._create_group_item(
+                    cn,
+                    group_id,
+                    colname,
+                    df[colname],
+                    author,
+                    insertion_date
+                )
+            tsmeta = cn.execute(
+                'select tsr.internal_metadata '
+                f'from "{self.namespace}".group_registry as gr, '
+                f'     "{self.namespace}".groupmap as gm,'
+                f'     "{self.namespace}.group".registry as tsr '
+                'where gr.name = %(name)s and '
+                '      gr.id = gm.groupid and '
+                '      gm.seriesid = tsr.id '
+                'limit 1',
+                name=name
+            ).scalar()
+            cn.execute(
+                f'update "{self.namespace}".group_registry '
+                'set internal_metadata = %(imeta)s, '
+                '    metadata = %(metadata)s '
+                f'where name = %(name)s',
+                imeta=json.dumps(tsmeta),
+                metadata=json.dumps({}),
+                name=name
+            )
+            return
+
+        # update
+        self._check_group_columns(name, infos, df)
+        for colname, itemname in infos:
+            ts = df[colname]
+            self.tsh_group.replace(
+                cn,
+                ts,
+                itemname,
+                author,
+                insertion_date=insertion_date
+            )
+
+    @tx
+    def group_get(self, cn, name,
+                  revision_date=None,
+                  from_value_date=None,
+                  to_value_date=None):
+        if not self.group_exists(cn, name):
+            return None
+
+        series_name_id = {
+            seriesname: sid
+            for sid, seriesname in self._group_info(cn, name)
+        }
+        allseries = []
+        for name in series_name_id:
+            allseries.append(
+                self.tsh_group.get(
+                    cn,
+                    name,
+                    revision_date=revision_date,
+                    from_value_date=from_value_date,
+                    to_value_date=to_value_date
+                )
+            )
+        df = pd.concat(allseries, axis=1)
+        return df.rename(columns=series_name_id)
+
+    @tx
+    def group_delete(self, cn, name):
+        if not self.group_exists(cn, name):
+            return
+
+        infos = self._group_info(cn, name)
+        sql = (
+            f'delete from "{self.namespace}".group_registry '
+            'where name = %(name)s'
+        )
+        cn.execute(sql, name=name)
+        # deletion of the orphan series
+        seriesnames = (sn for _, sn in infos)
+        for sn in seriesnames:
+            self.tsh_group.delete(cn, sn)
+
+    @tx
+    def group_insertion_dates(self, cn, name, **bounds):
+        if not self.group_exists(cn, name):
+            return None
+        infos = self._group_info(cn, name)
+        one_series_name = infos[0][1]
+        return self.tsh_group.insertion_dates(cn, one_series_name, **bounds)
+
+    @tx
+    def group_history(self, cn, name, **bounds):
+        if not self.group_exists(cn, name):
+            return None
+        infos = self._group_info(cn, name)
+        # infos: list of tuples (scenario-name(external), series-name(internal))
+        series_history = {}
+        for scenario_name, series_name in infos:
+            series_history[scenario_name] = self.tsh_group.history(
+                cn,
+                series_name,
+                **bounds
+            )
+        # Now we just need to invert the keys order of series_history
+        # we have: {'scenario': {idate: {ts}}}; we want: {idate: {scenario: {ts}}}
+        scenarios = [name for name, _ in infos]
+        renaming = {
+            id: scenario
+            for scenario, id in infos
+        }
+        history_group = {}
+        # all the idates are the same for all series
+        for idate in series_history[list(series_history)[0]]:
+            series = [
+                series_history[scenario][idate]
+                for scenario in scenarios
+            ]
+            history_group[idate] = pd.concat(series, axis=1).rename(columns=renaming)
+
+        return history_group
 
 
 class timeseries(base):
@@ -1159,287 +1439,6 @@ class timeseries(base):
         if limit:
             q.limit(limit)
         return q
-
-    # groups
-
-    @tx
-    def group_type(self, _cn, _name):
-        return 'primary'
-
-    @tx
-    def group_exists(self, cn, name):
-        return bool(
-            cn.execute(
-                f'select id from "{self.namespace}".group_registry '
-                'where name = %(name)s',
-                name=name
-            ).scalar()
-        )
-
-    @tx
-    def list_groups(self, cn):
-        cat = {
-            name: 'primary'
-            for name, in cn.execute(
-                f'select name from "{self.namespace}".group_registry'
-            ).fetchall()
-        }
-        return cat
-
-    @tx
-    def group_internal_metadata(self, cn, name):
-        return cn.execute(
-            f'select internal_metadata from "{self.namespace}".group_registry '
-            'where name = %(name)s',
-            name=name
-        ).scalar()
-
-    @tx
-    def group_metadata(self, cn, name):
-        return cn.execute(
-            f'select metadata from "{self.namespace}".group_registry '
-            'where name = %(name)s',
-            name=name
-        ).scalar()
-
-    @tx
-    def group_rename(self, cn, oldname, newname):
-        sql = (f'update "{self.namespace}".group_registry '
-               'set name = %(newname)s '
-               'where name = %(oldname)s')
-        cn.execute(sql, oldname=oldname, newname=newname)
-
-    @tx
-    def update_group_metadata(self, cn, name, metadata):
-        assert isinstance(metadata, dict)
-        sql = (
-            f'update "{self.namespace}".group_registry '
-            'set metadata = %(metadata)s '
-            f'where name = %(name)s'
-        )
-        cn.execute(
-            sql,
-            metadata=json.dumps(metadata),
-            name=name
-        )
-
-    def _group_info(self, cn, name):
-        ns = self.namespace
-        sql = (
-            f'select gm.name, sr.name '
-            f'from "{ns}".groupmap as gm '
-            f'join "{ns}".group_registry as gr on gr.id = gm.groupid '
-            f'join "{ns}.group".registry as sr on sr.id = gm.seriesid '
-            f'where gr.name = %(name)s'
-        )
-        return cn.execute(sql, name=name).fetchall()
-
-    def _create_group_item(self, cn, group_id, colname,
-                           series, author, insertion_date):
-        # create unique id for groupmap series
-        seriename = str(uuid.uuid4())
-        # insert series
-        self.tsh_group.replace(
-            cn, series, seriename, author,
-            insertion_date=insertion_date
-        )
-
-        # get registry id of inserted series
-        sql = (
-            f'select id from "{self.namespace}.group".registry '
-            'where name = %(sn)s'
-        )
-        registry_id = cn.execute(sql, sn=seriename).scalar()
-
-        # insert infos in groupmap table
-        sql = (
-            f'insert into "{self.namespace}".groupmap (name, groupid, seriesid) '
-            'values (%(colname)s, %(group_id)s, %(registry_id)s)'
-        )
-        cn.execute(
-            sql,
-            colname=colname,
-            group_id=group_id,
-            registry_id=registry_id
-        )
-
-    def _check_group_columns(self, name, infos, df):
-        colnames = df.columns
-        colrefs = [col for col, _ in infos]
-
-        dupes = colnames.duplicated()
-        if dupes.any():
-            duplicated = colnames[dupes]
-            str_dupes = ', '.join(duplicated)
-            raise Exception(
-                f'group update error for `{name}`: `{str_dupes}` columns are duplicated'
-            )
-
-        col_plus = set(colnames) - set(colrefs)
-        if len(col_plus):
-            str_plus = ', '.join(col_plus)
-            raise Exception(
-                f'group update error for `{name}`: `{str_plus}` columns are in excess'
-            )
-
-        col_minus = set(colrefs) - (set(colnames))
-        if len(col_minus):
-            str_minus = ', '.join(col_minus)
-            raise Exception(
-                f'group update error for `{name}`: `{str_minus}` columns are missing'
-            )
-
-    @tx
-    def group_replace(self, cn, df, name, author,
-                      insertion_date=None):
-        assert isinstance(df, pd.DataFrame), (
-            f'group `{name}` must be updated with a dataframe'
-        )
-        gtype = self.group_type(cn, name)
-        if gtype != 'primary' and self.group_exists(cn, name):
-            raise ValueError(
-                f'cannot group-replace `{name}`: '
-                f'this name has type `{gtype}`'
-            )
-
-        if df.columns.dtype != np.dtype('O'):
-            df.columns = df.columns.astype('str')
-        if insertion_date is None:
-            insertion_date = pd.Timestamp.utcnow()
-
-        infos = self._group_info(cn, name)
-
-        if not len(infos):
-            # first insertion -> register group
-            sql = (
-                f'insert into "{self.namespace}".group_registry (name)'
-                'values (%(name)s)'
-                'returning id'
-            )
-            group_id = cn.execute(sql, name=name).scalar()
-            for colname in df.columns:
-                self._create_group_item(
-                    cn,
-                    group_id,
-                    colname,
-                    df[colname],
-                    author,
-                    insertion_date
-                )
-            tsmeta = cn.execute(
-                'select tsr.internal_metadata '
-                f'from "{self.namespace}".group_registry as gr, '
-                f'     "{self.namespace}".groupmap as gm,'
-                f'     "{self.namespace}.group".registry as tsr '
-                'where gr.name = %(name)s and '
-                '      gr.id = gm.groupid and '
-                '      gm.seriesid = tsr.id '
-                'limit 1',
-                name=name
-            ).scalar()
-            cn.execute(
-                f'update "{self.namespace}".group_registry '
-                'set internal_metadata = %(imeta)s, '
-                '    metadata = %(metadata)s '
-                f'where name = %(name)s',
-                imeta=json.dumps(tsmeta),
-                metadata=json.dumps({}),
-                name=name
-            )
-            return
-
-        # update
-        self._check_group_columns(name, infos, df)
-        for colname, itemname in infos:
-            ts = df[colname]
-            self.tsh_group.replace(
-                cn,
-                ts,
-                itemname,
-                author,
-                insertion_date=insertion_date
-            )
-
-    @tx
-    def group_get(self, cn, name,
-                  revision_date=None,
-                  from_value_date=None,
-                  to_value_date=None):
-        if not self.group_exists(cn, name):
-            return None
-
-        series_name_id = {
-            seriesname: sid
-            for sid, seriesname in self._group_info(cn, name)
-        }
-        allseries = []
-        for name in series_name_id:
-            allseries.append(
-                self.tsh_group.get(
-                    cn,
-                    name,
-                    revision_date=revision_date,
-                    from_value_date=from_value_date,
-                    to_value_date=to_value_date
-                )
-            )
-        df = pd.concat(allseries, axis=1)
-        return df.rename(columns=series_name_id)
-
-    @tx
-    def group_delete(self, cn, name):
-        if not self.group_exists(cn, name):
-            return
-
-        infos = self._group_info(cn, name)
-        sql = (
-            f'delete from "{self.namespace}".group_registry '
-            'where name = %(name)s'
-        )
-        cn.execute(sql, name=name)
-        # deletion of the orphan series
-        seriesnames = (sn for _, sn in infos)
-        for sn in seriesnames:
-            self.tsh_group.delete(cn, sn)
-
-    @tx
-    def group_insertion_dates(self, cn, name, **bounds):
-        if not self.group_exists(cn, name):
-            return None
-        infos = self._group_info(cn, name)
-        one_series_name = infos[0][1]
-        return self.tsh_group.insertion_dates(cn, one_series_name, **bounds)
-
-    @tx
-    def group_history(self, cn, name, **bounds):
-        if not self.group_exists(cn, name):
-            return None
-        infos = self._group_info(cn, name)
-        # infos: list of tuples (scenario-name(external), series-name(internal))
-        series_history = {}
-        for scenario_name, series_name in infos:
-            series_history[scenario_name] = self.tsh_group.history(
-                cn,
-                series_name,
-                **bounds
-            )
-        # Now we just need to invert the keys order of series_history
-        # we have: {'scenario': {idate: {ts}}}; we want: {idate: {scenario: {ts}}}
-        scenarios = [name for name, _ in infos]
-        renaming = {
-            id: scenario
-            for scenario, id in infos
-        }
-        history_group = {}
-        # all the idates are the same for all series
-        for idate in series_history[list(series_history)[0]]:
-            series = [
-                series_history[scenario][idate]
-                for scenario in scenarios
-            ]
-            history_group[idate] = pd.concat(series, axis=1).rename(columns=renaming)
-
-        return history_group
 
 
 class BlockStaircaseRevisionError(Exception):
