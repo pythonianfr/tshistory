@@ -1567,14 +1567,14 @@ class timeseriesfs1(base):
     @tx
     def latest_insertion_date(self, cn, name):
         sto = self.storageclass(cn, self, name)
-        idate = sto.last_rev(None).revdate
+        idate = sto.last_rev.revdate
         if not pd.isnull(idate):
             return idate.astimezone('UTC')
 
     @tx
     def first_insertion_date(self, cn, name):
         sto = self.storageclass(cn, self, name)
-        idate = sto.first_rev(None).revdate
+        idate = sto.first_rev.revdate
         if not pd.isnull(idate):
             return idate.astimezone('UTC')
 

@@ -346,29 +346,28 @@ class FS1:
         if limit == 0:
             return []
 
-        tz = pytz.utc if self.imeta['tzaware'] else None
         with open(self.revs, 'rb') as frevs:
             # long prologue to determine the boundaries
             index = None
             if fromdate is not None:
-                index, startrev = self.find_rev(tz, fromdate)
+                index, startrev = self.find_rev(fromdate)
                 if index is None:
                     # could not find anything fromdate is out of range
                     # if it is in the future, we can't do much
-                    if fromdate > self.last_rev(tz).revdate:
+                    if fromdate > self.last_rev.revdate:
                         return []
             if fromdate is None or index is None:
                 # we then can assume we start from the beginning
                 index = 0
                 frevs.seek(0)
-                startrev = iohelper.unpack_rev(tz, frevs.read(self._rev_size))
+                startrev = iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
 
             if todate is not None:
-                toindex, endrev = self.find_rev(tz, todate)
+                toindex, endrev = self.find_rev(todate)
                 if toindex is None:
                     # could not find anything: todate is out of range
                     # if it is in the past, we can't do much
-                    if todate < self.first_rev(tz).revdate:
+                    if todate < self.first_rev.revdate:
                         return []
 
             count = 1
@@ -381,7 +380,7 @@ class FS1:
                 brev = frevs.read(self._rev_size)
                 if brev == b'':
                     break
-                rev = iohelper.unpack_rev(tz, brev)
+                rev = iohelper.unpack_rev(self.tz, brev)
                 if todate is not None and todate < rev.revdate:
                     break
                 count += 1
@@ -390,15 +389,17 @@ class FS1:
 
             return revs
 
-    def last_rev(self, tz):
+    @property
+    def last_rev(self):
         with open(self.revs, 'rb') as frevs:
             frevs.seek(self.revs_size - self._rev_size)  # end of penultimate rev
-            return iohelper.unpack_rev(tz, frevs.read(self._rev_size))
+            return iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
 
-    def first_rev(self, tz):
+    @property
+    def first_rev(self):
         with open(self.revs, 'rb') as frevs:
             frevs.seek(0)
-            return iohelper.unpack_rev(tz, frevs.read(self._rev_size))
+            return iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
 
     @property
     def tree_size(self):
@@ -412,12 +413,12 @@ class FS1:
     def chunks_size(self):
         return os.stat(self.chunks).st_size
 
-    def node_at(self, tz, node_index):
+    def node_at(self, node_index):
         with open(self.tree, 'rb') as ftree:
             ftree.seek((node_index - 1) * self._node_size)
             bnode = ftree.read(self._node_size)
 
-        return iohelper.unpack_node(tz, bnode)
+        return iohelper.unpack_node(self.tz, bnode)
 
     def nodes(self, fromindex=1, upto=None):
         nodes = []
@@ -488,15 +489,15 @@ class FS1:
         with open(self.revs, 'ab') as frevs:
             frevs.write(brev)
 
-    def find_rev(self, tz, revdate):
+    def find_rev(self, revdate):
         with open(self.revs, 'rb') as frevs:
             start = 0
             end = self.revs_entries - 1
 
             frevs.seek(start)
-            startrev = iohelper.unpack_rev(tz, frevs.read(self._rev_size))
+            startrev = iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
             frevs.seek(self.revs_size - self._rev_size)
-            endrev = iohelper.unpack_rev(tz, frevs.read(self._rev_size))
+            endrev = iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
 
             if revdate < startrev.revdate:
                 return None, None
@@ -514,7 +515,7 @@ class FS1:
 
                 # seek + read
                 frevs.seek(middle * self._rev_size)
-                rev = iohelper.unpack_rev(tz, frevs.read(self._rev_size))
+                rev = iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
 
                 if revdate >= rev.revdate:
                     start = middle
@@ -522,23 +523,21 @@ class FS1:
                     end = middle
 
             frevs.seek(start * self._rev_size)
-            rev = iohelper.unpack_rev(tz, frevs.read(self._rev_size))
+            rev = iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
             return start, rev
 
     def last(self, from_value_date=None, to_value_date=None):
-        tz = pytz.utc if self.imeta['tzaware'] else None
-        return self.get(self.last_rev(tz).revdate, from_value_date, to_value_date)
+        return self.get(self.last_rev.revdate, from_value_date, to_value_date)
 
     def get(self, revdate, from_value_date=None, to_value_date=None):
-        tz = pytz.utc if self.imeta['tzaware'] else None
-        _, rev = self.find_rev(tz, revdate)
+        _, rev = self.find_rev(revdate)
         if rev is None:
-            rev = self.last_rev(tz)
+            rev = self.last_rev
             if revdate < rev.revdate:
                 # that was in the past
                 # for the future, we will provide the last rev
                 return empty_series(self.imeta['tzaware'])
-        node = self.node_at(tz, rev.index)
+        node = self.node_at(rev.index)
 
         chunks = []
         # walk the tree downwards
@@ -553,19 +552,19 @@ class FS1:
                 break
             if from_value_date and from_value_date >= node.start:
                 break
-            node = self.node_at(tz, parent)
+            node = self.node_at(parent)
 
         if not chunks:
             return empty_series(self.imeta['tzaware'])
         chunks.reverse()
         return iohelper.chunks_to_ts(self.imeta, chunks)[from_value_date:to_value_date]
 
-    def find_node_index_matching(self, tz, nodeindex, mindate):
-        node = self.node_at(tz, nodeindex)
+    def find_node_index_matching(self, nodeindex, mindate):
+        node = self.node_at(nodeindex)
         if mindate < node.start:
             if not node.parent:
                 return 0  # no base node
-            return self.find_node_index_matching(tz, node.parent, mindate)
+            return self.find_node_index_matching(node.parent, mindate)
 
         assert nodeindex >= 1
         return nodeindex  # we found the base node
@@ -580,9 +579,8 @@ class FS1:
 
         """
         # fetch the latest node, which will be our parent
-        tz = pytz.utc if self.imeta['tzaware'] else None
-        rev = self.last_rev(tz)
-        parentindex = self.find_node_index_matching(tz, rev.index, ts.index.min())
+        rev = self.last_rev
+        parentindex = self.find_node_index_matching(rev.index, ts.index.min())
         if parentindex == 0:
             # O means we didn't find any !
             # we're adding new points in the past
@@ -674,7 +672,7 @@ class FS1:
             frevs.write(newbrev)
 
     def strip(self, revdate):
-        index, rev = self.find_rev(None, revdate)
+        index, rev = self.find_rev(revdate)
         # we will remove all that's above, and not touch
         # the nodes nor the chunks
         # a garbage collector maye be useful in the future ...
