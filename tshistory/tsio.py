@@ -38,6 +38,19 @@ L = logging.getLogger('tshistory.tsio')
 SERIESSCHEMA = Path(__file__).parent / 'series.sql'
 
 
+class BlockStaircaseRevisionError(Exception):
+    def __init__(self, sc_kwargs, revision_dates, block_start_dates):
+        msg = (
+            'Revision and maturity arguments {} of `block_staircase` resulted in '
+            'successive revisions {} with non-increasing block start dates {}'
+        )
+        super().__init__(msg.format(
+            sc_kwargs,
+            [str(rd) for rd in revision_dates],
+            [str(bs) for bs in block_start_dates]
+        ))
+
+
 class base:
     namespace = 'tsh'
     othersources = None
@@ -1442,19 +1455,6 @@ class timeseries(base):
         if limit:
             q.limit(limit)
         return q
-
-
-class BlockStaircaseRevisionError(Exception):
-    def __init__(self, sc_kwargs, revision_dates, block_start_dates):
-        msg = (
-            'Revision and maturity arguments {} of `block_staircase` resulted in '
-            'successive revisions {} with non-increasing block start dates {}'
-        )
-        super().__init__(msg.format(
-            sc_kwargs,
-            [str(rd) for rd in revision_dates],
-            [str(bs) for bs in block_start_dates]
-        ))
 
 
 class timeseriesfs1(base):
