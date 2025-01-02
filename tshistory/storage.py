@@ -310,13 +310,28 @@ class FS1:
     _rev_size = 32
     _node_size = 26
     _max_bucket_size = 150
-    __slots__ = 'imeta', 'tz', 'root'
+    __slots__ = 'imeta', 'tz', 'root', 'cache'
 
     def __init__(self, cn, tsh, name, path=None):
         self.imeta = tsh.internal_metadata(cn, name)
         self.tz = pytz.utc if self.imeta['tzaware'] else None
         path = path or tsh._path(cn, name)
         self.root = tsh.root / path
+        self.cache = {
+            'rbfiles': {}
+        }
+
+    def rbfile(self, path):
+        """maintain a cache of files opened in binary read-only mode
+
+        This will greatly help small accessor methods like .node_at
+        and .chunk_at
+        """
+        cached = self.cache['rbfiles'].get(path)
+        if cached:
+            return cached
+        self.cache['rbfiles'][path] = path.open('rb')
+        return self.rbfile(path)
 
     @property
     def tzaware(self):
@@ -414,10 +429,9 @@ class FS1:
         return os.stat(self.chunks).st_size
 
     def node_at(self, node_index):
-        with open(self.tree, 'rb') as ftree:
-            ftree.seek((node_index - 1) * self._node_size)
-            bnode = ftree.read(self._node_size)
-
+        ftree = self.rbfile(self.tree)
+        ftree.seek((node_index - 1) * self._node_size)
+        bnode = ftree.read(self._node_size)
         return iohelper.unpack_node(self.tz, bnode)
 
     def nodes(self, fromindex=1, upto=None):
@@ -435,9 +449,9 @@ class FS1:
                     return nodes
 
     def chunk_at(self, start, size):
-        with open(self.chunks, 'rb') as fchunks:
-            fchunks.seek(start)
-            return fchunks.read(size)
+        fchunks = self.rbfile(self.chunks)
+        fchunks.seek(start)
+        return fchunks.read(size)
 
     def buckets(self, ts):
         if len(ts) < self._max_bucket_size:
