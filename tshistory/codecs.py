@@ -464,14 +464,14 @@ class node:
 class iohelper:
 
     @staticmethod
-    def serialize_ts(ts, isstr):
+    def serialize_ts(ts, isstr, compressor=zlib):
         index, values = numpy_serialize(ts, isstr)
-        return zlib.compress(binary_pack(index, values))
+        return compressor.compress(binary_pack(index, values))
 
     @staticmethod
-    def chunks_to_ts(metadata, chunks):
+    def chunks_to_ts(metadata, chunks, compressor=zlib):
         nchunks = (
-            binary_unpack(zlib.decompress(chunk))
+            binary_unpack(compressor.decompress(chunk))
             for chunk in chunks
         )
         bseparator = b'\0' if metadata['value_type'] == 'object' else b''
