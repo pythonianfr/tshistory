@@ -12,7 +12,21 @@ from tshistory.util import (
 from tshistory.codecs import iohelper
 
 
-class Postgres:
+class base:
+    _max_bucket_size = 150
+
+    def buckets(self, ts):
+        if len(ts) < self._max_bucket_size:
+            return [ts]
+
+        buckets = []
+        for start in range(0, len(ts),
+                           self._max_bucket_size):
+            buckets.append(ts[start:start + self._max_bucket_size])
+        return buckets
+
+
+class Postgres(base):
     """Here's what's happening when we create a series with 3 insertions
     in a scenario representative of real world situations.
 
@@ -90,7 +104,6 @@ class Postgres:
 
     """
     __slots__ = ('cn', 'name', 'tsh', 'tablename')
-    _max_bucket_size = 150
 
     def __init__(self, cn, tsh, name):
         self.cn = cn
@@ -103,16 +116,6 @@ class Postgres:
         return self.tsh.internal_metadata(
             self.cn, self.name
         )['value_type'] == 'object'
-
-    def buckets(self, ts):
-        if len(ts) < self._max_bucket_size:
-            return [ts]
-
-        buckets = []
-        for start in range(0, len(ts),
-                           self._max_bucket_size):
-            buckets.append(ts[start:start + self._max_bucket_size])
-        return buckets
 
     def insert_buckets(self, parent, ts):
         isstr = self.isstr
@@ -307,10 +310,9 @@ class Postgres:
         self.cn.execute(sql)
 
 
-class FS1:
+class FS1(base):
     _rev_size = 32
     _node_size = 26
-    _max_bucket_size = 150
     __slots__ = 'imeta', 'tz', 'root', 'cache'
 
     def __init__(self, cn, tsh, name, path=None):
@@ -453,15 +455,6 @@ class FS1:
         fchunks = self.rbfile(self.chunks)
         fchunks.seek(start)
         return fchunks.read(size)
-
-    def buckets(self, ts):
-        if len(ts) < self._max_bucket_size:
-            return [ts]
-
-        buckets = []
-        for start in range(0, len(ts), self._max_bucket_size):
-            buckets.append(ts[start:start + self._max_bucket_size])
-        return buckets
 
     def initial_update(self, ts, revdate, metaid):
         # I/O prologue
