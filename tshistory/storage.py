@@ -456,47 +456,6 @@ class FS1(base):
         fchunks.seek(start)
         return fchunks.read(size)
 
-    def initial_update(self, ts, revdate, metaid):
-        # I/O prologue
-        self.root.mkdir()
-        open(self.root / 'revs', mode='x')
-        open(self.root / 'tree', mode='x')
-        open(self.root / 'chunks', mode='x')
-
-        # the actual update
-        buckets = self.buckets(ts)
-
-        parent = 0  # no parent
-        address = 0  # initial chunk
-        isstr = ts.values.dtype.name == 'object'
-        for idx, bucket in enumerate(buckets, start=1):
-            packed = iohelper.serialize_ts(bucket, isstr)
-            with open(self.chunks, 'ab') as fchunks:
-                fchunks.write(packed)
-
-            bnode = iohelper.pack_node(
-                bucket.index[0],
-                bucket.index[-1],
-                parent,
-                address,
-                len(packed)
-            )
-            parent = idx
-            address = address + len(packed)
-            with open(self.tree, 'ab') as ftree:
-                ftree.write(bnode)
-
-        brev = iohelper.pack_rev(
-            revdate or pd.Timestamp.utcnow(),
-            ts.index[0],
-            ts.index[-1],
-            idx,
-            metaid
-        )
-
-        with open(self.revs, 'ab') as frevs:
-            frevs.write(brev)
-
     def find_rev(self, revdate):
         with open(self.revs, 'rb') as frevs:
             start = 0
@@ -596,6 +555,17 @@ class FS1(base):
             return empty_series(self.imeta['tzaware'])
         return iohelper.chunks_to_ts(self.imeta, chunks)
 
+    def initial_update(self, ts, revdate, metaid):
+        # I/O prologue
+        self.root.mkdir()
+        open(self.root / 'revs', mode='x')
+        open(self.root / 'tree', mode='x')
+        open(self.root / 'chunks', mode='x')
+
+        parent = 0  # no parent
+        address = 0  # initial chunk
+        self._update(parent, address, ts, revdate, ts.index.min(), ts.index.max(), metaid)
+
     def update(self, ts, revdate, diffstart, diffend, metaid):
         """We will build a new node, whith a parent node.
 
@@ -620,18 +590,20 @@ class FS1(base):
             # parent so we take its parent
             parentindex = firstnode.parent
 
-        # we can now have our tree node
-        address = self.chunks_size
-        for idx, bucket in enumerate(self.buckets(ts)):
-            packed = iohelper.serialize_ts(
-                bucket,
-                ts.values.dtype.name == 'object'
-            )
+        self._update(parentindex, self.chunks_size, ts, revdate, diffstart, diffend, metaid)
 
+    def replace(self, ts, revdate, metaid):
+        self._update(0, self.chunks_size, ts, revdate, ts.index.min(), ts.index.max(), metaid)
+
+    def _update(self, parent, address, ts, revdate, diffstart, diffend, metaid):
+        # we can now have our tree node
+        isstr = ts.values.dtype.name == 'object'
+        for idx, bucket in enumerate(self.buckets(ts)):
+            packed = iohelper.serialize_ts(bucket, isstr)
             newbnode = iohelper.pack_node(
                 bucket.index.min(),
                 bucket.index.max(),
-                parentindex if not idx else self.tree_entries,  # index of the parent node
+                parent if not idx else self.tree_entries,  # index of the parent node
                 address,
                 len(packed)
             )
@@ -644,37 +616,6 @@ class FS1(base):
                 fchunks.write(packed)
 
             # write it and get the index
-            with open(self.tree, 'ab') as ftree:
-                ftree.write(newbnode)
-
-        # let's create the rev
-        newbrev = iohelper.pack_rev(
-            revdate or pd.Timestamp.utcnow(),
-            diffstart,
-            diffend,
-            self.tree_entries,
-            metaid
-        )
-        with open(self.revs, 'ab') as frevs:
-            frevs.write(newbrev)
-
-    def replace(self, ts, revdate, diffstart, diffend, metaid):
-        isstr = ts.values.dtype.name == 'object'
-        for index, bucket in enumerate(self.buckets(ts)):
-            # index always starts at Zero, because we replace everything
-            packed = iohelper.serialize_ts(bucket, isstr)
-
-            newbnode = iohelper.pack_node(
-                bucket.index.min(),
-                bucket.index.max(),
-                index,
-                self.chunks_size,
-                len(packed)
-            )
-
-            with open(self.chunks, 'ab') as fchunks:
-                fchunks.write(packed)
-
             with open(self.tree, 'ab') as ftree:
                 ftree.write(newbnode)
 

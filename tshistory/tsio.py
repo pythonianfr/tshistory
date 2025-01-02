@@ -1804,11 +1804,12 @@ class timeseriesfs1(base):
 
         sto = self.storageclass(cn, self, name)
         metaid = self._prepare_revision(cn, name, author, metadata)
-        start, end = start_end(ts)
         sto.replace(
-            ts, insertion_date, start, end, metaid
+            ts, insertion_date, metaid
         )
 
+        start = ts.index.min()
+        end = ts.index.max()
         start = start.isoformat() if start else None
         end = end.isoformat() if end else None
         self.update_internal_metadata(
