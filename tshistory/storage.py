@@ -1,3 +1,4 @@
+import io
 import os
 
 import pandas as pd
@@ -330,7 +331,7 @@ class FS1:
         cached = self.cache['rbfiles'].get(path)
         if cached:
             return cached
-        self.cache['rbfiles'][path] = path.open('rb')
+        self.cache['rbfiles'][path] = io.FileIO(path, 'rb')
         return self.rbfile(path)
 
     @property
