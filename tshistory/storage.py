@@ -9,7 +9,11 @@ from tshistory.util import (
     empty_series,
     patch
 )
-from tshistory.codecs import iohelper
+from tshistory.codecs import (
+    iohelper,
+    node,
+    rev
+)
 
 
 class base:
@@ -378,7 +382,7 @@ class FS1(base):
                 # we then can assume we start from the beginning
                 index = 0
                 frevs.seek(0)
-                startrev = iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
+                startrev = rev.unpack(self.tz, frevs.read(self._rev_size))
 
             if todate is not None:
                 toindex, endrev = self.find_rev(todate)
@@ -398,12 +402,12 @@ class FS1(base):
                 brev = frevs.read(self._rev_size)
                 if brev == b'':
                     break
-                rev = iohelper.unpack_rev(self.tz, brev)
-                if todate is not None and todate < rev.revdate:
+                irev = rev.unpack(self.tz, brev)
+                if todate is not None and todate < irev.revdate:
                     break
                 count += 1
                 index += 1
-                revs.append((index, rev))
+                revs.append((index, irev))
 
             return revs
 
@@ -411,13 +415,13 @@ class FS1(base):
     def last_rev(self):
         with open(self.revs, 'rb') as frevs:
             frevs.seek(self.revs_size - self._rev_size)  # end of penultimate rev
-            return iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
+            return rev.unpack(self.tz, frevs.read(self._rev_size))
 
     @property
     def first_rev(self):
         with open(self.revs, 'rb') as frevs:
             frevs.seek(0)
-            return iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
+            return rev.unpack(self.tz, frevs.read(self._rev_size))
 
     @property
     def tree_size(self):
@@ -435,21 +439,22 @@ class FS1(base):
         ftree = self.rbfile(self.tree)
         ftree.seek((node_index - 1) * self._node_size)
         bnode = ftree.read(self._node_size)
-        return iohelper.unpack_node(self.tz, bnode)
+        return node.unpack(self.tz, bnode)
 
-    def nodes(self, fromindex=1, upto=None):
+    def nodes(self, fromindex=1):
         nodes = []
         fromindex -= 1
         with open(self.tree, 'rb') as ftree:
             ftree.seek(self._node_size * fromindex)
+
             while True:
                 bnode = ftree.read(self._node_size)
                 if not len(bnode):
                     return nodes
-                node = iohelper.unpack_node(self.tz, bnode)
-                nodes.append(node)
-                if upto and node.start > upto:
-                    return nodes
+
+                nodes.append(
+                    node.unpack(self.tz, bnode)
+                )
 
     def chunk_at(self, start, size):
         fchunks = self.rbfile(self.chunks)
@@ -462,9 +467,9 @@ class FS1(base):
             end = self.revs_entries - 1
 
             frevs.seek(start)
-            startrev = iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
+            startrev = rev.unpack(self.tz, frevs.read(self._rev_size))
             frevs.seek(self.revs_size - self._rev_size)
-            endrev = iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
+            endrev = rev.unpack(self.tz, frevs.read(self._rev_size))
 
             if revdate < startrev.revdate:
                 return None, None
@@ -482,16 +487,15 @@ class FS1(base):
 
                 # seek + read
                 frevs.seek(middle * self._rev_size)
-                rev = iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
+                irev = rev.unpack(self.tz, frevs.read(self._rev_size))
 
-                if revdate >= rev.revdate:
+                if revdate >= irev.revdate:
                     start = middle
                 else:
                     end = middle
 
             frevs.seek(start * self._rev_size)
-            rev = iohelper.unpack_rev(self.tz, frevs.read(self._rev_size))
-            return start, rev
+            return start, rev.unpack(self.tz, frevs.read(self._rev_size))
 
     def last(self, from_value_date=None, to_value_date=None):
         return self.get(self.last_rev.revdate, from_value_date, to_value_date)
@@ -545,9 +549,9 @@ class FS1(base):
 
     def series_from_nodes(self, nodes):
         chunks = []
-        for node in nodes:
+        for n in nodes:
             chunks.append(
-                self.chunk_at(node.address, node.size)
+                self.chunk_at(n.address, n.size)
             )
 
         chunks.reverse()
@@ -600,7 +604,7 @@ class FS1(base):
         isstr = ts.values.dtype.name == 'object'
         for idx, bucket in enumerate(self.buckets(ts)):
             packed = iohelper.serialize_ts(bucket, isstr)
-            newbnode = iohelper.pack_node(
+            newbnode = node.pack(
                 bucket.index.min(),
                 bucket.index.max(),
                 parent if not idx else self.tree_entries,  # index of the parent node
@@ -620,7 +624,7 @@ class FS1(base):
                 ftree.write(newbnode)
 
         # let's create the rev
-        newbrev = iohelper.pack_rev(
+        newbrev = rev.pack(
             revdate or pd.Timestamp.utcnow(),
             diffstart,
             diffend,

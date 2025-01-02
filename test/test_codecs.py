@@ -16,11 +16,13 @@ from tshistory.codecs import (
     iohelper,
     nary_pack,
     nary_unpack,
+    node,
     pack_group,
     pack_group_history,
     pack_history,
     pack_many_series,
     pack_series,
+    rev,
     unpack_group,
     unpack_group_history,
     unpack_history,
@@ -259,67 +261,67 @@ def test_make_snapshot_record():
         'value_dtype': '<f8'
     }
     packed_ts = pack_series(meta, ts)
-    rec = iohelper.pack_node(
+    bn = node.pack(
         utcdt(2020, 1, 1),
         utcdt(2020, 1, 2),
         0, # parent
         0, # start
         len(packed_ts) # offset
     )
-    assert len(rec) == 26
-    assert isinstance(rec, bytearray)
+    assert len(bn) == 26
+    assert isinstance(bn, bytearray)
 
-    node = iohelper.unpack_node(
+    n = node.unpack(
         pytz.utc,
-        bytes(rec)
+        bytes(bn)
     )
-    assert node.start == utcdt(2020, 1, 1)
-    assert node.end == utcdt(2020, 1, 2)
-    assert node.parent == 0
-    assert node.address == 0
-    assert node.size == 139
+    assert n.start == utcdt(2020, 1, 1)
+    assert n.end == utcdt(2020, 1, 2)
+    assert n.parent == 0
+    assert n.address == 0
+    assert n.size == 139
 
-    rec = iohelper.pack_node(
+    bn = node.pack(
         utcdt(2020, 1, 1),
         utcdt(2020, 1, 2),
         1,
         0,
         len(packed_ts)
     )
-    assert len(rec) == 26
-    assert isinstance(rec, bytearray)
+    assert len(bn) == 26
+    assert isinstance(bn, bytearray)
 
-    node = iohelper.unpack_node(
+    n = node.unpack(
         pytz.utc,
-        bytes(rec)
+        bytes(bn)
     )
-    assert node.start == utcdt(2020, 1, 1)
-    assert node.end == utcdt(2020, 1, 2)
-    assert node.parent == 1
-    assert node.address == 0
-    assert node.size == 139
+    assert n.start == utcdt(2020, 1, 1)
+    assert n.end == utcdt(2020, 1, 2)
+    assert n.parent == 1
+    assert n.address == 0
+    assert n.size == 139
 
 
 def test_version_record():
-    rec = iohelper.pack_rev(
+    br = rev.pack(
         utcdt(2024, 1, 1),
         utcdt(2023, 12, 31, 0),
         utcdt(2023, 12, 31, 2),
         0,
         1
     )
-    assert len(rec) == 32
-    assert isinstance(rec, bytearray)
+    assert len(br) == 32
+    assert isinstance(br, bytearray)
 
-    rev = iohelper.unpack_rev(
+    r = rev.unpack(
         pytz.utc,
-        bytes(rec)
+        bytes(br)
     )
-    assert rev.revdate == utcdt(2024, 1, 1)
-    assert rev.diffstart == utcdt(2023, 12, 31, 0)
-    assert rev.diffend == utcdt(2023, 12, 31, 2)
-    assert rev.index == 0
-    assert rev.metaid == 1
+    assert r.revdate == utcdt(2024, 1, 1)
+    assert r.diffstart == utcdt(2023, 12, 31, 0)
+    assert r.diffend == utcdt(2023, 12, 31, 2)
+    assert r.index == 0
+    assert r.metaid == 1
 
 
 def test_read_write_2_versions():
@@ -356,7 +358,7 @@ def test_read_write_2_versions():
             # write the snapshots (using prepared chunks)
             # v1
             packed1 = iohelper.serialize_ts(ts1, False)
-            rec1 = iohelper.pack_node(
+            rec1 = node.pack(
                 ts1.index[0],
                 ts1.index[-1],
                 0, # indice of the parent in the tree file (0 means no parent)
@@ -366,7 +368,7 @@ def test_read_write_2_versions():
             tree.write(rec1)
             # v2
             packed2 = iohelper.serialize_ts(ts2, False)
-            rec2 = iohelper.pack_node(
+            rec2 = node.pack(
                 ts2.index[0],
                 ts2.index[-1],
                 1, # indicates the first block
@@ -386,45 +388,45 @@ def test_read_write_2_versions():
 
         with open(tmp + '/revs', 'wb') as revs:
             # now, having written the tree let's write the revs
-            rec = iohelper.pack_rev(
+            br = rev.pack(
                 utcdt(2024, 2, 1),
                 ts1.index[0],
                 ts1.index[-1],
                 0, # index in tree obviously starts at zero
                 42, # we don't care much about metaid ...
             )
-            revs.write(rec)
-            rec = iohelper.pack_rev(
+            revs.write(br)
+            br = rev.pack(
                 utcdt(2024, 2, 2),
                 ts2.index[0],
                 ts2.index[-1],
                 1, # second record in tree
                 42
             )
-            revs.write(rec)
+            revs.write(br)
 
         # now, let's read the complete version back
         with open(tmp + '/revs', 'rb') as revs:
             # rev block is of size 32
             revs.seek(32) # seek to the beginning of the last block
             bytestr = revs.read(32)
-            rev = iohelper.unpack_rev(
+            r = rev.unpack(
                 pytz.utc,
                 bytestr
             )
-            assert rev.index == 1
+            assert r.index == 1
 
         # ok, let's dig the chunks from this blockid and rebuild the
         # whole series from chunks
         with open(tmp + '/tree', 'rb') as tree:
             # we start with using the tree index
-            tree.seek(rev.index * 26) # move to last block
+            tree.seek(r.index * 26) # move to last block
             fixed = tree.read(26)
-            node2 = iohelper.unpack_node(pytz.utc, fixed)
+            node2 = node.unpack(pytz.utc, fixed)
 
             tree.seek(0)
             fixed = tree.read(26)
-            node1 = iohelper.unpack_node(pytz.utc, fixed)
+            node1 = node.unpack(pytz.utc, fixed)
 
         with open(tmp + '/chunks', 'rb') as chunks:
             chunks.seek(node2.address)

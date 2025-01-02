@@ -405,6 +405,26 @@ class rev:
             f'{self.index},{self.metaid})'
         )
 
+    @staticmethod
+    def pack(revdate, diffstart, diffend, address, metaid):
+        buff = bytearray(32)
+        iohelper.pack_datetime_into(buff, revdate, 0)
+        iohelper.pack_datetime_into(buff, diffstart, 8)
+        iohelper.pack_datetime_into(buff, diffend, 16)
+        struct.pack_into('!I', buff, 24, address)
+        struct.pack_into('!I', buff, 28, metaid)
+        return buff
+
+    @staticmethod
+    def unpack(tz, bytestr):
+        buff = array('B', bytestr)
+        revdate = iohelper.unpack_datetime_from(buff, 0, pytz.utc)
+        diffstart = iohelper.unpack_datetime_from(buff, 8, tz)
+        diffend = iohelper.unpack_datetime_from(buff, 16, tz)
+        address = struct.unpack_from('!I', buff, 24)[0]
+        metaid = struct.unpack_from('!I', buff, 28)[0]
+        return rev(revdate, diffstart, diffend, address, metaid)
+
 
 class node:
     __slots__ = 'start', 'end', 'parent', 'address', 'size'
@@ -418,6 +438,27 @@ class node:
 
     def __repr__(self):
         return f'node({self.start},{self.end},{self.parent},{self.address},{self.size})'
+
+    @staticmethod
+    def pack(start, end, parent, adress, datasize):
+        buff = bytearray(26)
+        iohelper.pack_datetime_into(buff, start, 0)
+        iohelper.pack_datetime_into(buff, end, 8)
+        struct.pack_into('!I', buff, 16, parent)
+        struct.pack_into('!I', buff, 20, adress)
+        struct.pack_into('!h', buff, 24, datasize)
+        return buff
+
+    @staticmethod
+    def unpack(tz, bytestr):
+        buff = array('B', bytestr)
+        start = iohelper.unpack_datetime_from(buff, 0, tz)
+        end = iohelper.unpack_datetime_from(buff, 8, tz)
+        parent = struct.unpack_from('!I', buff, 16)[0]
+        address = struct.unpack_from('!I', buff, 20)[0]
+        size = struct.unpack_from('!h', buff, 24)[0]
+        return node(start, end, parent, address, size)
+
 
 
 class iohelper:
@@ -457,43 +498,3 @@ class iohelper:
     def unpack_datetime_from(buff, offset, tz=pytz.UTC):
         val = struct.unpack_from('!q', buff, offset)[0]
         return pd.Timestamp(val, 'ns', tz=tz)
-
-    @staticmethod
-    def pack_rev(revdate, diffstart, diffend, address, metaid):
-        buff = bytearray(32)
-        iohelper.pack_datetime_into(buff, revdate, 0)
-        iohelper.pack_datetime_into(buff, diffstart, 8)
-        iohelper.pack_datetime_into(buff, diffend, 16)
-        struct.pack_into('!I', buff, 24, address)
-        struct.pack_into('!I', buff, 28, metaid)
-        return buff
-
-    @staticmethod
-    def unpack_rev(tz, bytestr):
-        buff = array('B', bytestr)
-        revdate = iohelper.unpack_datetime_from(buff, 0, pytz.utc)
-        diffstart = iohelper.unpack_datetime_from(buff, 8, tz)
-        diffend = iohelper.unpack_datetime_from(buff, 16, tz)
-        address = struct.unpack_from('!I', buff, 24)[0]
-        metaid = struct.unpack_from('!I', buff, 28)[0]
-        return rev(revdate, diffstart, diffend, address, metaid)
-
-    @staticmethod
-    def pack_node(start, end, parent, adress, datasize):
-        buff = bytearray(26)
-        iohelper.pack_datetime_into(buff, start, 0)
-        iohelper.pack_datetime_into(buff, end, 8)
-        struct.pack_into('!I', buff, 16, parent)
-        struct.pack_into('!I', buff, 20, adress)
-        struct.pack_into('!h', buff, 24, datasize)
-        return buff
-
-    @staticmethod
-    def unpack_node(tz, bytestr):
-        buff = array('B', bytestr)
-        start = iohelper.unpack_datetime_from(buff, 0, tz)
-        end = iohelper.unpack_datetime_from(buff, 8, tz)
-        parent = struct.unpack_from('!I', buff, 16)[0]
-        address = struct.unpack_from('!I', buff, 20)[0]
-        size = struct.unpack_from('!h', buff, 24)[0]
-        return node(start, end, parent, address, size)
