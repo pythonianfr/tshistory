@@ -1551,3 +1551,29 @@ def test_erasure_over_horizon(engine, tsh1):
     tsh1.update(engine, ts, name, 'Arthur',
                insertion_date=idate.replace(day=3),
                keepnans=True)
+
+
+def test_long_name(engine, tsf):
+    ts = pd.Series(
+        [1., 2., 3.],
+        index=pd.date_range(
+            pd.Timestamp('2025-1-1', tz='utc'),
+            periods=3,
+            freq='D'
+        )
+    )
+
+    name = 'aurélien' * 40  # should give us 320
+    tsf.update(
+        engine,
+        ts,
+        name,
+        'Babar'
+    )
+
+    ts2 = tsf.get(engine, name)
+    assert ts2.equals(ts)
+
+    imeta = tsf.internal_metadata(engine, name)
+    assert len(imeta['path']) == 229                  # as str
+    assert len(imeta['path'].encode('utf-8')) == 255  # as bytes (which is the max we want)

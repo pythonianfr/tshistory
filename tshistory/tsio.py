@@ -1892,8 +1892,10 @@ class timeseriesfs1(base):
         # default
         path = name
         if len(name) > 255:
-            hashed = hash64(name)
-            path = path[:-hashed] + str(hashed)
+            hashed = str(hash64(name))
+            bname = name.encode('utf-8')
+            bhash = hashed.encode('utf-8')
+            path = (bname[:255-len(bhash)] + bhash).decode('utf-8')
 
         # collision detection (collision can happen after a rename)
         if cn.execute(
