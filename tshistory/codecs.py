@@ -392,6 +392,7 @@ def unpack_group_history(bytestring):
 class rev:
     _size = 32
     __slots__ = 'revdate', 'diffstart', 'diffend', 'index', 'metaid'
+    parser = struct.Struct('!qqqII')
 
     def __init__(self, revdate, diffstart, diffend, index, metaid):
         self.revdate = revdate
@@ -407,24 +408,22 @@ class rev:
         )
 
     @staticmethod
-    def pack(revdate, diffstart, diffend, address, metaid):
+    def pack(revdate, diffstart, diffend, index, metaid):
         buff = bytearray(rev._size)
-        iohelper.pack_datetime_into(buff, revdate, 0)
-        iohelper.pack_datetime_into(buff, diffstart, 8)
-        iohelper.pack_datetime_into(buff, diffend, 16)
-        struct.pack_into('!I', buff, 24, address)
-        struct.pack_into('!I', buff, 28, metaid)
+        rev.parser.pack_into(buff, 0, revdate.value, diffstart.value, diffend.value, index, metaid)
         return buff
 
     @staticmethod
     def unpack(tz, bytestr):
         buff = array('B', bytestr)
-        revdate = iohelper.unpack_datetime_from(buff, 0, pytz.utc)
-        diffstart = iohelper.unpack_datetime_from(buff, 8, tz)
-        diffend = iohelper.unpack_datetime_from(buff, 16, tz)
-        address = struct.unpack_from('!I', buff, 24)[0]
-        metaid = struct.unpack_from('!I', buff, 28)[0]
-        return rev(revdate, diffstart, diffend, address, metaid)
+        revdate, diffstart, diffend, index, metaid = rev.parser.unpack_from(buff)
+        return rev(
+            pd.Timestamp(revdate, 'ns', tz=pytz.utc),
+            pd.Timestamp(diffstart, 'ns', tz=tz),
+            pd.Timestamp(diffend, 'ns', tz=tz),
+            index,
+            metaid
+        )
 
 
 class node:
@@ -503,12 +502,3 @@ class iohelper:
         if metadata.get('tzaware', False):
             return ts.tz_localize('UTC')
         return ts
-
-    @staticmethod
-    def pack_datetime_into(buff, dt, offset):
-        struct.pack_into('!q', buff, offset, dt.value)
-
-    @staticmethod
-    def unpack_datetime_from(buff, offset, tz=pytz.UTC):
-        val = struct.unpack_from('!q', buff, offset)[0]
-        return pd.Timestamp(val, 'ns', tz=tz)
