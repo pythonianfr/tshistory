@@ -508,44 +508,35 @@ class FS1(base):
                 # that was in the past
                 # for the future, we will provide the last rev
                 return empty_series(self.imeta['tzaware'])
-        node = self.node_at(rev.index)
 
         chunks = []
         # walk the tree downwards
-        while True:
-            if not (to_value_date and to_value_date < node.start):
-                # we can skip collecting irrelevant chunks
-                chunks.append(
-                    self.chunk_at(node.address, node.size)
-                )
-            parent = node.parent
-            if not parent:
-                break
-            if from_value_date and from_value_date >= node.start:
-                break
-            node = self.node_at(parent)
+        for _, n in self.find_nodes_matching(rev.index, from_value_date, to_value_date):
+            chunks.append(
+                self.chunk_at(n.address, n.size)
+            )
 
         if not chunks:
             return empty_series(self.imeta['tzaware'])
         chunks.reverse()
         return iohelper.chunks_to_ts(self.imeta, chunks)[from_value_date:to_value_date]
 
-    def find_nodes_matching(self, nodeindex, mindate):
+    def find_nodes_matching(self, nodeindex, mindate=None, maxdate=None):
         """return nodes (and their index) from a given index, walking
         down the parent chain until the end or a given date
         """
         node = self.node_at(nodeindex)
-        nodes = [(nodeindex, node)]
+        yield (nodeindex, node)
         while True:
             if not node.parent:
-                return nodes
+                return
             nodeindex = node.parent
             node = self.node_at(nodeindex)
-            if node.end < mindate:
-                return nodes
-            nodes.append((nodeindex, node))
-
-        return nodes
+            if mindate and node.end < mindate:
+                return
+            if maxdate and node.start > maxdate:
+                continue
+            yield (nodeindex, node)
 
     def series_from_nodes(self, nodes):
         chunks = []
@@ -579,7 +570,9 @@ class FS1(base):
         index in the rev.
 
         """
-        nodes = self.find_nodes_matching(self.last_rev.index, ts.index.min())
+        nodes = list(
+            self.find_nodes_matching(self.last_rev.index, ts.index.min())
+        )
         assert len(nodes)
         firstnode = nodes[-1][1]
         parentindex = nodes[-1][0]
