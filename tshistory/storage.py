@@ -314,6 +314,53 @@ class Postgres(base):
         self.cn.execute(sql)
 
 
+class irange:
+    __slots__ = 'start', 'end'
+
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+
+    def __contains__(self, index):
+        return self.start <= index <= self.end
+
+    def __repr__(self):
+        return f'<{self.start}:{self.end-self.start}:{self.end}>'
+
+
+class pager:
+    __slots__ = 'source', 'range', 'page', 'offset'
+    _size = 2 ** 18
+
+    def __init__(self, source):
+        self.source = source
+        self.page = None
+        self.range = None
+        self.offset = 0
+
+    def _fault(self, start, end):
+        # We want to read up to 256kb in a page knowing we need to
+        # prepare for reads coming with lower addresses !
+        # So what we are reading now should contain the start/end
+        # interval at the very end.
+        newstart = max(0, end - self._size)
+        self.source.seek(newstart)
+        readsize = min(self._size, end)
+        self.page = self.source.read(readsize)
+        self.range = irange(newstart, len(self.page) + newstart)
+        self.offset = newstart
+        assert len(self.page) == self.range.end - self.range.start
+
+    def get(self, start, end):
+        if not self.page:
+            self._fault(start, end)
+
+        if start not in self.range or end not in self.range:
+            self._fault(start, end)
+
+        return self.page[start-self.offset:end-self.offset]
+
+
 class FS1(base):
     _rev_size = 32
     _node_size = 26
@@ -326,7 +373,8 @@ class FS1(base):
         self.root = tsh.root / path
         self.cache = {
             'rbfiles': {},
-            'nodes': {}
+            'nodes': {},
+            'blocks': None
         }
 
     def rbfile(self, path):
@@ -436,6 +484,13 @@ class FS1(base):
     def chunks_size(self):
         return os.stat(self.chunks).st_size
 
+    def chunk_at(self, start, size):
+        blocks = self.cache['blocks']
+        if blocks is None:
+            # first visit, let's setup the pager
+            self.cache['blocks'] = blocks = pager(self.rbfile(self.chunks))
+        return blocks.get(start, start + size)
+
     def node_at(self, node_index):
         c = self.cache['nodes']
         n = c.get(node_index)
@@ -471,11 +526,6 @@ class FS1(base):
                 nodes.append(
                     node.unpack(self.tz, bnode)
                 )
-
-    def chunk_at(self, start, size):
-        fchunks = self.rbfile(self.chunks)
-        fchunks.seek(start)
-        return fchunks.read(size)
 
     def find_rev(self, revdate):
         with open(self.revs, 'rb') as frevs:
