@@ -390,6 +390,7 @@ def unpack_group_history(bytestring):
 # file binary serialisation
 
 class rev:
+    _size = 32
     __slots__ = 'revdate', 'diffstart', 'diffend', 'index', 'metaid'
 
     def __init__(self, revdate, diffstart, diffend, index, metaid):
@@ -407,7 +408,7 @@ class rev:
 
     @staticmethod
     def pack(revdate, diffstart, diffend, address, metaid):
-        buff = bytearray(32)
+        buff = bytearray(rev._size)
         iohelper.pack_datetime_into(buff, revdate, 0)
         iohelper.pack_datetime_into(buff, diffstart, 8)
         iohelper.pack_datetime_into(buff, diffend, 16)
@@ -427,6 +428,7 @@ class rev:
 
 
 class node:
+    _size = 26
     __slots__ = 'start', 'end', 'parent', 'address', 'size'
 
     def __init__(self, start, end, parent, address, size):
@@ -441,7 +443,7 @@ class node:
 
     @staticmethod
     def pack(start, end, parent, adress, datasize):
-        buff = bytearray(26)
+        buff = bytearray(node._size)
         iohelper.pack_datetime_into(buff, start, 0)
         iohelper.pack_datetime_into(buff, end, 8)
         struct.pack_into('!I', buff, 16, parent)
