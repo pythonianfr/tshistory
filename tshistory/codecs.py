@@ -477,7 +477,7 @@ class iohelper:
             for chunk in chunks
         )
         bseparator = b'\0' if metadata['value_type'] == 'object' else b''
-        indexchunks, valueschunks = list(zip(*nchunks))
+        indexchunks, valueschunks = zip(*nchunks)
         index, values = numpy_deserialize(
             b''.join(indexchunks),
             bseparator.join(valueschunks),
