@@ -430,6 +430,7 @@ class rev:
 class node:
     _size = 26
     __slots__ = 'start', 'end', 'parent', 'address', 'size'
+    parser = struct.Struct('!qqIIh')
 
     def __init__(self, start, end, parent, address, size):
         self.start = start
@@ -442,37 +443,35 @@ class node:
         return f'node({self.start},{self.end},{self.parent},{self.address},{self.size})'
 
     @staticmethod
-    def pack(start, end, parent, adress, datasize):
+    def pack(start, end, parent, address, datasize):
         buff = bytearray(node._size)
-        iohelper.pack_datetime_into(buff, start, 0)
-        iohelper.pack_datetime_into(buff, end, 8)
-        struct.pack_into('!I', buff, 16, parent)
-        struct.pack_into('!I', buff, 20, adress)
-        struct.pack_into('!h', buff, 24, datasize)
+        node.parser.pack_into(buff, 0, start.value, end.value, parent, address, datasize)
         return buff
 
     @staticmethod
     def unpack(tz, bytestr):
         buff = array('B', bytestr)
-        start = iohelper.unpack_datetime_from(buff, 0, tz)
-        end = iohelper.unpack_datetime_from(buff, 8, tz)
-        parent = struct.unpack_from('!I', buff, 16)[0]
-        address = struct.unpack_from('!I', buff, 20)[0]
-        size = struct.unpack_from('!h', buff, 24)[0]
-        return node(start, end, parent, address, size)
-
+        start, end, parent, address, size = node.parser.unpack_from(buff)
+        return node(
+            pd.Timestamp(start, 'ns', tz=tz),
+            pd.Timestamp(end, 'ns', tz=tz),
+            parent,
+            address,
+            size
+        )
 
     @staticmethod
     def unpack_many(tz, bytestr):
         buff = array('B', bytestr)
         for offset in range(len(buff) // node._size):
             shift = offset * node._size
+            start, end, parent, address, size = node.parser.unpack_from(buff, shift)
             yield node(
-                iohelper.unpack_datetime_from(buff, 0 + shift, tz),
-                iohelper.unpack_datetime_from(buff, 8 + shift, tz),
-                struct.unpack_from('!I', buff, 16 + shift)[0],
-                struct.unpack_from('!I', buff, 20 + shift)[0],
-                struct.unpack_from('!h', buff, 24 + shift)[0]
+                pd.Timestamp(start, 'ns', tz=tz),
+                pd.Timestamp(end, 'ns', tz=tz),
+                parent,
+                address,
+                size
             )
 
 
