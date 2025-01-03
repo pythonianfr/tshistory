@@ -462,6 +462,19 @@ class node:
         return node(start, end, parent, address, size)
 
 
+    @staticmethod
+    def unpack_many(tz, bytestr):
+        buff = array('B', bytestr)
+        for offset in range(len(buff) // node._size):
+            shift = offset * node._size
+            yield node(
+                iohelper.unpack_datetime_from(buff, 0 + shift, tz),
+                iohelper.unpack_datetime_from(buff, 8 + shift, tz),
+                struct.unpack_from('!I', buff, 16 + shift)[0],
+                struct.unpack_from('!I', buff, 20 + shift)[0],
+                struct.unpack_from('!h', buff, 24 + shift)[0]
+            )
+
 
 class iohelper:
 

@@ -442,10 +442,20 @@ class FS1(base):
         if n:
             return n
         ftree = self.rbfile(self.tree)
+        # We read not just 1 node but up to 64 if possible
+        # and cache them.
+        # Also we do this backwards from the asked index
+        # since nodes are followed through the parent chain
+        # up to the root.
+        index = node_index
+        delta = min(64, index - 1)
+        node_index -= delta
         ftree.seek((node_index - 1) * self._node_size)
-        bnode = ftree.read(self._node_size)
-        n = c[node_index] = node.unpack(self.tz, bnode)
-        return n
+        bnodes = ftree.read(self._node_size * (delta + 1))
+        for idx, n in enumerate(node.unpack_many(self.tz, bnodes)):
+            c[node_index + idx] = n
+
+        return self.node_at(index)
 
     def nodes(self, fromindex=1):
         nodes = []
