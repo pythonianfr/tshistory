@@ -124,8 +124,8 @@ class Postgres(base):
     def insert_buckets(self, parent, ts):
         isstr = self.isstr
         for bucket in self.buckets(ts):
-            start = bucket.index.min()
-            end = bucket.index.max()
+            start = bucket.index[0]
+            end = bucket.index[-1]
             sql = (f'insert into "{self.tsh.namespace}.snapshot"."{self.tablename}" '
                    '(cstart, cend, parent, chunk) '
                    'values (%s, %s, %s, %s)'
@@ -153,7 +153,7 @@ class Postgres(base):
         head = self.cn.execute(headsql).scalar()
 
         # get raw chunks matching the limits
-        diffstart = series_diff.index.min()
+        diffstart = series_diff.index[0]
         rawchunks = self.rawchunks(head, diffstart)
         cid, parent, _ = rawchunks[0]
         oldsnapshot = iohelper.chunks_to_ts(
@@ -625,7 +625,7 @@ class FS1(base):
 
         parent = 0  # no parent
         address = 0  # initial chunk
-        self._update(parent, address, ts, revdate, ts.index.min(), ts.index.max(), metaid)
+        self._update(parent, address, ts, revdate, ts.index[0], ts.index[-1], metaid)
 
     def update(self, ts, revdate, diffstart, diffend, metaid):
         """We will build a new node, whith a parent node.
@@ -637,13 +637,13 @@ class FS1(base):
 
         """
         nodes = list(
-            self.find_nodes_matching(self.last_rev.index, ts.index.min())
+            self.find_nodes_matching(self.last_rev.index, ts.index[0])
         )
         assert len(nodes)
         firstnode = nodes[-1][1]
         parentindex = nodes[-1][0]
 
-        if nodes[0][1].end >= ts.index.min():
+        if nodes[0][1].end >= ts.index[0]:
             # there is an overlap, we need to patch our series with it
             base = self.series_from_nodes(
                 [node for _, node in nodes]
@@ -656,7 +656,7 @@ class FS1(base):
         self._update(parentindex, self.chunks_size, ts, revdate, diffstart, diffend, metaid)
 
     def replace(self, ts, revdate, metaid):
-        self._update(0, self.chunks_size, ts, revdate, ts.index.min(), ts.index.max(), metaid)
+        self._update(0, self.chunks_size, ts, revdate, ts.index[0], ts.index[-1], metaid)
 
     def _update(self, parent, address, ts, revdate, diffstart, diffend, metaid):
         # we can now have our tree node
@@ -664,8 +664,8 @@ class FS1(base):
         for idx, bucket in enumerate(self.buckets(ts)):
             packed = iohelper.serialize_ts(bucket, isstr)
             newbnode = node.pack(
-                bucket.index.min(),
-                bucket.index.max(),
+                bucket.index[0],
+                bucket.index[-1],
                 parent if not idx else self.tree_entries,  # index of the parent node
                 address,
                 len(packed)

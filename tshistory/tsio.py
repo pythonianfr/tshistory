@@ -430,8 +430,8 @@ class base:
             else:
                 return pd.DateOffset(**offset)
 
-        from_value_date = from_value_date or latest_ts.index.min()
-        to_value_date = to_value_date or latest_ts.index.max()
+        from_value_date = from_value_date or latest_ts.index[0]
+        to_value_date = to_value_date or latest_ts.index[-1]
         from_value_date = compatible_date(tzaware, from_value_date)
         to_value_date = compatible_date(tzaware, to_value_date)
 
@@ -1199,7 +1199,7 @@ class timeseries(base):
         )
 
         self._new_revision(
-            cn, name, head, newts.index.min(), newts.index.max(),
+            cn, name, head, newts.index[0], newts.index[-1],
             author, insertion_date, metadata
         )
 
@@ -1220,8 +1220,8 @@ class timeseries(base):
         # get _mostly_ the same chunks: some reads might be avoided by
         # being clever.
         series_diff = diff(
-            snapshot.last(newts.index.min(),
-                          newts.index.max()),
+            snapshot.last(newts.index[0],
+                          newts.index[-1]),
             newts
         )
         if not len(series_diff):
@@ -1710,7 +1710,7 @@ class timeseriesfs1(base):
         sto = self.storageclass(cn, self, name)
         # we will want to pass ts.index.min() as `minindex`
         # to limit the search
-        last = sto.last(ts.index.min(), ts.index.max())
+        last = sto.last(ts.index[0], ts.index[-1])
 
         series_diff = diff(last, ts)
         if not len(series_diff):
@@ -1808,8 +1808,8 @@ class timeseriesfs1(base):
             ts, insertion_date, metaid
         )
 
-        start = ts.index.min()
-        end = ts.index.max()
+        start = ts.index[0]
+        end = ts.index[-1]
         start = start.isoformat() if start else None
         end = end.isoformat() if end else None
         self.update_internal_metadata(
