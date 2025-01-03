@@ -325,7 +325,8 @@ class FS1(base):
         path = path or tsh._path(cn, name)
         self.root = tsh.root / path
         self.cache = {
-            'rbfiles': {}
+            'rbfiles': {},
+            'nodes': {}
         }
 
     def rbfile(self, path):
@@ -436,10 +437,15 @@ class FS1(base):
         return os.stat(self.chunks).st_size
 
     def node_at(self, node_index):
+        c = self.cache['nodes']
+        n = c.get(node_index)
+        if n:
+            return n
         ftree = self.rbfile(self.tree)
         ftree.seek((node_index - 1) * self._node_size)
         bnode = ftree.read(self._node_size)
-        return node.unpack(self.tz, bnode)
+        n = c[node_index] = node.unpack(self.tz, bnode)
+        return n
 
     def nodes(self, fromindex=1):
         nodes = []
