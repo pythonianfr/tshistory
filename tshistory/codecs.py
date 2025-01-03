@@ -152,7 +152,7 @@ def unpack_series(name, bytestream, decompressor=zlib.decompress):
         dtype=meta['value_type']
     )
     if meta['tzaware']:
-        series = series.tz_localize('UTC')
+        series = series.tz_localize(pytz.utc)
     return series
 
 
@@ -199,7 +199,7 @@ def unpack_many_series(bytestream, decompressor=zlib.decompress):
             name=name
         )
         if meta['tzaware']:
-            series = series.tz_localize('UTC')
+            series = series.tz_localize(pytz.utc)
         serieslist.append(series)
 
     return serieslist
@@ -245,8 +245,8 @@ def unpack_history(bytestring):
             values, index=index
         )
         if metadata['tzaware']:
-            series = series.tz_localize('utc')
-        hist[pd.Timestamp(idates[idx]).tz_localize('utc')] = series
+            series = series.tz_localize(pytz.utc)
+        hist[pd.Timestamp(idates[idx]).tz_localize(pytz.utc)] = series
     return metadata, hist
 
 
@@ -314,7 +314,7 @@ def unpack_group(bytestr):
 
     df = pd.DataFrame(values, index=index)
     if bidtype.startswith(b'|'):
-        df.index = df.index.tz_localize('UTC')
+        df.index = df.index.tz_localize(pytz.utc)
 
     return df
 
@@ -349,7 +349,7 @@ def unpack_group_history(bytestring):
         array('d', byteslist[0]),'|M8[ns]'
     )
     idates = [
-        pd.Timestamp(idate).tz_localize('utc')
+        pd.Timestamp(idate).tz_localize(pytz.utc)
         for idate in idates
     ]
 
@@ -381,7 +381,7 @@ def unpack_group_history(bytestring):
             )
         df = pd.DataFrame(values, index=index)
         if bidtype.startswith(b'|'):
-            df.index = df.index.tz_localize('UTC')
+            df.index = df.index.tz_localize(pytz.utc)
         hist[idates[dfidx]] = df
         dfidx += 1
     return hist
