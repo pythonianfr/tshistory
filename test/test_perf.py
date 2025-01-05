@@ -28,7 +28,7 @@ def get_dir_size(path):
 
 @pytest.fixture(scope='session')
 def db(request):
-    shutil.rmtree(DATADIR, ignore_errors=True)
+    shutil.rmtree(DATADIR / 'pgdb', ignore_errors=True)
     dbsetup.setup_local_pg_cluster(
         request, DATADIR, 5433, {
         'timezone': 'UTC',

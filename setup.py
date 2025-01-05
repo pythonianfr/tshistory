@@ -41,7 +41,8 @@ setup(name='tshistory',
           'version-parser == 1.0.1',
           'importlib-metadata == 6.8',
           'deprecation',
-          'requests_auth'
+          'requests_auth',
+          'zstandard == 0.23.0'
       ],
       package_data={'tshistory': [
           'schema.sql',

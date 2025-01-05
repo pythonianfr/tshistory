@@ -1,6 +1,7 @@
 import io
 import os
 
+import zstandard as zstd
 import pandas as pd
 import pytz
 from sqlhelp import select
@@ -585,7 +586,9 @@ class FS1(base):
         if not chunks:
             return empty_series(self.imeta['tzaware'])
         chunks.reverse()
-        return iohelper.chunks_to_ts(self.imeta, chunks)[from_value_date:to_value_date]
+        return iohelper.chunks_to_ts(
+            self.imeta, chunks, compressor=zstd
+        )[from_value_date:to_value_date]
 
     def find_nodes_matching(self, nodeindex, mindate=None, maxdate=None):
         """return nodes (and their index) from a given index, walking
@@ -614,7 +617,7 @@ class FS1(base):
         chunks.reverse()
         if not chunks:
             return empty_series(self.imeta['tzaware'])
-        return iohelper.chunks_to_ts(self.imeta, chunks)
+        return iohelper.chunks_to_ts(self.imeta, chunks, compressor=zstd)
 
     def initial_update(self, ts, revdate, metaid):
         # I/O prologue
@@ -662,7 +665,7 @@ class FS1(base):
         # we can now have our tree node
         isstr = ts.values.dtype.name == 'object'
         for idx, bucket in enumerate(self.buckets(ts)):
-            packed = iohelper.serialize_ts(bucket, isstr)
+            packed = iohelper.serialize_ts(bucket, isstr, compressor=zstd)
             newbnode = node.pack(
                 bucket.index[0],
                 bucket.index[-1],
