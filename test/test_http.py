@@ -408,9 +408,29 @@ def test_create_with_only_nans(http):
             'all': json.dumps(True)
         }
     )
-    # the stored dtype became an object in the json path
-    assert response.json['value_dtype'] == '|O'
+    # the stored dtype is set at float by default
+    assert response.json['value_dtype'] == '<f8'
 
+    # let's try to force an object type
+    http.patch_json(
+        '/series/state',
+        params={
+            'name': 'full-nans-as-text',
+            'series': json.loads(util.tojson(ts)),
+            'author': 'Babar',
+            'keepnans': True,
+            'tzaware': util.tzaware_series(ts),
+            'dtype': 'object'
+        }
+    )
+    response = http.get(
+        '/series/metadata',
+        params={
+            'name': 'full-nans-as-text',
+            'all': json.dumps(True)
+        }
+    )
+    assert response.json['value_dtype'] == '|O'
 
 def test_patch_nonutc_tzaware(http):
     ts = genserie(utcdt(2023, 1, 1), 'd', 5)

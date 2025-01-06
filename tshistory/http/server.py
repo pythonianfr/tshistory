@@ -97,6 +97,10 @@ update.add_argument(
 update.add_argument(
     'format', type=enum('json', 'tshpack'), default='json'
 )
+update.add_argument(
+    'dtype', type=str, default='float64',
+    help='Force value-type for creation with nans series'
+)
 
 rename = base.copy()
 rename.add_argument(
@@ -657,12 +661,18 @@ class httpapi:
                 args = update.parse_args()
                 if args.format == 'json':
                     meta = tsa.internal_metadata(args.name)
-                    dtype = meta and meta['value_dtype'] or None
+                    # creation
+                    if not meta:
+                        dtype = args.dtype
+                    # existing
+                    else:
+                        dtype = meta and meta['value_dtype'] or None
+                    # data given in parameter
                     if args.series is not None:
                         series = pd.Series(args.series, dtype=dtype)
+                    # data given as file
                     else:
                         series = pd.Series(json.loads(args.bseries.stream.read()), dtype=dtype)
-
                     series.index = pd.to_datetime(
                         series.index,
                         utc=args.tzaware
