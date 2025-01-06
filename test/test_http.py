@@ -362,12 +362,12 @@ def test_get_nans(http):
     # insert
     ts = genserie(utcdt(2024, 1, 1), 'h', 3)
     ts.iloc[1] = np.nan
-    http.patch('/series/state', params={
+    http.patch_json('/series/state', params={
         'name': 'test-nans',
-        'series': util.tojson(ts),
+        'series': json.loads(util.tojson(ts)),
         'author': 'Babar',
-        'insertion_date': utcdt(2024, 1, 1),
-        'keepnans': json.dumps(True),
+        'insertion_date': str(utcdt(2024, 1, 1)),
+        'keepnans': True,
         'tzaware': util.tzaware_series(ts)
     })
 
@@ -569,11 +569,11 @@ def test_apply_tz_on_bounds(client, http):
 
 def test_delete(http):
     series_in = genserie(utcdt(2018, 1, 1), 'h', 3)
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 10),
+        'insertion_date': str(utcdt(2018, 1, 1, 10)),
         'tzaware': util.tzaware_series(series_in)
     })
 
@@ -591,11 +591,11 @@ def test_delete(http):
 
 def test_rename(http):
     series_in = genserie(utcdt(2018, 1, 1), 'h', 3)
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 10),
+        'insertion_date': str(utcdt(2018, 1, 1, 10)),
         'tzaware': util.tzaware_series(series_in)
     })
     res = http.put('/series/state', params={
@@ -617,11 +617,11 @@ def test_rename(http):
 
     assert 'test' not in res.json
 
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'test3',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2018, 1, 1, 10),
+        'insertion_date': str(utcdt(2018, 1, 1, 10)),
         'tzaware': util.tzaware_series(series_in)
     })
     res = http.put('/series/state', params={
@@ -637,19 +637,19 @@ def test_rename(http):
 
 def test_strip(http):
     series_in = genserie(utcdt(2021, 1, 1), 'h', 3)
-    res = http.patch('/series/state', params={
+    res = http.patch_json('/series/state', params={
         'name': 'stripme',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2021, 1, 1),
+        'insertion_date': str(utcdt(2021, 1, 1)),
         'tzaware': util.tzaware_series(series_in)
     })
     series_in = genserie(utcdt(2021, 1, 2), 'h', 3)
     res = http.patch('/series/state', params={
         'name': 'stripme',
-        'series': util.tojson(series_in),
+        'series': json.loads(util.tojson(series_in)),
         'author': 'Babar',
-        'insertion_date': utcdt(2021, 1, 2),
+        'insertion_date': str(utcdt(2021, 1, 2)),
         'tzaware': util.tzaware_series(series_in)
     })
 
