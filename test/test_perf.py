@@ -1,9 +1,12 @@
+import os
 from pathlib import Path
 import shutil
 from time import time
 
 import pandas as pd
 import pytest
+from pytest_sa_pg import db as dbsetup
+from sqlalchemy import create_engine
 
 from tshistory import schema, tsio
 from tshistory.testutil import tempconfig
@@ -11,12 +14,55 @@ from tshistory.testutil import tempconfig
 
 DATADIR = Path(__file__).parent.parent / 'test' / 'data'
 DBURI = 'postgresql://localhost:5433/postgres'
+SIZES = {}
+
+
+def get_dir_size(path):
+    size = {}
+    for dirpath, dirnames, filenames in os.walk(path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            size[f] = os.path.getsize(fp) / 1024
+    return sum(size.values())
+
+
+@pytest.fixture(scope='session')
+def db(request):
+    shutil.rmtree(DATADIR, ignore_errors=True)
+    dbsetup.setup_local_pg_cluster(
+        request, DATADIR, 5433, {
+        'timezone': 'UTC',
+        'log_timezone': 'UTC'
+        }
+    )
+    SIZES['init'] = get_dir_size(DATADIR / 'pgdb')
+    print('initial empty postgres db size: ', SIZES['init'])
+
+
+def show_sizes():
+    # size computation
+    SIZES['pg'] = get_dir_size(DATADIR / 'pgdb')
+    print('filled postgres db size: ', SIZES['pg'])
+
+    SIZES['fs1'] = get_dir_size(DATADIR / 'perf')
+    print('filled postgres fs1 size: ', SIZES['fs1'])
+
+    for k in SIZES:
+        print(f'{k}:', SIZES[k])
+    total = SIZES['pg'] + SIZES['fs1']
+    print('delta: ', (total - SIZES['init']))
+
+
+
+@pytest.fixture(scope='session')
+def engine(db):
+    return create_engine(DBURI)
 
 
 @pytest.fixture(params=['a', 'b'],
                 scope='session')
 def tsh(request, engine):
-    namespace = 'tsh'
+    namespace = 'perf'
     schema.tsschema(namespace).create(engine, reset=True)
 
     datapath = DATADIR/namespace
@@ -86,3 +132,5 @@ def test_big_update(engine, tsh):
     ts = tsh.get(engine, name)
     assert len(ts) == 600000
     print(f'{tsh}.get ran in {time() - t0} seconds.')
+
+    show_sizes()
