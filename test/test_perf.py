@@ -87,6 +87,7 @@ def tsh(request, engine):
 
 @pytest.mark.perf
 def test_big_update(engine, tsh):
+    # One update with a big series (600k points)
     name = 'test_one_update_many_points'
     tsh.delete(engine, name)
     # we start with a small initial update
@@ -132,5 +133,32 @@ def test_big_update(engine, tsh):
     ts = tsh.get(engine, name)
     assert len(ts) == 600000
     print(f'{tsh}.get ran in {time() - t0} seconds.')
+
+    show_sizes()
+
+
+@pytest.mark.perf
+def test_meteo_versions(engine, tsh):
+    # Simulate a meteo series: 4 updates a day with each update
+    # an hourly solar series (contains a lot of zeroes) over 2 weeks
+    ts = pd.read_csv(DATADIR / 'solar.fcst', index_col=0, header=None, parse_dates=True)
+
+    t0 = time()
+    i = 0
+    for d in range(24):
+        for h in (0, 6, 12, 18):
+            i += 1
+            tsh.update(
+                engine,
+                ts[1] * ((i % 2) * .1),  # a small perturbation to make sure we have points
+                'solar-fcst',
+                'Babar',
+                insertion_date=pd.Timestamp(f'2025-1-{6+d} {h}:00:00', tz='utc')
+            )
+    print(f'{tsh}.update ran in {time() - t0} seconds.')
+
+    t0 = time()
+    tsh.history(engine, 'solar-fcst')
+    print(f'{tsh}.history ran in {time() - t0} seconds.')
 
     show_sizes()
