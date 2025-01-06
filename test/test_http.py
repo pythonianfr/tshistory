@@ -411,6 +411,29 @@ def test_create_with_only_nans(http):
     # the stored dtype is set at float by default
     assert response.json['value_dtype'] == '<f8'
 
+    # let's insert values in place on nans:
+
+    res = http.get(
+        '/series/state',
+        params={
+            'name': 'full-nans',
+            '_keep_nans': json.dumps(True)
+        }
+    )
+    tsstored = pd.Series(res.json)
+    tsfilled = tsstored.fillna(42)
+    res = http.patch_json(
+        '/series/state',
+        params={
+            'name': 'full-nans',
+            'series': json.loads(util.tojson(tsfilled)),
+            'author': 'Babar',
+            'keepnans': True,
+            'tzaware': util.tzaware_series(ts)
+        }
+    )
+    assert res.status_code == 200
+
     # let's try to force an object type
     http.patch_json(
         '/series/state',
@@ -431,6 +454,7 @@ def test_create_with_only_nans(http):
         }
     )
     assert response.json['value_dtype'] == '|O'
+
 
 def test_patch_nonutc_tzaware(http):
     ts = genserie(utcdt(2023, 1, 1), 'd', 5)
