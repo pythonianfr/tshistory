@@ -160,6 +160,47 @@ class Migrator:
         migrate_to_baskets(engine, gns, self.interactive)
 
 
+@version('tshistory', '0.21.0')
+def do_migrate_intervals(engine, namespace, interactive):
+    migrate_intervals(engine, namespace, interactive)
+    migrate_intervals(engine, f'{namespace}.group', interactive)
+
+
+def migrate_intervals(engine, namespace, interactive):
+    tsh = tshclass(namespace)
+    with engine.begin() as cn:
+        cn.cache = {'series_tablename': {}}
+        tables = {
+            name: tsh._series_to_tablename(cn, name)
+            for name in tsh.list_series(engine).keys()
+        }
+
+    for name, tablename in tables.items():
+        if tablename is None:
+            continue  # not a primary
+
+        with engine.begin() as cn:
+            imeta = tsh.internal_metadata(engine, name)
+            if imeta.get('left') is not None:
+                # already migrated
+                continue
+
+            start, end = cn.execute(
+                f'select tsstart, tsend from "{namespace}.revision"."{tablename}" '
+                f'order by id desc limit 1'
+            ).fetchone()
+            start = start.isoformat() if start else None
+            end = end.isoformat() if end else None
+            tsh.update_internal_metadata(
+                cn, name, {'left': start, 'right': end}
+            )
+
+            cn.execute(
+                f'alter table "{namespace}.revision"."{tablename}" '
+                f'drop column tsstart, drop column tsend'
+            )
+
+
 @version('tshistory', '0.20.0')
 def migrate_series_versions(engine, namespace, interactive):
     migrate_add_diffstart_diffend(engine, namespace, interactive)
