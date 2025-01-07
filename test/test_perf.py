@@ -138,6 +138,36 @@ def test_big_update(engine, tsh):
 
 
 @pytest.mark.perf
+def _test_parquet_feather():
+    t0 = time()
+    ts = pd.Series(
+        [1, 2, 3] * 200000,
+        index=pd.date_range(
+            pd.Timestamp('2025-1-1', tz='utc'),
+            freq='h',
+            periods=600000
+        )
+    )
+
+    t0 = time()
+    ts.to_frame().to_parquet('ts.parquet')
+    print(f'parquet.update ran in {time() - t0} seconds.')
+
+    t0 = time()
+    pd.read_parquet('ts.parquet')
+    print(f'parquet.get ran in {time() - t0} seconds.')
+
+    t0 = time()
+    ts.to_frame().to_feather('ts.feather')
+    print(f'feather.update ran in {time() - t0} seconds.')
+
+    t0 = time()
+    pd.read_feather('ts.feather')
+    print(f'feather.get ran in {time() - t0} seconds.')
+
+
+
+@pytest.mark.perf
 def test_meteo_versions(engine, tsh):
     # Simulate a meteo series: 4 updates a day with each update
     # an hourly solar series (contains a lot of zeroes) over 2 weeks
