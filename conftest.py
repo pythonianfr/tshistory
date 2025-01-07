@@ -79,37 +79,40 @@ def datadir():
     return DATADIR
 
 
-@pytest.fixture(params=['tsh', 'z-z'],
+@pytest.fixture(params=[('pg', 'tsh'), ('pg', 'z-z'), ('fs1', 'tsh')],
                 scope='session')
 def tsh(request, engine):
-    namespace = request.param
+    driver, namespace = request.param
     schema.tsschema(namespace).create(engine, reset=True)
 
-    datapath = DATADIR/namespace
-    shutil.rmtree(datapath, ignore_errors=True)
-    if not datapath.exists():
-        datapath.mkdir()
+    if driver == 'fs1':
+        datapath = DATADIR/namespace
+        shutil.rmtree(datapath, ignore_errors=True)
+        if not datapath.exists():
+            datapath.mkdir()
 
-    conf = (
-        f'[dburi]\n'
-        f'test = {DBURI}\n'
-        f'[storage]\n'
-        f'test = filesystem1\n'
-        f'test.path = {datapath}'
-    )
-
-    if namespace == 'z-z':
-        Postgres._max_bucket_size = 5
-        FS1._max_bucket_size = 5
-
+        conf = (
+            f'[dburi]\n'
+            f'test = {DBURI}\n'
+            f'[storage]\n'
+            f'test = filesystem1\n'
+            f'test.path = {datapath}'
+        )
         with tempconfig(conf.encode()):
             yield tsio.timeseriesfs1(namespace, None, uri=DBURI)
 
-        Postgres._max_bucket_size = 150
-        FS1._max_bucket_size = 150
-
     else:
-        yield tsio.timeseries(namespace)
+        if namespace == 'z-z':
+            Postgres._max_bucket_size = 5
+            FS1._max_bucket_size = 5
+
+            yield tsio.timeseries(namespace)
+
+            Postgres._max_bucket_size = 150
+            FS1._max_bucket_size = 150
+
+        else:
+            yield tsio.timeseries(namespace)
 
 
 @pytest.fixture(scope='session')
