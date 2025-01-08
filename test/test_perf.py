@@ -44,7 +44,7 @@ def show_sizes():
     SIZES['pg'] = get_dir_size(DATADIR / 'pgdb')
     print('filled postgres db size: ', SIZES['pg'])
 
-    SIZES['fs1'] = get_dir_size(DATADIR / 'perf')
+    SIZES['fs1'] = get_dir_size(DATADIR / 'fs1' / 'perf')
     print('filled postgres fs1 size: ', SIZES['fs1'])
 
     for k in SIZES:
@@ -65,7 +65,7 @@ def tsh(request, engine):
     namespace = 'perf'
     schema.tsschema(namespace).create(engine, reset=True)
 
-    datapath = DATADIR/namespace
+    datapath = DATADIR / 'fs1' / namespace
     shutil.rmtree(datapath, ignore_errors=True)
     if not datapath.exists():
         datapath.mkdir()

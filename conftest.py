@@ -86,7 +86,7 @@ def tsh(request, engine):
     schema.tsschema(namespace).create(engine, reset=True)
 
     if driver == 'fs1':
-        datapath = DATADIR/namespace
+        datapath = DATADIR / 'fs1' / namespace
         shutil.rmtree(datapath, ignore_errors=True)
         if not datapath.exists():
             datapath.mkdir()
@@ -251,7 +251,7 @@ tsx = make_tsx(
 def tsf(engine):
     ns = 'fsns'
     schema.tsschema(ns).create(engine, reset=True)
-    datapath = DATADIR/ns
+    datapath = DATADIR / 'fs1' / ns
     shutil.rmtree(datapath, ignore_errors=True)
     if not datapath.exists():
         datapath.mkdir()

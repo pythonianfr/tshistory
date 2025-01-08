@@ -1325,7 +1325,7 @@ def tsh1(engine):
     schema.tsschema(namespace).create(engine, reset=True)
     dburi = 'postgresql://localhost:5433/postgres'
     datadir = Path(__file__).parent.parent / 'test' / 'data'
-    datapath = datadir/namespace
+    datapath = datadir / 'fs1' / namespace
     shutil.rmtree(datapath, ignore_errors=True)
     if not datapath.exists():
         datapath.mkdir()
@@ -1335,7 +1335,7 @@ def tsh1(engine):
         f'test = {dburi}\n'
         f'[storage]\n'
         f'test = filesystem1\n'
-        f'test.path = {datadir/namespace}'
+        f'test.path = {datapath}'
     )
 
     FS1._max_bucket_size = 1
