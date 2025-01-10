@@ -375,7 +375,7 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive, onlydata=False
                 print('kill', pid)
                 os.kill(pid, signal.SIGINT)
 
-    if migdata:
+    if not migdata:
         print(
             'Do not forget to schedule the "migrate_diffs" task to complete the migration.'
         )
