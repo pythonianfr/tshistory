@@ -371,6 +371,7 @@ class FS1(base):
         path = path or tsh._path(cn, name)
         self.root = tsh.root / path
         self.cache = {
+            'abfiles': {},
             'rbfiles': {},
             'nodes': {},
             'blocks': None
@@ -387,6 +388,17 @@ class FS1(base):
             return cached
         self.cache['rbfiles'][path] = io.FileIO(path, 'rb')
         return self.rbfile(path)
+
+    def abfile(self, path):
+        """maintain a cache of files opened in binary append-only mode
+
+        This will greatly help for methods like _update
+        """
+        cached = self.cache['abfiles'].get(path)
+        if cached:
+            return cached
+        self.cache['abfiles'][path] = io.FileIO(path, 'ab')
+        return self.abfile(path)
 
     @property
     def tzaware(self):
@@ -662,6 +674,8 @@ class FS1(base):
     def _update(self, parent, address, ts, revdate, diffstart, diffend, metaid):
         # we can now have our tree node
         isstr = ts.values.dtype.name == 'object'
+        fchunks = self.abfile(self.chunks)
+        ftree = self.abfile(self.tree)
         for idx, bucket in enumerate(self.buckets(ts)):
             packed = iohelper.serialize_ts(bucket, isstr, compressor=zstd)
             newbnode = node.pack(
@@ -673,15 +687,8 @@ class FS1(base):
             )
             address = address + len(packed)
 
-            # build and write the chunk
-            # do this *after* the previous step
-            # to have the correct chunks size
-            with open(self.chunks, 'ab') as fchunks:
-                fchunks.write(packed)
-
-            # write it and get the index
-            with open(self.tree, 'ab') as ftree:
-                ftree.write(newbnode)
+            fchunks.write(packed)
+            ftree.write(newbnode)
 
         # let's create the rev
         newbrev = rev.pack(
