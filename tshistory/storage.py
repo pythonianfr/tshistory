@@ -363,8 +363,6 @@ class pager:
 
 
 class FS1(base):
-    _rev_size = 32
-    _node_size = 26
     __slots__ = 'imeta', 'tz', 'root', 'cache'
 
     def __init__(self, cn, tsh, name, path=None):
@@ -412,7 +410,7 @@ class FS1(base):
 
     @property
     def revs_entries(self):
-        return self.revs_size // self._rev_size
+        return self.revs_size // rev._size
 
     def revs_range(self, fromdate=None, todate=None, limit=None):
         if limit == 0:
@@ -432,7 +430,7 @@ class FS1(base):
                 # we then can assume we start from the beginning
                 index = 0
                 frevs.seek(0)
-                startrev = rev.unpack(self.tz, frevs.read(self._rev_size))
+                startrev = rev.unpack(self.tz, frevs.read(rev._size))
 
             if todate is not None:
                 toindex, endrev = self.find_rev(todate)
@@ -444,12 +442,12 @@ class FS1(base):
 
             count = 1
             revs = [(index, startrev)]
-            frevs.seek(self._rev_size * (index + 1))
+            frevs.seek(rev._size * (index + 1))
 
             while True:
                 if limit and count >= limit:
                     break
-                brev = frevs.read(self._rev_size)
+                brev = frevs.read(rev._size)
                 if brev == b'':
                     break
                 irev = rev.unpack(self.tz, brev)
@@ -464,14 +462,14 @@ class FS1(base):
     @property
     def last_rev(self):
         with open(self.revs, 'rb') as frevs:
-            frevs.seek(self.revs_size - self._rev_size)  # end of penultimate rev
-            return rev.unpack(self.tz, frevs.read(self._rev_size))
+            frevs.seek(self.revs_size - rev._size)  # end of penultimate rev
+            return rev.unpack(self.tz, frevs.read(rev._size))
 
     @property
     def first_rev(self):
         with open(self.revs, 'rb') as frevs:
             frevs.seek(0)
-            return rev.unpack(self.tz, frevs.read(self._rev_size))
+            return rev.unpack(self.tz, frevs.read(rev._size))
 
     @property
     def tree_size(self):
@@ -479,7 +477,7 @@ class FS1(base):
 
     @property
     def tree_entries(self):
-        return self.tree_size // self._node_size
+        return self.tree_size // node._size
 
     @property
     def chunks_size(self):
@@ -506,8 +504,8 @@ class FS1(base):
         index = node_index
         delta = min(64, index - 1)
         node_index -= delta
-        ftree.seek((node_index - 1) * self._node_size)
-        bnodes = ftree.read(self._node_size * (delta + 1))
+        ftree.seek((node_index - 1) * node._size)
+        bnodes = ftree.read(node._size * (delta + 1))
         for idx, n in enumerate(node.unpack_many(self.tz, bnodes)):
             c[node_index + idx] = n
 
@@ -517,10 +515,10 @@ class FS1(base):
         nodes = []
         fromindex -= 1
         with open(self.tree, 'rb') as ftree:
-            ftree.seek(self._node_size * fromindex)
+            ftree.seek(node._size * fromindex)
 
             while True:
-                bnode = ftree.read(self._node_size)
+                bnode = ftree.read(node._size)
                 if not len(bnode):
                     return nodes
 
@@ -534,9 +532,9 @@ class FS1(base):
             end = self.revs_entries - 1
 
             frevs.seek(start)
-            startrev = rev.unpack(self.tz, frevs.read(self._rev_size))
-            frevs.seek(self.revs_size - self._rev_size)
-            endrev = rev.unpack(self.tz, frevs.read(self._rev_size))
+            startrev = rev.unpack(self.tz, frevs.read(rev._size))
+            frevs.seek(self.revs_size - rev._size)
+            endrev = rev.unpack(self.tz, frevs.read(rev._size))
 
             if revdate < startrev.revdate:
                 return None, None
@@ -553,16 +551,16 @@ class FS1(base):
                 middle = (start + end) >> 1
 
                 # seek + read
-                frevs.seek(middle * self._rev_size)
-                irev = rev.unpack(self.tz, frevs.read(self._rev_size))
+                frevs.seek(middle * rev._size)
+                irev = rev.unpack(self.tz, frevs.read(rev._size))
 
                 if revdate >= irev.revdate:
                     start = middle
                 else:
                     end = middle
 
-            frevs.seek(start * self._rev_size)
-            return start, rev.unpack(self.tz, frevs.read(self._rev_size))
+            frevs.seek(start * rev._size)
+            return start, rev.unpack(self.tz, frevs.read(rev._size))
 
     def last(self, from_value_date=None, to_value_date=None):
         return self.get(self.last_rev.revdate, from_value_date, to_value_date)
@@ -704,4 +702,4 @@ class FS1(base):
         with open(self.revs, 'r+b') as frevs:
             # truncates needs the 'r+b' mode to not mangle the file contents
             frevs.seek(0)
-            frevs.truncate(index * self._rev_size)
+            frevs.truncate(index * rev._size)
