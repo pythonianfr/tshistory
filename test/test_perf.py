@@ -136,6 +136,25 @@ def test_big_update(engine, tsh):
 
     show_sizes()
 
+    # edit 1 point at the beginning, exhibiting the worst case scenario
+    ts[0] = 42
+    t0 = time()
+    tsh.update(
+        engine,
+        ts,
+        name,
+        'Babar'
+    )
+
+    print(f'{tsh}.update ran in {time() - t0} seconds.')
+
+    t0 = time()
+    ts = tsh.get(engine, name)
+    assert len(ts) == 600000
+    print(f'{tsh}.get ran in {time() - t0} seconds.')
+
+    show_sizes()
+
 
 @pytest.mark.perf
 def _test_parquet_feather():
