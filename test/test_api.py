@@ -485,7 +485,7 @@ def test_erasure(tsx):
     ival = tsx.interval('erasure')
     assert ival is None
 
-    empty = tsx.get('erasure', _keep_nans=True)
+    empty = tsx.get('erasure', keepnans=True)
     assert_df("""
 2024-01-01 00:00:00+00:00   NaN
 2024-01-01 01:00:00+00:00   NaN

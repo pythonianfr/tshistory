@@ -261,7 +261,7 @@ class base:
                 from_value_date=None,
                 to_value_date=None,
                 diffmode=False,
-                _keep_nans=False,
+                keepnans=False,
                 **kw):
         if not self.exists(cn, name):
             return
@@ -288,7 +288,7 @@ class base:
                 revision_date=idates[0] - timedelta(seconds=1),
                 from_value_date=from_value_date,
                 to_value_date=to_value_date,
-                _keep_nans=_keep_nans,
+                keepnans=keepnans,
                 **kw
             )
 
@@ -300,7 +300,7 @@ class base:
                 revision_date=idate,
                 from_value_date=from_value_date,
                 to_value_date=to_value_date,
-                _keep_nans=_keep_nans,
+                keepnans=keepnans,
                 **kw
             )
             if diffmode:
@@ -335,7 +335,7 @@ class base:
             cn, name,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
-            _keep_nans=True
+            keepnans=True
         )
         tzaware = self.tzaware(cn, name)
         if not len(base):
@@ -350,7 +350,7 @@ class base:
                 revision_date=idate - delta,
                 from_value_date=vdate,
                 to_value_date=vdate,
-                _keep_nans=True
+                keepnans=True
             )
             if ts is not None and len(ts):
                 chunks.append(ts)
@@ -379,7 +379,7 @@ class base:
             cn, name,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
-            _keep_nans=True
+            keepnans=True
         )
         tzaware = self.tzaware(cn, name)
         if not len(latest_ts):
@@ -964,7 +964,7 @@ class timeseries(base):
     @tx
     def get(self, cn, name, revision_date=None,
             from_value_date=None, to_value_date=None,
-            _keep_nans=False,
+            keepnans=False,
             **kw):
         """Compute and return the series of a given name
 
@@ -1014,7 +1014,7 @@ class timeseries(base):
                 name=name
             )
 
-        if not _keep_nans:
+        if not keepnans:
             current = current.dropna()
         current.name = name
         return current
@@ -1497,7 +1497,7 @@ class timeseriesfs1(base):
     @tx
     def get(self, cn, name, revision_date=None,
             from_value_date=None, to_value_date=None,
-            _keep_nans=False):
+            keepnans=False):
         if not self.exists(cn, name):
             return
 
@@ -1520,7 +1520,7 @@ class timeseriesfs1(base):
             revision_date = compatible_date(True, revision_date)
             ts = sto.get(revision_date, from_value_date, to_value_date)
 
-        if not _keep_nans:
+        if not keepnans:
             ts = ts.dropna()
 
         ts.name = name  # groups need this

@@ -879,7 +879,7 @@ def checkdiffs_for_name(engine, tsa, name):
         f'from "tsh.revision"."{tablename}" '
         f'order by insertion_date'
     )
-    h = tsa.history(name, diffmode=True, _keep_nans=True)
+    h = tsa.history(name, diffmode=True, keepnans=True)
     tzaware = tsa.tsh.tzaware(engine, name)
 
     for idate, start, end in things.fetchall():

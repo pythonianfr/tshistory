@@ -282,7 +282,7 @@ def test_update_get_keep_nans(engine, tsf):
         'Babar',
         keepnans=True
     )
-    ts = tsf.get(engine, 'fs-withnan', _keep_nans=True)
+    ts = tsf.get(engine, 'fs-withnan', keepnans=True)
     assert_df("""
 2024-01-01 00:00:00+00:00    1.0
 2024-01-02 00:00:00+00:00    NaN
@@ -304,7 +304,18 @@ def test_update_get_keep_nans(engine, tsf):
         'Babar',
         keepnans=True
     )
-    ts = tsf.get(engine, 'fs-withnan', _keep_nans=True)
+
+    assert_nodes(
+        engine,
+        'fs-withnan',
+        tsf,
+        {
+            1: (0, 0, 56),
+            2: (0, 56, 47)
+        }
+    )
+
+    ts = tsf.get(engine, 'fs-withnan', keepnans=True)
     assert_df("""
 2024-01-01 00:00:00+00:00   NaN
 2024-01-02 00:00:00+00:00   NaN

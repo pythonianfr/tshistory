@@ -797,7 +797,7 @@ class httpapi:
                     nocache=args.nocache,
                     live=args.live,
                     inferred_freq=args.inferred_freq,
-                    _keep_nans=args._keep_nans
+                    keepnans=args._keep_nans
                 )
 
                 # the fast path will need it

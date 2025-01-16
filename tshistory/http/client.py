@@ -327,7 +327,7 @@ class httpclient:
             nocache=False,
             live=False,
             inferred_freq=False,
-            _keep_nans=False):
+            keepnans=False):
         guard_query_dates(
             revision_date, from_value_date, to_value_date
         )
@@ -337,7 +337,7 @@ class httpclient:
             'nocache': nocache,
             'live': live,
             'inferred_freq': inferred_freq,
-            '_keep_nans': _keep_nans
+            '_keep_nans': keepnans
         }
         if revision_date:
             args['insertion_date'] = strft(revision_date)
@@ -466,7 +466,7 @@ class httpclient:
                 to_value_date=None,
                 diffmode=False,
                 nocache=False,
-                _keep_nans=False):
+                keepnans=False):
         guard_query_dates(
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date

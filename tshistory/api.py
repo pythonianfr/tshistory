@@ -246,7 +246,7 @@ class mainsource:
             from_value_date: Optional[datetime]=None,
             to_value_date: Optional[datetime]=None,
             inferred_freq: bool=False,
-            _keep_nans: bool=False,
+            keepnans: bool=False,
             **kw) -> Optional[pd.Series]:
         """Get a series by name.
 
@@ -280,7 +280,7 @@ class mainsource:
             revision_date=revision_date,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
-            _keep_nans=_keep_nans,
+            keepnans=keepnans,
             **kw
         )
 
@@ -299,7 +299,7 @@ class mainsource:
             from_value_date=from_value_date,
             to_value_date=to_value_date,
             inferred_freq=inferred_freq,
-            _keep_nans=_keep_nans
+            keepnans=keepnans
         )
 
     def insertion_dates(self,
@@ -342,7 +342,7 @@ class mainsource:
                 from_value_date: Optional[datetime]=None,
                 to_value_date: Optional[datetime]=None,
                 diffmode: bool=False,
-                _keep_nans: bool=False,
+                keepnans: bool=False,
                 **kw) -> Optional[Dict[datetime, pd.Series]]:
         """Get all versions of a series in the form of a dict from insertion
         dates to series version.
@@ -394,7 +394,7 @@ class mainsource:
             from_value_date=from_value_date,
             to_value_date=to_value_date,
             diffmode=diffmode,
-            _keep_nans=_keep_nans,
+            keepnans=keepnans,
             **kw
         )
 
@@ -406,7 +406,7 @@ class mainsource:
                 from_value_date=from_value_date,
                 to_value_date=to_value_date,
                 diffmode=diffmode,
-                _keep_nans=_keep_nans
+                keepnans=keepnans
             )
         return hist
 
@@ -1118,7 +1118,7 @@ class altsources:
             from_value_date: Optional[datetime]=None,
             to_value_date: Optional[datetime]=None,
             inferred_freq: bool=False,
-            _keep_nans: bool=False) -> Optional[pd.Series]:
+            keepnans: bool=False) -> Optional[pd.Series]:
         source = self._findsourcefor(name)
         if source is None:
             return
@@ -1129,7 +1129,7 @@ class altsources:
             from_value_date=from_value_date,
             to_value_date=to_value_date,
             inferred_freq=inferred_freq,
-            _keep_nans=_keep_nans
+            keepnans=keepnans
         )
 
     def history(self,
@@ -1139,7 +1139,7 @@ class altsources:
                 from_value_date: Optional[datetime]=None,
                 to_value_date: Optional[datetime]=None,
                 diffmode: bool=False,
-                _keep_nans: bool=False) -> Optional[Dict[datetime, pd.Series]]:
+                keepnans: bool=False) -> Optional[Dict[datetime, pd.Series]]:
         source = self._findsourcefor(name)
         if source is None:
             return
@@ -1150,7 +1150,7 @@ class altsources:
             from_value_date=from_value_date,
             to_value_date=to_value_date,
             diffmode=diffmode,
-            _keep_nans=_keep_nans
+            keepnans=keepnans
         )
 
     def metadata(self, name: str):

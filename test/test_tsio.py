@@ -786,7 +786,7 @@ insertion_date             value_date
                            2024-04-03 00:00:00+00:00    3.0
                            2024-04-04 00:00:00+00:00    4.0
                            2024-04-05 00:00:00+00:00    5.0
-""", tsh.history(engine, 'hist-withfullnans', _keep_nans=True))
+""", tsh.history(engine, 'hist-withfullnans', keepnans=True))
 
     # erase points + gratuitous nan
     erasets = pd.Series(
@@ -839,7 +839,7 @@ insertion_date             value_date
                            2024-04-03 00:00:00+00:00    NaN
                            2024-04-04 00:00:00+00:00    NaN
                            2024-04-05 00:00:00+00:00    NaN
-""", tsh.history(engine, 'hist-withfullnans', _keep_nans=True))
+""", tsh.history(engine, 'hist-withfullnans', keepnans=True))
 
     # gratuitous nans
     erasets = pd.Series(
@@ -889,7 +889,7 @@ insertion_date             value_date
                            2024-04-05 00:00:00+00:00    NaN
                            2024-04-06 00:00:00+00:00    NaN
                            2024-04-07 00:00:00+00:00    NaN
-""", tsh.history(engine, 'hist-withfullnans', _keep_nans=True))
+""", tsh.history(engine, 'hist-withfullnans', keepnans=True))
 
     revs = tsh.insertion_dates(engine, 'hist-withfullnans')
     # last rev is full of nans that don't erase anything but it's okay
@@ -1620,7 +1620,7 @@ insertion_date             value_date
 2015-01-22 00:00:00+00:00  2015-01-20 00:00:00+00:00    2.0
                            2015-01-21 00:00:00+00:00    2.0
                            2015-01-22 00:00:00+00:00    NaN
-        """, tsh.history(engine, 'with_na', _keep_nans=True))
+        """, tsh.history(engine, 'with_na', keepnans=True))
 
 
 def test_nr_gethistory(engine, tsh):
@@ -2726,7 +2726,7 @@ def test_na_at_boundaries(engine, tsh):
 2010-01-17    3.0
 """, result)
 
-    result = tsh.get(engine, 'test_nan', _keep_nans=True)
+    result = tsh.get(engine, 'test_nan', keepnans=True)
     assert_df("""
 2010-01-10    NaN
 2010-01-11    NaN
@@ -2749,7 +2749,7 @@ def test_na_at_boundaries(engine, tsh):
                    index=pd.date_range(start=datetime(2010, 1, 10),
                                        freq='d', periods=10))
     tsh.update(engine, ts, 'test_nan', 'test')
-    result = tsh.get(engine, 'test_nan', _keep_nans=True)
+    result = tsh.get(engine, 'test_nan', keepnans=True)
     # they don't show up
     assert_df("""
 2010-01-10    NaN
@@ -2773,7 +2773,7 @@ def test_na_at_boundaries(engine, tsh):
                    index=pd.date_range(start=datetime(2010, 1, 10),
                                        freq='d', periods=10))
     tsh.update(engine, ts, 'test_nan', 'test', keepnans=True)
-    result = tsh.get(engine, 'test_nan', _keep_nans=True)
+    result = tsh.get(engine, 'test_nan', keepnans=True)
     assert_df("""
 2010-01-10    NaN
 2010-01-11    NaN
