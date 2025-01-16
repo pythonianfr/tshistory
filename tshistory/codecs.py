@@ -38,6 +38,9 @@ def numpy_serialize(series, isstr=False):
     return bindex, bvalues
 
 
+SIZE = struct.Struct('!L')
+
+
 def binary_pack(bytes1, bytes2):
     """assemble two byte strings into a unique byte string
     storing the size of the first string first
@@ -45,7 +48,7 @@ def binary_pack(bytes1, bytes2):
     original byte strings
 
     """
-    bytes1_size = struct.pack('!L', len(bytes1))
+    bytes1_size = SIZE.pack(len(bytes1))
     return bytes1_size + bytes1 + bytes2
 
 
@@ -54,19 +57,17 @@ def binary_unpack(packedbytes):
     bytes strings
 
     """
-    [bytes1_size] = struct.unpack(
-        '!L', packedbytes[:4]
-    )
+    [bytes1_size] = SIZE.unpack(packedbytes[:4])
     bytes2_offset = bytes1_size + 4
     return packedbytes[4:bytes2_offset], packedbytes[bytes2_offset:]
 
 
 def nary_pack(*bytestr):
     sizes = [
-        struct.pack('!L', len(b))
+        SIZE.pack(len(b))
         for b in bytestr
     ]
-    sizes_size = struct.pack('!L', len(sizes))
+    sizes_size = SIZE.pack(len(sizes))
     stream = io.BytesIO()
     stream.write(sizes_size)
     stream.write(b''.join(sizes))
@@ -76,9 +77,7 @@ def nary_pack(*bytestr):
 
 
 def nary_unpack(packedbytes):
-    [sizes_size] = struct.unpack(
-        '!L', packedbytes[:4]
-    )
+    [sizes_size] = SIZE.unpack(packedbytes[:4])
     payloadoffset = 4 + sizes_size * 4
     sizes = struct.unpack(
         f'!{"L"*sizes_size}',
