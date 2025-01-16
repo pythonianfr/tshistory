@@ -16,6 +16,16 @@ from tshistory.testutil import (
 from tshistory.storage import FS1
 
 
+def assert_nodes(engine, name, tsh, nodes):
+    with engine.begin() as cn:
+        cn.cache = {'series_path': {}}
+        sto = FS1(cn, tsh, name)
+        assert {
+            idx: (node.parent, node.address, node.size)
+            for idx, node in enumerate(sto.nodes(), start=1)
+        } == nodes
+
+
 def test_exists(engine, tsf):
     assert not tsf.exists(engine, 'hello')
 
@@ -1342,16 +1352,6 @@ def tsh1(engine):
 
     with tempconfig(conf.encode()):
         yield tsio.timeseriesfs1(namespace, None, uri=dburi)
-
-
-def assert_nodes(engine, name, tsh, nodes):
-    with engine.begin() as cn:
-        cn.cache = {'series_path': {}}
-        sto = FS1(cn, tsh, name)
-        assert {
-            idx: (node.parent, node.address, node.size)
-            for idx, node in enumerate(sto.nodes(), start=1)
-        } == nodes
 
 
 def test_blocksize1(engine, tsh1):
