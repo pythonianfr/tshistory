@@ -461,9 +461,7 @@ class node:
     @staticmethod
     def unpack_many(tz, bytestr):
         buff = array('B', bytestr)
-        for offset in range(len(buff) // node._size):
-            shift = offset * node._size
-            start, end, parent, address, size = node.parser.unpack_from(buff, shift)
+        for start, end, parent, address, size in node.parser.iter_unpack(buff):
             yield node(
                 pd.Timestamp(start, 'ns', tz=tz),
                 pd.Timestamp(end, 'ns', tz=tz),
