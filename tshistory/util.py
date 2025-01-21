@@ -133,6 +133,13 @@ def ensure_versions(uri, namespace):
         )
 
 
+def run_migrations(uri, interactive, initial, force, namespace):
+    for migrator in sorted(objects('migrator'), key=lambda x: x._order):
+        migrator(
+            uri, namespace, interactive=interactive, start=initial, force=force
+        ).run_migrations()
+
+
 # find available components
 
 def find_most_specific_tshclass(storage):

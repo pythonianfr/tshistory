@@ -10,7 +10,7 @@ from tshistory.api import timeseries
 from tshistory.config import configuration
 from tshistory.util import (
     checkdiffs_for_name,
-    objects
+    run_migrations
 )
 from tshistory.schema import tsschema
 
@@ -69,11 +69,7 @@ def init_db(db_uri, namespace='tsh'):
 @click.option('--namespace', default='tsh')
 def migrate(db_uri, interactive=True, initial=None, force=None, namespace='tsh'):
     uri = configuration().find_dburi(db_uri)
-    # call the plugins
-    for migrator in sorted(objects('migrator'), key=lambda x: x._order):
-        migrator(
-            uri, namespace, interactive=interactive, start=initial, force=force
-        ).run_migrations()
+    run_migrations(uri, interactive, initial, force, namespace)
 
 
 @tsh.command(name='dbversions')
