@@ -176,23 +176,26 @@ def http(engine):
     config = (
         f'[dburi]\n'
         f'test = {str(engine.url)}\n'
+        f'[sources]\n'
+        f'test.source1=http://source1.com\n'
+        f'test.source2=http://source2.com\n'
     ).encode()
     with tempconfig(config):
         tsa = tsh_api.timeseries(
             str(engine.url),
             handler=tsio.timeseries,
             namespace='tsh',
-        sources={'other': (DBURI, 'other')}
-    )
+            sources={'other': (DBURI, 'other')}
+        )
 
-    # do a cleanup
-    for ts in tsa.find('(by.everything)'):
-        tsa.delete(str(ts))
+        # do a cleanup
+        for ts in tsa.find('(by.everything)'):
+            tsa.delete(str(ts))
 
-    wsgi = nosecurity(
-        appmaker.make_app(tsa)
-    )
-    yield NoRaiseWebTester(wsgi)
+        wsgi = nosecurity(
+            appmaker.make_app(tsa)
+        )
+        yield NoRaiseWebTester(wsgi)
 
 
 # http client

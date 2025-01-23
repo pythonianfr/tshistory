@@ -419,35 +419,35 @@ def make_tsx(uri,
                 sources=sources
             )
 
-        if request.param == 'pg':
-            # direct mode
-            with tempconfig(config):
-                yield tsa
-
-        else:
-            app = nosecurity(
-                appmaker.make_app(
-                    tsa,
-                    httpclass
-                ),
-                role=role
-            )
-            wsgitester = WebTester(
-                app
-            )
-            with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
-                with_http_bridge(uri, resp, wsgitester)
-                if passthru:
-                    passthru(resp)
-                # will query the app created above (which in turn uses
-                # the direct mode tsa)
+            if request.param == 'pg':
+                # direct mode
                 with tempconfig(config):
-                    http_tsa = tsh_api.timeseries(
-                        uri,
-                        handler=tsioclass,
-                        clientclass=clientclass
-                    )
+                    yield tsa
 
-                    yield http_tsa
+            else:
+                app = nosecurity(
+                    appmaker.make_app(
+                        tsa,
+                        httpclass
+                    ),
+                    role=role
+                )
+                wsgitester = WebTester(
+                    app
+                )
+                with responses.RequestsMock(assert_all_requests_are_fired=False) as resp:
+                    with_http_bridge(uri, resp, wsgitester)
+                    if passthru:
+                        passthru(resp)
+                    # will query the app created above (which in turn uses
+                    # the direct mode tsa)
+                    with tempconfig(config):
+                        http_tsa = tsh_api.timeseries(
+                            uri,
+                            handler=tsioclass,
+                            clientclass=clientclass
+                        )
+
+                        yield http_tsa
 
     return tsx

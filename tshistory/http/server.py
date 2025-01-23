@@ -16,6 +16,7 @@ from flask_restx import (
 from tshistory import (
     api as tsapi,
     codecs,
+    config,
     util
 )
 from tshistory.http.util import (
@@ -454,6 +455,8 @@ class httpapi:
         nss = self.nss
         nsg = self.nsg
 
+        cfg = config.configuration()
+
         @nss.route('/source')
         class timeseries_source(Resource):
 
@@ -472,6 +475,16 @@ class httpapi:
                     api.abort(404, f'`{args.name}` does not exists')
 
                 return tsa.source(args.name), 200
+
+        @nss.route('/sources')
+        class timeseries_sources(Resource):
+
+            @api.doc(responses={200: 'Got content'})
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                """returns the sources of a Refinery"""
+                return cfg.sources(), 200
 
         @nss.route('/metadata')
         class timeseries_metadata(Resource):

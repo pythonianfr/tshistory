@@ -129,6 +129,15 @@ class configuration:
             if uri == dburi:
                 return name
 
+    def sources(self):
+        local = self.find_first_uriname()
+        sources = []
+        for name, uri in self.cfg._data['sources'].items():
+            pref, name = name.split('.')
+            if pref == local:
+                sources.append((name, uri))
+        return sources
+
     def storage(self, uri):
         name = self._find_name_by_uri(uri)
         return self.cfg['storage'].get(name, 'postgresql')

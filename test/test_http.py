@@ -24,6 +24,14 @@ from tshistory.testutil import (
 
 # series
 
+def test_sources(http):
+    res = http.get('/series/sources')
+    assert res.json == [
+        ['source1', 'http://source1.com'],
+        ['source2', 'http://source2.com']
+    ]
+
+
 def test_error(http):
     series_in = genserie(pd.Timestamp('2018-1-1'), 'h', 3)
     res = http.patch_json('/series/state', params={

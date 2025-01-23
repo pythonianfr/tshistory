@@ -125,3 +125,35 @@ def test_dashboard_section():
             'refinery': 'https://bar.io',
             'dashboards': 'https://dashboard.bar.io'
         }
+
+
+def test_sources():
+    with tempconfig(
+            b'[dburi]\n'
+            b'foo=postgresql:///refinery\n'
+            b'foo2=postgresql:///refinery2\n'
+            b'[sources]\n'
+            b'foo.bar=https://bar.io\n'
+            b'foo.quux=https://quux.io\n'
+            b'foo2.bar=https://bar.io\n'
+    ):
+        cfg = configuration()
+        assert cfg.cfg._data == {
+            'dburi': {
+                'foo': 'postgresql:///refinery',
+                'foo2': 'postgresql:///refinery2'
+            },
+            'sources': {
+                'foo.bar': 'https://bar.io',
+                'foo.quux': 'https://quux.io',
+                'foo2.bar': 'https://bar.io'
+            },
+            'auth': {},
+            'server-auth': {},
+            'storage': {},
+            'dashboard': {}
+        }
+
+        assert cfg.sources() == [
+            ('bar', 'https://bar.io'), ('quux', 'https://quux.io')
+        ]
