@@ -20,7 +20,10 @@ from warnings import warn
 import pytz
 import numpy as np
 import pandas as pd
-from sqlalchemy.engine.base import Engine
+from sqlalchemy.engine import (
+    Engine,
+    make_url
+)
 from sqlalchemy import exc
 from sqlhelp import select
 from dbcache.api import kvstore
@@ -43,6 +46,10 @@ def empty_series(tzaware, dtype='float64', name=None):
         dtype=dtype,
         name=name
     )
+
+
+def safe_urlparse(uri):
+    return make_url(uri)
 
 
 @contextmanager

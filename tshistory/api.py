@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 import itertools
-from urllib.parse import urlparse
 from typing import (
     Any,
     Dict,
@@ -21,6 +20,7 @@ from tshistory.util import (
     ensure_versions,
     find_most_specific_tshclass,
     find_most_specific_http_client,
+    safe_urlparse as urlparse,
     threadpool,
     ts,
     with_inferred_freq
@@ -44,8 +44,7 @@ class timeseries:
         if uri is None:
             uri = cfg.find_first_uri()
             print(f'timeseries picked this uri: {uri}')
-        parseduri = urlparse(uri)
-        if parseduri.scheme.startswith('postgres'):
+        if uri.startswith('postgres'):
             if handler is None:
                 handler = find_most_specific_tshclass(
                     cfg.storage(uri)
@@ -59,7 +58,7 @@ class timeseries:
                 tshclass=handler,
                 othersources=altsources(handler, sources)
             )
-        elif parseduri.scheme.startswith('http'):
+        elif uri.startswith('http'):
             if clientclass is None:
                 clientclass = find_most_specific_http_client()
             return clientclass(uri)
@@ -91,9 +90,9 @@ class mainsource:
     def _instancename(self):
         parsed = urlparse(self.uri)
         if self.tsh.namespace == 'tsh':
-            return f'{parsed.path[1:]}'
+            return f'{parsed.database}'
         else:
-            return f'{parsed.path[1:]}@{self.tsh.namespace}'
+            return f'{parsed.database}@{self.tsh.namespace}'
 
     def __init__(self,
                  uri: str,
