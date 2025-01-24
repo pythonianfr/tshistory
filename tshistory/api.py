@@ -43,7 +43,6 @@ class timeseries:
         cfg = configuration()
         if uri is None:
             uri = cfg.find_first_uri()
-            print(f'timeseries picked this uri: {uri}')
         if uri.startswith('postgres'):
             if handler is None:
                 handler = find_most_specific_tshclass(
