@@ -199,6 +199,32 @@ get.add_argument(
 
 delete = base.copy()
 
+history = base.copy()
+history.add_argument(
+    'from_insertion_date', type=utcdt, default=None
+)
+history.add_argument(
+    'to_insertion_date', type=utcdt, default=None
+)
+history.add_argument(
+    'from_value_date', type=utcdt, default=None
+)
+history.add_argument(
+    'to_value_date', type=utcdt, default=None
+)
+history.add_argument(
+    'diffmode', type=inputs.boolean, default=False
+)
+history.add_argument(
+    'nocache', type=inputs.boolean, default=False
+)
+history.add_argument(
+    '_keep_nans', type=inputs.boolean, default=False
+)
+history.add_argument(
+    'format', type=enum('json', 'tshpack'), default='json'
+)
+
 staircase = base.copy()
 staircase.add_argument(
     'delta', type=lambda v: pd.Timedelta(v), required=True,
@@ -914,6 +940,45 @@ class httpapi:
                     ]
                 })
                 response.headers['Content-Type'] = 'text/json'
+                return response
+
+        @nss.route('/history')
+        class timeseries_history(Resource):
+
+            @api.expect(history)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                args = history.parse_args()
+                if not tsa.exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
+                hist = tsa.history(
+                    args.name,
+                    from_insertion_date=args.from_insertion_date,
+                    to_insertion_date=args.to_insertion_date,
+                    from_value_date=args.from_value_date,
+                    to_value_date=args.to_value_date,
+                    diffmode=args.diffmode,
+                    nocache=args.nocache,
+                    _keep_nans=args._keep_nans
+                )
+                metadata = tsa.internal_metadata(args.name)
+
+                if args.format == 'json':
+                    if hist is not None:
+                        response = make_response(
+                            pd.DataFrame(hist).to_json()
+                        )
+                    else:
+                        response = make_response('null')
+                    response.headers['Content-Type'] = 'text/json'
+                    return response
+
+                response = make_response(
+                    codecs.pack_history(metadata, hist)
+                )
+                response.headers['Content-Type'] = 'application/octet-stream'
                 return response
 
         @nss.route('/staircase')
