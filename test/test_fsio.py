@@ -1343,7 +1343,7 @@ def tsh1(engine):
     from tshistory import tsio, schema
     from tshistory.storage import FS1
     namespace = 'block1'
-    schema.tsschema(namespace).create(engine, reset=True)
+    schema.tsschema(namespace).create(engine)
     dburi = 'postgresql://localhost:5433/postgres'
     datadir = Path(__file__).parent.parent / 'test' / 'data'
     datapath = datadir / 'fs1' / namespace

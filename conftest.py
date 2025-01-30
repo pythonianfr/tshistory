@@ -58,8 +58,8 @@ def engine(db):
 
 @pytest.fixture(scope='session')
 def mapi(engine):
-    schema.tsschema('ns-test-mapi').create(engine, reset=True)
-    schema.tsschema('ns-test-mapi-2').create(engine, reset=True)
+    schema.tsschema('ns-test-mapi').create(engine)
+    schema.tsschema('ns-test-mapi-2').create(engine)
 
     config = (
         f'[dburi]\n'
@@ -83,7 +83,7 @@ def datadir():
                 scope='session')
 def tsh(request, engine):
     driver, namespace = request.param
-    schema.tsschema(namespace).create(engine, reset=True)
+    schema.tsschema(namespace).create(engine)
 
     if driver == 'fs1':
         datapath = DATADIR / 'fs1' / namespace
@@ -117,7 +117,7 @@ def tsh(request, engine):
 
 @pytest.fixture(scope='session')
 def tsp(engine):
-    schema.tsschema('tsh').create(engine, reset=True)
+    schema.tsschema('tsh').create(engine)
     yield tsio.timeseries('tsh')
 
 
@@ -136,7 +136,7 @@ def cleanup(engine, tsh):
 
 @pytest.fixture(scope='session')
 def ptsh(engine):
-    schema.tsschema().create(engine, reset=True)
+    schema.tsschema().create(engine)
     return tsio.timeseries()
 
 
@@ -176,8 +176,8 @@ class NoRaiseWebTester(webtest.TestApp):
 
 @pytest.fixture()
 def http(engine):
-    schema.tsschema().create(engine, reset=True)
-    schema.tsschema(ns='other').create(engine, reset=True)
+    schema.tsschema().create(engine)
+    schema.tsschema(ns='other').create(engine)
 
     config = (
         f'[dburi]\n'
@@ -208,9 +208,9 @@ def http(engine):
 
 @pytest.fixture(scope='session')
 def client(engine):
-    schema.tsschema().create(engine, reset=True)
-    schema.tsschema('tsh-upstream').create(engine, reset=True)
-    schema.tsschema('other').create(engine, reset=True)
+    schema.tsschema().create(engine)
+    schema.tsschema('tsh-upstream').create(engine) # XXX
+    schema.tsschema('other').create(engine)
 
     uri = 'http://perdu.com'
 
@@ -239,8 +239,8 @@ def client(engine):
 # federation api (direct + http)
 
 def _initschema(engine):
-    schema.tsschema().create(engine, reset=True)
-    schema.tsschema('remote').create(engine, reset=True)
+    schema.tsschema().create(engine)
+    schema.tsschema('remote').create(engine)
 
 
 tsx = make_tsx(
@@ -259,7 +259,7 @@ tsx = make_tsx(
 @pytest.fixture(scope='session')
 def tsf(engine):
     ns = 'fsns'
-    schema.tsschema(ns).create(engine, reset=True)
+    schema.tsschema(ns).create(engine)
     datapath = DATADIR / 'fs1' / ns
     shutil.rmtree(datapath, ignore_errors=True)
     if not datapath.exists():

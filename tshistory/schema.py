@@ -9,7 +9,8 @@ from sqlhelp import sqlfile
 from tshistory import __version__
 
 
-SERIES = Path(__file__).parent / 'schema.sql'
+BASE = Path(__file__).parent / 'schema.sql'
+SERIES = Path(__file__).parent / 'registry.sql'
 GROUP = Path(__file__).parent / 'group.sql'
 
 
@@ -19,33 +20,34 @@ class tsschema(object):
     def __init__(self, ns='tsh'):
         self.namespace = ns
 
-    def create(self, engine, reset=False):
+    def create(self, engine, base=True, groups=True):
         self._create_series(engine, self.namespace)
-        self._create_group(engine)
+        if base:
+            self._create_base(engine)
+        if groups:
+            self._create_groups(engine)
+
+    def _create_base(self, engine):
+        with engine.begin() as cn:
+            cn.execute(sqlfile(BASE, ns=self.namespace))
 
     def _create_series(self, engine, namespace):
         with engine.begin() as cn:
-            # cleanup
             cn.execute(f'drop schema if exists "{namespace}" cascade')
             cn.execute(f'drop schema if exists "{namespace}.revision" cascade')
             cn.execute(f'drop schema if exists "{namespace}.snapshot" cascade')
             cn.execute(f'create schema "{namespace}"')
             cn.execute(f'create schema "{namespace}.revision"')
             cn.execute(f'create schema "{namespace}.snapshot"')
-            # creation
             cn.execute(sqlfile(SERIES, ns=namespace))
         self._create_kvstore(engine, namespace)
 
-    def _create_group(self, engine):
+    def _create_groups(self, engine):
+        # dedicated time series store for the groups
         with engine.begin() as cn:
             cn.execute(f'drop schema if exists "{self.namespace}.group" cascade')
-            cn.execute(f'drop table if exists "{self.namespace}".group_registry')
-            cn.execute(f'drop table if exists "{self.namespace}".groupmap')
-
-        # creation
-        # dedicated time series store for the groups
+            cn.execute(f'create schema "{self.namespace}.group"')
         self._create_series(engine, f'{self.namespace}.group')
-
         # group registry & mapping
         with engine.begin() as cn:
             cn.execute(sqlfile(GROUP, ns=self.namespace))

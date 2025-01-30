@@ -419,7 +419,6 @@ def test_tables(engine, pure):
         ('pure-kvstore', 'things'),
         ('pure-kvstore', 'version'),
         ('pure-kvstore', 'vkvstore'),
-        ('pure.group', 'basket'),
         ('pure.group', 'registry'),
         ('pure.group', 'revision_metadata'),
         ('pure.group-kvstore', 'kvstore'),
