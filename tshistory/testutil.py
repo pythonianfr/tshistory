@@ -173,6 +173,18 @@ def tempattr(obj, attr, value):
     setattr(obj, attr, oldvalue)
 
 
+def tables(engine):
+    res = engine.execute(
+        'select table_schema, table_name from information_schema.tables '
+        'order by table_schema, table_name'
+    ).fetchall()
+    return [
+        (ns, name)
+        for ns, name in res
+        if ns.startswith('pure')  # use the 'pure' fixture
+    ]
+
+
 # api stuff
 
 def read_request_bridge(client, request):

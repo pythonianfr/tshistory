@@ -122,6 +122,12 @@ def tsp(engine):
 
 
 @pytest.fixture(scope='session')
+def pure(engine):
+    schema.tsschema('pure').create(engine)
+    yield tsio.timeseries('pure')
+
+
+@pytest.fixture(scope='session')
 def cleanup(engine, tsh):
     with engine.begin() as cn:
         for name in tsh.list_series(engine):

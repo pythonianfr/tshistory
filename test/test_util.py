@@ -24,6 +24,7 @@ from tshistory.util import (
 from tshistory.testutil import (
     assert_df,
     genserie,
+    tables,
     utcdt
 )
 
@@ -405,6 +406,27 @@ def test_bisect():
     assert bisect_search(values, 3) == 2
     assert bisect_search(values, 7) == 3
     assert bisect_search(values, 8) == 4
+
+
+def test_tables(engine, pure):
+    assert tables(engine) == [
+        ('pure', 'basket'),
+        ('pure', 'group_registry'),
+        ('pure', 'groupmap'),
+        ('pure', 'registry'),
+        ('pure', 'revision_metadata'),
+        ('pure-kvstore', 'kvstore'),
+        ('pure-kvstore', 'things'),
+        ('pure-kvstore', 'version'),
+        ('pure-kvstore', 'vkvstore'),
+        ('pure.group', 'basket'),
+        ('pure.group', 'registry'),
+        ('pure.group', 'revision_metadata'),
+        ('pure.group-kvstore', 'kvstore'),
+        ('pure.group-kvstore', 'things'),
+        ('pure.group-kvstore', 'version'),
+        ('pure.group-kvstore', 'vkvstore')
+    ]
 
 
 def test_in_tx(tsh, engine):
