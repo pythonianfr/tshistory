@@ -4,6 +4,7 @@ import pandas as pd
 import werkzeug
 from flask import (
     Blueprint,
+    jsonify,
     make_response
 )
 from flask_restx import (
@@ -12,6 +13,7 @@ from flask_restx import (
     Resource,
     reqparse
 )
+from dbcache import api as storeapi
 
 from tshistory import (
     api as tsapi,
@@ -471,6 +473,15 @@ class httpapi:
         )
 
         self.routes()
+
+        # ad-hoc stuff
+        @self.bp.route('/versions')
+        def versions():
+            store = storeapi.kvstore(
+                tsa.uri,
+                namespace='tsh-kvstore'
+            )
+            return jsonify(store.all())
 
     # routes
 

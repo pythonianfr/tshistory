@@ -110,6 +110,17 @@ def unwraperror(func):
     return wrapper
 
 
+def healthcheck(session, uri):
+    # strip the /api part
+    if uri.endswith('/api'):
+        uri = uri[:-3]
+    if not uri.endswith('/'):
+        uri += '/'
+    r = session.get(uri + 'versions')
+    if r.status_code != 200:
+        raise Exception('The server is not answering. Please check your uri.')
+
+
 class httpclient:
     index = 0
     __slots__ = 'uri', 'auth', 'session'
@@ -124,6 +135,9 @@ class httpclient:
             self.session.auth = pkce_auth(uri, auth)
         elif 'client_id' in auth:
             self.session.auth = oauth2_auth(auth)
+
+        # immediately check the uri
+        healthcheck(self.session, uri)
 
     def __repr__(self):
         return f"tshistory-http-client(uri='{self.uri}')"
