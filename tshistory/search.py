@@ -213,10 +213,14 @@ class query:
         return klass._fromtree(tree)
 
 
+class Source(str):
+    pass
+
+
 class bysource(query):
     __slots__ = ('source',)
 
-    def __init__(self, source: str):
+    def __init__(self, source: Source):
         self.source = source
 
     def __expr__(self):
@@ -225,7 +229,7 @@ class bysource(query):
     @staticmethod
     def __sig__():
         return {
-            'source': 'str',
+            'source': 'Source',
             'return': 'query'
         }
 
@@ -391,10 +395,14 @@ class byname(query):
         return f'name like %({vid})s', {vid: f'%%{query}%%'}
 
 
+class MetaKey(str):
+    pass
+
+
 class bymetakey(query):
     __slots__ = ('key',)
 
-    def __init__(self, key: str):
+    def __init__(self, key: MetaKey):
         self.key = key
 
     def __expr__(self):
@@ -403,7 +411,7 @@ class bymetakey(query):
     @staticmethod
     def __sig__():
         return {
-            'key': 'str',
+            'key': 'MetaKey',
             'return': 'query'
         }
 

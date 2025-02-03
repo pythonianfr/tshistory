@@ -537,11 +537,11 @@ def test_search_types():
         'by.metaitem': {'key': 'str',
                         'return': 'query',
                         'value': 'Union[str, Number, bool]'},
-        'by.metakey': {'key': 'str', 'return': 'query'},
+        'by.metakey': {'key': 'MetaKey', 'return': 'query'},
         'by.name': {'query': 'str', 'return': 'query'},
         'by.not': {'item': 'query', 'return': 'query'},
         'by.or': {'items': 'Packed[query]', 'return': 'query'},
-        'by.source': {'source': 'str', 'return': 'query'},
+        'by.source': {'source': 'Source', 'return': 'query'},
         'by.tzaware': {'return': 'query'}
     }
 
