@@ -238,6 +238,10 @@ def test_base(http):
         'freq': 'd',
         'description': 'banana spot price'
     }
+    
+    # test metadata keys retrieving
+    res = http.get('/series/metadata-keys')
+    assert res.json == ['description', 'freq']
 
     # metadata: delete by uploading an empty dict
     res = http.put('/series/metadata', params={

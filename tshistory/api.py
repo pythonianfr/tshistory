@@ -712,6 +712,11 @@ class mainsource:
             'not allowed to update metadata to a secondary source'
         )
 
+    def list_metadata_keys(self) -> List[str]:
+        """List available metadata keys"""
+        with self.engine.begin() as cn:
+            return self.tsh.list_metadata_keys(cn)
+
     def type(self, name: str) -> str:
         """Return the type of a series, for instance 'primary' or 'formula'.
 

@@ -631,6 +631,16 @@ class httpapi:
 
                 return no_content()
 
+        @nss.route('/metadata-keys')
+        class timeseries_metadata_keys(Resource):
+
+            @api.expect(nothing)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                """returns the sources of a Refinery"""
+                return tsa.list_metadata_keys()
+
         @nss.route('/freq')
         class timeseries_freq(Resource):
 

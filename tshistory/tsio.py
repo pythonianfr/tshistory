@@ -125,6 +125,15 @@ class base:
             name=name
         )
 
+    @tx
+    def list_metadata_keys(self, cn):
+        return cn.execute(
+            'select jsonb_object_keys(metadata) as key '
+            f'from "{self.namespace}".registry '
+            'group by key '
+            'order by key'
+        ).scalars().all()
+
     def _validate(self, cn, ts, name):
         if ts.isnull().all():
             # ts erasure
