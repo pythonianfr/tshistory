@@ -1,3 +1,4 @@
+from collections import defaultdict
 from json import dumps
 import os
 
@@ -51,15 +52,16 @@ class Migrator:
     _order = 0
     _package = 'tshistory'
     _package_version = __version__
-    # __slots__ = 'uri', 'namespace', 'interactive', 'start', 'force'
+    # __slots__ = 'uri', 'namespace', 'interactive', 'start', 'force', 'last'
 
-    def __init__(self, uri, namespace, interactive=False, start=None, force=None):
+    def __init__(self, uri, namespace, interactive=False, start=None, force=None, last=False):
         self.uri = uri
         self.namespace = namespace
         self.interactive = interactive
         self.start = start
         # "package:version"
         self.force = force.split(':') if force else (None, None)
+        self.last = last
 
     @property
     def engine(self):
@@ -111,25 +113,38 @@ class Migrator:
         print(f'Running migrations for {self._package}.')
         # determine from where we start (stored version or provided
         # initial)
-        start = self.initialversion
+        if self.last:
+            to_migrate = [
+                ver
+                for ver in VERSIONS
+                if ver.package == self._package
+            ]
+            to_migrate.sort(key=lambda ver: ver.get_number())
+            if to_migrate:
+                to_migrate = [to_migrate[-1]]
+        else:
+            start = self.initialversion
 
-        if start.raw_version == '0.0.0':
-            # first time
-            print(f'Initial migration to {self._package_version}')
-            self.initial_migration()
+            if start.raw_version == '0.0.0':
+                # first time
+                print(f'Initial migration to {self._package_version}')
+                self.initial_migration()
 
-        to_migrate = list(VERSIONS)
+            to_migrate = list(VERSIONS)
 
-        end = self.finalversion
-        print(f'Versions: from {start} to {end}')
+            end = self.finalversion
+
+            to_migrate = [
+                ver for ver in to_migrate
+                if start < ver <= end
+                and ver.package == self._package
+            ]
+            to_migrate.sort(key=lambda ver: ver.get_number())
+
+            print(f'Versions: from {start} to {end}')
 
         # build migration plan (from stored_version to package_version
         # or forced_version)
-        to_migrate = [
-            ver for ver in to_migrate
-            if start < ver <= end
-            and ver.package == self._package
-        ]
 
         if not to_migrate:
             print(f'Nothing to migrate for `{self._package}`, skipping.')

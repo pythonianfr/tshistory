@@ -140,10 +140,10 @@ def ensure_versions(uri, namespace):
         )
 
 
-def run_migrations(uri, interactive, initial, force, namespace):
+def run_migrations(uri, interactive, initial, force, last, namespace):
     for migrator in sorted(objects('migrator'), key=lambda x: x._order):
         migrator(
-            uri, namespace, interactive=interactive, start=initial, force=force
+            uri, namespace, interactive=interactive, start=initial, force=force, last=last
         ).run_migrations()
 
 

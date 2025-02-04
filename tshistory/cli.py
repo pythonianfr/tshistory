@@ -39,10 +39,11 @@ def init_db(db_uri, namespace='tsh'):
 @click.option('--interactive/--no-interactive', is_flag=True, default=True)
 @click.option('--initial')
 @click.option('--force')
+@click.option('--last', is_flag=True, default=False)
 @click.option('--namespace', default='tsh')
-def migrate(db_uri, interactive=True, initial=None, force=None, namespace='tsh'):
+def migrate(db_uri, interactive=True, initial=None, force=None, last=False, namespace='tsh'):
     uri = configuration().find_dburi(db_uri)
-    run_migrations(uri, interactive, initial, force, namespace)
+    run_migrations(uri, interactive, initial, force, last, namespace)
 
 
 @tsh.command(name='dbversions')
