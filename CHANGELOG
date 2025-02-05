@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.21.0]
+### Fixed
+- more robust handling of passwords in db uris (sill "@" is not admitted)
+- do not show the password in the logs
+
+### Added
+- api/get: grow a `keepnans` parameter (to keep the nans if any)
+- federation support for groups
+- api/groups: group_type
+- api/groups: group_insertion_dates
+- api/groups: group_history
+- config: a new first class configuration object
+- http/server/update: accept the series in a `bseries` binary field
+- http/server/sources: a route to get the available sources
+- http/client: do a health check call at creation time
+- a new experimental storage for time series on the file system
+- cli/migrate: a --last parameter to force running the last migration
+
+### Changed
+- empty series are now allowed
+
 ## [0.20.1]
 ### Fixed
 - api/inferred_freq: fix some edge cases
