@@ -118,7 +118,10 @@ def healthcheck(session, uri):
         uri += '/'
     r = session.get(uri + 'versions')
     if r.status_code != 200:
-        raise Exception('The server is not answering. Please check your uri.')
+        print(
+            'The server is not answering. Your uri may be wrong. '
+            'Or you are talking to an old version'
+        )
 
 
 class httpclient:
