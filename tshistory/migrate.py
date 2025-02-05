@@ -176,17 +176,15 @@ class Migrator:
 
 
 @version('tshistory', '0.21.0')
-def do_cleanup_schema(engine, namespace, interactive):
+def do_migrate_intervals(engine, namespace, interactive):
+    migrate_intervals(engine, namespace, interactive)
+    migrate_intervals(engine, f'{namespace}.group', interactive)
+
+    # cleanup the schema
     with engine.begin() as cn:
         cn.execute(
             f'drop table if exists "{namespace}.group".basket'
         )
-
-
-@version('tshistory', '0.21.0')
-def do_migrate_intervals(engine, namespace, interactive):
-    migrate_intervals(engine, namespace, interactive)
-    migrate_intervals(engine, f'{namespace}.group', interactive)
 
 
 def migrate_intervals(engine, namespace, interactive):
