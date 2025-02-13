@@ -22,7 +22,7 @@ setup(name='tshistory',
           'simplejson',
           'pandas >= 1.5.3, < 2.3',
           'numpy < 2',
-          'dbcache >= 0.4.0',
+          'dbcache >= 0.5.0',
           'psyl',
           'dateutils',
           'sqlalchemy < 2',
@@ -45,6 +45,7 @@ setup(name='tshistory',
           'zstandard == 0.23.0'
       ],
       package_data={'tshistory': [
+          'registry.sql',
           'schema.sql',
           'series.sql',
           'group.sql'
