@@ -141,8 +141,6 @@ class Migrator:
             ]
             to_migrate.sort(key=lambda ver: ver.get_number())
 
-            print(f'Versions: from {start} to {end}')
-
         # build migration plan (from stored_version to package_version
         # or forced_version)
 
