@@ -110,7 +110,7 @@ class Migrator:
         return Version(self._package, forced_version or self._package_version)
 
     def run_migrations(self):
-        print(f'Running migrations for {self._package}.')
+        print(f'Running migrations for {self._package} (ns={self.namespace}).')
         # determine from where we start (stored version or provided
         # initial)
         if self.last:
