@@ -77,7 +77,9 @@ def shell(db_uri, namespace='tsh'):
 
 def register_plugin_subcommands():
     errors = defaultdict(set)
-    for ep in iter_entry_points('tshistory.subcommands'):
+    entrypoints = list(iter_entry_points('tshistory.subcommands'))
+    entrypoints.sort(key=lambda ep: 'pro' in ep.module_name)
+    for ep in entrypoints:
         try:
             cmd = ep.load()
         except Exception as e:
