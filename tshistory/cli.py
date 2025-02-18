@@ -19,7 +19,7 @@ def tsh():
 
 @tsh.command()
 def configpath():
-    print(configuration.path())
+    print(configuration.path().resolve())
 
 
 # db maintenance
