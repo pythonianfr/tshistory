@@ -917,9 +917,21 @@ class httpclient:
         # 404 -> we tried to delete a non-existent group, do nothing
 
     @unwraperror
-    def update_group_metadata(self, name, meta):
+    def replace_group_metadata(self, name, meta):
         assert isinstance(meta, dict)
         res = self.session.put(f'{self.uri}/group/metadata', data={
+            'name': name,
+            'metadata': json.dumps(meta)
+        })
+
+        assert res.status_code != 404
+
+        return res
+
+    @unwraperror
+    def update_group_metadata(self, name, meta):
+        assert isinstance(meta, dict)
+        res = self.session.patch(f'{self.uri}/group/metadata', data={
             'name': name,
             'metadata': json.dumps(meta)
         })

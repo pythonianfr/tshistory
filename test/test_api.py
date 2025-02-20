@@ -1795,3 +1795,64 @@ insertion_date            value_date
 
     # group does not exist
     assert tsx.group_insertion_dates('no_such_group') is None
+
+
+def test_group_metadata(tsx):
+    df = gengroup(
+        n_scenarios=4,
+        from_date=pd.Timestamp('2025-1-1'),
+        length=4,
+        freq='d',
+        seed=4
+    )
+
+    tsx.group_replace(
+        'for-metadata',
+        df,
+        author='Babar',
+        insertion_date=pd.Timestamp('2025-01-01', tz='UTC')
+    )
+
+    m = tsx.group_metadata('for-metadata')
+    assert m == {}
+
+    im = tsx.group_internal_metadata('for-metadata')
+    im.pop('path', None); im.pop('tablename', None)
+    assert im == {
+        'index_dtype': '<M8[ns]',
+        'index_type': 'datetime64[ns]',
+        'left': '2025-01-01T00:00:00',
+        'right': '2025-01-04T00:00:00',
+        'tzaware': False,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+
+    tsx.replace_group_metadata(
+        'for-metadata',
+        {'foo': 42}
+    )
+
+    m = tsx.group_metadata('for-metadata')
+    assert m == {'foo': 42}
+
+    tsx.update_group_metadata(
+        'for-metadata',
+        {'name': 'Celeste'}
+    )
+
+    m = tsx.group_metadata('for-metadata')
+    assert m == {
+        'foo': 42,
+        'name': 'Celeste'
+    }
+
+    tsx.replace_group_metadata(
+        'for-metadata',
+        {'bar': 42}
+    )
+
+    m = tsx.group_metadata('for-metadata')
+    assert m == {
+        'bar': 42,
+    }

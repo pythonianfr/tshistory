@@ -3675,3 +3675,68 @@ def test_group_other_operations(engine, tsh):
         assert not tsh.tsh_group.exists(engine, name)
 
     assert tsh.group_metadata(engine, 'third_group') is None
+
+
+def test_group_metadata(engine, tsh):
+    df = gengroup(
+        n_scenarios=4,
+        from_date=datetime(2025, 1, 1),
+        length=4,
+        freq='d',
+        seed=4
+    )
+
+    tsh.group_replace(
+        engine,
+        df,
+        'for-metadata',
+        author='Babar',
+        insertion_date=pd.Timestamp('2025-01-01', tz='UTC')
+    )
+
+    m = tsh.group_metadata(engine, 'for-metadata')
+    assert m == {}
+
+    im = tsh.group_internal_metadata(engine, 'for-metadata')
+    im.pop('path', None); im.pop('tablename', None)
+    assert im == {
+        'index_dtype': '<M8[ns]',
+        'index_type': 'datetime64[ns]',
+        'left': '2025-01-01T00:00:00',
+        'right': '2025-01-04T00:00:00',
+        'tzaware': False,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+
+    tsh.replace_group_metadata(
+        engine,
+        'for-metadata',
+        {'foo': 42}
+    )
+
+    m = tsh.group_metadata(engine, 'for-metadata')
+    assert m == {'foo': 42}
+
+    tsh.update_group_metadata(
+        engine,
+        'for-metadata',
+        {'name': 'Celeste'}
+    )
+
+    m = tsh.group_metadata(engine, 'for-metadata')
+    assert m == {
+        'foo': 42,
+        'name': 'Celeste'
+    }
+
+    tsh.replace_group_metadata(
+        engine,
+        'for-metadata',
+        {'bar': 42}
+    )
+
+    m = tsh.group_metadata(engine, 'for-metadata')
+    assert m == {
+        'bar': 42,
+    }

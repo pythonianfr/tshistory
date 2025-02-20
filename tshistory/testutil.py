@@ -367,6 +367,11 @@ class with_http_bridge:
         )
 
         resp.add_callback(
+            responses.PATCH, uri + '/group/metadata',
+            callback=write_request_bridge(wsgitester.patch)
+        )
+
+        resp.add_callback(
             responses.GET, uri + '/group/catalog',
             callback=partial(read_request_bridge, wsgitester)
         )

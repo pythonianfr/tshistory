@@ -1448,6 +1448,24 @@ class httpapi:
 
                 metadata = json.loads(args.metadata)
                 try:
+                    tsa.replace_group_metadata(args.name, metadata)
+                except ValueError as err:
+                    if err.args[0].startswith('not allowed to'):
+                        api.abort(405, err.args[0])
+                    raise
+
+                return '', 200
+
+            @api.expect(put_groupmetadata)
+            @onerror
+            @required_roles('admin', 'rw')
+            def patch(self):
+                args = put_groupmetadata.parse_args()
+                if not tsa.group_exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
+                metadata = json.loads(args.metadata)
+                try:
                     tsa.update_group_metadata(args.name, metadata)
                 except ValueError as err:
                     if err.args[0].startswith('not allowed to'):

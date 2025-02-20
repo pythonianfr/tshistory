@@ -1042,6 +1042,14 @@ class mainsource:
         with self.engine.begin() as cn:
             self.tsh.update_group_metadata(cn, name, meta)
 
+    def replace_group_metadata(self, name: str, meta: Dict[str, Any]) -> NONETYPE:
+        """Replace a group metadata with a dictionary from strings to anything
+        json-serializable.
+
+        """
+        with self.engine.begin() as cn:
+            self.tsh.replace_group_metadata(cn, name, meta)
+
     def group_catalog(self, allsources: bool=True) -> Dict[Tuple[str, str], List[Tuple[str,str]]]:
         """Produces a catalog of all groups in the form of a mapping from
         source to a list of (name, kind) pair.
@@ -1375,7 +1383,6 @@ class altsources:
             from_insertion_date,
             to_insertion_date
         )
-
 
     def group_catalog(self, allsources=False):
         cats = []

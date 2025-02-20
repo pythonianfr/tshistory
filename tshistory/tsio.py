@@ -591,7 +591,7 @@ class base:
         cn.execute(sql, oldname=oldname, newname=newname)
 
     @tx
-    def update_group_metadata(self, cn, name, metadata):
+    def replace_group_metadata(self, cn, name, metadata):
         assert isinstance(metadata, dict)
         sql = (
             f'update "{self.namespace}".group_registry '
@@ -601,6 +601,23 @@ class base:
         cn.execute(
             sql,
             metadata=json.dumps(metadata),
+            name=name
+        )
+
+    @tx
+    def update_group_metadata(self, cn, name, metadata):
+        assert isinstance(metadata, dict)
+        existing_metadata = self.group_metadata(cn, name) or {}
+
+        existing_metadata.update(metadata)
+        sql = (
+            f'update "{self.namespace}".group_registry '
+            'set metadata = %(metadata)s '
+            f'where name = %(name)s'
+        )
+        cn.execute(
+            sql,
+            metadata=json.dumps(existing_metadata),
             name=name
         )
 
