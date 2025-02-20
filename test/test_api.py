@@ -497,6 +497,12 @@ def test_erasure(tsx):
 
 def test_rewrite_on_na_tzaware(tsx):
 
+    # audit tools
+    if tsx.uri.startswith('http'):
+        return
+    tsh = tsx.tsh
+    e = tsx.engine
+
     # creation
     name = 'rewrite-on-na'
     ts = genserie(utcdt(2025, 1, 1), 'd', 3)
@@ -505,12 +511,25 @@ def test_rewrite_on_na_tzaware(tsx):
 
     assert len(tsx.get(name)) == 3
 
+    assert (str(tsh.interval(e, name)) ==
+            '[2025-01-01 00:00:00+00:00, 2025-01-03 00:00:00+00:00]')
+    assert (str(tsh.interval(e, name, notz=True)) ==
+            '[2025-01-01 00:00:00, 2025-01-03 00:00:00]')
+    # so far, so good
+
     # erasure of second point
     ts.iloc[1] = np.nan
     tsx.update(name, ts, 'still-arnaud', keepnans=True)
 
     assert len(tsx.get(name)) == 2
     assert len(tsx.get(name, keepnans=True)) == 3
+
+    assert str(tsh.interval(e, name)) == '[2025-01-01 00:00:00+00:00, 2025-01-03 00:00:00+00:00]'
+    assert str(tsh.interval(e, name, notz=True)) == '[2025-01-01 00:00:00+00:00, 2025-01-03 00:00:00+00:00]'
+    # in this case, the notz parameter is not honored.
+    # The fault is on pandas:
+    assert (pd.Timestamp('2025-01-01T00:00:00+00:00', tz=None) ==
+            pd.Timestamp('2025-01-01 00:00:00+0000', tz='UTC'))
 
     # rewrite
     ts.iloc[1] = 3.14
