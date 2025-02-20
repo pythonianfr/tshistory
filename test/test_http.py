@@ -591,6 +591,47 @@ def test_patch_nonutc_tzaware(http):
         '2023-01-05T00:00:00+00:00': 4.0
     }
 
+    # erasure
+    ts = genserie(utcdt(2023, 1, 3), 'd', 1)
+    ts.iloc[0] = np.nan
+    ts.index = ts.index.tz_convert('Europe/Paris')
+    res = http.patch_json('/series/state', params={
+        'name': 'patchnonutc-tzaware',
+        'tzone': 'Europe/Paris',
+        'series': json.loads(util.tojson(ts)),
+        'author': 'Babar',
+        'insertion_date': str(utcdt(2023, 1, 2)),
+        'tzaware': util.tzaware_series(ts),
+        'keepnans': True,
+    })
+    assert res.status_code == 200
+
+    res = http.get('/series/state', params={
+        'name': 'patchnonutc-tzaware'
+    })
+    assert res.status_code == 200
+
+    # rewriting
+    ts = genserie(utcdt(2023, 1, 3), 'd', 1)
+    ts.iloc[0] = 3.14
+    ts.index = ts.index.tz_convert('Europe/Paris')
+    res = http.patch_json('/series/state', params={
+        'name': 'patchnonutc-tzaware',
+        'tzone': 'Europe/Paris',
+        'series': json.loads(util.tojson(ts)),
+        'author': 'Babar',
+        'insertion_date': str(utcdt(2023, 1, 3)),
+        'tzaware': util.tzaware_series(ts),
+        'keepnans': True,
+    })
+    assert res.status_code == 418
+    assert res.text == 'Cannot compare tz-naive and tz-aware timestamps'
+
+    res = http.get('/series/state', params={
+        'name': 'patchnonutc-tzaware'
+    })
+    assert res.status_code == 200
+
 
 def test_patch_nonutc_tzaware_bseries(http):
     ts = genserie(utcdt(2024, 1, 1), 'd', 5)

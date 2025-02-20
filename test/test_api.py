@@ -495,6 +495,30 @@ def test_erasure(tsx):
     assert meta['value_type'] == 'float64'
 
 
+def test_rewrite_on_na_tzaware(tsx):
+
+    # creation
+    name = 'rewrite-on-na'
+    ts = genserie(utcdt(2025, 1, 1), 'd', 3)
+    ts.index = ts.index.tz_convert('Europe/Paris')
+    tsx.update(name, ts, 'arnaud')
+
+    assert len(tsx.get(name)) == 3
+
+    # erasure of second point
+    ts.iloc[1] = np.nan
+    tsx.update(name, ts, 'still-arnaud', keepnans=True)
+
+    assert len(tsx.get(name)) == 2
+    assert len(tsx.get(name, keepnans=True)) == 3
+
+    # rewrite
+    ts.iloc[1] = 3.14
+    with pytest.raises(Exception) as err:
+        tsx.update(name, ts, 'still-arnaud', keepnans=True)
+    assert err.value.args[0] == 'Cannot compare tz-naive and tz-aware timestamps'
+
+
 def test_log(tsx):
     for name in ('log-me',):
         tsx.delete(name)
