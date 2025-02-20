@@ -1856,3 +1856,83 @@ def test_group_metadata(tsx):
     assert m == {
         'bar': 42,
     }
+
+
+def test_group_log(tsx):
+    df = gengroup(
+        n_scenarios=4,
+        from_date=pd.Timestamp('2025-1-1'),
+        length=4,
+        freq='d',
+        seed=4
+    )
+
+    tsx.group_replace(
+        'for-log',
+        df,
+        author='Babar',
+        insertion_date=pd.Timestamp('2025-01-01', tz='UTC')
+    )
+
+    log = tsx.group_log('for-log')
+    assert log == [
+        {
+            'author': 'Babar',
+            'date': pd.Timestamp('2025-01-01 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 1
+        }
+    ]
+
+    df = gengroup(
+        n_scenarios=4,
+        from_date=pd.Timestamp('2025-1-2'),
+        length=4,
+        freq='d',
+        seed=4
+    )
+    tsx.group_replace(
+        'for-log',
+        df,
+        author='Celeste',
+        insertion_date=pd.Timestamp('2025-01-02', tz='UTC')
+    )
+
+    log = tsx.group_log('for-log')
+    assert log == [
+        {
+            'author': 'Babar',
+            'date': pd.Timestamp('2025-01-01 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 1
+        },
+        {
+            'author': 'Celeste',
+            'date': pd.Timestamp('2025-01-02 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 2
+        }
+    ]
+
+    log = tsx.group_log('for-log', limit=1)
+    assert len(log) == 1
+
+    log = tsx.group_log('for-log', fromdate=pd.Timestamp('2025-1-2', tz='utc'))
+    assert log == [
+        {
+            'author': 'Celeste',
+            'date': pd.Timestamp('2025-01-02 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 2
+        }
+    ]
+
+    log = tsx.group_log('for-log', todate=pd.Timestamp('2025-1-1', tz='utc'))
+    assert log == [
+        {
+            'author': 'Babar',
+            'date': pd.Timestamp('2025-01-01 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 1
+        },
+    ]

@@ -568,6 +568,24 @@ class base:
         return cat
 
     @tx
+    def group_log(self, cn, name, limit=None,
+                  fromdate=None, todate=None):
+        """Build a structure showing the history of a group in the db,
+        per changeset, in chronological order.
+        """
+        if not self.group_exists(cn, name):
+            return []
+
+        infos = self._group_info(cn, name)
+        return self.tsh_group.log(
+            cn,
+            infos[0][1],
+            limit=limit,
+            fromdate=fromdate,
+            todate=todate
+        )
+
+    @tx
     def group_internal_metadata(self, cn, name):
         return cn.execute(
             f'select internal_metadata from "{self.namespace}".group_registry '

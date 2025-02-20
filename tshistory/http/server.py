@@ -1473,3 +1473,43 @@ class httpapi:
                     raise
 
                 return '', 200
+
+        @nsg.route('/log')
+        class group_log(Resource):
+
+            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.expect(log)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                """returns the insertion log of a group, as a list.
+
+                Individual items as returned as such:
+
+                {
+                 "rev": 2,
+                 "author": "webui",
+                 "date": "2022-10-27T13:46:34.777338+00:00",
+                }
+
+                It is possible to specify a limit.
+
+                Also the fromdate/todate parameters allow to restrict
+                the versions horizon. Dates should be provided as
+                ISO8601 strings.
+
+                """
+                args = log.parse_args()
+                if not tsa.group_exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
+                logs = []
+                for item in tsa.group_log(
+                    args.name,
+                    limit=args.limit,
+                    fromdate=args.fromdate,
+                    todate=args.todate):
+                    item['date'] = item['date'].isoformat()
+                    logs.append(item)
+
+                return logs, 200

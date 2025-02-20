@@ -3740,3 +3740,85 @@ def test_group_metadata(engine, tsh):
     assert m == {
         'bar': 42,
     }
+
+
+def test_group_log(engine, tsh):
+    df = gengroup(
+        n_scenarios=4,
+        from_date=datetime(2025, 1, 1),
+        length=4,
+        freq='d',
+        seed=4
+    )
+
+    tsh.group_replace(
+        engine,
+        df,
+        'for-log',
+        author='Babar',
+        insertion_date=pd.Timestamp('2025-01-01', tz='UTC')
+    )
+
+    log = tsh.group_log(engine, 'for-log')
+    assert log == [
+        {
+            'author': 'Babar',
+            'date': pd.Timestamp('2025-01-01 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 1
+        }
+    ]
+
+    df = gengroup(
+        n_scenarios=4,
+        from_date=datetime(2025, 1, 2),
+        length=4,
+        freq='d',
+        seed=4
+    )
+    tsh.group_replace(
+        engine,
+        df,
+        'for-log',
+        author='Celeste',
+        insertion_date=pd.Timestamp('2025-01-02', tz='UTC')
+    )
+
+    log = tsh.group_log(engine, 'for-log')
+    assert log == [
+        {
+            'author': 'Babar',
+            'date': pd.Timestamp('2025-01-01 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 1
+        },
+        {
+            'author': 'Celeste',
+            'date': pd.Timestamp('2025-01-02 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 2
+        }
+    ]
+
+    log = tsh.group_log(engine, 'for-log', limit=1)
+    assert len(log) == 1
+
+    log = tsh.group_log(engine, 'for-log', fromdate=pd.Timestamp('2025-1-2', tz='utc'))
+    assert log == [
+        {
+            'author': 'Celeste',
+            'date': pd.Timestamp('2025-01-02 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 2
+        }
+    ]
+
+    log = tsh.group_log(engine, 'for-log', todate=pd.Timestamp('2025-1-1', tz='utc'))
+    assert log == [
+        {
+            'author': 'Babar',
+            'date': pd.Timestamp('2025-01-01 00:00:00+0000', tz='UTC'),
+            'meta': {},
+            'rev': 1
+        },
+    ]

@@ -376,6 +376,11 @@ class with_http_bridge:
             callback=partial(read_request_bridge, wsgitester)
         )
 
+        resp.add_callback(
+            responses.GET, uri + '/group/log',
+            callback=partial(read_request_bridge, wsgitester)
+        )
+
 
 class WebTester(webtest.TestApp):
 

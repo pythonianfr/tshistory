@@ -869,6 +869,20 @@ class mainsource:
 
         return self.othersources.group_type(name)
 
+    def group_log(self,
+                  name: str,
+                  limit: Optional[int]=None,
+                  fromdate: Optional[pd.Timestamp]=None,
+                  todate: Optional[pd.Timestamp]=None) -> List[Dict[str, Any]]:
+        with self.engine.begin() as cn:
+            return self.tsh.group_log(
+                cn,
+                name,
+                limit=limit,
+                fromdate=fromdate,
+                todate=todate
+            )
+
     def group_rename(self, oldname: str, newname: str) -> NONETYPE:
         """Rename a group.
 

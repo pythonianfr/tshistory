@@ -881,6 +881,27 @@ class httpclient:
         # 404 -> we tried to delete a non-existent group, do nothing
 
     @unwraperror
+    def group_log(self, name, limit=None, fromdate=None, todate=None):
+        query = {
+            'name': name
+        }
+        if limit:
+            query['limit'] = limit
+        if fromdate:
+            query['fromdate'] = fromdate.isoformat()
+        if todate:
+            query['todate'] = todate.isoformat()
+        res = self.session.get(f'{self.uri}/group/log', params=query)
+        if res.status_code == 200:
+            logs = []
+            for item in res.json():
+                item['date'] = pd.Timestamp(item['date'])
+                logs.append(item)
+            return logs
+
+        return res
+
+    @unwraperror
     def group_metadata(self, name, all=False):
         if all is not None:
             warnings.warn(
