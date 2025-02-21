@@ -624,8 +624,7 @@ def test_patch_nonutc_tzaware(http):
         'tzaware': util.tzaware_series(ts),
         'keepnans': True,
     })
-    assert res.status_code == 418
-    assert res.text == 'Cannot compare tz-naive and tz-aware timestamps'
+    assert res.status_code == 200
 
     res = http.get('/series/state', params={
         'name': 'patchnonutc-tzaware'

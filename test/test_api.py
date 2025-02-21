@@ -525,17 +525,11 @@ def test_rewrite_on_na_tzaware(tsx):
     assert len(tsx.get(name, keepnans=True)) == 3
 
     assert str(tsh.interval(e, name)) == '[2025-01-01 00:00:00+00:00, 2025-01-03 00:00:00+00:00]'
-    assert str(tsh.interval(e, name, notz=True)) == '[2025-01-01 00:00:00+00:00, 2025-01-03 00:00:00+00:00]'
-    # in this case, the notz parameter is not honored.
-    # The fault is on pandas:
-    assert (pd.Timestamp('2025-01-01T00:00:00+00:00', tz=None) ==
-            pd.Timestamp('2025-01-01 00:00:00+0000', tz='UTC'))
+    assert str(tsh.interval(e, name, notz=True)) == '[2025-01-01 00:00:00, 2025-01-03 00:00:00]'
 
     # rewrite
     ts.iloc[1] = 3.14
-    with pytest.raises(Exception) as err:
-        tsx.update(name, ts, 'still-arnaud', keepnans=True)
-    assert err.value.args[0] == 'Cannot compare tz-naive and tz-aware timestamps'
+    tsx.update(name, ts, 'still-arnaud', keepnans=True)
 
 
 def test_log(tsx):

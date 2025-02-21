@@ -13,6 +13,7 @@ from sqlhelp import sqlfile, select, insert
 
 from tshistory.config import configuration
 from tshistory.util import (
+    applytz,
     closed_overlaps,
     compatible_date,
     diff,
@@ -535,10 +536,9 @@ class base:
         if start is None:
             # completely erased series !
             return None
-        tz = None
-        if self.tzaware(cn, name) and not notz:
-            tz = 'UTC'
-        start, end = pd.Timestamp(start, tz=tz), pd.Timestamp(end, tz=tz)
+
+        tzaware = self.tzaware(cn, name) and not notz
+        start, end = applytz(start, tzaware), applytz(end, tzaware)
         return pd.Interval(left=start, right=end, closed='both')
 
     # groups

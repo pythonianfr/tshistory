@@ -206,6 +206,18 @@ def ensuretz(adate):
     return adate
 
 
+def applytz(date, tzaware):
+    pd_date = pd.Timestamp(date)
+    if pd_date.tzinfo is None and not tzaware:
+        return pd_date
+    elif pd_date.tzinfo is not None and tzaware:
+        return pd_date
+    elif pd_date.tzinfo is None and tzaware:
+        return pd.Timestamp(pd_date, tz='UTC')
+    else:
+        return pd_date.tz_localize(None)
+
+
 def tzaware_series(ts):
     return isinstance(ts.index.dtype, pd.DatetimeTZDtype)
 
