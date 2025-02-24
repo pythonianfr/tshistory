@@ -1,4 +1,3 @@
-from collections import defaultdict
 from json import dumps
 import os
 
