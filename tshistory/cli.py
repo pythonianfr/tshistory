@@ -19,7 +19,11 @@ def tsh():
 
 @tsh.command()
 def configpath():
-    print(configuration.path().resolve())
+    path = configuration.path().resolve()  # pytype: disable=attribute-error
+    if path is None:
+        print('No config file was found!')
+        return
+    print(path)
 
 
 # db maintenance
