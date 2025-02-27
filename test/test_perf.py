@@ -63,7 +63,7 @@ def engine(db):
                 scope='session')
 def tsh(request, engine):
     namespace = 'perf'
-    schema.tsschema(namespace).create(engine, reset=True)
+    schema.tsschema(namespace).create(engine)
 
     datapath = DATADIR / 'fs1' / namespace
     shutil.rmtree(datapath, ignore_errors=True)
