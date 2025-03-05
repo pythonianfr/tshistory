@@ -199,7 +199,7 @@ def migrate_intervals(engine, namespace, interactive):
 
         with engine.begin() as cn:
             imeta = tsh.internal_metadata(engine, name)
-            if imeta.get('left') is not None:
+            if 'left' in imeta:
                 # already migrated
                 continue
 
