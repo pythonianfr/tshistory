@@ -639,6 +639,23 @@ class base:
             name=name
         )
 
+    @tx
+    def update_group_internal_metadata(self, cn, name, metadata):
+        assert isinstance(metadata, dict)
+        existing_metadata = self.group_internal_metadata(cn, name) or {}
+
+        existing_metadata.update(metadata)
+        sql = (
+            f'update "{self.namespace}".group_registry '
+            'set internal_metadata = %(metadata)s '
+            f'where name = %(name)s'
+        )
+        cn.execute(
+            sql,
+            metadata=json.dumps(existing_metadata),
+            name=name
+        )
+
     def _group_info(self, cn, name):
         ns = self.namespace
         sql = (
