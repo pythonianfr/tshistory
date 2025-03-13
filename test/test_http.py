@@ -1249,9 +1249,9 @@ def test_log(http):
 # groups
 
 
-def test_get_empty(http):
+def test_group_get_empty(http):
     df = pd.Series(
-        [np.nan],
+        [1.],
         index=[pd.Timestamp('2025-1-1', tz='utc')]
     ).to_frame()
 
@@ -1267,8 +1267,13 @@ def test_get_empty(http):
             'bgroup': webtest.Upload('bgroup', bgroup)
         }
     )
-    res = http.get('/group/state?name=empty-with-nans')
-    assert res.status_code == 418
+    res = http.get('/group/state?name=empty-with-nans', params={
+        'tzone': 'CET',
+        'format': 'json',
+        'from_value_date': pd.Timestamp('2026-1-1').isoformat()
+    })
+    assert res.status_code == 200
+    assert res.json == {'0': {}}
 
 
 def test_naive_group(http):
