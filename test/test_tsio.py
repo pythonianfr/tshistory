@@ -3455,6 +3455,23 @@ def test_primary_group(engine, tsh):
     assert df2.equals(df)
 
 
+def test_group_nan(engine, tsh):
+    df = pd.Series(
+        [np.nan],
+        index=[pd.Timestamp('2025-1-1', tz='utc')]
+    ).to_frame()
+
+    tsh.group_replace(
+        engine,
+        df,
+        'group-with-nans',
+        'Babar'
+    )
+
+    with pytest.raises(ValueError):
+        tsh.group_get(engine, 'group-with-nans')
+
+
 def test_group_history(engine, tsh):
     for idx, idate in enumerate(
             pd.date_range(start=utcdt(2022, 1, 1),

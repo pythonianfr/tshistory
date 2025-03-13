@@ -1248,6 +1248,29 @@ def test_log(http):
 
 # groups
 
+
+def test_get_empty(http):
+    df = pd.Series(
+        [np.nan],
+        index=[pd.Timestamp('2025-1-1', tz='utc')]
+    ).to_frame()
+
+    bgroup = codecs.pack_group(df)
+    http.patch(
+        '/group/state',
+        params={
+            'name': 'empty-with-nans',
+            'author': 'Babar',
+            'tzaware': json.dumps(True),
+            'keepnans': json.dumps(True),
+            'tzone': 'CET',
+            'bgroup': webtest.Upload('bgroup', bgroup)
+        }
+    )
+    res = http.get('/group/state?name=empty-with-nans')
+    assert res.status_code == 418
+
+
 def test_naive_group(http):
     df = gengroup(
         n_scenarios=3,
