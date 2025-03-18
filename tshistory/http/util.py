@@ -64,12 +64,44 @@ def utcdt(dtstr):
     return pd.Timestamp(dtstr)
 
 
-def convert_bounds(from_value_date, to_value_date, tzone):
+def force_naive(maybe_datetime):
+    if maybe_datetime is None:
+        return None
+    return maybe_datetime.tz_localize(None)
+
+
+def convert_bounds(from_value_date, to_value_date, tzone, tzaware):
+    if not tzaware:
+        return force_naive(from_value_date), force_naive(to_value_date)
     if from_value_date and from_value_date.tz is None and tzone is not None:
         from_value_date = from_value_date.tz_localize(tzone)
     if to_value_date and to_value_date.tz is None and tzone is not None:
         to_value_date = to_value_date.tz_localize(tzone)
     return from_value_date, to_value_date
+
+
+def prune_bounds(series, from_value_date, to_value_date, exclude='none'):
+    if exclude == 'none':
+        return series
+    assert exclude in ('left', 'right', 'both')
+    if exclude == 'left' and from_value_date is None:
+        return series
+    if exclude == 'right' and to_value_date is None:
+        return series
+    if exclude == 'left':
+        to_prune = [from_value_date]
+    elif exclude == 'right':
+        to_prune = [to_value_date]
+    elif exclude == 'both':
+        to_prune = [from_value_date, to_value_date]
+    return _prune(series, to_prune)
+
+
+def _prune(series, datetimes):
+    mask = series.index.isin(datetimes)
+    if mask.any():
+        series = series[~mask]
+    return series
 
 
 def todict(dictstr):

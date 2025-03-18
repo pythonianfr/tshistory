@@ -29,7 +29,8 @@ from tshistory.http.util import (
     required_roles,
     todict,
     utcdt,
-    convert_bounds
+    convert_bounds,
+    prune_bounds,
 )
 
 
@@ -193,6 +194,10 @@ get.add_argument(
 get.add_argument(
     'tzone', type=str, default='UTC',
     help='Convert tz-aware series into this time zone before sending'
+)
+get.add_argument(
+    'exclude', type=str, default='none',
+    help='Exclude "left", "right" or "both" request bounds from the series index'
 )
 get.add_argument(
     'inferred_freq', type=inputs.boolean, default=False,
@@ -866,10 +871,12 @@ class httpapi:
                 args = get.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
+                metadata = tsa.internal_metadata(args.name)
                 from_value_date, to_value_date = convert_bounds(
                     args.from_value_date,
                     args.to_value_date,
-                    args.tzone
+                    args.tzone,
+                    metadata['tzaware']
                 )
 
                 series = tsa.get(
@@ -886,7 +893,12 @@ class httpapi:
                 # the fast path will need it
                 # also it is read from a cache filled at get time
                 # so very cheap call
-                metadata = tsa.internal_metadata(args.name)
+                series = prune_bounds(
+                    series,
+                    from_value_date,
+                    to_value_date,
+                    args.exclude
+                )
                 if metadata['tzaware'] and args.tzone.upper() != 'UTC':
                     series.index = series.index.tz_convert(args.tzone)
 
@@ -1344,10 +1356,14 @@ class httpapi:
             @required_roles('admin', 'rw', 'ro')
             def get(self):
                 args = groupget.parse_args()
+                metadata = tsa.group_internal_metadata(args.name)
+                if metadata is None:
+                    api.abort(404, f'`{args.name}` does not exists')
                 from_value_date, to_value_date = convert_bounds(
                     args.from_value_date,
                     args.to_value_date,
-                    args.tzone
+                    args.tzone,
+                    metadata['tzaware']
                 )
                 df = tsa.group_get(
                     args.name,
@@ -1355,10 +1371,6 @@ class httpapi:
                     from_value_date=from_value_date,
                     to_value_date=to_value_date
                 )
-                if df is None:
-                    api.abort(404, f'`{args.name}` does not exists')
-                metadata = tsa.group_internal_metadata(args.name)
-
                 if metadata['tzaware'] and args.tzone.upper() != 'UTC':
                     df.index = df.index.tz_convert(args.tzone)
                 return group_response(

@@ -783,6 +783,70 @@ def test_apply_tz_on_bounds(client, http):
     assert tsr.index[-1] == '2023-01-03T00:00:00+01:00'
 
 
+def test_exclude(client, http):
+    ts = pd.Series(
+        range(4),
+        index=pd.date_range(
+            start=pd.Timestamp('2023-01-01', tz='UTC'),
+            end=pd.Timestamp('2023-01-04', tz='UTC'),
+            freq='D'
+        )
+    )
+    client.update(
+        'ts-to-exclude-tz',
+        ts,
+        'test'
+    )
+
+    ts = pd.Series(
+        range(4),
+        index=pd.date_range(
+            start=pd.Timestamp('2023-01-01'),
+            end=pd.Timestamp('2023-01-04'),
+            freq='D'
+        )
+    )
+    client.update(
+        'ts-to-exclude-naive',
+        ts,
+        'test'
+    )
+
+    # we build the request like in the UI:
+    # the dates are naives, the tz is always
+    # given and the tzaware parameter is decided
+    # by the internal metadata
+    result = http.get(
+        '/series/state',
+        params={
+            'name': 'ts-to-exclude-tz',
+            'tzone': 'CET',
+            'tzaware': True,
+            'exclude': 'right',
+            'from_value_date': pd.Timestamp('2023-01-01'),
+            'to_value_date': pd.Timestamp('2023-01-04'),
+        }
+    )
+    ts = pd.Series(result.json)
+    assert ts.index[0] == '2023-01-01T01:00:00+01:00'
+    assert ts.index[-1] == '2023-01-03T01:00:00+01:00'
+
+    result = http.get(
+        '/series/state',
+        params={
+            'name': 'ts-to-exclude-naive',
+            'tzone': 'CET',
+            'tzaware': False,
+            'exclude': 'both',
+            'from_value_date': pd.Timestamp('2023-01-01'),
+            'to_value_date': pd.Timestamp('2023-01-04'),
+        }
+    )
+    ts_tz = pd.Series(result.json)
+    assert ts_tz.index[0] == '2023-01-02T00:00:00'
+    assert ts_tz.index[-1] == '2023-01-03T00:00:00'
+
+
 def test_delete(http):
     series_in = genserie(utcdt(2018, 1, 1), 'h', 3)
     res = http.patch_json('/series/state', params={
