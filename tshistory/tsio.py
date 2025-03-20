@@ -1407,7 +1407,7 @@ class timeseries(base):
             namespace=self.namespace,
             tablename=tablename
         )
-        cn.execute(table)
+        cn.execute(table, binary=False)
 
     def _series_initial_meta(self, _cn, _name, ts):
         return series_metadata(ts)
