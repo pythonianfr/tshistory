@@ -1528,6 +1528,18 @@ insertion_date            value_date
 2021-01-05  6.0  7.0  8.0
 """, gr)
 
+    gr = tsx.group_get(
+        'remote-group',
+        from_value_date=pd.Timestamp('2021-01-02'),
+        to_value_date=pd.Timestamp('2021-01-04')
+    )
+    assert_df("""
+              0    1    2
+2021-01-02  3.0  4.0  5.0
+2021-01-03  4.0  5.0  6.0
+2021-01-04  5.0  6.0  7.0
+""", gr)
+
     tsr.group_delete('remote-group')
 
 
