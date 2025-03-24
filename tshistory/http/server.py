@@ -433,7 +433,7 @@ class httpapi:
                  title='tshistory api',
                  description=(
                      'reading and updating time series state, '
-                     'histoy, formulas and metadata'
+                     'history, formulas and metadata'
                  )):
 
         # warn against playing proxy games
