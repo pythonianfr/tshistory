@@ -1448,6 +1448,19 @@ def test_tzaware_json_group(http):
         }
     }
 
+    res = http.get(
+        '/group/state',
+        {
+            'name': 'test_group',
+            'format': 'json',
+            'tzone': 'CET',
+            '_keepnans': json.dumps(True),
+            'from_value_date': pd.Timestamp('2025-01-01').isoformat(),
+            'to_value_date': pd.Timestamp('2025-01-02').isoformat(),
+        }
+    )
+    assert res.json == {'a': {}, 'b': {}, 'c': {}}
+
     df2json = pd.read_json(io.BytesIO(res.body), dtype='float64')
     assert df.equals(df2json)
 
