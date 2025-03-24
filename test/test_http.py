@@ -1447,7 +1447,10 @@ def test_tzaware_json_group(http):
             '2021-01-05T00:00:00+00:00': 8.0
         }
     }
+    df2json = pd.read_json(io.BytesIO(res.body), dtype='float64')
+    assert df.equals(df2json)
 
+    # json
     res = http.get(
         '/group/state',
         {
@@ -1460,9 +1463,23 @@ def test_tzaware_json_group(http):
         }
     )
     assert res.json == {'a': {}, 'b': {}, 'c': {}}
-
     df2json = pd.read_json(io.BytesIO(res.body), dtype='float64')
-    assert df.equals(df2json)
+    # may cause issues but not the problem we have
+    assert isinstance(df2json.index, pd.Index)
+
+    # binary
+    res = http.get(
+        '/group/state',
+        {
+            'name': 'test_group',
+            'tzone': 'CET',
+            'format': 'tshpack',
+            'from_value_date': pd.Timestamp('2025-01-01').isoformat(),
+            'to_value_date': pd.Timestamp('2025-01-02').isoformat(),
+        }
+    )
+    df2 = codecs.unpack_group(res.body)
+    assert isinstance(df2.index, pd.RangeIndex)
 
 
 def test_apply_tz_on_group_bounds(client, http):
