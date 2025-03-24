@@ -1479,7 +1479,7 @@ def test_tzaware_json_group(http):
         }
     )
     df2 = codecs.unpack_group(res.body)
-    assert isinstance(df2.index, pd.RangeIndex)
+    assert isinstance(df2.index, pd.DatetimeIndex)
 
 
 def test_apply_tz_on_group_bounds(client, http):

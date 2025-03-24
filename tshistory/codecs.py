@@ -300,7 +300,7 @@ def unpack_group(bytestr):
             bidtype
         )
     else:
-        return pd.DataFrame()
+        return pd.DataFrame(index=pd.DatetimeIndex([]))
 
     values = {}
     iterbseries = zip(*[iter(byteslist[2:])] * 3)
