@@ -184,13 +184,16 @@ class base:
 
     @tx
     def find(self, cn, query, limit=None, meta=False, source='local'):
+        return self._find(cn, query, limit, meta, source, 'registry')
+
+    def _find(self, cn, query, limit, meta, source, target):
         items = self._find_items[:]
         if meta:
             items += ['internal_metadata', 'metadata']
         q = select(
             *items
         ).table(
-            f'"{self.namespace}".registry as reg'
+            f'"{self.namespace}".{target} as reg'
         ).order('name', 'asc')
         sql, kw = query.sql(self.namespace)
         if sql:
