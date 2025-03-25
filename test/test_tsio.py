@@ -3336,7 +3336,6 @@ def test_basket(engine, tsh):
 
 # groups
 
-
 def test_primary_group(engine, tsh):
     df = gengroup(
         n_scenarios=3,
@@ -3631,6 +3630,167 @@ def test_group_bad_data(engine, tsh):
 
     # the integer are coreced into string
     assert ['0', '1', '2'] == df.columns.to_list()
+
+
+def test_group_find(engine, cleanup, tsh):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=utcdt(2025, 1, 1),
+        length=5,
+        freq='d',
+        seed=2
+    )
+    tsh.group_replace(
+        engine,
+        df,
+        'gr.find.me.1',
+        'Babar'
+    )
+    tsh.group_replace(
+        engine,
+        df,
+        'gr.find.me.2',
+        'Celeste'
+    )
+
+    # by name
+    r = tsh.group_find(engine, search.byname('nop'))
+    assert r == []
+
+    r = tsh.group_find(engine, search.byname('gr.find.me.1'))
+    assert r == ['gr.find.me.1']
+
+    r = tsh.group_find(engine, search.byname('.me.'))
+    assert len(r) == 2
+
+    r = tsh.group_find(engine, search.byname('find 1'))
+    assert r == ['gr.find.me.1']
+
+    tsh.replace_group_metadata(
+        engine,
+        'gr.find.me.1',
+        {
+            'foo': 42
+        }
+    )
+    tsh.replace_group_metadata(
+        engine,
+        'gr.find.me.2',
+        {
+            'bar': 'Hello',
+            'foo': 43
+        }
+    )
+
+    # by metadata key
+    r = tsh.group_find(engine, search.bymetakey('foo'))
+    assert r == ['gr.find.me.1', 'gr.find.me.2']
+
+    r = tsh.group_find(engine, search.bymetakey('nope'))
+    assert r == []
+
+    r = tsh.group_find(engine, search.bymetakey('bar'))
+    assert r == ['gr.find.me.2']
+
+    # by metadata items
+
+    r = tsh.group_find(engine, search.bymetaitem('foo', 43))
+    assert r == ['gr.find.me.2']
+
+    r = tsh.group_find(engine, search.bymetaitem('foo', 42))
+    assert r == ['gr.find.me.1']
+
+    r = tsh.group_find(engine, search.bymetaitem('bar', 'Hello'))
+    assert r == ['gr.find.me.2']
+
+    # tzaware vs naive
+    df = gengroup(
+        n_scenarios=3,
+        from_date=datetime(2025, 1, 1),
+        length=5,
+        freq='d',
+        seed=2
+    )
+    tsh.group_replace(
+        engine,
+        df,
+        'gr.find.me.tznaive',
+        'Babar'
+    )
+    tsh.replace_group_metadata(
+        engine,
+        'gr.find.me.tznaive',
+        {
+            'foo': 43
+        }
+    )
+
+    r = tsh.group_find(engine, search.tzaware())
+    assert 'gr.find.me.1' in r and 'gr.find.me.2' in r
+
+    # and combination
+    r = tsh.group_find(
+        engine,
+        search.and_(
+            search.bymetaitem('foo', 43),
+            search.bymetaitem('bar', 'Hello')
+        )
+    )
+    assert r == ['gr.find.me.2']
+
+    # negation
+    r = tsh.group_find(
+        engine,
+        search.not_(
+            search.tzaware()
+        )
+    )
+    assert 'gr.find.me.tznaive' in r and 'gr.find.me.1' not in r and 'gr.find.me.2' not in r
+
+    r = tsh.group_find(
+        engine,
+        search.and_(
+            search.bymetaitem('foo', 43),
+            search.not_(
+                search.tzaware()
+            )
+        )
+    )
+    assert r == ['gr.find.me.tznaive']
+
+    r = tsh.group_find(
+        engine,
+        search.and_(
+            search.not_(
+                search.bymetaitem('foo', 43)
+            ),
+            search.tzaware()
+        )
+    )
+    assert r == ['gr.find.me.1']
+
+    # or
+
+    r = tsh.group_find(
+        engine,
+        search.or_(
+            search.bymetaitem('foo', 43),
+            search.bymetaitem('foo', 42),
+        )
+    )
+    assert r == ['gr.find.me.1', 'gr.find.me.2', 'gr.find.me.tznaive']
+
+    r = tsh.group_find(
+        engine,
+        search.and_(
+            search.or_(
+                search.bymetakey('bar'),
+                search.bymetaitem('foo', 42),
+            ),
+            search.tzaware()
+        )
+    )
+    assert r == ['gr.find.me.1', 'gr.find.me.2']
 
 
 def test_group_other_operations(engine, tsh):

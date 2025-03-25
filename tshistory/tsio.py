@@ -588,6 +588,10 @@ class base:
         )
 
     @tx
+    def group_find(self, cn, query, limit=None, meta=False, source='local'):
+        return self._find(cn, query, limit, meta, source, 'group_registry')
+
+    @tx
     def group_internal_metadata(self, cn, name):
         return cn.execute(
             f'select internal_metadata from "{self.namespace}".group_registry '
