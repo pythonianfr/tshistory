@@ -424,6 +424,20 @@ put_groupmetadata.add_argument(
     help='set new metadata for a series group'
 )
 
+groupfind = reqparse.RequestParser()
+groupfind.add_argument(
+    'query', type=str
+)
+groupfind.add_argument(
+    'limit', type=int
+)
+groupfind.add_argument(
+    'meta', type=inputs.boolean, default=False
+)
+groupfind.add_argument(
+    '_source', type=str, default='local'
+)
+
 
 class httpapi:
     __slots__ = 'tsa', 'bp', 'api', 'nss', 'nsg'
@@ -1513,3 +1527,71 @@ class httpapi:
                     logs.append(item)
 
                 return logs, 200
+
+        @nsg.route('/find')
+        class group_find(Resource):
+
+            @api.doc(responses={200: 'Got content'})
+            @api.expect(groupfind)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                """return a list of group descriptor from a filter query
+
+                A filter query is a lisp expression.
+                Examples:
+                * (by.everything) will return descriptors for all series
+                * (by.name ".fcst") will return descriptos for all
+                  series whose name contains the ".fcst" string
+
+                The complete description of the filter language can be
+                found in the main documentation.
+
+                It is possible to specify a limit argument to limit
+                the results. Results are sorted by series name.
+
+                By setting the "meta" argument to true, one gets the
+                internal and user metadata in the returned series
+                descriptors.
+
+                The group descriptor is an object with fixed fields.
+                Without metadata it looks like this:
+
+                {
+                 "name": "series0",
+                 "imeta": null,
+                 "meta": null,
+                 "source": "local",
+                 "kind": "primary"
+                }
+
+                With metadata, we have this:
+
+                {
+                 "name": "series0",
+                 "imeta": {
+                  "tzaware": false,
+                  "tablename": "series0",
+                  "index_type": "datetime64[ns]",
+                  "value_type": "float64",
+                  "index_dtype": "<M8[ns]",
+                  "value_dtype": "<f8",
+                  "supervision_status": "supervised"
+                 },
+                 "meta": {
+                  "foo": "bar"
+                 },
+                 "source": "local",
+                 "kind": "primary"
+                }
+                """
+                args = find.parse_args()
+                return [
+                    item.to_json()
+                    for item in tsa.group_find(
+                            args.query,
+                            limit=args.limit,
+                            meta=args.meta,
+                            _source=args._source
+                    )
+                ]

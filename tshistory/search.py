@@ -146,7 +146,7 @@ def removebysource(querytree: list) -> typing.Optional[list]:
     )
 
 
-def local_search(cn, tsh, q, source, limit=None, meta=False):
+def local_search(cn, finder, q, source, limit=None, meta=False):
     """
     Take a query with parameters (and utilities) and execute it
     locally after having handled the "by.source" clauses
@@ -164,7 +164,7 @@ def local_search(cn, tsh, q, source, limit=None, meta=False):
     if localquery is None:
         localquery = ['by.everything']
 
-    return tsh.find(
+    return finder(
         cn,
         query.fromexpr(
             serialize(localquery)

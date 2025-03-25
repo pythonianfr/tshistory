@@ -610,7 +610,7 @@ class mainsource:
         with self.engine.begin() as cn:
             localnames = search.local_search(
                 cn,
-                self.tsh,
+                self.tsh.find,
                 query,
                 _source,
                 limit,
@@ -898,6 +898,80 @@ class mainsource:
                 fromdate=fromdate,
                 todate=todate
             )
+
+    def group_find(self, query: str,
+                   limit: Optional[int]=None,
+                   meta: Optional[int]=False,
+                   _source: Optional[str]='local') -> List[ts]:
+        """Return a list of group descriptors matching the query.
+
+        A series descriptor is a string-like object (exhibiting the
+        series name) with additional attributes. If `meta` has been
+        set to True, the .meta (for normal metadata) and .imeta (for
+        internal metadata) fields will be populated (non
+        None). Lastly, the .source and .kind attributes provides the
+        series source and kind.
+
+        Here is an example:
+
+        .. highlight:: python
+        .. code-block:: python
+
+         tsa.group_find(
+            '(by.and '
+            '  (by.tzaware)'
+            '  (by.name "power capacity") '
+            '  (by.metakey "plant")'
+            '  (by.not (by.or '
+            '    (by.metaitem "plant_type" "oil")'
+            '    (by.metaitem "plant_type" "coal")))'
+            '  (by.metaitem "unit" "mwh")'
+            '  (by.metaitem "country" "fr"))'
+         )
+
+        The following filters can be used from the search module:
+
+        * by.tzaware: no parameter, yields time zone aware series names
+
+        * by.name <str>: takes a space separated string of word, yields
+          series names containing the substrings (in order)
+
+        * by.metakey <str>: takes a string, strictly matches all series
+          having this metadata key
+
+        * by.metaitems <str>  <str-or-number>: takes a string (key) and an
+          str (or numerical) value and yields all series strictly
+          matching this metadata item
+
+        * by.and: takes a variable number of filters as above
+          to combine them
+
+        * by.or: takes a variable number of filters as above
+          to combine them
+
+        * by.not: produce the negation of a filter
+
+        Also inequalities on metadata values can be used:
+
+        * <, <=, >, >=, =: take a string key, a value (str or num)
+
+        As in `(<= "max_capacity" 900)`
+
+        """
+        with self.engine.begin() as cn:
+            localnames = search.local_search(
+                cn,
+                self.tsh.group_find,
+                query,
+                _source,
+                limit,
+                meta
+            )
+
+        remotenames = self.othersources.group_find(query, limit, meta)
+        return sorted(
+            localnames + remotenames
+        )
 
     def group_rename(self, oldname: str, newname: str) -> NONETYPE:
         """Rename a group.
@@ -1266,6 +1340,9 @@ class altsources:
         return cat
 
     def find(self, query, limit=None, meta=False):
+        return self._find(query, limit, meta, 'find')
+
+    def _find(self, query, limit, meta, finder):
         nameslist = []
         pool = threadpool(len(self.sources))
         parsedquery = lisp.parse(query)
@@ -1286,7 +1363,7 @@ class altsources:
                 if not localquery:
                     localquery = ['by.everything']
                 nameslist.append(
-                    source.tsa.find(
+                    getattr(source.tsa, finder)(
                         lisp.serialize(localquery),
                         limit=limit,
                         meta=meta,
@@ -1365,6 +1442,9 @@ class altsources:
             return
         meta = source.tsa.group_metadata(name)
         return meta
+
+    def group_find(self, query, limit=None, meta=False):
+        return self._find(query, limit, meta, 'group_find')
 
     def group_get(self,
                   name,

@@ -1985,3 +1985,183 @@ def test_group_log(tsx):
             'rev': 1
         },
     ]
+
+
+def test_group_find(tsx):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=utcdt(2025, 1, 1),
+        length=5,
+        freq='d',
+        seed=2
+    )
+    tsx.group_replace(
+        'gr.find.me.1',
+        df,
+        'Babar'
+    )
+    tsx.group_replace(
+        'gr.find.me.2',
+        df,
+        'Celeste'
+    )
+
+    # assert tsx.source('find.me.1') == 'local'
+
+    # by name
+    r = tsx.group_find('(by.name "nop")')
+    assert r == []
+
+    r = tsx.group_find('(by.name "find.me.1")')
+    assert r == ['gr.find.me.1']
+
+    assert r[0].kind == 'primary'
+
+    r = tsx.group_find('(by.name ".me.")')
+    assert len(r) == 2
+
+    r = tsx.group_find('(by.name "find 1")')
+    assert r == ['gr.find.me.1']
+
+    tsx.replace_group_metadata(
+        'gr.find.me.1',
+        {
+            'foo': 42
+        }
+    )
+    tsx.replace_group_metadata(
+        'gr.find.me.2',
+        {
+            'bar': 'Hello',
+            'foo': 43
+        }
+    )
+
+    # by metadata key
+    r = tsx.group_find('(by.metakey "foo")')
+    assert r == ['gr.find.me.1', 'gr.find.me.2']
+
+    r = tsx.group_find('(by.metakey "nope")')
+    assert r == []
+
+    r = tsx.group_find('(by.metakey "bar")')
+    assert r == ['gr.find.me.2']
+
+    # by metadata items
+
+    r = tsx.group_find('(by.metaitem "foo" 43)')
+    assert r == ['gr.find.me.2']
+
+    r = tsx.group_find('(by.metaitem "foo" 42)')
+    assert r == ['gr.find.me.1']
+
+    r = tsx.group_find('(by.metaitem "bar" "Hello")')
+    assert r == ['gr.find.me.2']
+
+    # tzaware
+    df = gengroup(
+        n_scenarios=3,
+        from_date=dt(2025, 1, 1),
+        length=5,
+        freq='d',
+        seed=2
+    )
+    tsx.group_replace(
+        'gr.find.me.tznaive',
+        df,
+        'Babar'
+    )
+    tsx.replace_group_metadata(
+        'gr.find.me.tznaive',
+        {
+            'foo': 43
+        }
+    )
+
+    r = tsx.group_find('(by.tzaware)')
+    assert 'gr.find.me.1' in r and 'gr.find.me.2' in r
+
+    # and combination
+    r = tsx.group_find(
+        '(by.and '
+        '  (by.metaitem "foo" 43) '
+        '  (by.metaitem "bar" "Hello"))'
+    )
+    assert r == ['gr.find.me.2']
+
+    # negation
+    r = tsx.group_find(
+        '(by.not (by.tzaware))'
+    )
+    assert 'gr.find.me.tznaive' in r and 'gr.find.me.1' not in r and 'gr.find.me.2' not in r
+
+    r = tsx.group_find(
+        '(by.and '
+        '  (by.metaitem "foo" 43)'
+        '  (by.not (by.tzaware)))'
+    )
+    assert r == ['gr.find.me.tznaive']
+
+    r = tsx.group_find(
+        '(by.and '
+        '  (by.not (by.metaitem "foo" 43))'
+        '  (by.tzaware))'
+    )
+    assert r == ['gr.find.me.1']
+
+    # or
+
+    r = tsx.group_find(
+        '(by.or '
+        '  (= "foo" 43)'
+        '  (= "foo" 42))'
+    )
+    assert r == ['gr.find.me.1', 'gr.find.me.2', 'gr.find.me.tznaive']
+
+    r = tsx.group_find(
+        '(by.or '
+        '  (by.metaitem "foo" 43)'
+        '  (by.metaitem "foo" 42))'
+    )
+    assert r == ['gr.find.me.1', 'gr.find.me.2', 'gr.find.me.tznaive']
+
+    r = tsx.group_find(
+        '(by.and '
+        '  (by.or '
+        '     (by.metakey "bar")'
+        '     (by.metaitem "foo" 42))'
+        '  (by.tzaware))'
+    )
+    assert r == ['gr.find.me.1', 'gr.find.me.2']
+
+    gr = r[0]
+    assert gr == 'gr.find.me.1'
+    assert gr.imeta is None
+    assert gr.meta is None
+    assert gr.source == 'local'
+    assert gr.kind == 'primary'
+
+    r = tsx.group_find('(by.everything)', limit=1)
+    assert len(r) == 1
+
+    r = tsx.group_find('(by.metaitem "bar" "Hello")', meta=True)
+    assert r == ['gr.find.me.2']
+
+    gr = r[0]
+    assert gr == 'gr.find.me.2'
+    gr.imeta.pop('tablename', None)
+    assert gr.imeta == {
+        'index_dtype': '|M8[ns]',
+        'index_type': 'datetime64[ns, UTC]',
+        'left': '2025-01-01T00:00:00',
+        'right': '2025-01-05T00:00:00',
+        'tzaware': True,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+
+    assert gr.meta == {
+        'bar': 'Hello',
+        'foo': 43
+    }
+    assert gr.source == 'local'
