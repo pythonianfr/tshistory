@@ -357,6 +357,11 @@ class with_http_bridge:
         )
 
         resp.add_callback(
+            responses.GET, uri + '/group/source',
+            callback=partial(read_request_bridge, wsgitester)
+        )
+
+        resp.add_callback(
             responses.GET, uri + '/group/metadata',
             callback=partial(read_request_bridge, wsgitester)
         )

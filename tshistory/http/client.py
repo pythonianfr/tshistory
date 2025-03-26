@@ -925,6 +925,19 @@ class httpclient:
         return res
 
     @unwraperror
+    def group_source(self, name):
+        res = self.session.get(f'{self.uri}/group/source', params={
+            'name': name
+        })
+
+        if res.status_code == 200:
+            return res.json()
+        elif res.status_code == 404:
+            return None
+
+        return res
+
+    @unwraperror
     def group_metadata(self, name, all=False):
         if all is not None:
             warnings.warn(

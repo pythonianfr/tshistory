@@ -982,6 +982,20 @@ class mainsource:
         with self.engine.begin() as cn:
             self.tsh.group_rename(cn, oldname, newname)
 
+    def group_source(self, name: str) -> Optional[str]:
+        """Provide the source name of a group.
+
+        When coming from the main source, it returns 'local'.
+
+        """
+        with self.engine.begin() as cn:
+            if self.tsh.group_exists(cn, name):
+                return 'local'
+
+        for source in self.othersources.sources:
+            if source.tsa.group_exists(name):
+                return source.name
+
     def group_get(self,
                   name: str,
                   revision_date: Optional[pd.Timestamp]=None,

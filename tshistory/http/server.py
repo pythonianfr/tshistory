@@ -428,6 +428,8 @@ put_groupmetadata.add_argument(
     help='set new metadata for a series group'
 )
 
+groupsource = base.copy()
+
 groupfind = reqparse.RequestParser()
 groupfind.add_argument(
     'query', type=str
@@ -1282,6 +1284,25 @@ class httpapi:
                 return logs, 200
 
         # groups
+
+        @nsg.route('/source')
+        class timeseries_group_source(Resource):
+
+            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.expect(groupsource)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                """returns the source of a group
+
+                If it comes from a secondary source, it returns the source name.
+                If it comes from the main source it returns the "local" string.
+                """
+                args = groupsource.parse_args()
+                if not tsa.group_exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
+                return tsa.group_source(args.name), 200
 
         @nsg.route('/state')
         class timeseries_group_state(Resource):

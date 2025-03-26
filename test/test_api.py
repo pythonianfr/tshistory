@@ -2055,7 +2055,7 @@ def test_group_find(tsx):
         'Celeste'
     )
 
-    # assert tsx.source('find.me.1') == 'local'
+    assert tsx.group_source('gr.find.me.1') == 'local'
 
     # by name
     r = tsx.group_find('(by.name "nop")')
