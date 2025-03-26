@@ -1166,6 +1166,7 @@ class timeseries(base):
                         to_insertion_date=None,
                         from_value_date=None,
                         to_value_date=None,
+                        limit=None,
                         **kw):
         guard_query_dates(
             from_insertion_date, to_insertion_date,
@@ -1176,7 +1177,8 @@ class timeseries(base):
             from_insertion_date=from_insertion_date,
             to_insertion_date=to_insertion_date,
             from_value_date=from_value_date,
-            to_value_date=to_value_date
+            to_value_date=to_value_date,
+            limit=limit
         )
 
         return [
@@ -1479,7 +1481,8 @@ class timeseries(base):
                    to_insertion_date=None,
                    from_value_date=None,
                    to_value_date=None,
-                   qcallback=None):
+                   qcallback=None,
+                   limit=None):
         tablename = self._series_to_tablename(cn, name)
         q = select(
             'id', 'insertion_date'
@@ -1522,11 +1525,14 @@ class timeseries(base):
         if qcallback:
             qcallback(q)
 
-        q.order('id')
-        return [
+        if limit:
+            q.limit(limit)
+
+        q.order('id', direction='desc')
+        return sorted([
             (csid, pd.Timestamp(idate).astimezone('UTC'))
             for csid, idate in q.do(cn).fetchall()
-        ]
+        ])
 
     def _log_series_query(self, cn, name,
                           limit=None, authors=None,
@@ -1629,7 +1635,8 @@ class timeseriesfs1(base):
                         from_insertion_date=None,
                         to_insertion_date=None,
                         from_value_date=None,
-                        to_value_date=None):
+                        to_value_date=None,
+                        limit=None):
         guard_query_dates(
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date
@@ -1646,27 +1653,28 @@ class timeseriesfs1(base):
             if to_value_date:
                 to_value_date = compatible_date(sto.imeta['tzaware'], to_value_date)
 
-        revs = (
+        revs = [
             (
                 pd.Timestamp(rev.revdate),
                 pd.Timestamp(rev.diffstart),
                 pd.Timestamp(rev.diffend)
             )
             for _index, rev in sto.revs_range(from_insertion_date, to_insertion_date)
-        )
+        ]
         if from_value_date:
-            revs = (
+            revs = [
                 rev for rev in revs
                 if rev[2] >= from_value_date
-            )
+            ]
         if to_value_date:
-            revs = (
+            revs = [
                 rev for rev in revs
                 if rev[1] <= to_value_date
-            )
-        return [
-            rev[0] for rev in revs
-        ]
+            ]
+        revs = sorted([rev[0] for rev in revs])
+        if limit:
+            return revs[len(revs)-limit:]
+        return revs
 
     @tx
     def latest_insertion_date(self, cn, name):

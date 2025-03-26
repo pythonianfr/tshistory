@@ -1397,6 +1397,17 @@ def test_insertion_dates_tzaware(tsx):
         pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
     ]
 
+    revs = tsx.insertion_dates(
+        'historical-series-tzaware',
+        from_value_date=pd.Timestamp("2024-04-04"),
+        to_value_date=pd.Timestamp("2024-04-05"),
+        limit=2
+    )
+    assert revs == [
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
+    ]
+
     revs = tsx.history(
         'historical-series-tzaware',
         from_value_date=pd.Timestamp("2024-04-04"),

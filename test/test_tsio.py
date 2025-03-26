@@ -737,6 +737,12 @@ insertion_date             value_date
         pd.Timestamp('2024-04-10 00:00:00+0000', tz='UTC')
     ]
 
+    revs = tsh.insertion_dates(engine, 'historical-series', limit=2)
+    assert revs == [
+        pd.Timestamp('2024-04-09 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-10 00:00:00+0000', tz='UTC'),
+    ]
+
     hist = tsh.history(
         engine,
         'historical-series',

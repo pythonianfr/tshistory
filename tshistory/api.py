@@ -309,6 +309,7 @@ class mainsource:
                         to_insertion_date: Optional[datetime]=None,
                         from_value_date: Optional[datetime]=None,
                         to_value_date: Optional[datetime]=None,
+                        limit: Optional[int]=None,
                         **kw):
         """Get the list of all insertion dates (as pandas timestamps).
 
@@ -325,6 +326,7 @@ class mainsource:
                     to_insertion_date=to_insertion_date,
                     from_value_date=from_value_date,
                     to_value_date=to_value_date,
+                    limit=limit,
                     **kw
                 )
 
@@ -334,6 +336,7 @@ class mainsource:
             to_insertion_date,
             from_value_date,
             to_value_date,
+            limit=limit,
             **kw
         )
 
@@ -1343,6 +1346,7 @@ class altsources:
                         to_insertion_date: Optional[datetime]=None,
                         from_value_date: Optional[datetime]=None,
                         to_value_date: Optional[datetime]=None,
+                        limit: Optional[str]=None,
                         **kw) -> List[pd.Timestamp]:
         source = self._findsourcefor(name)
         if source is None:
@@ -1354,6 +1358,7 @@ class altsources:
             to_insertion_date=to_insertion_date,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
+            limit=limit,
             **kw
         )
 

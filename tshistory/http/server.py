@@ -161,6 +161,9 @@ insertion_dates.add_argument(
     'to_value_date', type=utcdt, default=None
 )
 insertion_dates.add_argument(
+    'limit', type=int, default=None
+)
+insertion_dates.add_argument(
     'nocache', type=inputs.boolean, default=False
 )
 
@@ -955,8 +958,8 @@ class httpapi:
 
                 It is possible to restrict the horizon by using the
                 "from_insertion_date" / "to_insertion_date" /
-                "from_value_date" / "to_value_date" parameters, all
-                encoded as ISO8601 strings.
+                "from_value_date" / "to_value_date" / "limit"
+                parameters, all (but limit) encoded as ISO8601 strings.
 
                 The "nocache" parameter allows to bypass the cache of
                 a computed series (if it exists) and get the revisions
@@ -973,6 +976,7 @@ class httpapi:
                     to_insertion_date=args.to_insertion_date,
                     from_value_date=args.from_value_date,
                     to_value_date=args.to_value_date,
+                    limit=args.limit,
                     nocache=args.nocache
                 )
                 response = make_response({'insertion_dates':

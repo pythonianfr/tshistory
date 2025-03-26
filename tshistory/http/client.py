@@ -378,6 +378,7 @@ class httpclient:
                         to_insertion_date=None,
                         from_value_date=None,
                         to_value_date=None,
+                        limit=None,
                         nocache=False):
         guard_query_dates(
             from_insertion_date, to_insertion_date,
@@ -395,6 +396,8 @@ class httpclient:
             args['from_value_date'] = strft(from_value_date)
         if to_value_date:
             args['to_value_date'] = strft(to_value_date)
+        if limit:
+            args['limit'] = limit
 
         res = self.session.get(
             f'{self.uri}/series/insertion_dates', params=args
@@ -498,7 +501,7 @@ class httpclient:
             to_insertion_date,
             from_value_date,
             to_value_date,
-            nocache
+            nocache=nocache
         )
         base = None
         if diffmode:
