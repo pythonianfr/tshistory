@@ -1665,6 +1665,55 @@ def test_primary_group(tsx):
     assert df2.equals(df)
 
 
+def test_group_update(tsx):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=utcdt(2025, 1, 1),
+        length=3,
+        freq='h',
+        seed=1
+    )
+    tsx.group_update(
+        'group-update',
+        df,
+        'Babar',
+        insertion_date=pd.Timestamp('2025-1-1', tz='utc')
+    )
+
+    dfo = tsx.group_get('group-update')
+    assert_df("""
+                             0    1    2
+2025-01-01 00:00:00+00:00  1.0  2.0  3.0
+2025-01-01 01:00:00+00:00  2.0  3.0  4.0
+2025-01-01 02:00:00+00:00  3.0  4.0  5.0
+""", dfo)
+
+    df = df * 2
+    df.index = df.index.shift(1, 'h')
+    tsx.group_update(
+        'group-update',
+        df,
+        'Babar',
+        insertion_date=pd.Timestamp('2025-1-2', tz='utc')
+    )
+
+    dfo = tsx.group_get('group-update')
+    assert_df("""
+                             0    1     2
+2025-01-01 00:00:00+00:00  1.0  2.0   3.0
+2025-01-01 01:00:00+00:00  2.0  4.0   6.0
+2025-01-01 02:00:00+00:00  4.0  6.0   8.0
+2025-01-01 03:00:00+00:00  6.0  8.0  10.0
+""", dfo)
+
+    assert tsx.group_insertion_dates('group-update') == [
+        pd.Timestamp('2025-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2025-01-02 00:00:00+0000', tz='UTC')
+    ]
+
+    tsx.group_delete('group-update')
+
+
 def test_group_errors(tsx):
     df = gengroup(
         n_scenarios=3,

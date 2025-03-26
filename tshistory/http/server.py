@@ -340,6 +340,10 @@ groupupdate.add_argument(
     help='insertion date can be forced'
 )
 groupupdate.add_argument(
+    'replace', type=inputs.boolean,
+    help='replace or update operation'
+)
+groupupdate.add_argument(
     'bgroup', type=werkzeug.datastructures.FileStorage,
     location='files',
     help='series group in binary format'
@@ -1293,12 +1297,20 @@ class httpapi:
                 )
 
                 exists = tsa.group_exists(args.name)
-                tsa.group_replace(
-                    args.name,
-                    df,
-                    args.author,
-                    insertion_date=args.insertion_date,
-                )
+                if args.replace:
+                    tsa.group_replace(
+                        args.name,
+                        df,
+                        args.author,
+                        insertion_date=args.insertion_date,
+                    )
+                else:
+                    tsa.group_update(
+                        args.name,
+                        df,
+                        args.author,
+                        insertion_date=args.insertion_date,
+                    )
 
                 return '', 200 if exists else 201
 

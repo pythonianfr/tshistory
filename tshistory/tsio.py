@@ -498,7 +498,7 @@ class base:
             init_rev_date = prev_rev_date
             init_block_start = prev_block_start
 
-        # assemble blocks by looping over successive revisions
+        # assemble blocks by looping over successive revisions
         revision_date = init_rev_date
         block_start = init_block_start
         res_ts = empty_series(tzaware, name=name)
@@ -729,6 +729,37 @@ class base:
             )
 
     @tx
+    def group_update(self, cn, df, name, author,
+                     insertion_date=None):
+        if not self.group_exists(cn, name):
+            return self.group_replace(
+                cn, df, name, author, insertion_date=insertion_date
+            )
+
+        gtype = self.group_type(cn, name)
+        if gtype != 'primary':
+            raise ValueError(
+                f'cannot group-replace `{name}`: '
+                f'this name has type `{gtype}`'
+            )
+        if df.columns.dtype != np.dtype('O'):
+            df.columns = df.columns.astype('str')
+        if insertion_date is None:
+            insertion_date = pd.Timestamp.utcnow()
+
+        infos = self._group_info(cn, name)
+        self._check_group_columns(name, infos, df)
+        for colname, itemname in infos:
+            ts = df[colname]
+            self.tsh_group.update(
+                cn,
+                ts,
+                itemname,
+                author,
+                insertion_date=insertion_date
+            )
+
+    @tx
     def group_replace(self, cn, df, name, author,
                       insertion_date=None):
         assert isinstance(df, pd.DataFrame), (
@@ -787,7 +818,7 @@ class base:
             )
             return
 
-        # update
+        # replace
         self._check_group_columns(name, infos, df)
         for colname, itemname in infos:
             ts = df[colname]

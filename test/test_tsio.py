@@ -3470,6 +3470,50 @@ def test_primary_group(engine, tsh):
     assert df2.equals(df)
 
 
+def test_group_update(engine, tsh):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=utcdt(2025, 1, 1),
+        length=3,
+        freq='h',
+        seed=1
+    )
+    tsh.group_update(
+        engine,
+        df,
+        'group-update',
+        'Babar'
+    )
+
+    dfo = tsh.group_get(engine, 'group-update')
+    assert_df("""
+                             0    1    2
+2025-01-01 00:00:00+00:00  1.0  2.0  3.0
+2025-01-01 01:00:00+00:00  2.0  3.0  4.0
+2025-01-01 02:00:00+00:00  3.0  4.0  5.0
+""", dfo)
+
+    df = df * 2
+    df.index = df.index.shift(1, 'h')
+    tsh.group_update(
+        engine,
+        df,
+        'group-update',
+        'Babar'
+    )
+
+    dfo = tsh.group_get(engine, 'group-update')
+    assert_df("""
+                             0    1     2
+2025-01-01 00:00:00+00:00  1.0  2.0   3.0
+2025-01-01 01:00:00+00:00  2.0  4.0   6.0
+2025-01-01 02:00:00+00:00  4.0  6.0   8.0
+2025-01-01 03:00:00+00:00  6.0  8.0  10.0
+""", dfo)
+
+    tsh.group_delete(engine, 'group-update')
+
+
 def test_group_nan(engine, tsh):
     df = pd.Series(
         [np.nan],

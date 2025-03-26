@@ -1079,6 +1079,32 @@ class mainsource:
             to_insertion_date
         )
 
+    def group_update(self,
+                     name: str,
+                     df: pd.DataFrame,
+                     author: str,
+                     insertion_date: Optional[pd.Timestamp]=None) -> NONETYPE:
+        """Update a group named by <name> with the input dataframe.
+
+        This creates a new version of the group.
+
+        The `author` is mandatory.
+        The `metadata` dictionary allows to associate any metadata
+        with the new group revision.
+
+        It is possible to force an `insertion_date`, which can only be
+        higher than the previous `insertion_date`.
+
+        """
+        with self.engine.begin() as cn:
+            self.tsh.group_update(
+                cn,
+                df,
+                name,
+                author,
+                insertion_date
+            )
+
     def group_replace(self,
                       name: str,
                       df: pd.DataFrame,

@@ -733,9 +733,10 @@ class httpclient:
     # groups
 
     @unwraperror
-    def group_replace(self, name, df, author,
+    def _group_insert(self, name, df, author,
                       insertion_date=None,
-                      metadata=None):
+                      metadata=None,
+                      replace=True):
         if not isinstance(df, pd.DataFrame):
             raise Exception(f'group `{name}` must be updated with a dataframe')
 
@@ -751,7 +752,7 @@ class httpclient:
             'name': name,
             'author': author,
             'insertion_date': insertion_date.isoformat() if insertion_date else None,
-            'replace': json.dumps(True),
+            'replace': json.dumps(replace),
             'format': 'tshpack'
         }
         if metadata:
@@ -769,6 +770,28 @@ class httpclient:
             raise Exception(res.text)
 
         return res
+
+    @unwraperror
+    def group_update(self, name, df, author,
+                      insertion_date=None,
+                      metadata=None):
+        return self._group_insert(
+            name, df, author,
+            insertion_date=insertion_date,
+            metadata=metadata,
+            replace=False
+        )
+
+    @unwraperror
+    def group_replace(self, name, df, author,
+                      insertion_date=None,
+                      metadata=None):
+        return self._group_insert(
+            name, df, author,
+            insertion_date=insertion_date,
+            metadata=metadata,
+            replace=True
+        )
 
     @unwraperror
     def group_get(self, name,
