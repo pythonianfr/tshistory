@@ -403,6 +403,8 @@ def test_tables(engine, pure):
             ('pure', 'groupmap'),
             ('pure', 'registry'),
             ('pure', 'revision_metadata'),
+            ('pure', 'tree'),
+            ('pure', 'tree_series_map'),
             ('pure', 'ts_oldmeta'),
             ('pure-kvstore', 'kvstore'),
             ('pure-kvstore', 'things'),

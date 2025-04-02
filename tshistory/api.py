@@ -10,6 +10,7 @@ from typing import (
 from collections import defaultdict
 import warnings
 
+from dbcache import api as storeapi
 from psyl import lisp
 from sqlhelp.pgapi import make_url, pgdb
 import pandas as pd
@@ -74,7 +75,8 @@ class mainsource:
     __slots__ = (
         'uri', 'namespace',
         'engine', 'tsh',
-        'othersources'
+        'othersources',
+        'kvstore'
     )
 
     def __repr__(self):
@@ -100,7 +102,11 @@ class mainsource:
         self.uri = uri
         self.namespace = namespace
         self.engine = pgdb(uri)
-        self.tsh = tshclass(namespace, othersources, uri=uri)
+        self.kvstore = storeapi.kvstore(  # noqa
+            uri,
+            namespace=f'{namespace}-kvstore'
+        )
+        self.tsh = tshclass(namespace, othersources, _kvstore=self.kvstore, uri=uri)
         self.othersources = othersources
 
     def update(self,
@@ -692,6 +698,17 @@ class mainsource:
         if not meta:
             meta = self.othersources.internal_metadata(name)
         return meta
+
+    def tree_attribute(self, name: str) -> Optional[str]:
+        """Get the metadata attribute used for the tree. """
+        return self.kvstore.get('tree-attribute')
+
+    def set_tree_attribute(self, attribute: str):
+        """Define the metadata attribute used for the tree. """
+        if not attribute:
+            self.kvstore.delete('tree-attribute')
+        else:
+            self.kvstore.set('tree-attribute', attribute)
 
     def replace_metadata(self,
                         name: str,

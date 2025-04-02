@@ -169,6 +169,34 @@ class Migrator:
         migrate_to_baskets(engine, gns, self.interactive)
 
 
+@version('tshistory', '0.22.0')
+def migrate_022(engine, namespace, interactive):
+    do_migrate_tree(engine, namespace, interactive)
+
+
+def do_migrate_tree(engine, namespace, interactive):
+    ns = namespace
+    with engine.begin() as cn:
+        cn.execute(f"""
+create extension if not exists ltree;
+
+create table if not exists "{ns}".tree (
+  id serial primary key,
+  path ltree
+);
+
+create index if not exists tree_path_idx on "{ns}".tree using gist (path);
+
+
+create table if not exists "{ns}".tree_series_map (
+  seriesid integer unique references "{ns}".registry (id),
+  treeid integer references "{ns}".tree (id)
+);
+
+create index if not exists tree_series_map_idx on "{ns}".tree_series_map (treeid);
+""", binary=False)
+
+
 @version('tshistory', '0.21.0')
 def do_migrate_intervals(engine, namespace, interactive):
     migrate_intervals(engine, namespace, interactive)

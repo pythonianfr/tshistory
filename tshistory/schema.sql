@@ -18,3 +18,23 @@ create table "{ns}".ts_oldmeta (
 
 create index on "{ns}".ts_oldmeta (moment);
 create index on "{ns}".ts_oldmeta (seriesid);
+
+
+-- tree
+
+create extension if not exists ltree;
+
+create table "{ns}".tree (
+  id serial primary key,
+  path ltree
+);
+
+create index tree_path_idx on "{ns}".tree using gist (path);
+
+
+create table "{ns}".tree_series_map (
+  seriesid integer unique references "{ns}".registry (id),
+  treeid integer references "{ns}".tree (id)
+);
+
+create index tree_series_map_idx on "{ns}".tree_series_map (treeid);

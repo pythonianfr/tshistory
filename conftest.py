@@ -6,6 +6,7 @@ from sqlhelp.testutil import setup_local_pg_cluster
 import pandas as pd
 import webtest
 
+from dbcache import api as storeapi
 import pytest
 import responses
 from click.testing import CliRunner
@@ -84,6 +85,10 @@ def datadir():
 def tsh(request, engine):
     driver, namespace = request.param
     schema.tsschema(namespace).create(engine)
+    kvstore = storeapi.kvstore(  # noqa
+        DBURI,
+        namespace=f'{namespace}-kvstore'
+    )
 
     if driver == 'fs1':
         datapath = DATADIR / 'fs1' / namespace
@@ -99,20 +104,20 @@ def tsh(request, engine):
             f'test.path = {datapath}'
         )
         with tempconfig(conf.encode()):
-            yield tsio.timeseriesfs1(namespace, None, uri=DBURI)
+            yield tsio.timeseriesfs1(namespace, _kvstore=kvstore, uri=DBURI)
 
     else:
         if namespace == 'z-z':
             Postgres._max_bucket_size = 5
             FS1._max_bucket_size = 5
 
-            yield tsio.timeseries(namespace)
+            yield tsio.timeseries(namespace, _kvstore=kvstore)
 
             Postgres._max_bucket_size = 150
             FS1._max_bucket_size = 150
 
         else:
-            yield tsio.timeseries(namespace)
+            yield tsio.timeseries(namespace, _kvstore=kvstore)
 
 
 @pytest.fixture(scope='session')
@@ -175,7 +180,7 @@ class NoRaiseWebTester(webtest.TestApp):
 
 
 @pytest.fixture()
-def http(engine):
+def tsa(engine):
     schema.tsschema().create(engine)
     schema.tsschema(ns='other').create(engine)
 
@@ -198,10 +203,15 @@ def http(engine):
         for ts in tsa.find('(by.everything)'):
             tsa.delete(str(ts))
 
-        wsgi = nosecurity(
-            appmaker.make_app(tsa)
-        )
-        yield NoRaiseWebTester(wsgi)
+        yield tsa
+
+
+@pytest.fixture()
+def http(tsa):
+    wsgi = nosecurity(
+        appmaker.make_app(tsa)
+    )
+    yield NoRaiseWebTester(wsgi)
 
 
 # http client

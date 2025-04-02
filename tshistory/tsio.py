@@ -57,6 +57,19 @@ class base:
     othersources = None
     tsh_group = None
 
+    def __init__(self, namespace='tsh', othersources=None, _kvstore=None, _groups=True, **_kw):
+        self.namespace = namespace
+        self.othersources = othersources
+        # primary series for groups in a simple timeseries store
+        # in its own namespace
+        if _groups:
+            self.tsh_group = timeseries(
+                namespace=f'{self.namespace}.group',
+                _kvstore=_kvstore,
+                _groups=False
+            )
+        self.kvstore = _kvstore
+
     def get(self, cn, name, *a, **kw):
         raise NotImplementedError
 
@@ -102,6 +115,66 @@ class base:
         ).scalar()
 
     @tx
+    def tree(self, cn):
+        return cn.execute(
+            f'select path from "{self.namespace}".tree',
+            binary=False
+        ).scalars()
+
+    @tx
+    def path_series(self, cn, path):
+        return cn.execute(
+            f'select reg.name '
+            f'from "{self.namespace}".registry as reg,'
+            f'     "{self.namespace}".tree_series_map as map,'
+            f'     "{self.namespace}".tree as tree '
+            f'where reg.id = map.seriesid and'
+            f'      map.treeid = tree.id and'
+            f'      tree.path = %(path)s',
+            path=path,
+        ).scalars()
+
+    @tx
+    def series_path(self, cn, name):
+        return cn.execute(
+            f'select tree.path '
+            f'from "{self.namespace}".registry as reg,'
+            f'     "{self.namespace}".tree_series_map as map,'
+            f'     "{self.namespace}".tree as tree '
+            f'where reg.id = map.seriesid and'
+            f'      map.treeid = tree.id and'
+            f'      reg.name = %(name)s',
+            name=name,
+            binary=False
+        ).scalar()
+
+    def set_in_tree(self, cn, name, path):
+        if not path:  # unset
+            cn.execute(
+                f'delete from "{self.namespace}".tree_series_map as map '
+                f'using "{self.namespace}".registry as reg '
+                f'where map.seriesid = reg.id and '
+                f'      reg.name = %(name)s',
+                name=name
+            )
+            return
+
+        cn.execute(
+            f'with tsid as '
+            f'  (select id from "{self.namespace}".registry '
+            f'   where name = %(name)s),'
+            f'treeid as '
+            f'  (select id from "{self.namespace}".tree '
+            f'   where path = %(path)s)'
+            f'insert into "{self.namespace}".tree_series_map '
+            f'  (seriesid, treeid) '
+            f'select tsid.id, treeid.id '
+            f'from tsid, treeid',
+            name=name,
+            path=path
+        )
+
+    @tx
     def update_metadata(self, cn, name, metadata):
         assert isinstance(metadata, dict)
         existing_metadata = self.metadata(cn, name) or {}
@@ -109,6 +182,11 @@ class base:
         existing_metadata.update(metadata)
         if existing_metadata == oldmeta:
             return
+
+        if self.kvstore:
+            ta = self.kvstore.get('tree-attribute')
+            if ta and ta in metadata:
+                self.set_in_tree(cn, name, metadata[ta])
 
         cn.execute(
             f'update "{self.namespace}".registry '
@@ -132,6 +210,10 @@ class base:
         oldmeta = self.metadata(cn, name) or {}
         if oldmeta == metadata:
             return
+
+        if self.kvstore:
+            ta = self.kvstore.get('tree-attribute')
+            self.set_in_tree(cn, name, metadata.get(ta, ''))
 
         cn.execute(
             f'update "{self.namespace}".registry '
@@ -1004,19 +1086,10 @@ class timeseries(base):
     delete_lock_id = None
     storageclass = Postgres
 
-    def __init__(self, namespace='tsh', othersources=None,
-                 _groups=True, **_kw):
-        self.namespace = namespace
-        self.create_lock_id = sum(ord(c) for c in namespace)
-        self.delete_lock_id = sum(ord(c) for c in namespace)
-        self.othersources = othersources
-        # primary series for groups in a simple timeseries store
-        # in its own namespace
-        if _groups:
-            self.tsh_group = timeseries(
-                namespace=f'{self.namespace}.group',
-                _groups=False
-            )
+    def __init__(self, *a, **_kw):
+        super().__init__(*a, **_kw)
+        self.create_lock_id = sum(ord(c) for c in self.namespace)
+        self.delete_lock_id = sum(ord(c) for c in self.namespace)
 
     @tx
     def update(self, cn, updatets, name, author,
@@ -1641,12 +1714,12 @@ class timeseriesfs1(base):
     storage = 'filesystem1'
     storageclass = FS1
 
-    def __init__(self, namespace='tsh', othersources=None, _groups=True, uri=None):
-        self.namespace = namespace
-        self.othersources = othersources
+    def __init__(self, *a, uri=None, _kvstore=None, _groups=True, **_kw):
+        super().__init__(*a, _groups=False, **_kw)
         if _groups:
             self.tsh_group = timeseriesfs1(
                 namespace=f'{self.namespace}.group',
+                _kvstore=_kvstore,
                 _groups=False,
                 uri=uri
             )

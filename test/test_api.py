@@ -1593,6 +1593,47 @@ def test_insertion_dates_tznaive(tsx):
     ]
 
 
+# tree stuff
+
+def test_base_tree(engine, tsa):
+    with engine.begin() as cn:
+        cn.execute('delete from tsh.tree')
+        cn.execute('insert into tsh.tree (path) values (\'UE\')')
+        cn.execute('insert into tsh.tree (path) values (\'UE.Italy\')')
+        cn.execute('insert into tsh.tree (path) values (\'UE.France\')')
+        res = cn.execute('select path from tsh.tree', binary=False).scalars()
+
+    assert res == ['UE', 'UE.Italy', 'UE.France']
+
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
+    )
+    tsa.set_tree_attribute('folder')
+    for name in (
+            'UE.Italy',
+            'UE.France'
+    ):
+        sname = name.lower()
+        tsa.update(
+            sname,
+            ts,
+            'Babar'
+        )
+        tsa.update_metadata(sname, {'folder': name})
+
+    with engine.begin() as cn:
+        tsh = tsa.tsh
+        assert tsh.path_series(cn, 'UE.France') == ['ue.france']
+        assert tsh.path_series(cn, 'UE.Italy') == ['ue.italy']
+        assert tsh.path_series(cn, 'UE') == []
+
+        assert tsh.series_path(cn, 'ue.france') == 'UE.France'
+        assert tsh.series_path(cn, 'ue.italy') == 'UE.Italy'
+
+        assert tsh.tree(cn) == ['UE', 'UE.Italy', 'UE.France']
+
+
 # groups
 
 def test_remote_group(engine, tsx):
