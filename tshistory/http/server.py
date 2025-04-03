@@ -425,7 +425,7 @@ groupmetadata.add_argument(
     help='get all metadata, including internal'
 )
 groupmetadata.add_argument(
-    'type', type=enum('standard', 'internal', 'type'),
+    'type', type=enum('standard', 'archive', 'internal', 'type'),
     default='standard',
     help='specify the kind of needed metadata'
 )
@@ -1499,6 +1499,13 @@ class httpapi:
                 if args.type == 'type':
                     stype = tsa.group_type(args.name)
                     return stype, 200
+
+                if args.type == 'archive':
+                    metas = [
+                        (stamp.isoformat(), meta)
+                        for stamp, meta in tsa.group_old_metadata(args.name)
+                    ]
+                    return metas, 200
 
                 if args.type == 'internal':
                     meta = tsa.group_internal_metadata(args.name)

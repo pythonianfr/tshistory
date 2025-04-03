@@ -1190,6 +1190,15 @@ class mainsource:
 
         return self.othersources.group_metadata(name)
 
+    def group_old_metadata(self, name:str) -> List[Tuple[pd.Timestamp, dict]]:
+        """Get a list of the the older versions of the metadata.
+        """
+        with self.engine.begin() as cn:
+            if self.tsh.group_exists(cn, name):
+                return self.tsh.group_old_metadata(cn, name)
+
+        return self.othersources.group_old_metadata(name)
+
     def update_group_metadata(self, name: str, meta: Dict[str, Any]) -> NONETYPE:
         """Update a group metadata with a dictionary from strings to anything
         json-serializable.
@@ -1499,8 +1508,13 @@ class altsources:
         source = self._findsourceforgroup(name)
         if source is None:
             return
-        meta = source.tsa.group_metadata(name)
-        return meta
+        return source.tsa.group_metadata(name)
+
+    def group_old_metadata(self, name):
+        source = self._findsourceforgroup(name)
+        if source is None:
+            return
+        return source.tsa.group_old_metadata(name)
 
     def group_find(self, query, limit=None, meta=False):
         return self._find(query, limit, meta, 'group_find')

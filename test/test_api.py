@@ -2084,6 +2084,128 @@ def test_group_metadata(tsx):
     }
 
 
+def test_group_oldmeta(tsx):
+    df = gengroup(
+        n_scenarios=2,
+        from_date=dt(2025, 1, 1),
+        length=2,
+        freq='d',
+        seed=1
+    )
+    tsx.group_update(
+        'group-oldmeta',
+        df,
+        'Babar'
+    )
+    assert tsx.group_metadata('group-oldmeta') == {}
+
+    tsx.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsx.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsx.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsx.update_group_metadata(
+        'group-oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsx.group_metadata('group-oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsx.update_group_metadata(
+        'group-oldmeta',
+        {
+            'quux': 43,
+        }
+    )
+
+    old = tsx.group_old_metadata('group-oldmeta')
+    assert [it[1] for it in old] == [
+        {},
+        {'foo': 'bar', 'quux': 42},
+        {'foo': 'baz', 'quux': 42}
+    ]
+
+
+def test_group_oldmeta_remote(engine, tsx):
+    tsr = timeseries(str(engine.url), 'remote', sources={})
+
+    df = gengroup(
+        n_scenarios=2,
+        from_date=dt(2025, 1, 1),
+        length=2,
+        freq='d',
+        seed=1
+    )
+    tsr.group_update(
+        'group-oldmeta',
+        df,
+        'Babar'
+    )
+    assert tsx.group_metadata('group-oldmeta') == {}
+
+    tsr.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsr.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsr.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsr.update_group_metadata(
+        'group-oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsx.group_metadata('group-oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsr.update_group_metadata(
+        'gruop-oldmeta',
+        {
+            'quux': 43,
+        }
+    )
+
+    old = tsx.group_old_metadata('group-oldmeta')
+    assert [it[1] for it in old] == [
+        {},
+        {'foo': 'bar', 'quux': 42},
+        {'foo': 'baz', 'quux': 42}
+    ]
+
+
 def test_group_log(tsx):
     df = gengroup(
         n_scenarios=4,

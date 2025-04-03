@@ -979,6 +979,22 @@ class httpclient:
         # 404 -> we tried to read a non-existent group, do nothing
 
     @unwraperror
+    def group_old_metadata(self, name):
+        res = self.session.get(f'{self.uri}/group/metadata', params={
+            'name': name,
+            'type': 'archive'
+        })
+        if res.status_code == 200:
+            return [
+                (pd.Timestamp(stamp), meta)
+                for stamp, meta in res.json()
+            ]
+        if res.status_code == 404:
+            return None
+
+        return res
+
+    @unwraperror
     def group_internal_metadata(self, name):
         res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name,
