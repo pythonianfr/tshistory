@@ -41,6 +41,71 @@ def utcdt(*dt):
 
 def test_no_series_meta(engine, tsh):
     assert tsh.internal_metadata(engine, 'no-such-series') is None
+    assert tsh.metadata(engine, 'no-such-series') is None
+
+
+def test_oldmeta(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2025, 1, 1), freq='d', periods=3)
+    )
+    tsh.update(
+        engine,
+        ts,
+        'oldmeta',
+        'Babar'
+    )
+    assert tsh.metadata(engine, 'oldmeta') == {}
+
+    tsh.replace_metadata(
+        engine,
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsh.replace_metadata(
+        engine,
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsh.replace_metadata(
+        engine,
+        'oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsh.update_metadata(
+        engine,
+        'oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsh.metadata(engine, 'oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsh.update_metadata(
+        engine,
+        'oldemeta',
+        {
+            'quux': 43,
+            'foo': 'bar'
+        }
+    )
+
+    old = tsh.old_metadata(engine, 'oldmeta')
+    assert [it[1] for it in old] == [
+        {},
+        {'foo': 'bar', 'quux': 42},
+        {'foo': 'baz', 'quux': 42}
+    ]
 
 
 def test_bad_name(engine, tsh):

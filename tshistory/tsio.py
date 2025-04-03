@@ -105,8 +105,11 @@ class base:
     def update_metadata(self, cn, name, metadata):
         assert isinstance(metadata, dict)
         existing_metadata = self.metadata(cn, name) or {}
-
+        oldmeta = existing_metadata.copy()
         existing_metadata.update(metadata)
+        if existing_metadata == oldmeta:
+            return
+
         cn.execute(
             f'update "{self.namespace}".registry '
             'set metadata = %(metadata)s '
@@ -114,10 +117,22 @@ class base:
             metadata=json.dumps(existing_metadata),
             name=name
         )
+        cn.execute(
+            f'with sid as'
+            f'  (select id from "{self.namespace}".registry where name = %(name)s) '
+            f'insert into "{self.namespace}".ts_oldmeta (seriesid, metadata) '
+            f'select id, %(meta)s from sid',
+            meta=oldmeta,
+            name=name
+        )
 
     @tx
     def replace_metadata(self, cn, name, metadata):
         assert isinstance(metadata, dict)
+        oldmeta = self.metadata(cn, name) or {}
+        if oldmeta == metadata:
+            return
+
         cn.execute(
             f'update "{self.namespace}".registry '
             'set metadata = %(metadata)s '
@@ -125,6 +140,29 @@ class base:
             metadata=json.dumps(metadata),
             name=name
         )
+        cn.execute(
+            f'with sid as '
+            f'  (select id from "{self.namespace}".registry where name = %(name)s) '
+            f'insert into "{self.namespace}".ts_oldmeta (seriesid, metadata) '
+            f'select id, %(meta)s from sid',
+            meta=oldmeta,
+            name=name
+        )
+
+    @tx
+    def old_metadata(self, cn, name):
+        return [
+            (item.moment, item.metadata)
+            for item in cn.execute(
+                    f'select o.moment, o.metadata '
+                    f'from "{self.namespace}".ts_oldmeta as o, '
+                    f'     "{self.namespace}".registry as r '
+                    f'where o.seriesid = r.id and '
+                    f'      r.name = %(name)s '
+                    f'order by o.moment asc',
+                    name=name
+            ).fetchall()
+        ]
 
     @tx
     def list_metadata_keys(self, cn):
