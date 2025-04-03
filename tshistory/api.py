@@ -726,6 +726,15 @@ class mainsource:
             'not allowed to update metadata to a secondary source'
         )
 
+    def old_metadata(self, name:str) -> List[Tuple[pd.Timestamp, dict]]:
+        """Get a list of the the older versions of the metadata.
+        """
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return self.tsh.old_metadata(cn, name)
+
+        return self.othersources.old_metadata(name)
+
     def list_metadata_keys(self) -> List[str]:
         """List available metadata keys"""
         with self.engine.begin() as cn:
@@ -1315,8 +1324,13 @@ class altsources:
         source = self._findsourcefor(name)
         if source is None:
             return
-        meta = source.tsa.metadata(name)
-        return meta
+        return source.tsa.metadata(name)
+
+    def old_metadata(self, name):
+        source = self._findsourcefor(name)
+        if source is None:
+            return
+        return source.tsa.old_metadata(name)
 
     def internal_metadata(self, name: str):
         source = self._findsourcefor(name)

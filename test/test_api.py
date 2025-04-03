@@ -564,6 +564,123 @@ def test_log(tsx):
     assert len(log) == 1
 
 
+def test_oldmeta(tsx):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2025, 1, 1), freq='d', periods=3)
+    )
+    tsx.update(
+        'oldmeta',
+        ts,
+        'Babar'
+    )
+    assert tsx.metadata('oldmeta') == {}
+
+    tsx.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsx.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsx.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsx.update_metadata(
+        'oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsx.metadata('oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsx.update_metadata(
+        'oldmeta',
+        {
+            'quux': 43,
+        }
+    )
+
+    old = tsx.old_metadata('oldmeta')
+    assert [it[1] for it in old] == [
+        {},
+        {'foo': 'bar', 'quux': 42},
+        {'foo': 'baz', 'quux': 42}
+    ]
+
+
+def test_oldmeta_remote(engine, tsx):
+    tsr = timeseries(str(engine.url), 'remote', sources={})
+
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2025, 1, 1), freq='d', periods=3)
+    )
+    tsr.update(
+        'oldmeta',
+        ts,
+        'Babar'
+    )
+    assert tsx.metadata('oldmeta') == {}
+
+    tsr.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsr.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsr.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsr.update_metadata(
+        'oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsr.metadata('oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsr.update_metadata(
+        'oldemeta',
+        {
+            'quux': 43,
+            'foo': 'bar'
+        }
+    )
+
+    old = tsx.old_metadata('oldmeta')
+    assert [it[1] for it in old] == [
+        {},
+        {'foo': 'bar', 'quux': 42},
+        {'foo': 'baz', 'quux': 42}
+    ]
+
+
 def test_multisource(mapi):
     for methname in ('get', 'update', 'replace', 'exists', 'type',
                      'history', 'staircase',

@@ -125,7 +125,7 @@ metadata.add_argument(
     help='get all metadata, including internal'
 )
 metadata.add_argument(
-    'type', type=enum('standard', 'internal', 'type', 'exists', 'interval'),
+    'type', type=enum('standard', 'internal', 'archive', 'type', 'exists', 'interval'),
     default='standard',
     help='specify the kind of needed metadata'
 )
@@ -582,6 +582,13 @@ class httpapi:
                     if args.all:
                         usermeta.update(imeta)
                     return usermeta, 200
+
+                if args.type == 'archive':
+                    metas = [
+                        (stamp.isoformat(), meta)
+                        for stamp, meta in tsa.old_metadata(args.name)
+                    ]
+                    return metas, 200
 
                 if args.type == 'internal':
                     return imeta, 200
