@@ -655,6 +655,10 @@ class base:
     @tx
     def replace_group_metadata(self, cn, name, metadata):
         assert isinstance(metadata, dict)
+        oldmeta = self.group_metadata(cn, name) or {}
+        if oldmeta == metadata:
+            return
+
         sql = (
             f'update "{self.namespace}".group_registry '
             'set metadata = %(metadata)s '
@@ -665,13 +669,24 @@ class base:
             metadata=json.dumps(metadata),
             name=name
         )
+        cn.execute(
+            f'with grid as '
+            f'  (select id from "{self.namespace}".group_registry where name = %(name)s) '
+            f'insert into "{self.namespace}".gr_oldmeta (groupid, metadata) '
+            f'select id, %(meta)s from grid',
+            meta=oldmeta,
+            name=name
+        )
 
     @tx
     def update_group_metadata(self, cn, name, metadata):
         assert isinstance(metadata, dict)
         existing_metadata = self.group_metadata(cn, name) or {}
-
+        oldmeta = existing_metadata.copy()
         existing_metadata.update(metadata)
+        if existing_metadata == oldmeta:
+            return
+
         sql = (
             f'update "{self.namespace}".group_registry '
             'set metadata = %(metadata)s '
@@ -682,6 +697,29 @@ class base:
             metadata=json.dumps(existing_metadata),
             name=name
         )
+        cn.execute(
+            f'with grid as'
+            f'  (select id from "{self.namespace}".group_registry where name = %(name)s) '
+            f'insert into "{self.namespace}".gr_oldmeta (groupid, metadata) '
+            f'select id, %(meta)s from grid',
+            meta=oldmeta,
+            name=name
+        )
+
+    @tx
+    def group_old_metadata(self, cn, name):
+        return [
+            (item.moment, item.metadata)
+            for item in cn.execute(
+                    f'select o.moment, o.metadata '
+                    f'from "{self.namespace}".gr_oldmeta as o, '
+                    f'     "{self.namespace}".group_registry as r '
+                    f'where o.groupid = r.id and '
+                    f'      r.name = %(name)s '
+                    f'order by o.moment asc',
+                    name=name
+            ).fetchall()
+        ]
 
     @tx
     def update_group_internal_metadata(self, cn, name, metadata):

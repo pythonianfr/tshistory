@@ -424,6 +424,7 @@ def test_tables(engine, pure):
     with engine.begin() as cn:
         assert tables(cn) == [
             ('pure', 'basket'),
+            ('pure', 'gr_oldmeta'),
             ('pure', 'group_registry'),
             ('pure', 'groupmap'),
             ('pure', 'registry'),

@@ -4051,6 +4051,72 @@ def test_group_metadata(engine, tsh):
     }
 
 
+def test_group_oldmeta(engine, tsh):
+    df = gengroup(
+        n_scenarios=2,
+        from_date=datetime(2025, 1, 1),
+        length=2,
+        freq='d',
+        seed=1
+    )
+    tsh.group_update(
+        engine,
+        df,
+        'group-oldmeta',
+        'Babar'
+    )
+    assert tsh.group_metadata(engine, 'group-oldmeta') == {}
+
+    tsh.replace_group_metadata(
+        engine,
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsh.replace_group_metadata(
+        engine,
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsh.replace_group_metadata(
+        engine,
+        'group-oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsh.update_group_metadata(
+        engine,
+        'group-oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsh.group_metadata(engine, 'group-oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsh.update_group_metadata(
+        engine,
+        'group-oldmeta',
+        {
+            'quux': 43,
+        }
+    )
+
+    old = tsh.group_old_metadata(engine, 'group-oldmeta')
+    assert [it[1] for it in old] == [
+        {},
+        {'foo': 'bar', 'quux': 42},
+        {'foo': 'baz', 'quux': 42}
+    ]
+
+
 def test_group_log(engine, tsh):
     df = gengroup(
         n_scenarios=4,
