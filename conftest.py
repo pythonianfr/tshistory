@@ -2,12 +2,12 @@ from pathlib import Path
 import shutil
 
 from sqlhelp.pgapi import pgdb
+from sqlhelp.testutil import setup_local_pg_cluster
 import pandas as pd
 import webtest
 
 import pytest
 import responses
-from pytest_sa_pg import db as dbsetup
 from click.testing import CliRunner
 
 from tshistory import (
@@ -40,7 +40,7 @@ DBURI = 'postgresql://localhost:5434/postgres'
 
 @pytest.fixture(scope='session')
 def db(request):
-    dbsetup.setup_local_pg_cluster(
+    setup_local_pg_cluster(
         request, DATADIR, 5434, {
         'timezone': 'UTC',
         'log_timezone': 'UTC'
