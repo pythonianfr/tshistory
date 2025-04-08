@@ -17,13 +17,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from warnings import warn
 
-from urllib.parse import (
-    parse_qsl,
-    quote,
-    quote_plus,
-    unquote
-)
-
 import pytz
 import numpy as np
 import pandas as pd
@@ -48,116 +41,6 @@ def empty_series(tzaware, dtype='float64', name=None):
         dtype=dtype,
         name=name
     )
-
-
-# url
-
-
-class Url:
-
-    def __init__(self,
-                 drivername=None,
-                 username=None,
-                 password=None,
-                 port=None,
-                 database=None,
-                 query=None,
-                 host=None):
-        self.drivername = drivername
-        self.username = username
-        self.password = password
-        self.port = port
-        self.database = database
-        self.query = query
-        self.host = host
-
-    def __str__(self):
-        s = self.drivername + "://"
-        if self.username is not None:
-            s += quote(self.username, safe=" +")
-            if self.password is not None:
-                s += ":***"
-            s += "@"
-        if self.host is not None:
-            if ":" in self.host:
-                s += f"[{self.host}]"
-            else:
-                s += self.host
-        if self.port is not None:
-            s += ":" + str(self.port)
-        if self.database is not None:
-            s += "/" + quote(self.database, safe=" +/")
-        if self.query:
-            keys = list(self.query)
-            keys.sort()
-            s += "?" + "&".join(
-                f"{quote_plus(k)}={quote_plus(element)}"
-                for k in keys
-                for element in list(self.query[k])
-            )
-        return s
-
-    __repr__ = __str__
-
-
-def make_url(url):
-    pattern = re.compile(
-        r"""
-            (?P<drivername>[\w\+]+)://
-            (?:
-                (?P<username>[^:/]*)
-                (?::(?P<password>[^@]*))?
-            @)?
-            (?:
-                (?:
-                    \[(?P<ipv6host>[^/\?]+)\] |
-                    (?P<ipv4host>[^/:\?]+)
-                )?
-                (?::(?P<port>[^/\?]*))?
-            )?
-            (?:/(?P<database>[^\?]*))?
-            (?:\?(?P<query>.*))?
-            """,
-        re.X,
-    )
-
-    m = pattern.match(url)
-    if m is not None:
-        components = m.groupdict()
-        if components['query'] is not None:
-            query = {}
-
-            for key, value in parse_qsl(components['query']):
-                if key in query:
-                    query[key] = list(query[key])
-                    query[key].append(value)
-                else:
-                    query[key] = value
-        else:
-            query = None
-        components['query'] = query
-
-        for comp in 'username', 'password', 'database':
-            if components[comp] is not None:
-                components[comp] = unquote(components[comp])
-
-        ipv4host = components.pop('ipv4host')
-        ipv6host = components.pop('ipv6host')
-        components['host'] = ipv4host or ipv6host
-
-        if components['port']:
-            components['port'] = int(components['port'])
-
-        return Url(**components)
-
-    else:
-        raise Exception(
-            f'Could not parse URL from string "{url}"'
-        )
-
-
-def safe_urlparse(uri):
-    return make_url(uri)
 
 
 # other

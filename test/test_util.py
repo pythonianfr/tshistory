@@ -15,11 +15,9 @@ from tshistory.util import (
     diff,
     fromjson,
     infer_freq,
-    make_url,
     objects,
     patch,
     patchmany,
-    safe_urlparse,
     unflatten,
 )
 from tshistory.testutil import (
@@ -28,30 +26,6 @@ from tshistory.testutil import (
     tables,
     utcdt
 )
-
-
-def test_make_url():
-    uri = (
-        'postgresql://becurvemanager:5ewjI}kxI:&8[(<dO~}Lk*g1WT?8a"{0'
-        '@host.docker.internal:5432/becurvemanager'
-    )
-    u = make_url(uri)
-    assert str(u) == (
-        'postgresql://becurvemanager:***@host.docker.internal:5432/becurvemanager'
-    )
-
-
-def test_safe_urlparse():
-    uri = (
-        'postgresql://becurvemanager:5ewjI}kxI:&8[(<dO~}Lk*g1WT?8a"{0'
-        '@host.docker.internal:5432/becurvemanager'
-    )
-    u = safe_urlparse(uri)
-    assert u.host == 'host.docker.internal'
-    assert u.port == 5432
-    assert u.password == '5ewjI}kxI:&8[(<dO~}Lk*g1WT?8a"{0'
-    assert u.username == 'becurvemanager'
-    assert u.database == 'becurvemanager'
 
 
 def test_objects():

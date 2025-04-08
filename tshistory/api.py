@@ -11,7 +11,7 @@ from collections import defaultdict
 import warnings
 
 from psyl import lisp
-from sqlhelp.pgapi import pgdb
+from sqlhelp.pgapi import make_url, pgdb
 import pandas as pd
 
 from tshistory.config import configuration
@@ -20,7 +20,6 @@ from tshistory.util import (
     ensure_versions,
     find_most_specific_tshclass,
     find_most_specific_http_client,
-    safe_urlparse as urlparse,
     threadpool,
     ts,
     with_inferred_freq
@@ -87,7 +86,7 @@ class mainsource:
         )
 
     def _instancename(self):
-        parsed = urlparse(self.uri)
+        parsed = make_url(self.uri)
         if self.tsh.namespace == 'tsh':
             return f'{parsed.database}'
         else:

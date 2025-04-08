@@ -2,8 +2,9 @@ import os
 from pathlib import Path
 
 from inireader import reader
+from sqlhelp.pgapi import make_url
 
-from tshistory.util import unflatten, make_url
+from tshistory.util import unflatten
 
 
 class configuration:
