@@ -22,7 +22,6 @@ from tshistory import (
     util
 )
 from tshistory.http.util import (
-    enum,
     onerror,
     series_response,
     group_response,
@@ -99,7 +98,7 @@ update.add_argument(
     help='Convert tz-aware series into this time zone before sending'
 )
 update.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 update.add_argument(
     'dtype', type=str, default='float64',
@@ -125,7 +124,8 @@ metadata.add_argument(
     help='get all metadata, including internal'
 )
 metadata.add_argument(
-    'type', type=enum('standard', 'internal', 'archive', 'type', 'exists', 'interval'),
+    'type', type=str,
+    choices=('standard', 'internal', 'archive', 'type', 'exists', 'interval'),
     default='standard',
     help='specify the kind of needed metadata'
 )
@@ -204,7 +204,7 @@ get.add_argument(
     help='re-index series on a inferred frequency'
 )
 get.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 
 delete = base.copy()
@@ -232,7 +232,7 @@ history.add_argument(
     '_keep_nans', type=inputs.boolean, default=False
 )
 history.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 
 staircase = base.copy()
@@ -247,7 +247,7 @@ staircase.add_argument(
     'to_value_date', type=utcdt, default=None
 )
 staircase.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 
 block_staircase = base.copy()
@@ -273,7 +273,7 @@ block_staircase.add_argument(
     'maturity_time', type=todict, default=None
 )
 block_staircase.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 
 catalog = reqparse.RequestParser()
@@ -379,7 +379,7 @@ groupget.add_argument(
     help='keep erasure information'
 )
 groupget.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 groupget.add_argument(
     'tzone', type=str, default='UTC' ,
@@ -408,7 +408,7 @@ group_history.add_argument(
     'to_value_date', type=utcdt, default=None
 )
 group_history.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 
 
@@ -425,7 +425,8 @@ groupmetadata.add_argument(
     help='get all metadata, including internal'
 )
 groupmetadata.add_argument(
-    'type', type=enum('standard', 'archive', 'internal', 'type'),
+    'type', type=str,
+    choices=('standard', 'archive', 'internal', 'type'),
     default='standard',
     help='specify the kind of needed metadata'
 )
