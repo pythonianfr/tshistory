@@ -271,6 +271,55 @@ class httpclient:
         return res
 
     @unwraperror
+    def tree_attribute(self):
+        res = self.session.get(f'{self.uri}/series/tree-attribute')
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
+    def set_tree_attribute(self, attribute):
+        res = self.session.put(f'{self.uri}/series/tree-attribute', data={
+            'attribute': attribute
+        })
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
+    def path_series(self, pathname):
+        res = self.session.get(f'{self.uri}/series/tree-path', params={
+            'type': 'pathname',
+            'name': pathname
+        })
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
+    def series_path(self, pathname):
+        res = self.session.get(f'{self.uri}/series/tree-path', params={
+            'type': 'seriesname',
+            'name': pathname
+        })
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
+    def tree(self):
+        res = self.session.get(f'{self.uri}/series/tree')
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+
+    @unwraperror
     def internal_metadata(self, name):
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,

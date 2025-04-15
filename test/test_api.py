@@ -1595,7 +1595,9 @@ def test_insertion_dates_tznaive(tsx):
 
 # tree stuff
 
-def test_base_tree(engine, tsa):
+def test_tree_api(tsx, engine):
+    tsx.set_tree_attribute(None)
+
     with engine.begin() as cn:
         cn.execute('delete from tsh.tree')
         cn.execute('insert into tsh.tree (path) values (\'UE\')')
@@ -1609,29 +1611,32 @@ def test_base_tree(engine, tsa):
         [1, 2, 3],
         index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
     )
-    tsa.set_tree_attribute('folder')
+
+    assert tsx.tree_attribute() is None
+    tsx.set_tree_attribute('tree')
+    assert tsx.tree_attribute() == 'tree'
+
     for name in (
             'UE.Italy',
             'UE.France'
     ):
         sname = name.lower()
-        tsa.update(
+        tsx.update(
             sname,
             ts,
             'Babar'
         )
-        tsa.update_metadata(sname, {'folder': name})
+        tsx.update_metadata(sname, {'tree': name})
 
     with engine.begin() as cn:
-        tsh = tsa.tsh
-        assert tsh.path_series(cn, 'UE.France') == ['ue.france']
-        assert tsh.path_series(cn, 'UE.Italy') == ['ue.italy']
-        assert tsh.path_series(cn, 'UE') == []
+        assert tsx.path_series('UE.France') == ['ue.france']
+        assert tsx.path_series('UE.Italy') == ['ue.italy']
+        assert tsx.path_series('UE') == []
 
-        assert tsh.series_path(cn, 'ue.france') == 'UE.France'
-        assert tsh.series_path(cn, 'ue.italy') == 'UE.Italy'
+        assert tsx.series_path('ue.france') == 'UE.France'
+        assert tsx.series_path('ue.italy') == 'UE.Italy'
 
-        assert tsh.tree(cn) == ['UE', 'UE.Italy', 'UE.France']
+        assert tsx.tree() == ['UE', 'UE.Italy', 'UE.France']
 
 
 # groups
