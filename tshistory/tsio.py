@@ -159,6 +159,17 @@ class base:
             )
             return
 
+        # does the path exist ?
+        if not cn.execute(
+                f'select id from "{self.namespace}".tree '
+                f'where path = %(path)s',
+                path=path).scalar():
+            cn.execute(
+                f'insert into "{self.namespace}".tree (path) '
+                f'values (%(path)s)',
+                path=path
+            )
+
         cn.execute(
             f'with tsid as '
             f'  (select id from "{self.namespace}".registry '
