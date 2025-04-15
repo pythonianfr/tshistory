@@ -189,8 +189,8 @@ create index if not exists tree_path_idx on "{ns}".tree using gist (path);
 
 
 create table if not exists "{ns}".tree_series_map (
-  seriesid integer unique references "{ns}".registry (id),
-  treeid integer references "{ns}".tree (id)
+  seriesid integer unique references "{ns}".registry (id) on delete cascade,
+  treeid integer references "{ns}".tree (id) on delete cascade
 );
 
 create index if not exists tree_series_map_idx on "{ns}".tree_series_map (treeid);

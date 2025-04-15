@@ -186,6 +186,14 @@ class base:
         )
 
     @tx
+    def delete_path(self, cn, path):
+        cn.execute(
+            f'delete from "{self.namespace}".tree where '
+            f'path = %(path)s',
+            path=path
+        )
+
+    @tx
     def update_metadata(self, cn, name, metadata):
         assert isinstance(metadata, dict)
         existing_metadata = self.metadata(cn, name) or {}

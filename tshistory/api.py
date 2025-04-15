@@ -722,6 +722,10 @@ class mainsource:
         with self.engine.begin() as cn:
             return self.tsh.series_path(cn, name)
 
+    def delete_path(self, path:str) -> NONETYPE:
+        with self.engine.begin() as cn:
+            self.tsh.delete_path(cn, path)
+
     def replace_metadata(self,
                         name: str,
                         metadata: dict) -> NONETYPE:

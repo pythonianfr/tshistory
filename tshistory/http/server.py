@@ -153,6 +153,12 @@ treepath.add_argument(
     help='describe the role of the name attribute'
 )
 
+treepath_delete = reqparse.RequestParser()
+treepath_delete.add_argument(
+    'path', type=str, required=True,
+    help='path to delete'
+)
+
 inferred_freq = base.copy()
 inferred_freq.add_argument(
     'revision_date', type=utcdt, default=None,
@@ -723,6 +729,13 @@ class httpapi:
 
                 assert args.type == 'seriesname'
                 return tsa.series_path(args.name)
+
+            @api.expect(treepath_delete)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def delete(self):
+                args = treepath_delete.parse_args()
+                return tsa.delete_path(args.path)
 
         @nss.route('/tree')
         class timeseries_tree(Resource):

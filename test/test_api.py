@@ -1627,6 +1627,15 @@ def test_tree_api(tsx, engine):
 
     assert tsx.tree() == ['UE.Italy', 'UE.France']
 
+    tsx.delete_path('UE.Italy')
+    assert tsx.tree() == ['UE.France']
+
+    assert tsx.path_series('UE.France') == ['ue.france']
+    assert tsx.path_series('UE.Italy') == []
+
+    assert tsx.series_path('ue.france') == 'UE.France'
+    assert tsx.series_path('ue.italy') is None
+
 
 # groups
 

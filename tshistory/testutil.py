@@ -337,6 +337,11 @@ class with_http_bridge:
         )
 
         resp.add_callback(
+            responses.DELETE, uri + '/series/tree-path',
+            callback=write_request_bridge(wsgitester.delete)
+        )
+
+        resp.add_callback(
             responses.GET, uri + '/series/freq',
             callback=partial(read_request_bridge, wsgitester)
         )

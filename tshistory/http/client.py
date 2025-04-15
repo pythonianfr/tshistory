@@ -318,6 +318,15 @@ class httpclient:
 
         return res
 
+    @unwraperror
+    def delete_path(self, path):
+        res = self.session.delete(f'{self.uri}/series/tree-path', data={
+            'path': path
+        })
+        if res.status_code == 200:
+            return res.json()
+
+        return res
 
     @unwraperror
     def internal_metadata(self, name):
