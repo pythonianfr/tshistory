@@ -890,7 +890,8 @@ class httpapi:
                         series = pd.Series(json.loads(args.bseries.stream.read()), dtype=dtype)
                     series.index = pd.to_datetime(
                         series.index,
-                        utc=args.tzaware
+                        utc=args.tzaware,
+                        format='ISO8601',
                     )
                 else:
                     assert args.format == 'tshpack'
