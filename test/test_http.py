@@ -804,6 +804,32 @@ def test_apply_tz_on_bounds(client, http):
     assert tsr.index[-1] == '2023-01-03T00:00:00+01:00'
 
 
+def test_inconsistant_size(client, http):
+    series = {
+        '2024-05-13T13:11:20.726413': 1,
+        '2024-05-14T13:11:20.726413': 1,
+        '2025-03-11T00:00:00': 1,
+        '2025-03-12T00:00:00': 1,
+    }
+    res = http.patch_json(
+        '/series/state',
+        params={
+            'name': 'ts-weird-dates',
+            'tzaware': False,
+            'author': 'test',
+            'series': series,
+        }
+    )
+    assert res.status_code == 418
+    assert res.body == (
+        b'time data "2025-03-11T00:00:00" doesn\'t match format "%Y-%m-%dT%H:%M:%S.%f", at position 2. '
+        b'You might want to try:\n    - passing `format` if your strings have a consistent format;\n    '
+        b'- passing `format=\'ISO8601\'` if your strings are all ISO8601 but not necessarily in exactly the same format;\n    '
+        b'- passing `format=\'mixed\'`, and the format will be inferred for each element individually. '
+        b'You might want to use `dayfirst` alongside this.'
+    )
+
+
 def test_exclude(client, http):
     ts = pd.Series(
         range(4),
