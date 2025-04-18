@@ -1380,6 +1380,43 @@ def test_federated_find(mapi):
     assert names == ['local.basket.fed', 'remote.basket.fed']
 
 
+def test_federated_find_homonyms(mapi):
+    # cleanup
+    cat = mapi.catalog()
+    if cat:
+        for name, _ in list(cat.values())[0]:
+            mapi.delete(name)
+
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
+    )
+    mapi.update(
+        'find.homonym.2sources',
+        ts,
+        'Babar'
+    )
+
+    remoteapi = timeseries(
+        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+    )
+    # cleanup
+    cat = remoteapi.catalog()
+    if cat:
+        for name, _ in list(cat.values())[0]:
+            remoteapi.delete(name)
+
+    remoteapi.update(
+        'find.homonym.2sources',
+        ts,
+        'Babar'
+    )
+
+    names = mapi.find('(by.name "homonym")')
+    assert names[0].source == 'local'
+    assert names[1].source == 'remote'
+
+
 def test_replicate_series(tsx):
     insertion_dates = pd.date_range(
         start=pd.Timestamp('2023-07-01', tz='utc'),
