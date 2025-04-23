@@ -109,6 +109,12 @@ class mainsource:
         self.tsh = tshclass(namespace, othersources, _kvstore=self.kvstore, uri=uri)
         self.othersources = othersources
 
+    def sources(self):
+        return [
+            source.name
+            for source in self.othersources.sources
+        ]
+
     def update(self,
                name: str,
                updatets: pd.Series,

@@ -46,6 +46,13 @@ def rawseries(value):
     return value
 
 
+properties = reqparse.RequestParser()
+properties.add_argument(
+    'property', type=str, choices=('sources',),
+    required=True,
+    help='get the global instance properties'
+)
+
 base = reqparse.RequestParser()
 
 base.add_argument(
@@ -478,7 +485,7 @@ groupfind.add_argument(
 
 
 class httpapi:
-    __slots__ = 'tsa', 'bp', 'api', 'nss', 'nsg'
+    __slots__ = 'tsa', 'bp', 'api', 'nsglobal', 'nss', 'nsg'
 
     def __init__(self,
                  tsa,
@@ -515,6 +522,11 @@ class httpapi:
         )
         self.api.namespaces.pop(0)  # wipe the default namespace
 
+        self.nsglobal = self.api.namespace(
+            'global',
+            description='Global Operations'
+        )
+
         self.nss = self.api.namespace(
             'series',
             description='Time Series Operations'
@@ -541,10 +553,29 @@ class httpapi:
 
         tsa = self.tsa
         api = self.api
+        nsglobal = self.nsglobal
         nss = self.nss
         nsg = self.nsg
 
         cfg = config.configuration()
+
+        @nsglobal.route('/properties')
+        class global_properties(Resource):
+
+            @api.doc(responses={200: 'Got content'})
+            @api.expect(properties)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                """returns the secondary sources of the local instance.
+                """
+                args = properties.parse_args()
+                if args.property == 'sources':
+                    return tsa.sources(), 200
+
+                import ipdb; ipdb.set_trace()
+                # we should never get there
+                api.abort(400, 'Asked property does not exist')
 
         @nss.route('/source')
         class timeseries_source(Resource):

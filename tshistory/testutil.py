@@ -207,6 +207,11 @@ class with_http_bridge:
 
     def __init__(self, uri, resp, wsgitester):
         resp.add_callback(
+            responses.GET, uri + '/global/properties',
+            callback=partial(read_request_bridge, wsgitester)
+        )
+
+        resp.add_callback(
             responses.GET, uri + '/versions',
             callback=partial(read_request_bridge, wsgitester)
         )

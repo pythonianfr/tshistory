@@ -146,6 +146,16 @@ class httpclient:
         return f"tshistory-http-client(uri='{self.uri}')"
 
     @unwraperror
+    def sources(self):
+        res = self.session.get(f'{self.uri}/global/properties', params={
+            'property': 'sources'
+        })
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
     def exists(self, name):
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,

@@ -19,6 +19,10 @@ from tshistory.testutil import (
 from tshistory.util import replicate_series
 
 
+def test_sources(tsx):
+    assert tsx.sources() == ['remote']
+
+
 def test_base_universal_api(tsx):
     for name in ('api-test',):
         tsx.delete(name)
