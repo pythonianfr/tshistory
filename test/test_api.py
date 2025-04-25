@@ -299,14 +299,14 @@ def test_inferred_freq_irregular(tsx):
 """, ts)
 
 
-def test_with_inferred_freq_remote(mapi):
+def test_with_inferred_freq_remote(tsx, engine):
     ts = pd.Series(
         [1, 2, 3, np.nan, 5],
         pd.date_range(utcdt(2023, 1, 1), freq='D', periods=5)
     )
 
     remoteapi = timeseries(
-        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
     remoteapi.update(
         'remote.inferred-freq',
@@ -314,7 +314,7 @@ def test_with_inferred_freq_remote(mapi):
         'Celeste'
     )
 
-    ts = mapi.get('remote.inferred-freq', inferred_freq=True)
+    ts = tsx.get('remote.inferred-freq', inferred_freq=True)
     assert_df("""
 2023-01-01 00:00:00+00:00    1.0
 2023-01-02 00:00:00+00:00    2.0
@@ -365,7 +365,7 @@ datetime,               value
     pd.testing.assert_series_equal(computed_ts, expected_ts, check_names=False)
 
 
-def test_block_staircase_remote(mapi):
+def test_block_staircase_remote(tsx, engine):
     hist = hist_from_csv(io.StringIO("""
 datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00+0
 2020-01-03 00:00+00:00, 1.0,                10.0,               100.0
@@ -379,12 +379,12 @@ datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00
 """))
 
     remoteapi = timeseries(
-        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
     for idate, ts in hist.items():
         remoteapi.update('remote_staircase', ts, author='test', insertion_date=idate)
 
-    computed_ts = mapi.block_staircase(
+    computed_ts = tsx.block_staircase(
         'remote_staircase',
         from_value_date=pd.Timestamp('2020-01-03', tz='utc'),
         to_value_date=pd.Timestamp('2020-01-05', tz='utc'),
@@ -685,181 +685,6 @@ def test_oldmeta_remote(engine, tsx):
     ]
 
 
-def test_multisource(mapi):
-    for methname in ('get', 'update', 'replace', 'exists', 'type',
-                     'history', 'staircase',
-                     'catalog', 'interval',
-                     'metadata', 'update_metadata', 'replace_metadata',
-                     'rename', 'delete'
-    ):
-        assert getattr(mapi, methname, False), methname
-
-
-    def create(uri, ns, name):
-        api = timeseries(uri, ns, handler=tsio.timeseries, sources={})
-        series = pd.Series(
-            [1, 2, 3],
-            index=pd.date_range(
-                utcdt(2020, 1, 1), periods=3, freq='D'
-            )
-        )
-
-        api.update(
-            name,
-            series,
-            'Babar',
-            insertion_date=utcdt(2019, 1, 1),
-            metadata={'about': 'test'}
-        )
-        out = api.get(name)
-        assert_df("""
-2020-01-01 00:00:00+00:00    1.0
-2020-01-02 00:00:00+00:00    2.0
-2020-01-03 00:00:00+00:00    3.0
-""", out)
-
-        series[utcdt(2020, 1, 4)] = 4
-        api.update(
-            name,
-            series,
-            'Babar',
-            insertion_date=utcdt(2019, 1, 2)
-        )
-        out = api.get(
-            name,
-            from_value_date=utcdt(2020, 1, 2),
-            to_value_date=utcdt(2020, 1, 3)
-        )
-        assert_df("""
-2020-01-02 00:00:00+00:00    2.0
-2020-01-03 00:00:00+00:00    3.0
-""", out)
-
-    create(mapi.uri, mapi.namespace, 'api-1')
-    create(mapi.uri, 'ns-test-mapi-2', 'api-2')
-
-    assert mapi.namespace == 'ns-test-mapi'
-
-    assert not mapi.exists('i-dont-exist')
-    assert mapi.exists('api-1')
-    assert mapi.exists('api-2')
-
-    series = pd.Series(
-        [10, 20, 30],
-        index=pd.date_range(
-            utcdt(2020, 1, 1), periods=3, freq='D'
-        )
-    )
-    mapi.update('api-1', series, 'auc')
-
-    with pytest.raises(ValueError) as err:
-        mapi.update('api-2', series, 'auc')
-    assert err.value.args[0].startswith('not allowed to update')
-
-    mapi.replace('api-1', series, 'auc')
-
-    with pytest.raises(ValueError) as err:
-        mapi.replace('api-2', series, 'auc')
-    assert err.value.args[0].startswith('not allowed to replace')
-
-
-    api = timeseries(
-        mapi.uri, mapi.namespace, handler=tsio.timeseries, sources={}
-    )
-    catalog = api.catalog()
-    catalog2 = mapi.catalog()
-    assert catalog == {
-        ('postgres@ns-test-mapi', 'ns-test-mapi'): [('api-1', 'primary')]
-    }
-    assert catalog2 == {
-        ('postgres@ns-test-mapi', 'ns-test-mapi'): [('api-1', 'primary')],
-        ('postgres@ns-test-mapi-2', 'ns-test-mapi-2'): [('api-2', 'primary')]
-    }
-    catalog3 = mapi.catalog(allsources=False)
-    assert catalog3 == {
-        ('postgres@ns-test-mapi', 'ns-test-mapi'): [('api-1', 'primary')]
-    }
-
-    # metadata
-    mapi.replace_metadata('api-1', {'descr': 'for the mapi test'})
-    with pytest.raises(ValueError) as err:
-        mapi.replace_metadata('api-2', {'descr': 'for the mapi test'})
-    assert err.value.args[0].startswith('not allowed to replace metadata')
-    imeta = mapi.internal_metadata('api-2')
-    imeta.pop('tablename', None)
-    assert imeta == {
-        'index_dtype': '|M8[ns]',
-        'index_type': 'datetime64[ns, UTC]',
-        'tzaware': True,
-        'value_dtype': '<f8',
-        'value_type': 'float64',
-        'left': '2020-01-01T00:00:00',
-        'right': '2020-01-04T00:00:00'
-    }
-
-    imeta = mapi.metadata('api-2', all=True)
-    imeta.pop('tablename', None)
-    assert imeta == {
-        'index_dtype': '|M8[ns]',
-        'index_type': 'datetime64[ns, UTC]',
-        'tzaware': True,
-        'value_dtype': '<f8',
-        'value_type': 'float64',
-        'left': '2020-01-01T00:00:00',
-        'right': '2020-01-04T00:00:00'
-    }
-
-    assert mapi.metadata('api-1') == {'descr': 'for the mapi test'}
-
-    api2 = timeseries(mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={})
-    api2.update_metadata('api-2', {'othersouces': 'from other ns'})
-    assert api2.metadata('api-2') == {'othersouces': 'from other ns'}
-
-    assert mapi.metadata('api-2') == {'othersouces': 'from other ns'}
-
-    # log
-    assert len(mapi.log('api-1')) == 4
-    assert len(mapi.log('api-2')) == 2
-    assert len(mapi.log('api-2', limit=1)) == 1
-
-    mapi.rename('api-1', 'renamed-api-1')
-    assert not mapi.exists('api-1')
-    with pytest.raises(ValueError) as err:
-        mapi.rename('api-2', 'renamed-api-2')
-    assert err.value.args[0].startswith('not allowed to rename')
-
-    assert mapi.source('nope') is None
-    assert mapi.source('renamed-api-1') == 'local'
-    assert mapi.source('api-2') == 'remote'
-
-    mapi.delete('renamed-api-1')
-    with pytest.raises(ValueError) as err:
-        mapi.delete('api-2')
-    assert err.value.args[0].startswith('not allowed to delete')
-
-    assert not mapi.exists('renamed-api-1')
-
-    # local shadowing of api-3
-    create(mapi.uri, mapi.namespace, 'api-3')
-    create(mapi.uri, 'ns-test-mapi-2', 'api-3')
-    # update local version metadata
-    mapi.replace_metadata('api-3', {'foo': 'bar'})
-    # delete local version
-    mapi.delete('api-3')
-    # remote version still exists
-    assert mapi.exists('api-3')
-    with pytest.raises(ValueError):
-        mapi.replace_metadata('api-3', {'foo': 'bar'})
-    with pytest.raises(ValueError):
-        mapi.delete('api-3')
-    cat = mapi.catalog()
-    assert cat == {
-        ('postgres@ns-test-mapi-2', 'ns-test-mapi-2'): [
-            ('api-2', 'primary'),
-            ('api-3', 'primary')]
-    }
-
-
 def test_strip(tsx):
     for name in ('stripme',):
         tsx.delete(name)
@@ -914,9 +739,9 @@ def test_strip(tsx):
         )
 
 
-def test_conflicting_update(mapi):
+def test_conflicting_update(tsx, engine):
     # behaviour when a series exists locally and remotely
-    mapi.update(
+    tsx.update(
         'here-and-there',
         pd.Series(
             [1, 2, 3],
@@ -925,14 +750,10 @@ def test_conflicting_update(mapi):
         'Babar'
     )
     # create a series with the same name in the other source
-    remotesource = mapi.othersources.sources[0]
-    remote = timeseries(
-        remotesource.uri,
-        namespace=remotesource.namespace,
-        handler=tsio.timeseries,
-        sources={}
+    remoteapi = timeseries(
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
-    remote.update(
+    remoteapi.update(
         'here-and-there',
         pd.Series(
             [1, 2, 3],
@@ -941,7 +762,7 @@ def test_conflicting_update(mapi):
         'Babar'
     )
 
-    mapi.update(
+    tsx.update(
         'here-and-there',
         pd.Series(
             [1, 2, 3, 4],
@@ -950,7 +771,7 @@ def test_conflicting_update(mapi):
         'Babar'
     )
 
-    mapi.replace(
+    tsx.replace(
         'here-and-there',
         pd.Series(
             [1, 2, 3, 4],
@@ -1408,25 +1229,25 @@ def test_federated_find(tsx, engine):
     assert names == ['local.basket.fed', 'remote.basket.fed']
 
 
-def test_federated_find_homonyms(mapi):
+def test_federated_find_homonyms(tsx, engine):
     # cleanup
-    cat = mapi.catalog()
+    cat = tsx.catalog()
     if cat:
         for name, _ in list(cat.values())[0]:
-            mapi.delete(name)
+            tsx.delete(name)
 
     ts = pd.Series(
         [1, 2, 3],
         pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
     )
-    mapi.update(
+    tsx.update(
         'find.homonym.2sources',
         ts,
         'Babar'
     )
 
     remoteapi = timeseries(
-        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
     # cleanup
     cat = remoteapi.catalog()
@@ -1440,7 +1261,7 @@ def test_federated_find_homonyms(mapi):
         'Babar'
     )
 
-    names = mapi.find('(by.name "homonym")')
+    names = tsx.find('(by.name "homonym")')
     assert names[0].source == 'local'
     assert names[1].source == 'remote'
 

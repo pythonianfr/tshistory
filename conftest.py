@@ -55,25 +55,6 @@ def engine(db):
 
 
 # api fixtures
-# multi-source
-
-@pytest.fixture(scope='session')
-def mapi(engine):
-    schema.tsschema('ns-test-mapi').create(engine)
-    schema.tsschema('ns-test-mapi-2').create(engine)
-
-    config = (
-        f'[dburi]\n'
-        f'test = {str(engine.url)}\n'
-    ).encode()
-    with tempconfig(config):
-        yield tsh_api.timeseries(
-            DBURI,
-            namespace='ns-test-mapi',
-            handler=tsio.timeseries,
-            sources={'remote': (DBURI, 'ns-test-mapi-2')}
-        )
-
 
 @pytest.fixture(scope='session')
 def datadir():
