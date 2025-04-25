@@ -238,7 +238,7 @@ def test_base(http):
         'freq': 'd',
         'description': 'banana spot price'
     }
-    
+
     # test metadata keys retrieving
     res = http.get('/series/metadata-keys')
     assert res.json == ['description', 'freq']
@@ -476,6 +476,27 @@ def test_get_nans(http):
     })
     # NaNs have been converted to nulls
     assert 'null' in res.text
+
+
+def test_client_find(client):
+    ts = pd.Series(
+        [1] * 3,
+        index=pd.date_range(
+            start=utcdt(2024, 1, 1),
+            periods=3,
+            freq='h'
+        )
+    )
+    client.update(
+        'client.find-me',
+        ts,
+        'Babar'
+    )
+    names = client.find('(by.name "client.find-me")')
+    assert names[0].source == 'local'  # good
+
+    names = client.find('(by.name "client.find-me")', _source='remote')
+    assert names[0].source == 'local'  # bad
 
 
 def test_create_with_only_nans(http):
