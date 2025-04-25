@@ -1234,23 +1234,25 @@ def test_basket(tsx):
     assert tsx.basket_definition('b1') == '(by.name "t.1")'
     assert tsx.basket('b2') == ['basket.1', 'basket.2']
 
+    assert tsx.basket('b2', limit=1) == ['basket.1']
+
     tsx.delete_basket('b1')
     assert tsx.list_baskets() == ['b2']
 
 
-def test_federated_basket(mapi):
+def test_federated_basket(tsx, engine):
     ts = pd.Series(
         [1, 2, 3],
         pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
     )
-    mapi.update(
+    tsx.update(
         'local.basket.fed',
         ts,
         'Babar'
     )
 
     remoteapi = timeseries(
-        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
     remoteapi.update(
         'remote.basket.fed',
@@ -1258,12 +1260,12 @@ def test_federated_basket(mapi):
         'Celeste'
     )
 
-    mapi.register_basket(
+    tsx.register_basket(
         'federated.basket',
         '(by.name "basket.fed")'
     )
 
-    b = mapi.basket('federated.basket')
+    b = tsx.basket('federated.basket')
     assert b == [
         'local.basket.fed',
         'remote.basket.fed'
@@ -1272,13 +1274,22 @@ def test_federated_basket(mapi):
     r = b[1]
     assert r.source == 'remote'
 
-    mapi.register_basket(
+    b = tsx.basket('federated.basket', allsources=False)
+    assert b == [
+        'local.basket.fed',
+    ]
+    assert b[0].meta is None
+
+    b = tsx.basket('federated.basket', meta=True)
+    assert b[0].meta == {}
+
+    tsx.register_basket(
         'mybasket',
         '(by.and '
         '  (by.source "local")'
         '  (by.name "basket.fed"))'
     )
-    names = mapi.basket('mybasket')
+    names = tsx.basket('mybasket')
     assert names == ['local.basket.fed']
 
 

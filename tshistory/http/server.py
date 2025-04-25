@@ -332,6 +332,15 @@ basket = reqparse.RequestParser()
 basket.add_argument(
     'name', type=str
 )
+basket.add_argument(
+    'limit', type=int
+)
+basket.add_argument(
+    'meta', type=inputs.boolean, default=False
+)
+basket.add_argument(
+    'allsources', type=inputs.boolean, default=True
+)
 
 register_basket = reqparse.RequestParser()
 register_basket.add_argument(
@@ -1323,7 +1332,10 @@ class httpapi:
                 return [
                     item.to_json()
                     for item in tsa.basket(
-                            args.name
+                            args.name,
+                            limit=args.limit,
+                            meta=args.meta,
+                            allsources=args.allsources
                     )
                 ]
 

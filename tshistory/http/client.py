@@ -776,14 +776,16 @@ class httpclient:
         return res
 
     @unwraperror
-    def basket(self, name):
-        res = self.session.get(
-            f'{self.uri}/series/basket',
-            params={'name': name}
-        )
+    def basket(self, name, limit=None, meta=None, allsources=True):
+        res = self.session.get(f'{self.uri}/series/basket', params={
+            'name': name,
+            'limit': limit,
+            'meta': meta,
+            'allsources': allsources
+        })
         if res.status_code == 200:
             return [
-                ts(item['name'], item['imeta'], item['meta'])
+                ts(item['name'], item['imeta'], item['meta'], item['source'])
                 for item in res.json()
             ]
 

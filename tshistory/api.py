@@ -884,7 +884,10 @@ class mainsource:
             search.query.fromexpr(query)
             self.tsh.register_basket(cn, name, query)
 
-    def basket(self, name: str) -> List[str]:
+    def basket(self, name: str,
+               limit: Optional[int]=None,
+               meta: Optional[int]=False,
+               allsources: Optional[bool]=True) -> List[ts]:
         """Returns the list of series descriptors associated with a basket.
 
         A series descriptor is a string-like object (exhibiting the
@@ -897,7 +900,9 @@ class mainsource:
         """
         with self.engine.begin() as cn:
             query = self.tsh.basket_definition(cn, name)
-        return self.find(query)
+        return self.find(
+            query, limit=limit, meta=meta, allsources=allsources
+        )
 
     def basket_definition(self, name: str) -> str:
         """Returns the query string associated with a basket."""
