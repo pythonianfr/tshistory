@@ -1364,6 +1364,7 @@ def test_federated_find(mapi):
         '  (by.source "remote"))'
     )
     assert names == ['remote.basket.fed']
+    assert names[0].source == 'remote'
 
     names = mapi.find(
         '(by.and '
@@ -1371,6 +1372,7 @@ def test_federated_find(mapi):
         '  (by.name "basket.fed"))'
     )
     assert names == ['local.basket.fed']
+    assert names[0].source == 'local'
 
     names = mapi.find(
         '(by.or '
