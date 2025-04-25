@@ -1282,25 +1282,25 @@ def test_federated_basket(mapi):
     assert names == ['local.basket.fed']
 
 
-def test_federated_find(mapi):
+def test_federated_find(tsx, engine):
     # cleanup
-    cat = mapi.catalog()
+    cat = tsx.catalog()
     if cat:
         for name, _ in list(cat.values())[0]:
-            mapi.delete(name)
+            tsx.delete(name)
 
     ts = pd.Series(
         [1, 2, 3],
         pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
     )
-    mapi.update(
+    tsx.update(
         'local.basket.fed',
         ts,
         'Babar'
     )
 
     remoteapi = timeseries(
-        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
     # cleanup
     cat = remoteapi.catalog()
@@ -1314,20 +1314,20 @@ def test_federated_find(mapi):
         'Celeste'
     )
 
-    names = mapi.find('(by.name "basket.fed")')
+    names = tsx.find('(by.name "basket.fed")')
     assert names == [
         'local.basket.fed',
         'remote.basket.fed'
     ]
 
     # some top-level bysource
-    names = mapi.find('(by.source "remote")')
+    names = tsx.find('(by.source "remote")')
     assert names == ['remote.basket.fed']
 
-    names = mapi.find('(by.source "local")')
+    names = tsx.find('(by.source "local")')
     assert names == ['local.basket.fed']
 
-    names = mapi.find(
+    names = tsx.find(
         '(by.or '
         '  (by.source "local")'
         '  (by.source "remote"))'
@@ -1336,7 +1336,18 @@ def test_federated_find(mapi):
         'local.basket.fed',
         'remote.basket.fed'
     ]
-    names = mapi.find(
+
+    names = tsx.find(
+        '(by.or '
+        '  (by.source "local")'
+        '  (by.source "remote"))',
+        allsources=False
+    )
+    assert names == [
+        'local.basket.fed',
+    ]
+
+    names = tsx.find(
         '(by.and '
         '  (by.source "local")'
         '  (by.source "remote"))'
@@ -1344,21 +1355,21 @@ def test_federated_find(mapi):
     assert names == []
 
     # non-toplevel
-    names = mapi.find(
+    names = tsx.find(
         '(by.or '
         '  (by.and (by.name "basket.fed") (by.source "local"))'
         '  (by.source "remote"))'
     )
     assert names == ['local.basket.fed', 'remote.basket.fed']
 
-    names = mapi.find(
+    names = tsx.find(
         '(by.or '
         '  (by.not (by.and (by.name "basket.fed") (by.source "local")))'
         '  (by.source "remote"))'
     )
     assert names == ['remote.basket.fed']
 
-    names = mapi.find(
+    names = tsx.find(
         '(by.and '
         '  (by.name "basket.fed")'
         '  (by.source "remote"))'
@@ -1366,7 +1377,7 @@ def test_federated_find(mapi):
     assert names == ['remote.basket.fed']
     assert names[0].source == 'remote'
 
-    names = mapi.find(
+    names = tsx.find(
         '(by.and '
         '  (by.source "local")'
         '  (by.name "basket.fed"))'
@@ -1374,7 +1385,7 @@ def test_federated_find(mapi):
     assert names == ['local.basket.fed']
     assert names[0].source == 'local'
 
-    names = mapi.find(
+    names = tsx.find(
         '(by.or '
         '  (by.and '
         '    (by.source "local")'

@@ -561,6 +561,7 @@ class mainsource:
     def find(self, query: str,
              limit: Optional[int]=None,
              meta: Optional[int]=False,
+             allsources: Optional[bool]=True,
              _source: Optional[str]='local') -> List[ts]:
         """Return a list of series descriptors matching the query.
 
@@ -630,6 +631,8 @@ class mainsource:
                 limit,
                 meta
             )
+            if not allsources:
+                return sorted(localnames)
 
         remotenames = self.othersources.find(query, limit, meta)
         return sorted(

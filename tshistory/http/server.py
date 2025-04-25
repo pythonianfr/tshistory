@@ -322,6 +322,9 @@ find.add_argument(
     'meta', type=inputs.boolean, default=False
 )
 find.add_argument(
+    'allsources', type=inputs.boolean, default=True
+)
+find.add_argument(
     '_source', type=str, default='local'
 )
 
@@ -1304,6 +1307,7 @@ class httpapi:
                             args.query,
                             limit=args.limit,
                             meta=args.meta,
+                            allsources=args.allsources,
                             _source=args._source
                     )
                 ]
