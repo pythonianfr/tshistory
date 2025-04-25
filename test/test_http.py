@@ -496,7 +496,7 @@ def test_client_find(client):
     assert names[0].source == 'local'  # good
 
     names = client.find('(by.name "client.find-me")', _source='remote')
-    assert names[0].source == 'local'  # bad
+    assert names[0].source == 'remote'  # still good
 
 
 def test_create_with_only_nans(http):

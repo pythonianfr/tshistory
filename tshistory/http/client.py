@@ -702,12 +702,15 @@ class httpclient:
             'query': q,
             'limit': limit,
             'meta': meta,
-            'source': _source
+            '_source': _source
         })
 
         if res.status_code == 200:
             return [
-                ts(item['name'], item['imeta'], item['meta'], kind=item['kind'])
+                ts(
+                    item['name'], item['imeta'], item['meta'],
+                    kind=item['kind'], source=item['source']
+                )
                 for item in res.json()
             ]
 
