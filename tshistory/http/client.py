@@ -696,13 +696,13 @@ class httpclient:
         return res
 
     @unwraperror
-    def find(self, q, limit=None, meta=False, allsources=True, _source='local'):
+    def find(self, q, limit=None, meta=False, sources=[], _source='local'):
         assert isinstance(q, str)
         res = self.session.get(f'{self.uri}/series/find', params={
             'query': q,
             'limit': limit,
             'meta': meta,
-            'allsources': allsources,
+            'sources': ','.join(sources),
             '_source': _source
         })
 
@@ -776,12 +776,12 @@ class httpclient:
         return res
 
     @unwraperror
-    def basket(self, name, limit=None, meta=None, allsources=True):
+    def basket(self, name, limit=None, meta=None, sources=[]):
         res = self.session.get(f'{self.uri}/series/basket', params={
             'name': name,
             'limit': limit,
             'meta': meta,
-            'allsources': allsources
+            'sources': ','.join(sources)
         })
         if res.status_code == 200:
             return [

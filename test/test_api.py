@@ -1095,7 +1095,7 @@ def test_federated_basket(tsx, engine):
     r = b[1]
     assert r.source == 'remote'
 
-    b = tsx.basket('federated.basket', allsources=False)
+    b = tsx.basket('federated.basket', sources=['local'])
     assert b == [
         'local.basket.fed',
     ]
@@ -1103,15 +1103,6 @@ def test_federated_basket(tsx, engine):
 
     b = tsx.basket('federated.basket', meta=True)
     assert b[0].meta == {}
-
-    tsx.register_basket(
-        'mybasket',
-        '(by.and '
-        '  (by.source "local")'
-        '  (by.name "basket.fed"))'
-    )
-    names = tsx.basket('mybasket')
-    assert names == ['local.basket.fed']
 
 
 def test_federated_find(tsx, engine):
@@ -1153,80 +1144,18 @@ def test_federated_find(tsx, engine):
     ]
 
     # some top-level bysource
-    names = tsx.find('(by.source "remote")')
-    assert names == ['remote.basket.fed']
-
-    names = tsx.find('(by.source "local")')
-    assert names == ['local.basket.fed']
-
-    names = tsx.find(
-        '(by.or '
-        '  (by.source "local")'
-        '  (by.source "remote"))'
-    )
-    assert names == [
-        'local.basket.fed',
-        'remote.basket.fed'
-    ]
-
-    names = tsx.find(
-        '(by.or '
-        '  (by.source "local")'
-        '  (by.source "remote"))',
-        allsources=False
-    )
-    assert names == [
-        'local.basket.fed',
-    ]
-
-    names = tsx.find(
-        '(by.and '
-        '  (by.source "local")'
-        '  (by.source "remote"))'
-    )
-    assert names == []
-
-    # non-toplevel
-    names = tsx.find(
-        '(by.or '
-        '  (by.and (by.name "basket.fed") (by.source "local"))'
-        '  (by.source "remote"))'
-    )
-    assert names == ['local.basket.fed', 'remote.basket.fed']
-
-    names = tsx.find(
-        '(by.or '
-        '  (by.not (by.and (by.name "basket.fed") (by.source "local")))'
-        '  (by.source "remote"))'
-    )
-    assert names == ['remote.basket.fed']
-
-    names = tsx.find(
-        '(by.and '
-        '  (by.name "basket.fed")'
-        '  (by.source "remote"))'
-    )
+    names = tsx.find('(by.everything)', sources=['remote'])
     assert names == ['remote.basket.fed']
     assert names[0].source == 'remote'
 
-    names = tsx.find(
-        '(by.and '
-        '  (by.source "local")'
-        '  (by.name "basket.fed"))'
-    )
+    names = tsx.find('(by.everything)', sources=['local'])
     assert names == ['local.basket.fed']
     assert names[0].source == 'local'
 
-    names = tsx.find(
-        '(by.or '
-        '  (by.and '
-        '    (by.source "local")'
-        '    (by.name "basket.fed"))'
-        '  (by.and '
-        '    (by.source "remote")'
-        '    (by.name "basket.fed")))'
-    )
+    names = tsx.find('(by.everything)', sources=['local', 'remote'])
     assert names == ['local.basket.fed', 'remote.basket.fed']
+    assert names[0].source == 'local'
+    assert names[1].source == 'remote'
 
 
 def test_federated_find_homonyms(tsx, engine):

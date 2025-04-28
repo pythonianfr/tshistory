@@ -11,7 +11,6 @@ from collections import defaultdict
 import warnings
 
 from dbcache import api as storeapi
-from psyl import lisp
 from sqlhelp.pgapi import make_url, pgdb
 import pandas as pd
 
@@ -561,7 +560,7 @@ class mainsource:
     def find(self, query: str,
              limit: Optional[int]=None,
              meta: Optional[int]=False,
-             allsources: Optional[bool]=True,
+             sources: List[str]=[],
              _source: Optional[str]='local') -> List[ts]:
         """Return a list of series descriptors matching the query.
 
@@ -622,19 +621,23 @@ class mainsource:
         As in `(<= "max_capacity" 900)`
 
         """
-        with self.engine.begin() as cn:
-            localnames = search.local_search(
-                cn,
-                self.tsh.find,
-                query,
-                _source,
-                limit,
-                meta
-            )
-            if not allsources:
+        localnames = []
+        if not sources or 'local' in sources:
+            with self.engine.begin() as cn:
+                localnames = self.tsh.find(
+                    cn,
+                    search.query.fromexpr(query),
+                    limit,
+                    meta,
+                    source=_source
+                )
+            if sources == ['local']:
                 return sorted(localnames)
 
-        remotenames = self.othersources.find(query, limit, meta)
+        if 'local' in sources:
+            sources.remove('local')
+
+        remotenames = self.othersources.find(query, limit, meta, sources)
         return sorted(
             localnames + remotenames
         )
@@ -887,7 +890,7 @@ class mainsource:
     def basket(self, name: str,
                limit: Optional[int]=None,
                meta: Optional[int]=False,
-               allsources: Optional[bool]=True) -> List[ts]:
+               sources: List[str]=[]) -> List[ts]:
         """Returns the list of series descriptors associated with a basket.
 
         A series descriptor is a string-like object (exhibiting the
@@ -901,7 +904,7 @@ class mainsource:
         with self.engine.begin() as cn:
             query = self.tsh.basket_definition(cn, name)
         return self.find(
-            query, limit=limit, meta=meta, allsources=allsources
+            query, limit=limit, meta=meta, sources=sources
         )
 
     def basket_definition(self, name: str) -> str:
@@ -1017,13 +1020,12 @@ class mainsource:
 
         """
         with self.engine.begin() as cn:
-            localnames = search.local_search(
+            localnames = self.tsh.group_find(
                 cn,
-                self.tsh.group_find,
-                query,
-                _source,
+                search.query.fromexpr(query),
                 limit,
-                meta
+                meta,
+                source=_source,
             )
 
         remotenames = self.othersources.group_find(query, limit, meta)
@@ -1453,32 +1455,19 @@ class altsources:
             cat.update(c)
         return cat
 
-    def find(self, query, limit=None, meta=False):
-        return self._find(query, limit, meta, 'find')
+    def find(self, query, limit=None, meta=False, sources=[]):
+        return self._find(query, limit, meta, sources, 'find')
 
-    def _find(self, query, limit, meta, finder):
+    def _find(self, query, limit, meta, sources, finder):
         nameslist = []
         pool = threadpool(len(self.sources))
-        parsedquery = lisp.parse(query)
 
-        def readbasket(source):
-            # this looks 90% like search.local_search
-            # but not easy to factor this in ...
-            localquery = search.prunebysource(
-                source.name, parsedquery
-            )
-            if localquery is None:
-                return []
+        def find(source):
+            find = getattr(source.tsa, finder)
             try:
-                # at this point, no bysource expression should remain
-                # and all relevant source-bound subexpressions should
-                # have been pruned
-                localquery = search.removebysource(localquery)
-                if not localquery:
-                    localquery = ['by.everything']
                 nameslist.append(
-                    getattr(source.tsa, finder)(
-                        lisp.serialize(localquery),
+                    find(
+                        query,
                         limit=limit,
                         meta=meta,
                         _source=source.name
@@ -1488,7 +1477,12 @@ class altsources:
                 import traceback as tb; tb.print_exc()
                 print(f'source {source} temporarily unavailable')
 
-        pool(readbasket, [(s,) for s in self.sources])
+        if not sources:
+            usesources = self.sources
+        else:
+            usesources = [s for s in self.sources if s.name in sources]
+
+        pool(find, [(s,) for s in usesources])
         return list(
             itertools.chain.from_iterable(nameslist)
         )
@@ -1563,7 +1557,7 @@ class altsources:
         return source.tsa.group_old_metadata(name)
 
     def group_find(self, query, limit=None, meta=False):
-        return self._find(query, limit, meta, 'group_find')
+        return self._find(query, limit, meta, [], 'group_find')
 
     def group_get(self,
                   name,

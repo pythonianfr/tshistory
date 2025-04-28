@@ -46,6 +46,12 @@ def rawseries(value):
     return value
 
 
+def csv(value):
+    if not value:
+        return []
+    return value.split(',')
+
+
 properties = reqparse.RequestParser()
 properties.add_argument(
     'property', type=str, choices=('sources',),
@@ -322,7 +328,7 @@ find.add_argument(
     'meta', type=inputs.boolean, default=False
 )
 find.add_argument(
-    'allsources', type=inputs.boolean, default=True
+    'sources', type=csv, default=[]
 )
 find.add_argument(
     '_source', type=str, default='local'
@@ -339,7 +345,7 @@ basket.add_argument(
     'meta', type=inputs.boolean, default=False
 )
 basket.add_argument(
-    'allsources', type=inputs.boolean, default=True
+    'sources', type=csv, default=[]
 )
 
 register_basket = reqparse.RequestParser()
@@ -1316,7 +1322,7 @@ class httpapi:
                             args.query,
                             limit=args.limit,
                             meta=args.meta,
-                            allsources=args.allsources,
+                            sources=args.sources,
                             _source=args._source
                     )
                 ]
@@ -1335,7 +1341,7 @@ class httpapi:
                             args.name,
                             limit=args.limit,
                             meta=args.meta,
-                            allsources=args.allsources
+                            sources=args.sources
                     )
                 ]
 
