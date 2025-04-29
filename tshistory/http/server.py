@@ -54,7 +54,7 @@ def csv(value):
 
 properties = reqparse.RequestParser()
 properties.add_argument(
-    'property', type=str, choices=('sources',),
+    'property', type=str, choices=('info', 'sources',),
     required=True,
     help='get the global instance properties'
 )
@@ -590,8 +590,9 @@ class httpapi:
                 args = properties.parse_args()
                 if args.property == 'sources':
                     return tsa.sources(), 200
+                elif args.property == 'info':
+                    return tsa.info(), 200
 
-                import ipdb; ipdb.set_trace()
                 # we should never get there
                 api.abort(400, 'Asked property does not exist')
 

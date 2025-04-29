@@ -83,6 +83,17 @@ class base:
         return 'primary'
 
     @tx
+    def info(self, cn):
+        return {
+            'primary_series': cn.execute(
+                f'select count(id) from "{self.namespace}".registry '
+            ).scalar(),
+            'primary_groups': cn.execute(
+                f'select count(id) from "{self.namespace}".group_registry '
+            ).scalar()
+        }
+
+    @tx
     def internal_metadata(self, cn, name):
         if name in cn.cache['internal_metadata']:
             return cn.cache['internal_metadata'][name]
@@ -529,7 +540,7 @@ class base:
         latest_ts = self.get(
             cn, name,
             from_value_date=from_value_date,
-            to_value_date=to_value_date,
+            to_value_date=to_value_date,
             keepnans=True
         )
         tzaware = self.tzaware(cn, name)

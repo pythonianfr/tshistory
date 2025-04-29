@@ -107,6 +107,10 @@ def test_oldmeta(engine, tsh):
         {'foo': 'baz', 'quux': 42}
     ]
 
+    info = tsh.info(engine)
+    assert 'primary_groups' in info
+    assert 'primary_series' in info
+
 
 def test_bad_name(engine, tsh):
     ts = pd.Series(

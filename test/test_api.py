@@ -1104,6 +1104,12 @@ def test_federated_basket(tsx, engine):
     b = tsx.basket('federated.basket', meta=True)
     assert b[0].meta == {}
 
+    # {'local': {'primary_groups': 0, 'primary_series': 1},
+    #  'remote': {'primary_groups': 0, 'primary_series': 1}}
+    infos = tsx.info()
+    assert 'local' in infos
+    assert 'remote' in infos
+
 
 def test_federated_find(tsx, engine):
     # cleanup

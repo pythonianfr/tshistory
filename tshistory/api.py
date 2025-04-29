@@ -114,6 +114,15 @@ class mainsource:
             for source in self.othersources.sources
         ]
 
+    def info(self):
+        with self.engine.begin() as cn:
+            local = self.tsh.info(cn)
+
+        return {
+            'local': local,
+            **self.othersources.info()
+        }
+
     def update(self,
                name: str,
                updatets: pd.Series,
@@ -1326,6 +1335,24 @@ class altsources:
             except Exception as err :
                 print(f'findsource[group]: source {source} currently unavailable (cause: {err})')
                 raise
+
+    def info(self):
+        pool = threadpool(len(self.sources))
+        out = []
+        def getinfo(source):
+            try:
+                out.append(
+                    (source.name, source.tsa.info()['local'])
+                )
+            except:
+                import traceback as tb; tb.print_exc()
+                print(f'source {source} temporarily unavailable')
+
+        pool(getinfo, [(s,) for s in self.sources])
+        infos = {}
+        for name, info in out:
+            infos[name] = info
+        return infos
 
     def exists(self, name):
         for source in self.sources:
