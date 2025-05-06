@@ -495,8 +495,7 @@ def test_strings(http):
         'tzaware': False,
         'dtype': 'object'
     })
-    assert res.status_code == 418
-    assert res.text == "dtype '|O' not understood"
+    assert res.status_code == 200
 
 
 def test_get_nans(http):

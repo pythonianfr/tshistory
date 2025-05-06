@@ -884,7 +884,7 @@ class httpapi:
                         dtype = args.dtype
                     # existing
                     else:
-                        dtype = meta and meta['value_dtype'] or None
+                        dtype = meta and meta['value_type'] or None
                     # data given in parameter
                     if args.series is not None:
                         series = pd.Series(args.series, dtype=dtype)
