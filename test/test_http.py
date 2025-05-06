@@ -465,6 +465,40 @@ insertion_date             value_date
     ]
 
 
+def test_strings(http):
+    ts = pd.Series(
+        ['something']
+        , index=[dt(2025, 1, 1)]
+    )
+    res = http.patch_json('/series/state', params={
+        'name': 'series-string-http',
+        'series': json.loads(util.tojson(ts)),
+        'author': 'Babar',
+        'tzaware': False,
+        'dtype': 'object'
+    })
+    assert res.status_code == 201
+
+    res = http.get('/series/state', params={
+        'name': 'series-string-http',
+    })
+    assert res.text == '{"2025-01-01T00:00:00": "something"}'
+
+    ts = pd.Series(
+        ['else']
+        , index=[dt(2025, 1, 2)]
+    )
+    res = http.patch_json('/series/state', params={
+        'name': 'series-string-http',
+        'series': json.loads(util.tojson(ts)),
+        'author': 'Babar',
+        'tzaware': False,
+        'dtype': 'object'
+    })
+    assert res.status_code == 418
+    assert res.text == "dtype '|O' not understood"
+
+
 def test_get_nans(http):
     # insert
     ts = genserie(utcdt(2024, 1, 1), 'h', 3)
