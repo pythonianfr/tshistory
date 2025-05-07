@@ -20,6 +20,7 @@ from tshistory.util import (
     ensure_versions,
     find_most_specific_tshclass,
     find_most_specific_http_client,
+    guard_insert,
     threadpool,
     ts,
     with_inferred_freq
@@ -173,7 +174,10 @@ class mainsource:
 
         """
         insertion_date = ensuretz(insertion_date)
-
+        guard_insert(
+            updatets, name, author, metadata,
+            insertion_date
+        )
         with self.engine.begin() as cn:
         # check local existence
             if not self.tsh.exists(cn, name):
@@ -215,6 +219,10 @@ class mainsource:
 
         """
         insertion_date = ensuretz(insertion_date)
+        guard_insert(
+            replacets, name, author, metadata,
+            insertion_date
+        )
 
         # check local existence
         with self.engine.begin() as cn:

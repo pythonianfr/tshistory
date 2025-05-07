@@ -26,9 +26,16 @@ def test_guard_insert(tsx):
             utcdt(2020, 1, 1), periods=3, freq='D'
         )
     )
-    with pytest.raises(Exception):
+    with pytest.raises(AssertionError):
         # exception varies depending on nature of tsx
         tsx.update(
+            ts,
+            'nope',
+            'Babar'
+        )
+    with pytest.raises(AssertionError):
+        # exception varies depending on nature of tsx
+        tsx.replace(
             ts,
             'nope',
             'Babar'
