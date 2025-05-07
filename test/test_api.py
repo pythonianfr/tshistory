@@ -19,6 +19,22 @@ from tshistory.testutil import (
 from tshistory.util import replicate_series
 
 
+def test_guard_insert(tsx):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            utcdt(2020, 1, 1), periods=3, freq='D'
+        )
+    )
+    with pytest.raises(Exception):
+        # exception varies depending on nature of tsx
+        tsx.update(
+            ts,
+            'nope',
+            'Babar'
+        )
+
+
 def test_sources(tsx):
     assert tsx.sources() == ['remote']
 
