@@ -172,6 +172,7 @@ class Migrator:
 @version('tshistory', '0.22.0')
 def migrate_022(engine, namespace, interactive):
     do_migrate_tree(engine, namespace, interactive)
+    do_migrate_old_metadata(engine, namespace, interactive)
 
 
 def do_migrate_tree(engine, namespace, interactive):
@@ -194,6 +195,30 @@ create table if not exists "{ns}".tree_series_map (
 );
 
 create index if not exists tree_series_map_idx on "{ns}".tree_series_map (treeid);
+""", _binary=False)
+
+
+def do_migrate_old_metadata(engine, namespace, interactive):
+    ns = namespace
+    with engine.begin() as cn:
+        cn.execute(f"""
+create table if not exists "{ns}".ts_oldmeta (
+  moment timestamptz unique not null default now(),
+  seriesid integer not null references "{ns}".registry (id) on delete cascade,
+  metadata jsonb not null
+);
+
+create index on "{ns}".ts_oldmeta (moment);
+create index on "{ns}".ts_oldmeta (seriesid);
+
+create table if not exists "{ns}".gr_oldmeta (
+  moment timestamptz unique not null default now(),
+  groupid integer not null references "{ns}".group_registry (id) on delete cascade,
+  metadata jsonb not null
+);
+
+create index on "{ns}".gr_oldmeta (moment);
+create index on "{ns}".gr_oldmeta (groupid);
 """, _binary=False)
 
 
