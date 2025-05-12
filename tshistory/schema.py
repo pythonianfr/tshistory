@@ -29,7 +29,7 @@ class tsschema(object):
 
     def _create_base(self, engine):
         with engine.begin() as cn:
-            cn.execute(sqlfile(BASE, ns=self.namespace), binary=False)
+            cn.execute(sqlfile(BASE, ns=self.namespace), _binary=False)
 
     def _create_series(self, engine, namespace):
         with engine.begin() as cn:
@@ -39,7 +39,7 @@ class tsschema(object):
             cn.execute(f'create schema "{namespace}"')
             cn.execute(f'create schema "{namespace}.revision"')
             cn.execute(f'create schema "{namespace}.snapshot"')
-            cn.execute(sqlfile(SERIES, ns=namespace), binary=False)
+            cn.execute(sqlfile(SERIES, ns=namespace), _binary=False)
         self._create_kvstore(engine, namespace)
 
     def _create_groups(self, engine):
@@ -50,7 +50,7 @@ class tsschema(object):
         self._create_series(engine, f'{self.namespace}.group')
         # group registry & mapping
         with engine.begin() as cn:
-            cn.execute(sqlfile(GROUP, ns=self.namespace), binary=False)
+            cn.execute(sqlfile(GROUP, ns=self.namespace), _binary=False)
 
     def _create_kvstore(self, engine, namespace):
         ns = f'{namespace}-kvstore'

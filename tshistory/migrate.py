@@ -194,7 +194,7 @@ create table if not exists "{ns}".tree_series_map (
 );
 
 create index if not exists tree_series_map_idx on "{ns}".tree_series_map (treeid);
-""", binary=False)
+""", _binary=False)
 
 
 @version('tshistory', '0.21.0')

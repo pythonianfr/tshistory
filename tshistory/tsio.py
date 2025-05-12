@@ -129,7 +129,7 @@ class base:
     def tree(self, cn):
         return cn.execute(
             f'select path from "{self.namespace}".tree',
-            binary=False
+            _binary=False
         ).scalars()
 
     @tx
@@ -156,7 +156,7 @@ class base:
             f'      map.treeid = tree.id and'
             f'      reg.name = %(name)s',
             name=name,
-            binary=False
+            _binary=False
         ).scalar()
 
     def set_in_tree(self, cn, name, path):
@@ -1626,7 +1626,7 @@ class timeseries(base):
             namespace=self.namespace,
             tablename=tablename
         )
-        cn.execute(table, binary=False)
+        cn.execute(table, _binary=False)
 
     def _series_initial_meta(self, _cn, _name, ts):
         return series_metadata(ts)
