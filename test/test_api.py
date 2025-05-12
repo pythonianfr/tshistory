@@ -16,7 +16,10 @@ from tshistory.testutil import (
     ts_from_csv,
     utcdt
 )
-from tshistory.util import replicate_series
+from tshistory.util import (
+    replicate_series,
+    replicate_basket,
+)
 
 
 def test_guard_insert(tsx):
@@ -1273,6 +1276,29 @@ insertion_date             value_date
 
     metadata = tsx.metadata('replicated.series.from.tsx')
     assert metadata == {'metadata1': 'value1'}
+
+
+def test_replicate_from_basket(tsx):
+    ts1 = genserie(utcdt(2025, 1, 1), 'd', 1)
+    ts2 = genserie(utcdt(2025, 1, 1), 'd', 2)
+
+    tsx.update('series-replicate-basket-1', ts1, 'test')
+    tsx.update('series-replicate-basket-2', ts2, 'test')
+
+    tsx.register_basket(
+        'basket-to-push',
+        '(by.name "series-replicate-basket")'
+    )
+
+    replicate_basket(
+        tsx,
+        tsx,
+        'basket-to-push',
+        prefix='replicate.',
+        suffix='.suffix',
+    )
+    assert tsx.exists('replicate.series-replicate-basket-1.suffix')
+    assert tsx.exists('replicate.series-replicate-basket-2.suffix')
 
 
 def test_rename(tsx):

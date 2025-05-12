@@ -882,6 +882,23 @@ def replicate_series(tsa_origin, tsa_target, origname,
     tsa_target.replace_metadata(targetname, metadata)
 
 
+def replicate_basket(tsa_origin, tsa_target, basket_name,
+                     from_insertion_date=None,
+                     prefix='',
+                     suffix='',
+                     ):
+    series = tsa_origin.basket(basket_name)
+    for origname in series:
+        targetname = prefix + origname + suffix
+        replicate_series(
+            tsa_origin,
+            tsa_target,
+            origname,
+            targetname=targetname,
+            from_insertion_date=from_insertion_date,
+        )
+
+
 # checkdiff helper
 
 def checkdiffs_for_name(engine, tsa, name):
