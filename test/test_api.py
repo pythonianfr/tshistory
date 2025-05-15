@@ -646,6 +646,7 @@ def test_oldmeta(tsx):
         {'foo': 'bar', 'quux': 42},
         {'foo': 'baz', 'quux': 42}
     ]
+    assert old[0][2] == 'no-user'
 
 
 def test_oldmeta_remote(engine, tsx):
@@ -2030,6 +2031,7 @@ def test_group_oldmeta(tsx):
         {'foo': 'bar', 'quux': 42},
         {'foo': 'baz', 'quux': 42}
     ]
+    assert old[0][2] == 'no-user'
 
 
 def test_group_oldmeta_remote(engine, tsx):

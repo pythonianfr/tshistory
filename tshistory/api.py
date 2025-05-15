@@ -756,15 +756,16 @@ class mainsource:
             self.tsh.delete_path(cn, path)
 
     def replace_metadata(self,
-                        name: str,
-                        metadata: dict) -> NONETYPE:
+                         name: str,
+                         metadata: dict,
+                         user:str='no-user') -> NONETYPE:
         """Replace a series metadata with a dictionary from strings to anything
         json-serializable.
 
         """
         with self.engine.begin() as cn:
             if self.tsh.exists(cn, name):
-                return self.tsh.replace_metadata(cn, name, metadata)
+                return self.tsh.replace_metadata(cn, name, metadata, user)
 
         self.othersources.forbidden(
             name,
@@ -773,14 +774,15 @@ class mainsource:
 
     def update_metadata(self,
                         name: str,
-                        metadata: dict) -> NONETYPE:
+                        metadata: dict,
+                        user: str='no-user') -> NONETYPE:
         """Update a series metadata with a dictionary from strings to anything
         json-serializable.
 
         """
         with self.engine.begin() as cn:
             if self.tsh.exists(cn, name):
-                return self.tsh.update_metadata(cn, name, metadata)
+                return self.tsh.update_metadata(cn, name, metadata, user)
 
         self.othersources.forbidden(
             name,
@@ -1264,21 +1266,27 @@ class mainsource:
 
         return self.othersources.group_old_metadata(name)
 
-    def update_group_metadata(self, name: str, meta: Dict[str, Any]) -> NONETYPE:
+    def update_group_metadata(self,
+                              name: str,
+                              meta: Dict[str, Any],
+                              user: str='no-user') -> NONETYPE:
         """Update a group metadata with a dictionary from strings to anything
         json-serializable.
 
         """
         with self.engine.begin() as cn:
-            self.tsh.update_group_metadata(cn, name, meta)
+            self.tsh.update_group_metadata(cn, name, meta, user)
 
-    def replace_group_metadata(self, name: str, meta: Dict[str, Any]) -> NONETYPE:
+    def replace_group_metadata(self,
+                               name: str,
+                               meta: Dict[str, Any],
+                               user: str='no-user') -> NONETYPE:
         """Replace a group metadata with a dictionary from strings to anything
         json-serializable.
 
         """
         with self.engine.begin() as cn:
-            self.tsh.replace_group_metadata(cn, name, meta)
+            self.tsh.replace_group_metadata(cn, name, meta, user)
 
     def group_catalog(self, allsources: bool=True) -> Dict[Tuple[str, str], List[Tuple[str,str]]]:
         """Produces a catalog of all groups in the form of a mapping from

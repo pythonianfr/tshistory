@@ -13,6 +13,7 @@ create table "{ns}".basket (
 create table "{ns}".ts_oldmeta (
   moment timestamptz unique not null default now(),
   seriesid integer not null references "{ns}".registry (id) on delete cascade,
+  userid text default 'no-user',
   metadata jsonb not null
 );
 

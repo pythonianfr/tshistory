@@ -205,6 +205,7 @@ def do_migrate_old_metadata(engine, namespace, interactive):
 create table if not exists "{ns}".ts_oldmeta (
   moment timestamptz unique not null default now(),
   seriesid integer not null references "{ns}".registry (id) on delete cascade,
+  userid text default 'no-user',
   metadata jsonb not null
 );
 
@@ -214,6 +215,7 @@ create index on "{ns}".ts_oldmeta (seriesid);
 create table if not exists "{ns}".gr_oldmeta (
   moment timestamptz unique not null default now(),
   groupid integer not null references "{ns}".group_registry (id) on delete cascade,
+  userid text default 'no-user',
   metadata jsonb not null
 );
 

@@ -33,6 +33,7 @@ create index "ix_{ns}_groupmap_series_idx" on "{ns}".groupmap(seriesid);
 create table "{ns}".gr_oldmeta (
   moment timestamptz unique not null default now(),
   groupid integer not null references "{ns}".group_registry (id) on delete cascade,
+  userid text default 'no-user',
   metadata jsonb not null
 );
 

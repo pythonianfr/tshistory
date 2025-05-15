@@ -253,6 +253,14 @@ def test_base(http):
     meta2 = res.json
     assert meta2 == {}
 
+    res = http.get('/series/metadata?name=test&type=archive')
+    oldmetas = res.json
+    assert len(oldmetas) == 2
+    assert oldmetas[0][1:] == [{}, 'no-user']
+    assert oldmetas[1][1:] == [
+        {'freq': 'd', 'description': 'banana spot price'}, 'no-user'
+    ]
+
     # get
     res = http.get('/series/state?name=test')
     series = util.fromjson(res.body, 'test', meta['tzaware'])

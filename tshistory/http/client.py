@@ -282,8 +282,8 @@ class httpclient:
         })
         if res.status_code == 200:
             return [
-                (pd.Timestamp(stamp), meta)
-                for stamp, meta in res.json()
+                (pd.Timestamp(stamp), meta, user)
+                for stamp, meta, user in res.json()
             ]
         if res.status_code == 404:
             return None
@@ -1070,8 +1070,8 @@ class httpclient:
         })
         if res.status_code == 200:
             return [
-                (pd.Timestamp(stamp), meta)
-                for stamp, meta in res.json()
+                (pd.Timestamp(stamp), meta, user)
+                for stamp, meta, user in res.json()
             ]
         if res.status_code == 404:
             return None

@@ -5,7 +5,8 @@ import werkzeug
 from flask import (
     Blueprint,
     jsonify,
-    make_response
+    make_response,
+    request
 )
 from flask_restx import (
     Api as baseapi,
@@ -659,8 +660,8 @@ class httpapi:
 
                 if args.type == 'archive':
                     metas = [
-                        (stamp.isoformat(), meta)
-                        for stamp, meta in tsa.old_metadata(args.name)
+                        (stamp.isoformat(), meta, user)
+                        for stamp, meta, user in tsa.old_metadata(args.name)
                     ]
                     return metas, 200
 
@@ -704,8 +705,9 @@ class httpapi:
                     api.abort(404, f'`{args.name}` does not exists')
 
                 metadata = json.loads(args.metadata)
+                user = request.environ.get('USER')
                 try:
-                    tsa.replace_metadata(args.name, metadata)
+                    tsa.replace_metadata(args.name, metadata, user=user)
                 except ValueError as err:
                     if err.args[0].startswith('not allowed to'):
                         api.abort(405, err.args[0])
@@ -731,8 +733,9 @@ class httpapi:
                     api.abort(404, f'`{args.name}` does not exists')
 
                 metadata = json.loads(args.metadata)
+                user = request.environ.get('USER')
                 try:
-                    tsa.update_metadata(args.name, metadata)
+                    tsa.update_metadata(args.name, metadata, user=user)
                 except ValueError as err:
                     if err.args[0].startswith('not allowed to'):
                         api.abort(405, err.args[0])
@@ -1627,8 +1630,8 @@ class httpapi:
 
                 if args.type == 'archive':
                     metas = [
-                        (stamp.isoformat(), meta)
-                        for stamp, meta in tsa.group_old_metadata(args.name)
+                        (stamp.isoformat(), meta, user)
+                        for stamp, meta, user in tsa.group_old_metadata(args.name)
                     ]
                     return metas, 200
 
@@ -1649,8 +1652,9 @@ class httpapi:
                     api.abort(404, f'`{args.name}` does not exists')
 
                 metadata = json.loads(args.metadata)
+                user = request.environ.get('USER')
                 try:
-                    tsa.replace_group_metadata(args.name, metadata)
+                    tsa.replace_group_metadata(args.name, metadata, user=user)
                 except ValueError as err:
                     if err.args[0].startswith('not allowed to'):
                         api.abort(405, err.args[0])
@@ -1667,8 +1671,9 @@ class httpapi:
                     api.abort(404, f'`{args.name}` does not exists')
 
                 metadata = json.loads(args.metadata)
+                user = request.environ.get('USER')
                 try:
-                    tsa.update_group_metadata(args.name, metadata)
+                    tsa.update_group_metadata(args.name, metadata, user=user)
                 except ValueError as err:
                     if err.args[0].startswith('not allowed to'):
                         api.abort(405, err.args[0])

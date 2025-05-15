@@ -205,7 +205,7 @@ class base:
         )
 
     @tx
-    def update_metadata(self, cn, name, metadata):
+    def update_metadata(self, cn, name, metadata, user='no-user'):
         assert isinstance(metadata, dict)
         existing_metadata = self.metadata(cn, name) or {}
         oldmeta = existing_metadata.copy()
@@ -228,14 +228,15 @@ class base:
         cn.execute(
             f'with sid as'
             f'  (select id from "{self.namespace}".registry where name = %(name)s) '
-            f'insert into "{self.namespace}".ts_oldmeta (seriesid, metadata) '
-            f'select id, %(meta)s from sid',
+            f'insert into "{self.namespace}".ts_oldmeta (seriesid, metadata, userid) '
+            f'select id, %(meta)s, %(user)s from sid',
             meta=oldmeta,
-            name=name
+            name=name,
+            user=user
         )
 
     @tx
-    def replace_metadata(self, cn, name, metadata):
+    def replace_metadata(self, cn, name, metadata, user='no-user'):
         assert isinstance(metadata, dict)
         oldmeta = self.metadata(cn, name) or {}
         if oldmeta == metadata:
@@ -255,18 +256,19 @@ class base:
         cn.execute(
             f'with sid as '
             f'  (select id from "{self.namespace}".registry where name = %(name)s) '
-            f'insert into "{self.namespace}".ts_oldmeta (seriesid, metadata) '
-            f'select id, %(meta)s from sid',
+            f'insert into "{self.namespace}".ts_oldmeta (seriesid, metadata, userid) '
+            f'select id, %(meta)s, %(user)s from sid',
             meta=oldmeta,
-            name=name
+            name=name,
+            user=user
         )
 
     @tx
     def old_metadata(self, cn, name):
         return [
-            (item.moment, item.metadata)
+            (item.moment, item.metadata, item.userid)
             for item in cn.execute(
-                    f'select o.moment, o.metadata '
+                    f'select o.moment, o.metadata, o.userid  '
                     f'from "{self.namespace}".ts_oldmeta as o, '
                     f'     "{self.namespace}".registry as r '
                     f'where o.seriesid = r.id and '
@@ -765,7 +767,7 @@ class base:
         cn.execute(sql, oldname=oldname, newname=newname)
 
     @tx
-    def replace_group_metadata(self, cn, name, metadata):
+    def replace_group_metadata(self, cn, name, metadata, user='no-user'):
         assert isinstance(metadata, dict)
         oldmeta = self.group_metadata(cn, name) or {}
         if oldmeta == metadata:
@@ -784,14 +786,15 @@ class base:
         cn.execute(
             f'with grid as '
             f'  (select id from "{self.namespace}".group_registry where name = %(name)s) '
-            f'insert into "{self.namespace}".gr_oldmeta (groupid, metadata) '
-            f'select id, %(meta)s from grid',
+            f'insert into "{self.namespace}".gr_oldmeta (groupid, metadata, userid) '
+            f'select id, %(meta)s, %(user)s from grid',
             meta=oldmeta,
-            name=name
+            name=name,
+            user=user
         )
 
     @tx
-    def update_group_metadata(self, cn, name, metadata):
+    def update_group_metadata(self, cn, name, metadata, user='no-user'):
         assert isinstance(metadata, dict)
         existing_metadata = self.group_metadata(cn, name) or {}
         oldmeta = existing_metadata.copy()
@@ -812,18 +815,19 @@ class base:
         cn.execute(
             f'with grid as'
             f'  (select id from "{self.namespace}".group_registry where name = %(name)s) '
-            f'insert into "{self.namespace}".gr_oldmeta (groupid, metadata) '
-            f'select id, %(meta)s from grid',
+            f'insert into "{self.namespace}".gr_oldmeta (groupid, metadata, userid) '
+            f'select id, %(meta)s, %(user)s from grid',
             meta=oldmeta,
-            name=name
+            name=name,
+            user=user
         )
 
     @tx
     def group_old_metadata(self, cn, name):
         return [
-            (item.moment, item.metadata)
+            (item.moment, item.metadata, item.userid)
             for item in cn.execute(
-                    f'select o.moment, o.metadata '
+                    f'select o.moment, o.metadata, o.userid '
                     f'from "{self.namespace}".gr_oldmeta as o, '
                     f'     "{self.namespace}".group_registry as r '
                     f'where o.groupid = r.id and '

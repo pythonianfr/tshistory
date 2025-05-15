@@ -43,6 +43,7 @@ class nosecurity:
 
     def __call__(self, environ, start_response):
         environ['ROLE'] = self.role
+        environ['USER'] = 'no-user'
         return self.app(environ, start_response)
 
 
