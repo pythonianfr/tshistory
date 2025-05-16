@@ -642,9 +642,9 @@ def test_oldmeta(tsx):
 
     old = tsx.old_metadata('oldmeta')
     assert [it[1] for it in old] == [
-        {},
+        {'foo': 'baz', 'quux': 42},
         {'foo': 'bar', 'quux': 42},
-        {'foo': 'baz', 'quux': 42}
+        {}
     ]
     assert old[0][2] == 'no-user'
 
@@ -703,9 +703,9 @@ def test_oldmeta_remote(engine, tsx):
 
     old = tsx.old_metadata('oldmeta')
     assert [it[1] for it in old] == [
-        {},
+        {'foo': 'baz', 'quux': 42},
         {'foo': 'bar', 'quux': 42},
-        {'foo': 'baz', 'quux': 42}
+        {}
     ]
 
 
@@ -2027,9 +2027,9 @@ def test_group_oldmeta(tsx):
 
     old = tsx.group_old_metadata('group-oldmeta')
     assert [it[1] for it in old] == [
-        {},
+        {'foo': 'baz', 'quux': 42},
         {'foo': 'bar', 'quux': 42},
-        {'foo': 'baz', 'quux': 42}
+        {}
     ]
     assert old[0][2] == 'no-user'
 
@@ -2090,9 +2090,9 @@ def test_group_oldmeta_remote(engine, tsx):
 
     old = tsx.group_old_metadata('group-oldmeta')
     assert [it[1] for it in old] == [
-        {},
+        {'foo': 'baz', 'quux': 42},
         {'foo': 'bar', 'quux': 42},
-        {'foo': 'baz', 'quux': 42}
+        {}
     ]
 
 

@@ -256,8 +256,8 @@ def test_base(http):
     res = http.get('/series/metadata?name=test&type=archive')
     oldmetas = res.json
     assert len(oldmetas) == 2
-    assert oldmetas[0][1:] == [{}, 'no-user']
-    assert oldmetas[1][1:] == [
+    assert oldmetas[-1][1:] == [{}, 'no-user']
+    assert oldmetas[0][1:] == [
         {'freq': 'd', 'description': 'banana spot price'}, 'no-user'
     ]
 

@@ -273,7 +273,7 @@ class base:
                     f'     "{self.namespace}".registry as r '
                     f'where o.seriesid = r.id and '
                     f'      r.name = %(name)s '
-                    f'order by o.moment asc',
+                    f'order by o.moment desc',
                     name=name
             ).fetchall()
         ]
@@ -832,7 +832,7 @@ class base:
                     f'     "{self.namespace}".group_registry as r '
                     f'where o.groupid = r.id and '
                     f'      r.name = %(name)s '
-                    f'order by o.moment asc',
+                    f'order by o.moment desc',
                     name=name
             ).fetchall()
         ]

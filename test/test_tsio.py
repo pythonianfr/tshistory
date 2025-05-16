@@ -102,9 +102,9 @@ def test_oldmeta(engine, tsh):
 
     old = tsh.old_metadata(engine, 'oldmeta')
     assert [it[1] for it in old] == [
-        {},
+        {'foo': 'baz', 'quux': 42},
         {'foo': 'bar', 'quux': 42},
-        {'foo': 'baz', 'quux': 42}
+        {}
     ]
 
     info = tsh.info(engine)
@@ -4115,9 +4115,9 @@ def test_group_oldmeta(engine, tsh):
 
     old = tsh.group_old_metadata(engine, 'group-oldmeta')
     assert [it[1] for it in old] == [
-        {},
+        {'foo': 'baz', 'quux': 42},
         {'foo': 'bar', 'quux': 42},
-        {'foo': 'baz', 'quux': 42}
+        {}
     ]
 
 
