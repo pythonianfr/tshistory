@@ -924,16 +924,22 @@ def replicate_basket(tsa_origin, tsa_target, basket_name,
                      suffix='',
                      ):
     series = tsa_origin.basket(basket_name)
-    for origname in series:
-        targetname = prefix + origname + suffix
-        replicate_series(
-            tsa_origin,
-            tsa_target,
-            origname,
-            targetname=targetname,
-            from_insertion_date=from_insertion_date,
-            insertion_freq_offset=insertion_freq_offset
-        )
+    poolrun = threadpool(16)
+
+    poolrun(
+        replicate_series,
+        [
+            (
+                tsa_origin,
+                tsa_target,
+                origname,
+                prefix + origname + suffix,
+                from_insertion_date,
+                insertion_freq_offset
+            )
+            for origname in series
+        ]
+    )
 
 
 # checkdiff helper
