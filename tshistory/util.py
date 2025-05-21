@@ -385,6 +385,25 @@ def hash64(text: str) -> int:
     return int.from_bytes(hash_digest, byteorder='big', signed=True)
 
 
+# tsio search helpers
+
+def make_find_sqlquery(ns, target: str, items, query, limit: int, meta: bool):
+    if meta:
+        items += ['internal_metadata', 'metadata']
+    q = select(
+        *items
+    ).table(
+        f'"{ns}".{target} as reg'
+    ).order('name', 'asc')
+    sql, kw = query.sql(ns)
+    if sql:
+        q.where(sql, **kw)
+    if limit:
+        q.limit(limit)
+
+    return q
+
+
 # timedelta (de)serialisation
 
 def delta_isoformat(td):

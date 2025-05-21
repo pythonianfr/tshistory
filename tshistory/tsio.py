@@ -24,6 +24,7 @@ from tshistory.util import (
     guard_query_dates,
     hash64,
     infer_freq,
+    make_find_sqlquery,
     patch,
     pruned_history,
     series_metadata,
@@ -336,24 +337,10 @@ class base:
 
     @tx
     def find(self, cn, query, limit=None, meta=False, source='local'):
-        return self._find(cn, query, limit, meta, source, 'registry')
-
-    def _find(self, cn, query, limit, meta, source, target):
-        items = self._find_items[:]
-        if meta:
-            items += ['internal_metadata', 'metadata']
-        q = select(
-            *items
-        ).table(
-            f'"{self.namespace}".{target} as reg'
-        ).order('name', 'asc')
-        sql, kw = query.sql(self.namespace)
-        if sql:
-            q.where(sql, **kw)
-        if limit:
-            q.limit(limit)
-
-        return self._finish_find(cn, q, meta, source)
+        sqlq = make_find_sqlquery(
+            self.namespace, 'registry', self._find_items[:], query, limit, meta
+        )
+        return self._finish_find(cn, sqlq, meta, source)
 
     def _finish_find(self, cn, q, meta, source):
         if not meta:
@@ -528,7 +515,7 @@ class base:
     @tx
     def block_staircase(self, cn, name,
                         from_value_date=None,
-                        to_value_date=None,
+                        to_value_date=None,
                         revision_freq=None,
                         revision_time=None,
                         revision_tz='UTC',
@@ -739,9 +726,16 @@ class base:
             todate=todate
         )
 
+    _group_finish_find = _finish_find
+    _group_find_items = _find_items
+
     @tx
     def group_find(self, cn, query, limit=None, meta=False, source='local'):
-        return self._find(cn, query, limit, meta, source, 'group_registry')
+        sqlq = make_find_sqlquery(
+            self.namespace, 'group_registry', self._group_find_items[:], query, limit, meta
+        )
+
+        return self._group_finish_find(cn, sqlq, meta, source)
 
     @tx
     def group_internal_metadata(self, cn, name):
