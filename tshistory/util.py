@@ -870,7 +870,8 @@ def extend(klass):
 
 def replicate_series(tsa_origin, tsa_target, origname,
                      targetname=None,
-                     from_insertion_date=None):
+                     from_insertion_date=None,
+                     insertion_freq_offset=None):
     if not tsa_origin.exists(origname):
         raise ValueError(f'"{origname}" is unknown.')
 
@@ -888,6 +889,21 @@ def replicate_series(tsa_origin, tsa_target, origname,
             if insertion_date > last_known_insertion_date
         ]
 
+    if insertion_freq_offset is not None and len(insertion_dates) > 1:
+        ts_insertion = pd.Series(data=0, index=insertion_dates)
+        ifreq, _ = infer_freq(ts_insertion)
+        # convert the resample_freq to timedelta
+        dates = pd.date_range(
+            pd.Timestamp('2000-1-1'),
+            periods=2,
+            freq=insertion_freq_offset
+        )
+        resample_delta = dates[1] - dates[0]
+
+        if ifreq < resample_delta:
+            ts_insertion = ts_insertion.resample(insertion_freq_offset).mean()
+            insertion_dates = ts_insertion.index
+
     for idate in insertion_dates:
         ts = tsa_origin.get(origname, revision_date=idate)
         tsa_target.update(
@@ -903,6 +919,7 @@ def replicate_series(tsa_origin, tsa_target, origname,
 
 def replicate_basket(tsa_origin, tsa_target, basket_name,
                      from_insertion_date=None,
+                     insertion_freq_offset=None,
                      prefix='',
                      suffix='',
                      ):
@@ -915,6 +932,7 @@ def replicate_basket(tsa_origin, tsa_target, basket_name,
             origname,
             targetname=targetname,
             from_insertion_date=from_insertion_date,
+            insertion_freq_offset=insertion_freq_offset
         )
 
 

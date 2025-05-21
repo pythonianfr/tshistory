@@ -1281,6 +1281,72 @@ insertion_date             value_date
     metadata = tsx.metadata('replicated.series.from.tsx')
     assert metadata == {'metadata1': 'value1'}
 
+    insertion_dates = pd.date_range(
+        start=pd.Timestamp('2023-07-01', tz='utc'),
+        end=pd.Timestamp('2023-07-03', tz='utc'),
+        freq='h'
+    )
+    for idate in insertion_dates:
+        ts = pd.Series(
+            [1, 2],
+            index = pd.date_range(start=idate.date(), periods=2, freq='h')
+        )
+        tsx.update(
+            'original.hourly.series.from.tsx',
+            ts,
+            'sensei',
+            insertion_date=idate
+        )
+
+    replicate_series(
+        tsx,
+        tsx,
+        'original.hourly.series.from.tsx',
+        'replicated.hourly.series.from.tsx',
+        insertion_freq_offset='D'
+    )
+
+    hist = tsx.history(
+        'replicated.hourly.series.from.tsx'
+    )
+    assert_hist("""
+insertion_date             value_date         
+2023-07-01 00:00:00+00:00  2023-07-01 00:00:00    1.0
+                           2023-07-01 01:00:00    2.0
+2023-07-02 00:00:00+00:00  2023-07-01 00:00:00    1.0
+                           2023-07-01 01:00:00    2.0
+                           2023-07-02 00:00:00    1.0
+                           2023-07-02 01:00:00    2.0
+2023-07-03 00:00:00+00:00  2023-07-01 00:00:00    1.0
+                           2023-07-01 01:00:00    2.0
+                           2023-07-02 00:00:00    1.0
+                           2023-07-02 01:00:00    2.0
+                           2023-07-03 00:00:00    1.0
+                           2023-07-03 01:00:00    2.0
+""", hist)
+
+    replicate_series(
+        tsx,
+        tsx,
+        'original.hourly.series.from.tsx',
+        'one.version.hourly.series.from.tsx',
+        insertion_freq_offset='D',
+        from_insertion_date=pd.Timestamp('2023-07-03', tz='utc')
+    )
+
+    hist = tsx.history(
+        'one.version.hourly.series.from.tsx'
+    )
+    assert_hist("""
+insertion_date             value_date         
+2023-07-03 00:00:00+00:00  2023-07-01 00:00:00    1.0
+                           2023-07-01 01:00:00    2.0
+                           2023-07-02 00:00:00    1.0
+                           2023-07-02 01:00:00    2.0
+                           2023-07-03 00:00:00    1.0
+                           2023-07-03 01:00:00    2.0
+""", hist)
+
 
 def test_replicate_from_basket(tsx):
     ts1 = genserie(utcdt(2025, 1, 1), 'd', 1)
