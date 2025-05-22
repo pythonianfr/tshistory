@@ -207,6 +207,11 @@ class with_http_bridge:
 
     def __init__(self, uri, resp, wsgitester):
         resp.add_callback(
+            responses.GET, uri + '/global/properties',
+            callback=partial(read_request_bridge, wsgitester)
+        )
+
+        resp.add_callback(
             responses.GET, uri + '/versions',
             callback=partial(read_request_bridge, wsgitester)
         )
@@ -317,6 +322,31 @@ class with_http_bridge:
         )
 
         resp.add_callback(
+            responses.GET, uri + '/series/tree-attribute',
+            callback=partial(read_request_bridge, wsgitester)
+        )
+
+        resp.add_callback(
+            responses.PUT, uri + '/series/tree-attribute',
+            callback=write_request_bridge(wsgitester.put)
+        )
+
+        resp.add_callback(
+            responses.GET, uri + '/series/tree-path',
+            callback=partial(read_request_bridge, wsgitester)
+        )
+
+        resp.add_callback(
+            responses.GET, uri + '/series/tree',
+            callback=partial(read_request_bridge, wsgitester)
+        )
+
+        resp.add_callback(
+            responses.DELETE, uri + '/series/tree-path',
+            callback=write_request_bridge(wsgitester.delete)
+        )
+
+        resp.add_callback(
             responses.GET, uri + '/series/freq',
             callback=partial(read_request_bridge, wsgitester)
         )
@@ -357,6 +387,11 @@ class with_http_bridge:
         )
 
         resp.add_callback(
+            responses.GET, uri + '/group/source',
+            callback=partial(read_request_bridge, wsgitester)
+        )
+
+        resp.add_callback(
             responses.GET, uri + '/group/metadata',
             callback=partial(read_request_bridge, wsgitester)
         )
@@ -378,6 +413,11 @@ class with_http_bridge:
 
         resp.add_callback(
             responses.GET, uri + '/group/log',
+            callback=partial(read_request_bridge, wsgitester)
+        )
+
+        resp.add_callback(
+            responses.GET, uri + '/group/find',
             callback=partial(read_request_bridge, wsgitester)
         )
 

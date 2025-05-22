@@ -5,7 +5,8 @@ import werkzeug
 from flask import (
     Blueprint,
     jsonify,
-    make_response
+    make_response,
+    request
 )
 from flask_restx import (
     Api as baseapi,
@@ -22,14 +23,14 @@ from tshistory import (
     util
 )
 from tshistory.http.util import (
-    enum,
     onerror,
     series_response,
     group_response,
     required_roles,
     todict,
     utcdt,
-    convert_bounds
+    convert_bounds,
+    prune_bounds,
 )
 
 
@@ -45,6 +46,19 @@ def rawseries(value):
     # *or* maybe a string ...
     return value
 
+
+def csv(value):
+    if not value:
+        return []
+    return value.split(',')
+
+
+properties = reqparse.RequestParser()
+properties.add_argument(
+    'property', type=str, choices=('info', 'sources',),
+    required=True,
+    help='get the global instance properties'
+)
 
 base = reqparse.RequestParser()
 
@@ -98,7 +112,7 @@ update.add_argument(
     help='Convert tz-aware series into this time zone before sending'
 )
 update.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 update.add_argument(
     'dtype', type=str, default='float64',
@@ -124,7 +138,8 @@ metadata.add_argument(
     help='get all metadata, including internal'
 )
 metadata.add_argument(
-    'type', type=enum('standard', 'internal', 'type', 'exists', 'interval'),
+    'type', type=str,
+    choices=('standard', 'internal', 'archive', 'type', 'exists', 'interval'),
     default='standard',
     help='specify the kind of needed metadata'
 )
@@ -133,6 +148,29 @@ put_metadata = base.copy()
 put_metadata.add_argument(
     'metadata', type=str, required=True,
     help='set new metadata for a series'
+)
+
+tree = reqparse.RequestParser()
+tree.add_argument(
+    'attribute', type=str,
+    help='set the tree attribute'
+)
+
+treepath = reqparse.RequestParser()
+treepath.add_argument(
+    'name', type=str, required=True,
+    help='path name or series name (depending on the value of the type parameter)'
+)
+treepath.add_argument(
+    'type', type=str, required=True,
+    choices=('pathname', 'seriesname'),
+    help='describe the role of the name attribute'
+)
+
+treepath_delete = reqparse.RequestParser()
+treepath_delete.add_argument(
+    'path', type=str, required=True,
+    help='path to delete'
 )
 
 inferred_freq = base.copy()
@@ -159,6 +197,9 @@ insertion_dates.add_argument(
 )
 insertion_dates.add_argument(
     'to_value_date', type=utcdt, default=None
+)
+insertion_dates.add_argument(
+    'limit', type=int, default=None
 )
 insertion_dates.add_argument(
     'nocache', type=inputs.boolean, default=False
@@ -192,11 +233,15 @@ get.add_argument(
     help='Convert tz-aware series into this time zone before sending'
 )
 get.add_argument(
+    'exclude', type=str, default='none',
+    help='Exclude "left", "right" or "both" request bounds from the series index'
+)
+get.add_argument(
     'inferred_freq', type=inputs.boolean, default=False,
     help='re-index series on a inferred frequency'
 )
 get.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 
 delete = base.copy()
@@ -224,7 +269,7 @@ history.add_argument(
     '_keep_nans', type=inputs.boolean, default=False
 )
 history.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 
 staircase = base.copy()
@@ -239,7 +284,7 @@ staircase.add_argument(
     'to_value_date', type=utcdt, default=None
 )
 staircase.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 
 block_staircase = base.copy()
@@ -265,7 +310,7 @@ block_staircase.add_argument(
     'maturity_time', type=todict, default=None
 )
 block_staircase.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 
 catalog = reqparse.RequestParser()
@@ -284,12 +329,24 @@ find.add_argument(
     'meta', type=inputs.boolean, default=False
 )
 find.add_argument(
+    'sources', type=csv, default=[]
+)
+find.add_argument(
     '_source', type=str, default='local'
 )
 
 basket = reqparse.RequestParser()
 basket.add_argument(
     'name', type=str
+)
+basket.add_argument(
+    'limit', type=int
+)
+basket.add_argument(
+    'meta', type=inputs.boolean, default=False
+)
+basket.add_argument(
+    'sources', type=csv, default=[]
 )
 
 register_basket = reqparse.RequestParser()
@@ -340,6 +397,10 @@ groupupdate.add_argument(
     help='insertion date can be forced'
 )
 groupupdate.add_argument(
+    'replace', type=inputs.boolean,
+    help='replace or update operation'
+)
+groupupdate.add_argument(
     'bgroup', type=werkzeug.datastructures.FileStorage,
     location='files',
     help='series group in binary format'
@@ -367,7 +428,7 @@ groupget.add_argument(
     help='keep erasure information'
 )
 groupget.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 groupget.add_argument(
     'tzone', type=str, default='UTC' ,
@@ -396,7 +457,7 @@ group_history.add_argument(
     'to_value_date', type=utcdt, default=None
 )
 group_history.add_argument(
-    'format', type=enum('json', 'tshpack'), default='json'
+    'format', type=str, choices=('json', 'tshpack'), default='json'
 )
 
 
@@ -413,7 +474,8 @@ groupmetadata.add_argument(
     help='get all metadata, including internal'
 )
 groupmetadata.add_argument(
-    'type', type=enum('standard', 'internal', 'type'),
+    'type', type=str,
+    choices=('standard', 'archive', 'internal', 'type'),
     default='standard',
     help='specify the kind of needed metadata'
 )
@@ -424,16 +486,32 @@ put_groupmetadata.add_argument(
     help='set new metadata for a series group'
 )
 
+groupsource = base.copy()
+
+groupfind = reqparse.RequestParser()
+groupfind.add_argument(
+    'query', type=str
+)
+groupfind.add_argument(
+    'limit', type=int
+)
+groupfind.add_argument(
+    'meta', type=inputs.boolean, default=False
+)
+groupfind.add_argument(
+    '_source', type=str, default='local'
+)
+
 
 class httpapi:
-    __slots__ = 'tsa', 'bp', 'api', 'nss', 'nsg'
+    __slots__ = 'tsa', 'bp', 'api', 'nsglobal', 'nss', 'nsg'
 
     def __init__(self,
                  tsa,
                  title='tshistory api',
                  description=(
                      'reading and updating time series state, '
-                     'histoy, formulas and metadata'
+                     'history, formulas and metadata'
                  )):
 
         # warn against playing proxy games
@@ -463,6 +541,11 @@ class httpapi:
         )
         self.api.namespaces.pop(0)  # wipe the default namespace
 
+        self.nsglobal = self.api.namespace(
+            'global',
+            description='Global Operations'
+        )
+
         self.nss = self.api.namespace(
             'series',
             description='Time Series Operations'
@@ -489,10 +572,30 @@ class httpapi:
 
         tsa = self.tsa
         api = self.api
+        nsglobal = self.nsglobal
         nss = self.nss
         nsg = self.nsg
 
         cfg = config.configuration()
+
+        @nsglobal.route('/properties')
+        class global_properties(Resource):
+
+            @api.doc(responses={200: 'Got content'})
+            @api.expect(properties)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                """returns the secondary sources of the local instance.
+                """
+                args = properties.parse_args()
+                if args.property == 'sources':
+                    return tsa.sources(), 200
+                elif args.property == 'info':
+                    return tsa.info(), 200
+
+                # we should never get there
+                api.abort(400, 'Asked property does not exist')
 
         @nss.route('/source')
         class timeseries_source(Resource):
@@ -555,6 +658,13 @@ class httpapi:
                         usermeta.update(imeta)
                     return usermeta, 200
 
+                if args.type == 'archive':
+                    metas = [
+                        (stamp.isoformat(), meta, user)
+                        for stamp, meta, user in tsa.old_metadata(args.name)
+                    ]
+                    return metas, 200
+
                 if args.type == 'internal':
                     return imeta, 200
 
@@ -595,8 +705,9 @@ class httpapi:
                     api.abort(404, f'`{args.name}` does not exists')
 
                 metadata = json.loads(args.metadata)
+                user = request.environ.get('USER')
                 try:
-                    tsa.replace_metadata(args.name, metadata)
+                    tsa.replace_metadata(args.name, metadata, user=user)
                 except ValueError as err:
                     if err.args[0].startswith('not allowed to'):
                         api.abort(405, err.args[0])
@@ -622,8 +733,9 @@ class httpapi:
                     api.abort(404, f'`{args.name}` does not exists')
 
                 metadata = json.loads(args.metadata)
+                user = request.environ.get('USER')
                 try:
-                    tsa.update_metadata(args.name, metadata)
+                    tsa.update_metadata(args.name, metadata, user=user)
                 except ValueError as err:
                     if err.args[0].startswith('not allowed to'):
                         api.abort(405, err.args[0])
@@ -640,6 +752,52 @@ class httpapi:
             def get(self):
                 """returns the sources of a Refinery"""
                 return tsa.list_metadata_keys()
+
+        @nss.route('/tree-attribute')
+        class timeseries_tree_attribute(Resource):
+
+            @api.expect(nothing)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                return tsa.tree_attribute()
+
+            @api.expect(tree)
+            @onerror
+            @required_roles('admin')
+            def put(self):
+                args = tree.parse_args()
+                return tsa.set_tree_attribute(args.attribute)
+
+        @nss.route('/tree-path')
+        class timeseries_tree_path(Resource):
+
+            @api.expect(treepath)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                args = treepath.parse_args()
+                if args.type == 'pathname':
+                    return tsa.path_series(args.name)
+
+                assert args.type == 'seriesname'
+                return tsa.series_path(args.name)
+
+            @api.expect(treepath_delete)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def delete(self):
+                args = treepath_delete.parse_args()
+                return tsa.delete_path(args.path)
+
+        @nss.route('/tree')
+        class timeseries_tree(Resource):
+
+            @api.expect(nothing)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                return tsa.tree()
 
         @nss.route('/freq')
         class timeseries_freq(Resource):
@@ -726,7 +884,7 @@ class httpapi:
                         dtype = args.dtype
                     # existing
                     else:
-                        dtype = meta and meta['value_dtype'] or None
+                        dtype = meta and meta['value_type'] or None
                     # data given in parameter
                     if args.series is not None:
                         series = pd.Series(args.series, dtype=dtype)
@@ -735,7 +893,8 @@ class httpapi:
                         series = pd.Series(json.loads(args.bseries.stream.read()), dtype=dtype)
                     series.index = pd.to_datetime(
                         series.index,
-                        utc=args.tzaware
+                        utc=args.tzaware,
+                        format='ISO8601',
                     )
                 else:
                     assert args.format == 'tshpack'
@@ -843,10 +1002,12 @@ class httpapi:
                 args = get.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
+                metadata = tsa.internal_metadata(args.name)
                 from_value_date, to_value_date = convert_bounds(
                     args.from_value_date,
                     args.to_value_date,
-                    args.tzone
+                    args.tzone,
+                    metadata['tzaware']
                 )
 
                 series = tsa.get(
@@ -863,7 +1024,12 @@ class httpapi:
                 # the fast path will need it
                 # also it is read from a cache filled at get time
                 # so very cheap call
-                metadata = tsa.internal_metadata(args.name)
+                series = prune_bounds(
+                    series,
+                    from_value_date,
+                    to_value_date,
+                    args.exclude
+                )
                 if metadata['tzaware'] and args.tzone.upper() != 'UTC':
                     series.index = series.index.tz_convert(args.tzone)
 
@@ -935,8 +1101,8 @@ class httpapi:
 
                 It is possible to restrict the horizon by using the
                 "from_insertion_date" / "to_insertion_date" /
-                "from_value_date" / "to_value_date" parameters, all
-                encoded as ISO8601 strings.
+                "from_value_date" / "to_value_date" / "limit"
+                parameters, all (but limit) encoded as ISO8601 strings.
 
                 The "nocache" parameter allows to bypass the cache of
                 a computed series (if it exists) and get the revisions
@@ -953,6 +1119,7 @@ class httpapi:
                     to_insertion_date=args.to_insertion_date,
                     from_value_date=args.from_value_date,
                     to_value_date=args.to_value_date,
+                    limit=args.limit,
                     nocache=args.nocache
                 )
                 response = make_response({'insertion_dates':
@@ -1160,6 +1327,7 @@ class httpapi:
                             args.query,
                             limit=args.limit,
                             meta=args.meta,
+                            sources=args.sources,
                             _source=args._source
                     )
                 ]
@@ -1175,7 +1343,10 @@ class httpapi:
                 return [
                     item.to_json()
                     for item in tsa.basket(
-                            args.name
+                            args.name,
+                            limit=args.limit,
+                            meta=args.meta,
+                            sources=args.sources
                     )
                 ]
 
@@ -1265,6 +1436,25 @@ class httpapi:
 
         # groups
 
+        @nsg.route('/source')
+        class timeseries_group_source(Resource):
+
+            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.expect(groupsource)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                """returns the source of a group
+
+                If it comes from a secondary source, it returns the source name.
+                If it comes from the main source it returns the "local" string.
+                """
+                args = groupsource.parse_args()
+                if not tsa.group_exists(args.name):
+                    api.abort(404, f'`{args.name}` does not exists')
+
+                return tsa.group_source(args.name), 200
+
         @nsg.route('/state')
         class timeseries_group_state(Resource):
 
@@ -1279,12 +1469,20 @@ class httpapi:
                 )
 
                 exists = tsa.group_exists(args.name)
-                tsa.group_replace(
-                    args.name,
-                    df,
-                    args.author,
-                    insertion_date=args.insertion_date,
-                )
+                if args.replace:
+                    tsa.group_replace(
+                        args.name,
+                        df,
+                        args.author,
+                        insertion_date=args.insertion_date,
+                    )
+                else:
+                    tsa.group_update(
+                        args.name,
+                        df,
+                        args.author,
+                        insertion_date=args.insertion_date,
+                    )
 
                 return '', 200 if exists else 201
 
@@ -1293,10 +1491,14 @@ class httpapi:
             @required_roles('admin', 'rw', 'ro')
             def get(self):
                 args = groupget.parse_args()
+                metadata = tsa.group_internal_metadata(args.name)
+                if metadata is None:
+                    api.abort(404, f'`{args.name}` does not exists')
                 from_value_date, to_value_date = convert_bounds(
                     args.from_value_date,
                     args.to_value_date,
-                    args.tzone
+                    args.tzone,
+                    metadata['tzaware']
                 )
                 df = tsa.group_get(
                     args.name,
@@ -1304,10 +1506,6 @@ class httpapi:
                     from_value_date=from_value_date,
                     to_value_date=to_value_date
                 )
-                if df is None:
-                    api.abort(404, f'`{args.name}` does not exists')
-                metadata = tsa.group_internal_metadata(args.name)
-
                 if metadata['tzaware'] and args.tzone.upper() != 'UTC':
                     df.index = df.index.tz_convert(args.tzone)
                 return group_response(
@@ -1430,6 +1628,13 @@ class httpapi:
                     stype = tsa.group_type(args.name)
                     return stype, 200
 
+                if args.type == 'archive':
+                    metas = [
+                        (stamp.isoformat(), meta, user)
+                        for stamp, meta, user in tsa.group_old_metadata(args.name)
+                    ]
+                    return metas, 200
+
                 if args.type == 'internal':
                     meta = tsa.group_internal_metadata(args.name)
                     return meta, 200
@@ -1447,8 +1652,9 @@ class httpapi:
                     api.abort(404, f'`{args.name}` does not exists')
 
                 metadata = json.loads(args.metadata)
+                user = request.environ.get('USER')
                 try:
-                    tsa.replace_group_metadata(args.name, metadata)
+                    tsa.replace_group_metadata(args.name, metadata, user=user)
                 except ValueError as err:
                     if err.args[0].startswith('not allowed to'):
                         api.abort(405, err.args[0])
@@ -1465,8 +1671,9 @@ class httpapi:
                     api.abort(404, f'`{args.name}` does not exists')
 
                 metadata = json.loads(args.metadata)
+                user = request.environ.get('USER')
                 try:
-                    tsa.update_group_metadata(args.name, metadata)
+                    tsa.update_group_metadata(args.name, metadata, user=user)
                 except ValueError as err:
                     if err.args[0].startswith('not allowed to'):
                         api.abort(405, err.args[0])
@@ -1513,3 +1720,71 @@ class httpapi:
                     logs.append(item)
 
                 return logs, 200
+
+        @nsg.route('/find')
+        class group_find(Resource):
+
+            @api.doc(responses={200: 'Got content'})
+            @api.expect(groupfind)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def get(self):
+                """return a list of group descriptor from a filter query
+
+                A filter query is a lisp expression.
+                Examples:
+                * (by.everything) will return descriptors for all series
+                * (by.name ".fcst") will return descriptos for all
+                  series whose name contains the ".fcst" string
+
+                The complete description of the filter language can be
+                found in the main documentation.
+
+                It is possible to specify a limit argument to limit
+                the results. Results are sorted by series name.
+
+                By setting the "meta" argument to true, one gets the
+                internal and user metadata in the returned series
+                descriptors.
+
+                The group descriptor is an object with fixed fields.
+                Without metadata it looks like this:
+
+                {
+                 "name": "series0",
+                 "imeta": null,
+                 "meta": null,
+                 "source": "local",
+                 "kind": "primary"
+                }
+
+                With metadata, we have this:
+
+                {
+                 "name": "series0",
+                 "imeta": {
+                  "tzaware": false,
+                  "tablename": "series0",
+                  "index_type": "datetime64[ns]",
+                  "value_type": "float64",
+                  "index_dtype": "<M8[ns]",
+                  "value_dtype": "<f8",
+                  "supervision_status": "supervised"
+                 },
+                 "meta": {
+                  "foo": "bar"
+                 },
+                 "source": "local",
+                 "kind": "primary"
+                }
+                """
+                args = find.parse_args()
+                return [
+                    item.to_json()
+                    for item in tsa.group_find(
+                            args.query,
+                            limit=args.limit,
+                            meta=args.meta,
+                            _source=args._source
+                    )
+                ]

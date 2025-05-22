@@ -4,12 +4,8 @@ import io
 import pytest
 import pandas as pd
 import numpy as np
-from psyl.lisp import (
-    parse,
-    serialize
-)
 
-from tshistory import search, tsio
+from tshistory import tsio
 from tshistory.util import (
     bisect_search,
     diff,
@@ -18,7 +14,6 @@ from tshistory.util import (
     objects,
     patch,
     patchmany,
-    safe_urlparse,
     unflatten,
 )
 from tshistory.testutil import (
@@ -27,19 +22,6 @@ from tshistory.testutil import (
     tables,
     utcdt
 )
-
-
-def test_safe_urlparse():
-    uri = (
-        'postgresql://becurvemanager:5ewjI}kxI:&8[(<dO~}Lk*g1WT?8a"{0'
-        '@host.docker.internal:5432/becurvemanager'
-    )
-    u = safe_urlparse(uri)
-    assert u.host == 'host.docker.internal'
-    assert u.port == 5432
-    assert u.password == '5ewjI}kxI:&8[(<dO~}Lk*g1WT?8a"{0'
-    assert u.username == 'becurvemanager'
-    assert u.database == 'becurvemanager'
 
 
 def test_objects():
@@ -409,31 +391,32 @@ def test_bisect():
 
 
 def test_tables(engine, pure):
-    assert tables(engine) == [
-        ('pure', 'basket'),
-        ('pure', 'group_registry'),
-        ('pure', 'groupmap'),
-        ('pure', 'registry'),
-        ('pure', 'revision_metadata'),
-        ('pure-kvstore', 'kvstore'),
-        ('pure-kvstore', 'things'),
-        ('pure-kvstore', 'version'),
-        ('pure-kvstore', 'vkvstore'),
-        ('pure.group', 'registry'),
-        ('pure.group', 'revision_metadata'),
-        ('pure.group-kvstore', 'kvstore'),
-        ('pure.group-kvstore', 'things'),
-        ('pure.group-kvstore', 'version'),
-        ('pure.group-kvstore', 'vkvstore')
-    ]
+    with engine.begin() as cn:
+        assert tables(cn) == [
+            ('pure', 'basket'),
+            ('pure', 'gr_oldmeta'),
+            ('pure', 'group_registry'),
+            ('pure', 'groupmap'),
+            ('pure', 'registry'),
+            ('pure', 'revision_metadata'),
+            ('pure', 'tree'),
+            ('pure', 'tree_series_map'),
+            ('pure', 'ts_oldmeta'),
+            ('pure-kvstore', 'kvstore'),
+            ('pure-kvstore', 'things'),
+            ('pure-kvstore', 'version'),
+            ('pure-kvstore', 'vkvstore'),
+            ('pure.group', 'registry'),
+            ('pure.group', 'revision_metadata'),
+            ('pure.group-kvstore', 'kvstore'),
+            ('pure.group-kvstore', 'things'),
+            ('pure.group-kvstore', 'version'),
+            ('pure.group-kvstore', 'vkvstore')
+        ]
 
 
 def test_in_tx(tsh, engine):
     assert tsh.type(engine, 'foo') == 'primary'
-
-    with pytest.raises(TypeError) as err:
-        tsh.update(engine.connect(), 0, 0, 0)
-    assert err.value.args[0] == 'You must use a transaction object'
 
     ts = genserie(datetime(2017, 10, 28, 23),
                   'h', 4, tz='UTC')
@@ -445,177 +428,3 @@ def test_timeseries_repr(tsh):
     if isinstance(tsh, tsio.timeseries):
         assert repr(tsh) == f'tsio.timeseries({tsh.namespace},othersources=None)'
 
-
-def _serialize_roundtrip(searchobj):
-    return search.query.fromexpr(searchobj.expr()).expr() == searchobj.expr()
-
-
-def test_search():
-    s0 = search.tzaware()
-    assert s0.expr() == '(by.tzaware)'
-    assert _serialize_roundtrip(s0)
-
-    s1 = search.byname('foo bar')
-    assert s1.expr() == '(by.name "foo bar")'
-    assert _serialize_roundtrip(s1)
-
-    s2 = search.or_(s0, s1)
-    assert s2.expr() == '(by.or (by.tzaware) (by.name "foo bar"))'
-    assert _serialize_roundtrip(s2)
-
-    s3 = search.and_(s0, s1)
-    assert s3.expr() == '(by.and (by.tzaware) (by.name "foo bar"))'
-    assert _serialize_roundtrip(s3)
-
-    s4 = search.not_(s3)
-    assert s4.expr() == '(by.not (by.and (by.tzaware) (by.name "foo bar")))'
-    assert _serialize_roundtrip(s4)
-
-    s5 = search.bymetakey('key')
-    assert s5.expr() == '(by.metakey "key")'
-    assert _serialize_roundtrip(s5)
-
-    s6 = search.bymetaitem('key', 'value')
-    assert s6.expr() == '(by.metaitem "key" "value")'
-    assert _serialize_roundtrip(s6)
-
-    s7 = search.bymetaitem('key', 42)
-    assert s7.expr() == '(by.metaitem "key" 42)'
-    assert _serialize_roundtrip(s7)
-
-    s8 = search.lt('key', 42)
-    assert s8.expr() == '(< "key" 42)'
-    assert _serialize_roundtrip(s8)
-
-    s9 = search.lte('key', 42)
-    assert s9.expr() == '(<= "key" 42)'
-    assert _serialize_roundtrip(s9)
-
-    s10 = search.gt('key', 42)
-    assert s10.expr() == '(> "key" 42)'
-    assert _serialize_roundtrip(s10)
-
-    s11 = search.gte('key', 42)
-    assert s11.expr() == '(>= "key" 42)'
-    assert _serialize_roundtrip(s11)
-
-    s12 = search.eq('key', 42)
-    assert s12.expr() == '(= "key" 42)'
-    assert _serialize_roundtrip(s12)
-
-    s13 = search.eq('key', "Hello")
-    assert s13.expr() == '(= "key" "Hello")'
-    assert _serialize_roundtrip(s13)
-
-    s14 = search.bysource('remote')
-    assert s14.expr() == '(by.source "remote")'
-    assert _serialize_roundtrip(s14)
-
-    s15 = search.byinternalmetaitem('key', 42)
-    assert s15.expr() == '(by.internal-metaitem "key" 42)'
-    assert _serialize_roundtrip(s15)
-
-
-def test_search_types():
-    types = {}
-    for lispname, kname in search._OPMAP.items():
-        if not getattr(search, kname, False):
-            continue
-        types[lispname] = search.query.klassbyname(kname).__sig__()
-
-    assert types == {
-        '<': {'key': 'str', 'return': 'query', 'value': 'Union[str, Number, bool]'},
-        '<=': {'key': 'str', 'return': 'query', 'value': 'Union[str, Number, bool]'},
-        '=': {'key': 'str', 'return': 'query', 'value': 'Union[str, Number, bool]'},
-        '>': {'key': 'str', 'return': 'query', 'value': 'Union[str, Number, bool]'},
-        '>=': {'key': 'str', 'return': 'query', 'value': 'Union[str, Number, bool]'},
-        'by.and': {'items': 'Packed[query]', 'return': 'query'},
-        'by.everything': {'return': 'query'},
-        'by.internal-metaitem': {'key': 'str',
-                                 'return': 'query',
-                                 'value': 'Union[str, Number, bool]'},
-        'by.metaitem': {'key': 'str',
-                        'return': 'query',
-                        'value': 'Union[str, Number, bool]'},
-        'by.metakey': {'key': 'MetaKey', 'return': 'query'},
-        'by.name': {'query': 'str', 'return': 'query'},
-        'by.not': {'item': 'query', 'return': 'query'},
-        'by.or': {'items': 'Packed[query]', 'return': 'query'},
-        'by.source': {'source': 'Source', 'return': 'query'},
-        'by.tzaware': {'return': 'query'}
-    }
-
-
-def test_prune_bysource():
-    """Notion of by.source filter.
-
-    Query without it: executed as is eveywhere.
-
-    by.source "source" -> remove all by.source <source> that do not
-    match "source"
-
-    """
-    assert search.prunebysource(
-        'local',
-        parse('(by.source "remote")')
-    ) is None
-
-    assert serialize(
-        search.prunebysource(
-            'local',
-            parse(
-                '(by.or '
-                '  (by.name "foo")'
-                '  (by.source "remote"))'
-            )
-        )
-    ) == '(by.name "foo")'
-
-    assert search.prunebysource(
-        'local',
-        parse(
-            '(by.and '
-            '  (by.name "foo")'
-            '  (by.source "remote"))'
-        )
-    ) is None
-
-    assert serialize(
-        search.prunebysource(
-            'remote',
-            parse(
-                '(by.or '
-                '  (by.name "foo")'
-                '  (by.source "local")'
-                '  (by.and '
-                '    (by.name "bar")'
-                '    (by.source "remote")))'
-            )
-        )
-    ) == '(by.or (by.name "foo") (by.and (by.name "bar") (by.source "remote")))'
-
-    assert serialize(
-        search.prunebysource(
-            'remote',
-            parse(
-                '(by.or '
-                '  (by.name "foo")'
-                '  (by.source "remote")'
-                '  (by.and '
-                '    (by.name "bar")'
-                '    (by.source "local")))'
-            )
-        )
-    ) == '(by.or (by.name "foo") (by.source "remote"))'
-
-    q = search.prunebysource(
-        'local',
-        parse(
-            '(by.or '
-            '  (by.not (by.and (by.name "basket.fed") (by.source "local")))'
-            '  (by.source "remote"))'
-        )
-    )
-    assert q == ['by.not', ['by.and', ['by.name', 'basket.fed'], ['by.source', 'local']]]
-    q2 = search.removebysource(q)
-    assert q2 == ['by.not', ['by.name', 'basket.fed']]

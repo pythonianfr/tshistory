@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 from inireader import reader
-from sqlalchemy.engine import url
+from sqlhelp.pgapi import make_url
 
 from tshistory.util import unflatten
 
@@ -67,7 +67,7 @@ class configuration:
         if something.startswith('http'):
             return something
         try:
-            url.make_url(something)
+            make_url(something)
         except Exception:
             pass
         else:

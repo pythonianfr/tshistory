@@ -17,7 +17,7 @@ def numpy_serialize(series, isstr=False):
     if len(series):
         bindex = np.ascontiguousarray(
             series.index.values
-        ).view(np.uint8).data.tobytes()
+        ).view(np.uint8).data
     else:
         bindex = b''
 
@@ -209,7 +209,7 @@ def pack_history(metadata, hist):
     arr = np.array(
         [tstamp.to_datetime64() for tstamp in hist],
         dtype='datetime64[ns]'
-    ).view(np.uint8).data.tobytes()
+    ).view(np.uint8).data
     byteslist.append(arr)
     isstr = metadata['value_type'] == 'object'
     for series in hist.values():
@@ -256,7 +256,7 @@ def serialize_index(df):
     if len(df):
         return dtype, np.ascontiguousarray(
             df.index.values
-        ).view(np.uint8).data.tobytes()
+        ).view(np.uint8).data
     return dtype, b''
 
 
@@ -300,7 +300,7 @@ def unpack_group(bytestr):
             bidtype
         )
     else:
-        return pd.DataFrame()
+        return pd.DataFrame(index=pd.DatetimeIndex([]))
 
     values = {}
     iterbseries = zip(*[iter(byteslist[2:])] * 3)
@@ -324,7 +324,7 @@ def pack_group_history(hist):
         np.array(
             [tstamp.to_datetime64() for tstamp in hist],
             dtype='datetime64[ns]'
-        ).view(np.uint8).data.tobytes()
+        ).view(np.uint8).data
     )
     for df in hist.values():
         bidtype, bindex = serialize_index(df)

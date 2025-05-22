@@ -16,7 +16,37 @@ from tshistory.testutil import (
     ts_from_csv,
     utcdt
 )
-from tshistory.util import replicate_series
+from tshistory.util import (
+    replicate_series,
+    replicate_basket,
+)
+
+
+def test_guard_insert(tsx):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(
+            utcdt(2020, 1, 1), periods=3, freq='D'
+        )
+    )
+    with pytest.raises(AssertionError):
+        # exception varies depending on nature of tsx
+        tsx.update(
+            ts,
+            'nope',
+            'Babar'
+        )
+    with pytest.raises(AssertionError):
+        # exception varies depending on nature of tsx
+        tsx.replace(
+            ts,
+            'nope',
+            'Babar'
+        )
+
+
+def test_sources(tsx):
+    assert tsx.sources() == ['remote']
 
 
 def test_base_universal_api(tsx):
@@ -295,14 +325,14 @@ def test_inferred_freq_irregular(tsx):
 """, ts)
 
 
-def test_with_inferred_freq_remote(mapi):
+def test_with_inferred_freq_remote(tsx, engine):
     ts = pd.Series(
         [1, 2, 3, np.nan, 5],
         pd.date_range(utcdt(2023, 1, 1), freq='D', periods=5)
     )
 
     remoteapi = timeseries(
-        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
     remoteapi.update(
         'remote.inferred-freq',
@@ -310,7 +340,7 @@ def test_with_inferred_freq_remote(mapi):
         'Celeste'
     )
 
-    ts = mapi.get('remote.inferred-freq', inferred_freq=True)
+    ts = tsx.get('remote.inferred-freq', inferred_freq=True)
     assert_df("""
 2023-01-01 00:00:00+00:00    1.0
 2023-01-02 00:00:00+00:00    2.0
@@ -361,7 +391,7 @@ datetime,               value
     pd.testing.assert_series_equal(computed_ts, expected_ts, check_names=False)
 
 
-def test_block_staircase_remote(mapi):
+def test_block_staircase_remote(tsx, engine):
     hist = hist_from_csv(io.StringIO("""
 datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00+0
 2020-01-03 00:00+00:00, 1.0,                10.0,               100.0
@@ -375,12 +405,12 @@ datetime,               2020-01-01 08:00+0, 2020-01-02 08:00+0, 2020-01-03 08:00
 """))
 
     remoteapi = timeseries(
-        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
     for idate, ts in hist.items():
         remoteapi.update('remote_staircase', ts, author='test', insertion_date=idate)
 
-    computed_ts = mapi.block_staircase(
+    computed_ts = tsx.block_staircase(
         'remote_staircase',
         from_value_date=pd.Timestamp('2020-01-03', tz='utc'),
         to_value_date=pd.Timestamp('2020-01-05', tz='utc'),
@@ -564,179 +594,122 @@ def test_log(tsx):
     assert len(log) == 1
 
 
-def test_multisource(mapi):
-    for methname in ('get', 'update', 'replace', 'exists', 'type',
-                     'history', 'staircase',
-                     'catalog', 'interval',
-                     'metadata', 'update_metadata', 'replace_metadata',
-                     'rename', 'delete'
-    ):
-        assert getattr(mapi, methname, False), methname
-
-
-    def create(uri, ns, name):
-        api = timeseries(uri, ns, handler=tsio.timeseries, sources={})
-        series = pd.Series(
-            [1, 2, 3],
-            index=pd.date_range(
-                utcdt(2020, 1, 1), periods=3, freq='D'
-            )
-        )
-
-        api.update(
-            name,
-            series,
-            'Babar',
-            insertion_date=utcdt(2019, 1, 1),
-            metadata={'about': 'test'}
-        )
-        out = api.get(name)
-        assert_df("""
-2020-01-01 00:00:00+00:00    1.0
-2020-01-02 00:00:00+00:00    2.0
-2020-01-03 00:00:00+00:00    3.0
-""", out)
-
-        series[utcdt(2020, 1, 4)] = 4
-        api.update(
-            name,
-            series,
-            'Babar',
-            insertion_date=utcdt(2019, 1, 2)
-        )
-        out = api.get(
-            name,
-            from_value_date=utcdt(2020, 1, 2),
-            to_value_date=utcdt(2020, 1, 3)
-        )
-        assert_df("""
-2020-01-02 00:00:00+00:00    2.0
-2020-01-03 00:00:00+00:00    3.0
-""", out)
-
-    create(mapi.uri, mapi.namespace, 'api-1')
-    create(mapi.uri, 'ns-test-mapi-2', 'api-2')
-
-    assert mapi.namespace == 'ns-test-mapi'
-
-    assert not mapi.exists('i-dont-exist')
-    assert mapi.exists('api-1')
-    assert mapi.exists('api-2')
-
-    series = pd.Series(
-        [10, 20, 30],
-        index=pd.date_range(
-            utcdt(2020, 1, 1), periods=3, freq='D'
-        )
+def test_oldmeta(tsx):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2025, 1, 1), freq='d', periods=3)
     )
-    mapi.update('api-1', series, 'auc')
-
-    with pytest.raises(ValueError) as err:
-        mapi.update('api-2', series, 'auc')
-    assert err.value.args[0].startswith('not allowed to update')
-
-    mapi.replace('api-1', series, 'auc')
-
-    with pytest.raises(ValueError) as err:
-        mapi.replace('api-2', series, 'auc')
-    assert err.value.args[0].startswith('not allowed to replace')
-
-
-    api = timeseries(
-        mapi.uri, mapi.namespace, handler=tsio.timeseries, sources={}
+    tsx.update(
+        'oldmeta',
+        ts,
+        'Babar'
     )
-    catalog = api.catalog()
-    catalog2 = mapi.catalog()
-    assert catalog == {
-        ('postgres@ns-test-mapi', 'ns-test-mapi'): [('api-1', 'primary')]
-    }
-    assert catalog2 == {
-        ('postgres@ns-test-mapi', 'ns-test-mapi'): [('api-1', 'primary')],
-        ('postgres@ns-test-mapi-2', 'ns-test-mapi-2'): [('api-2', 'primary')]
-    }
-    catalog3 = mapi.catalog(allsources=False)
-    assert catalog3 == {
-        ('postgres@ns-test-mapi', 'ns-test-mapi'): [('api-1', 'primary')]
-    }
+    assert tsx.metadata('oldmeta') == {}
 
-    # metadata
-    mapi.replace_metadata('api-1', {'descr': 'for the mapi test'})
-    with pytest.raises(ValueError) as err:
-        mapi.replace_metadata('api-2', {'descr': 'for the mapi test'})
-    assert err.value.args[0].startswith('not allowed to replace metadata')
-    imeta = mapi.internal_metadata('api-2')
-    imeta.pop('tablename', None)
-    assert imeta == {
-        'index_dtype': '|M8[ns]',
-        'index_type': 'datetime64[ns, UTC]',
-        'tzaware': True,
-        'value_dtype': '<f8',
-        'value_type': 'float64',
-        'left': '2020-01-01T00:00:00',
-        'right': '2020-01-04T00:00:00'
-    }
+    tsx.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsx.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsx.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsx.update_metadata(
+        'oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsx.metadata('oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsx.update_metadata(
+        'oldmeta',
+        {
+            'quux': 43,
+        }
+    )
 
-    imeta = mapi.metadata('api-2', all=True)
-    imeta.pop('tablename', None)
-    assert imeta == {
-        'index_dtype': '|M8[ns]',
-        'index_type': 'datetime64[ns, UTC]',
-        'tzaware': True,
-        'value_dtype': '<f8',
-        'value_type': 'float64',
-        'left': '2020-01-01T00:00:00',
-        'right': '2020-01-04T00:00:00'
-    }
+    old = tsx.old_metadata('oldmeta')
+    assert [it[1] for it in old] == [
+        {'foo': 'baz', 'quux': 42},
+        {'foo': 'bar', 'quux': 42},
+        {}
+    ]
+    assert old[0][2] == 'no-user'
 
-    assert mapi.metadata('api-1') == {'descr': 'for the mapi test'}
 
-    api2 = timeseries(mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={})
-    api2.update_metadata('api-2', {'othersouces': 'from other ns'})
-    assert api2.metadata('api-2') == {'othersouces': 'from other ns'}
+def test_oldmeta_remote(engine, tsx):
+    tsr = timeseries(str(engine.url), 'remote', sources={})
 
-    assert mapi.metadata('api-2') == {'othersouces': 'from other ns'}
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2025, 1, 1), freq='d', periods=3)
+    )
+    tsr.update(
+        'oldmeta',
+        ts,
+        'Babar'
+    )
+    assert tsx.metadata('oldmeta') == {}
 
-    # log
-    assert len(mapi.log('api-1')) == 4
-    assert len(mapi.log('api-2')) == 2
-    assert len(mapi.log('api-2', limit=1)) == 1
+    tsr.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsr.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsr.replace_metadata(
+        'oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsr.update_metadata(
+        'oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsr.metadata('oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsr.update_metadata(
+        'oldemeta',
+        {
+            'quux': 43,
+            'foo': 'bar'
+        }
+    )
 
-    mapi.rename('api-1', 'renamed-api-1')
-    assert not mapi.exists('api-1')
-    with pytest.raises(ValueError) as err:
-        mapi.rename('api-2', 'renamed-api-2')
-    assert err.value.args[0].startswith('not allowed to rename')
-
-    assert mapi.source('nope') is None
-    assert mapi.source('renamed-api-1') == 'local'
-    assert mapi.source('api-2') == 'remote'
-
-    mapi.delete('renamed-api-1')
-    with pytest.raises(ValueError) as err:
-        mapi.delete('api-2')
-    assert err.value.args[0].startswith('not allowed to delete')
-
-    assert not mapi.exists('renamed-api-1')
-
-    # local shadowing of api-3
-    create(mapi.uri, mapi.namespace, 'api-3')
-    create(mapi.uri, 'ns-test-mapi-2', 'api-3')
-    # update local version metadata
-    mapi.replace_metadata('api-3', {'foo': 'bar'})
-    # delete local version
-    mapi.delete('api-3')
-    # remote version still exists
-    assert mapi.exists('api-3')
-    with pytest.raises(ValueError):
-        mapi.replace_metadata('api-3', {'foo': 'bar'})
-    with pytest.raises(ValueError):
-        mapi.delete('api-3')
-    cat = mapi.catalog()
-    assert cat == {
-        ('postgres@ns-test-mapi-2', 'ns-test-mapi-2'): [
-            ('api-2', 'primary'),
-            ('api-3', 'primary')]
-    }
+    old = tsx.old_metadata('oldmeta')
+    assert [it[1] for it in old] == [
+        {'foo': 'baz', 'quux': 42},
+        {'foo': 'bar', 'quux': 42},
+        {}
+    ]
 
 
 def test_strip(tsx):
@@ -793,9 +766,9 @@ def test_strip(tsx):
         )
 
 
-def test_conflicting_update(mapi):
+def test_conflicting_update(tsx, engine):
     # behaviour when a series exists locally and remotely
-    mapi.update(
+    tsx.update(
         'here-and-there',
         pd.Series(
             [1, 2, 3],
@@ -804,14 +777,10 @@ def test_conflicting_update(mapi):
         'Babar'
     )
     # create a series with the same name in the other source
-    remotesource = mapi.othersources.sources[0]
-    remote = timeseries(
-        remotesource.uri,
-        namespace=remotesource.namespace,
-        handler=tsio.timeseries,
-        sources={}
+    remoteapi = timeseries(
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
-    remote.update(
+    remoteapi.update(
         'here-and-there',
         pd.Series(
             [1, 2, 3],
@@ -820,7 +789,7 @@ def test_conflicting_update(mapi):
         'Babar'
     )
 
-    mapi.update(
+    tsx.update(
         'here-and-there',
         pd.Series(
             [1, 2, 3, 4],
@@ -829,7 +798,7 @@ def test_conflicting_update(mapi):
         'Babar'
     )
 
-    mapi.replace(
+    tsx.replace(
         'here-and-there',
         pd.Series(
             [1, 2, 3, 4],
@@ -1113,23 +1082,29 @@ def test_basket(tsx):
     assert tsx.basket_definition('b1') == '(by.name "t.1")'
     assert tsx.basket('b2') == ['basket.1', 'basket.2']
 
+    assert tsx.basket('b2', limit=1) == ['basket.1']
+
     tsx.delete_basket('b1')
     assert tsx.list_baskets() == ['b2']
 
 
-def test_federated_basket(mapi):
+def test_no_basket(tsx):
+    assert tsx.basket('<nope>') == []
+
+
+def test_federated_basket(tsx, engine):
     ts = pd.Series(
         [1, 2, 3],
         pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
     )
-    mapi.update(
+    tsx.update(
         'local.basket.fed',
         ts,
         'Babar'
     )
 
     remoteapi = timeseries(
-        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
     remoteapi.update(
         'remote.basket.fed',
@@ -1137,12 +1112,12 @@ def test_federated_basket(mapi):
         'Celeste'
     )
 
-    mapi.register_basket(
+    tsx.register_basket(
         'federated.basket',
         '(by.name "basket.fed")'
     )
 
-    b = mapi.basket('federated.basket')
+    b = tsx.basket('federated.basket')
     assert b == [
         'local.basket.fed',
         'remote.basket.fed'
@@ -1151,35 +1126,41 @@ def test_federated_basket(mapi):
     r = b[1]
     assert r.source == 'remote'
 
-    mapi.register_basket(
-        'mybasket',
-        '(by.and '
-        '  (by.source "local")'
-        '  (by.name "basket.fed"))'
-    )
-    names = mapi.basket('mybasket')
-    assert names == ['local.basket.fed']
+    b = tsx.basket('federated.basket', sources=['local'])
+    assert b == [
+        'local.basket.fed',
+    ]
+    assert b[0].meta is None
+
+    b = tsx.basket('federated.basket', meta=True)
+    assert b[0].meta == {}
+
+    # {'local': {'primary_groups': 0, 'primary_series': 1},
+    #  'remote': {'primary_groups': 0, 'primary_series': 1}}
+    infos = tsx.info()
+    assert 'local' in infos
+    assert 'remote' in infos
 
 
-def test_federated_find(mapi):
+def test_federated_find(tsx, engine):
     # cleanup
-    cat = mapi.catalog()
+    cat = tsx.catalog()
     if cat:
         for name, _ in list(cat.values())[0]:
-            mapi.delete(name)
+            tsx.delete(name)
 
     ts = pd.Series(
         [1, 2, 3],
         pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
     )
-    mapi.update(
+    tsx.update(
         'local.basket.fed',
         ts,
         'Babar'
     )
 
     remoteapi = timeseries(
-        mapi.uri, 'ns-test-mapi-2', handler=tsio.timeseries, sources={}
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
     # cleanup
     cat = remoteapi.catalog()
@@ -1193,74 +1174,62 @@ def test_federated_find(mapi):
         'Celeste'
     )
 
-    names = mapi.find('(by.name "basket.fed")')
+    names = tsx.find('(by.name "basket.fed")')
     assert names == [
         'local.basket.fed',
         'remote.basket.fed'
     ]
 
     # some top-level bysource
-    names = mapi.find('(by.source "remote")')
+    names = tsx.find('(by.everything)', sources=['remote'])
     assert names == ['remote.basket.fed']
+    assert names[0].source == 'remote'
 
-    names = mapi.find('(by.source "local")')
+    names = tsx.find('(by.everything)', sources=['local'])
     assert names == ['local.basket.fed']
+    assert names[0].source == 'local'
 
-    names = mapi.find(
-        '(by.or '
-        '  (by.source "local")'
-        '  (by.source "remote"))'
-    )
-    assert names == [
-        'local.basket.fed',
-        'remote.basket.fed'
-    ]
-    names = mapi.find(
-        '(by.and '
-        '  (by.source "local")'
-        '  (by.source "remote"))'
-    )
-    assert names == []
-
-    # non-toplevel
-    names = mapi.find(
-        '(by.or '
-        '  (by.and (by.name "basket.fed") (by.source "local"))'
-        '  (by.source "remote"))'
-    )
+    names = tsx.find('(by.everything)', sources=['local', 'remote'])
     assert names == ['local.basket.fed', 'remote.basket.fed']
+    assert names[0].source == 'local'
+    assert names[1].source == 'remote'
 
-    names = mapi.find(
-        '(by.or '
-        '  (by.not (by.and (by.name "basket.fed") (by.source "local")))'
-        '  (by.source "remote"))'
-    )
-    assert names == ['remote.basket.fed']
 
-    names = mapi.find(
-        '(by.and '
-        '  (by.name "basket.fed")'
-        '  (by.source "remote"))'
-    )
-    assert names == ['remote.basket.fed']
+def test_federated_find_homonyms(tsx, engine):
+    # cleanup
+    cat = tsx.catalog()
+    if cat:
+        for name, _ in list(cat.values())[0]:
+            tsx.delete(name)
 
-    names = mapi.find(
-        '(by.and '
-        '  (by.source "local")'
-        '  (by.name "basket.fed"))'
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
     )
-    assert names == ['local.basket.fed']
+    tsx.update(
+        'find.homonym.2sources',
+        ts,
+        'Babar'
+    )
 
-    names = mapi.find(
-        '(by.or '
-        '  (by.and '
-        '    (by.source "local")'
-        '    (by.name "basket.fed"))'
-        '  (by.and '
-        '    (by.source "remote")'
-        '    (by.name "basket.fed")))'
+    remoteapi = timeseries(
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
     )
-    assert names == ['local.basket.fed', 'remote.basket.fed']
+    # cleanup
+    cat = remoteapi.catalog()
+    if cat:
+        for name, _ in list(cat.values())[0]:
+            remoteapi.delete(name)
+
+    remoteapi.update(
+        'find.homonym.2sources',
+        ts,
+        'Babar'
+    )
+
+    names = tsx.find('(by.name "homonym")')
+    assert names[0].source == 'local'
+    assert names[1].source == 'remote'
 
 
 def test_replicate_series(tsx):
@@ -1311,6 +1280,29 @@ insertion_date             value_date
 
     metadata = tsx.metadata('replicated.series.from.tsx')
     assert metadata == {'metadata1': 'value1'}
+
+
+def test_replicate_from_basket(tsx):
+    ts1 = genserie(utcdt(2025, 1, 1), 'd', 1)
+    ts2 = genserie(utcdt(2025, 1, 1), 'd', 2)
+
+    tsx.update('series-replicate-basket-1', ts1, 'test')
+    tsx.update('series-replicate-basket-2', ts2, 'test')
+
+    tsx.register_basket(
+        'basket-to-push',
+        '(by.name "series-replicate-basket")'
+    )
+
+    replicate_basket(
+        tsx,
+        tsx,
+        'basket-to-push',
+        prefix='replicate.',
+        suffix='.suffix',
+    )
+    assert tsx.exists('replicate.series-replicate-basket-1.suffix')
+    assert tsx.exists('replicate.series-replicate-basket-2.suffix')
 
 
 def test_rename(tsx):
@@ -1397,6 +1389,17 @@ def test_insertion_dates_tzaware(tsx):
         pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
     ]
 
+    revs = tsx.insertion_dates(
+        'historical-series-tzaware',
+        from_value_date=pd.Timestamp("2024-04-04"),
+        to_value_date=pd.Timestamp("2024-04-05"),
+        limit=2
+    )
+    assert revs == [
+        pd.Timestamp('2024-04-04 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-05 00:00:00+0000', tz='UTC'),
+    ]
+
     revs = tsx.history(
         'historical-series-tzaware',
         from_value_date=pd.Timestamp("2024-04-04"),
@@ -1465,6 +1468,50 @@ def test_insertion_dates_tznaive(tsx):
     ]
 
 
+# tree stuff
+
+def test_tree_api(tsx, engine):
+    tsx.set_tree_attribute(None)
+    assert tsx.tree_attribute() is None
+    tsx.set_tree_attribute('tree')
+    assert tsx.tree_attribute() == 'tree'
+
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
+    )
+
+    for name in (
+            'UE.Italy',
+            'UE.France'
+    ):
+        sname = name.lower()
+        tsx.update(
+            sname,
+            ts,
+            'Babar'
+        )
+        tsx.update_metadata(sname, {'tree': name})
+
+    assert tsx.path_series('UE.France') == ['ue.france']
+    assert tsx.path_series('UE.Italy') == ['ue.italy']
+    assert tsx.path_series('UE') == []
+
+    assert tsx.series_path('ue.france') == 'UE.France'
+    assert tsx.series_path('ue.italy') == 'UE.Italy'
+
+    assert tsx.tree() == ['UE.Italy', 'UE.France']
+
+    tsx.delete_path('UE.Italy')
+    assert tsx.tree() == ['UE.France']
+
+    assert tsx.path_series('UE.France') == ['ue.france']
+    assert tsx.path_series('UE.Italy') == []
+
+    assert tsx.series_path('ue.france') == 'UE.France'
+    assert tsx.series_path('ue.italy') is None
+
+
 # groups
 
 def test_remote_group(engine, tsx):
@@ -1526,6 +1573,18 @@ insertion_date            value_date
 2021-01-03  4.0  5.0  6.0
 2021-01-04  5.0  6.0  7.0
 2021-01-05  6.0  7.0  8.0
+""", gr)
+
+    gr = tsx.group_get(
+        'remote-group',
+        from_value_date=pd.Timestamp('2021-01-02'),
+        to_value_date=pd.Timestamp('2021-01-04')
+    )
+    assert_df("""
+              0    1    2
+2021-01-02  3.0  4.0  5.0
+2021-01-03  4.0  5.0  6.0
+2021-01-04  5.0  6.0  7.0
 """, gr)
 
     tsr.group_delete('remote-group')
@@ -1651,6 +1710,55 @@ def test_primary_group(tsx):
     )
 
     assert df2.equals(df)
+
+
+def test_group_update(tsx):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=utcdt(2025, 1, 1),
+        length=3,
+        freq='h',
+        seed=1
+    )
+    tsx.group_update(
+        'group-update',
+        df,
+        'Babar',
+        insertion_date=pd.Timestamp('2025-1-1', tz='utc')
+    )
+
+    dfo = tsx.group_get('group-update')
+    assert_df("""
+                             0    1    2
+2025-01-01 00:00:00+00:00  1.0  2.0  3.0
+2025-01-01 01:00:00+00:00  2.0  3.0  4.0
+2025-01-01 02:00:00+00:00  3.0  4.0  5.0
+""", dfo)
+
+    df = df * 2
+    df.index = df.index.shift(1, 'h')
+    tsx.group_update(
+        'group-update',
+        df,
+        'Babar',
+        insertion_date=pd.Timestamp('2025-1-2', tz='utc')
+    )
+
+    dfo = tsx.group_get('group-update')
+    assert_df("""
+                             0    1     2
+2025-01-01 00:00:00+00:00  1.0  2.0   3.0
+2025-01-01 01:00:00+00:00  2.0  4.0   6.0
+2025-01-01 02:00:00+00:00  4.0  6.0   8.0
+2025-01-01 03:00:00+00:00  6.0  8.0  10.0
+""", dfo)
+
+    assert tsx.group_insertion_dates('group-update') == [
+        pd.Timestamp('2025-01-01 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2025-01-02 00:00:00+0000', tz='UTC')
+    ]
+
+    tsx.group_delete('group-update')
 
 
 def test_group_errors(tsx):
@@ -1895,6 +2003,129 @@ def test_group_metadata(tsx):
     }
 
 
+def test_group_oldmeta(tsx):
+    df = gengroup(
+        n_scenarios=2,
+        from_date=dt(2025, 1, 1),
+        length=2,
+        freq='d',
+        seed=1
+    )
+    tsx.group_update(
+        'group-oldmeta',
+        df,
+        'Babar'
+    )
+    assert tsx.group_metadata('group-oldmeta') == {}
+
+    tsx.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsx.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsx.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsx.update_group_metadata(
+        'group-oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsx.group_metadata('group-oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsx.update_group_metadata(
+        'group-oldmeta',
+        {
+            'quux': 43,
+        }
+    )
+
+    old = tsx.group_old_metadata('group-oldmeta')
+    assert [it[1] for it in old] == [
+        {'foo': 'baz', 'quux': 42},
+        {'foo': 'bar', 'quux': 42},
+        {}
+    ]
+    assert old[0][2] == 'no-user'
+
+
+def test_group_oldmeta_remote(engine, tsx):
+    tsr = timeseries(str(engine.url), 'remote', sources={})
+
+    df = gengroup(
+        n_scenarios=2,
+        from_date=dt(2025, 1, 1),
+        length=2,
+        freq='d',
+        seed=1
+    )
+    tsr.group_update(
+        'group-oldmeta',
+        df,
+        'Babar'
+    )
+    assert tsx.group_metadata('group-oldmeta') == {}
+
+    tsr.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsr.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsr.replace_group_metadata(
+        'group-oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsr.update_group_metadata(
+        'group-oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsx.group_metadata('group-oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsr.update_group_metadata(
+        'gruop-oldmeta',
+        {
+            'quux': 43,
+        }
+    )
+
+    old = tsx.group_old_metadata('group-oldmeta')
+    assert [it[1] for it in old] == [
+        {'foo': 'baz', 'quux': 42},
+        {'foo': 'bar', 'quux': 42},
+        {}
+    ]
+
+
 def test_group_log(tsx):
     df = gengroup(
         n_scenarios=4,
@@ -1973,3 +2204,183 @@ def test_group_log(tsx):
             'rev': 1
         },
     ]
+
+
+def test_group_find(tsx):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=utcdt(2025, 1, 1),
+        length=5,
+        freq='d',
+        seed=2
+    )
+    tsx.group_replace(
+        'gr.find.me.1',
+        df,
+        'Babar'
+    )
+    tsx.group_replace(
+        'gr.find.me.2',
+        df,
+        'Celeste'
+    )
+
+    assert tsx.group_source('gr.find.me.1') == 'local'
+
+    # by name
+    r = tsx.group_find('(by.name "nop")')
+    assert r == []
+
+    r = tsx.group_find('(by.name "find.me.1")')
+    assert r == ['gr.find.me.1']
+
+    assert r[0].kind == 'primary'
+
+    r = tsx.group_find('(by.name ".me.")')
+    assert len(r) == 2
+
+    r = tsx.group_find('(by.name "find 1")')
+    assert r == ['gr.find.me.1']
+
+    tsx.replace_group_metadata(
+        'gr.find.me.1',
+        {
+            'foo': 42
+        }
+    )
+    tsx.replace_group_metadata(
+        'gr.find.me.2',
+        {
+            'bar': 'Hello',
+            'foo': 43
+        }
+    )
+
+    # by metadata key
+    r = tsx.group_find('(by.metakey "foo")')
+    assert r == ['gr.find.me.1', 'gr.find.me.2']
+
+    r = tsx.group_find('(by.metakey "nope")')
+    assert r == []
+
+    r = tsx.group_find('(by.metakey "bar")')
+    assert r == ['gr.find.me.2']
+
+    # by metadata items
+
+    r = tsx.group_find('(by.metaitem "foo" 43)')
+    assert r == ['gr.find.me.2']
+
+    r = tsx.group_find('(by.metaitem "foo" 42)')
+    assert r == ['gr.find.me.1']
+
+    r = tsx.group_find('(by.metaitem "bar" "Hello")')
+    assert r == ['gr.find.me.2']
+
+    # tzaware
+    df = gengroup(
+        n_scenarios=3,
+        from_date=dt(2025, 1, 1),
+        length=5,
+        freq='d',
+        seed=2
+    )
+    tsx.group_replace(
+        'gr.find.me.tznaive',
+        df,
+        'Babar'
+    )
+    tsx.replace_group_metadata(
+        'gr.find.me.tznaive',
+        {
+            'foo': 43
+        }
+    )
+
+    r = tsx.group_find('(by.tzaware)')
+    assert 'gr.find.me.1' in r and 'gr.find.me.2' in r
+
+    # and combination
+    r = tsx.group_find(
+        '(by.and '
+        '  (by.metaitem "foo" 43) '
+        '  (by.metaitem "bar" "Hello"))'
+    )
+    assert r == ['gr.find.me.2']
+
+    # negation
+    r = tsx.group_find(
+        '(by.not (by.tzaware))'
+    )
+    assert 'gr.find.me.tznaive' in r and 'gr.find.me.1' not in r and 'gr.find.me.2' not in r
+
+    r = tsx.group_find(
+        '(by.and '
+        '  (by.metaitem "foo" 43)'
+        '  (by.not (by.tzaware)))'
+    )
+    assert r == ['gr.find.me.tznaive']
+
+    r = tsx.group_find(
+        '(by.and '
+        '  (by.not (by.metaitem "foo" 43))'
+        '  (by.tzaware))'
+    )
+    assert r == ['gr.find.me.1']
+
+    # or
+
+    r = tsx.group_find(
+        '(by.or '
+        '  (= "foo" 43)'
+        '  (= "foo" 42))'
+    )
+    assert r == ['gr.find.me.1', 'gr.find.me.2', 'gr.find.me.tznaive']
+
+    r = tsx.group_find(
+        '(by.or '
+        '  (by.metaitem "foo" 43)'
+        '  (by.metaitem "foo" 42))'
+    )
+    assert r == ['gr.find.me.1', 'gr.find.me.2', 'gr.find.me.tznaive']
+
+    r = tsx.group_find(
+        '(by.and '
+        '  (by.or '
+        '     (by.metakey "bar")'
+        '     (by.metaitem "foo" 42))'
+        '  (by.tzaware))'
+    )
+    assert r == ['gr.find.me.1', 'gr.find.me.2']
+
+    gr = r[0]
+    assert gr == 'gr.find.me.1'
+    assert gr.imeta is None
+    assert gr.meta is None
+    assert gr.source == 'local'
+    assert gr.kind == 'primary'
+
+    r = tsx.group_find('(by.everything)', limit=1)
+    assert len(r) == 1
+
+    r = tsx.group_find('(by.metaitem "bar" "Hello")', meta=True)
+    assert r == ['gr.find.me.2']
+
+    gr = r[0]
+    assert gr == 'gr.find.me.2'
+    gr.imeta.pop('tablename', None)
+    assert gr.imeta == {
+        'index_dtype': '|M8[ns]',
+        'index_type': 'datetime64[ns, UTC]',
+        'left': '2025-01-01T00:00:00',
+        'right': '2025-01-05T00:00:00',
+        'tzaware': True,
+        'value_dtype': '<f8',
+        'value_type': 'float64'
+    }
+
+    assert gr.meta == {
+        'bar': 'Hello',
+        'foo': 43
+    }
+    assert gr.source == 'local'

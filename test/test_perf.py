@@ -5,11 +5,11 @@ from time import time
 
 import pandas as pd
 import pytest
-from pytest_sa_pg import db as dbsetup
-from sqlalchemy import create_engine
+from sqlhelp.testutil import setup_local_pg_cluster
+from sqlhelp.pgapi import pgdb as create_engine
 
 from tshistory import schema, tsio
-from tshistory.testutil import tempconfig
+from tshistory.testutil import gengroup, tempconfig
 
 
 DATADIR = Path(__file__).parent.parent / 'test' / 'data'
@@ -29,7 +29,7 @@ def get_dir_size(path):
 @pytest.fixture(scope='session')
 def db(request):
     shutil.rmtree(DATADIR / 'pgdb', ignore_errors=True)
-    dbsetup.setup_local_pg_cluster(
+    setup_local_pg_cluster(
         request, DATADIR, 5433, {
         'timezone': 'UTC',
         'log_timezone': 'UTC'
@@ -211,3 +211,34 @@ def test_meteo_versions(engine, tsh):
     print(f'{tsh}.history ran in {time() - t0} seconds.')
 
     show_sizes()
+
+
+@pytest.mark.perf
+def test_big_group(engine, tsh):
+    df = gengroup(
+        n_scenarios=99,
+        from_date=pd.Timestamp('2025-1-1', tz='utc'),
+        length=9999,
+        freq='h',
+        seed=2
+    )
+    tsh.group_replace(
+        engine,
+        df,
+        'group-perf',
+        'Babar'
+    )
+    t1 = time()
+    df = tsh.group_get(
+        engine,
+        'group-perf'
+    )
+    assert len(df) == 9999
+    print('GROUP GET', time() - t1)
+    t1 = time()
+    df = tsh.group_get(
+        engine,
+        'group-perf'
+    )
+    assert len(df) == 9999
+    print('GROUP GET', time() - t1)

@@ -20,12 +20,7 @@ from warnings import warn
 import pytz
 import numpy as np
 import pandas as pd
-from sqlalchemy.engine import (
-    Engine,
-    make_url
-)
-from sqlalchemy import exc
-from sqlhelp import select
+from sqlhelp import select, pgapi
 from dbcache.api import kvstore
 
 
@@ -48,9 +43,7 @@ def empty_series(tzaware, dtype='float64', name=None):
     )
 
 
-def safe_urlparse(uri):
-    return make_url(uri)
-
+# other
 
 @contextmanager
 def tempdir(suffix='', prefix='tmp'):
@@ -120,7 +113,7 @@ def read_versions(uri, namespace, version_string='tshistory-version'):
     store = kvstore(uri, f'{namespace}-kvstore')
     try:
         stored_version = store.get('tshistory-version')
-    except exc.ProgrammingError:
+    except Exception:
         raise NoVersion(
             f'version of the software ({code_version}) '
             f'and the db  differ. '
@@ -390,6 +383,25 @@ def hash64(text: str) -> int:
     seed = text.encode('utf-8')
     hash_digest = hashlib.shake_128(seed).digest(8)
     return int.from_bytes(hash_digest, byteorder='big', signed=True)
+
+
+# tsio search helpers
+
+def make_find_sqlquery(ns, target: str, items, query, limit: int, meta: bool):
+    if meta:
+        items += ['internal_metadata', 'metadata']
+    q = select(
+        *items
+    ).table(
+        f'"{ns}".{target} as reg'
+    ).order('name', 'asc')
+    sql, kw = query.sql(ns)
+    if sql:
+        q.where(sql, **kw)
+    if limit:
+        q.limit(limit)
+
+    return q
 
 
 # timedelta (de)serialisation
@@ -761,10 +773,7 @@ def tx(func):
     " a decorator to check that the first method argument is a transaction "
     def check_tx_and_call(self, cn, *a, **kw):
         # safety belt to make sure important api points are tx-safe
-        if not isinstance(cn, Engine):
-            if not cn.in_transaction():
-                raise TypeError('You must use a transaction object')
-        else:
+        if isinstance(cn, pgapi.pgdb):
             with cn.begin() as txcn:
                 return func(self, _set_cache(txcn), *a, **kw)
 
@@ -890,6 +899,23 @@ def replicate_series(tsa_origin, tsa_target, origname,
 
     metadata = tsa_origin.metadata(origname)
     tsa_target.replace_metadata(targetname, metadata)
+
+
+def replicate_basket(tsa_origin, tsa_target, basket_name,
+                     from_insertion_date=None,
+                     prefix='',
+                     suffix='',
+                     ):
+    series = tsa_origin.basket(basket_name)
+    for origname in series:
+        targetname = prefix + origname + suffix
+        replicate_series(
+            tsa_origin,
+            tsa_target,
+            origname,
+            targetname=targetname,
+            from_insertion_date=from_insertion_date,
+        )
 
 
 # checkdiff helper

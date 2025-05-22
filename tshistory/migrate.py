@@ -1,10 +1,7 @@
 from json import dumps
 import os
 
-from sqlalchemy import (
-    create_engine,
-    exc
-)
+from sqlhelp.pgapi import pgdb
 
 from version_parser import Version as _Version
 from dbcache import (
@@ -64,7 +61,7 @@ class Migrator:
 
     @property
     def engine(self):
-        return create_engine(self.uri)
+        return pgdb(self.uri)
 
     @property
     def storens(self):
@@ -86,7 +83,7 @@ class Migrator:
                 self._package,
                 self.store.get(self.versionkey)
             )
-        except (exc.ProgrammingError, ValueError):
+        except Exception:
             # bootstrap: we're in a stage where this was never installed
             # yes, this is a bit aggressive for a propery, but that
             # happens only once ...
@@ -170,6 +167,61 @@ class Migrator:
         migrate_metadata(engine, gns, self.interactive)
         fix_user_metadata(engine, gns, self.interactive)
         migrate_to_baskets(engine, gns, self.interactive)
+
+
+@version('tshistory', '0.22.0')
+def migrate_022(engine, namespace, interactive):
+    do_migrate_tree(engine, namespace, interactive)
+    do_migrate_old_metadata(engine, namespace, interactive)
+
+
+def do_migrate_tree(engine, namespace, interactive):
+    ns = namespace
+    with engine.begin() as cn:
+        cn.execute(f"""
+create extension if not exists ltree;
+
+create table if not exists "{ns}".tree (
+  id serial primary key,
+  path ltree
+);
+
+create index if not exists tree_path_idx on "{ns}".tree using gist (path);
+
+
+create table if not exists "{ns}".tree_series_map (
+  seriesid integer unique references "{ns}".registry (id) on delete cascade,
+  treeid integer references "{ns}".tree (id) on delete cascade
+);
+
+create index if not exists tree_series_map_idx on "{ns}".tree_series_map (treeid);
+""", _binary=False)
+
+
+def do_migrate_old_metadata(engine, namespace, interactive):
+    ns = namespace
+    with engine.begin() as cn:
+        cn.execute(f"""
+create table if not exists "{ns}".ts_oldmeta (
+  moment timestamptz unique not null default now(),
+  seriesid integer not null references "{ns}".registry (id) on delete cascade,
+  userid text default 'no-user',
+  metadata jsonb not null
+);
+
+create index on "{ns}".ts_oldmeta (moment);
+create index on "{ns}".ts_oldmeta (seriesid);
+
+create table if not exists "{ns}".gr_oldmeta (
+  moment timestamptz unique not null default now(),
+  groupid integer not null references "{ns}".group_registry (id) on delete cascade,
+  userid text default 'no-user',
+  metadata jsonb not null
+);
+
+create index on "{ns}".gr_oldmeta (moment);
+create index on "{ns}".gr_oldmeta (groupid);
+""", _binary=False)
 
 
 @version('tshistory', '0.21.0')
@@ -270,7 +322,6 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive, onlydata=False
     import signal
     import sys
     import multiprocessing
-    from sqlalchemy import create_engine
 
     if onlydata:
         print(f'data migration for columns `diffstart` and `diffend` to {namespace}.revision')
@@ -353,7 +404,7 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive, onlydata=False
 
     def migrate(url, names):
         pid = os.getpid()
-        engine = create_engine(url)
+        engine = pgdb(url)
         for name in names:
             with engine.begin() as cn:
                 cn.cache = {'series_tablename': {}}

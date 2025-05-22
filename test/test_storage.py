@@ -42,12 +42,15 @@ def test_chunks(engine, tsp):
         sql = 'select parent, chunk from "{}.snapshot".chunks order by id'.format(
             tsh.namespace
         )
-        chunks = engine.execute(sql).fetchall()
+        with engine.begin() as cn:
+            chunks = cn.execute(sql).fetchall()
         assert len(chunks) == 3
         assert chunks[0].parent is None
         assert chunks[1].parent == 1
         assert chunks[2].parent == 2
-        snap = Postgres(engine, tsh, 'chunks')
+        with engine.begin() as cn:
+            cn.cache = {'series_tablename': {}}
+            snap = Postgres(cn, tsh, 'chunks')
         meta = tsh.internal_metadata(engine, 'chunks')
         ts0 = iohelper.chunks_to_ts(meta, [chunks[0].chunk])
         ts1 = iohelper.chunks_to_ts(meta, [chunks[1].chunk])
@@ -90,7 +93,8 @@ def test_chunks(engine, tsp):
         sql = 'select id, parent, chunk from "{}.snapshot".chunks order by id'.format(
             tsh.namespace
         )
-        chunks = engine.execute(sql).fetchall()
+        with engine.begin() as cn:
+            chunks = cn.execute(sql).fetchall()
         assert len(chunks) == 5
         assert chunks[4].parent == 4
         assert {
@@ -103,7 +107,9 @@ def test_chunks(engine, tsp):
             chunk.id: chunk.parent for chunk in chunks
         }
 
-        snap = Postgres(engine, tsh, 'chunks')
+        with engine.begin() as cn:
+            cn.cache = {'series_tablename': {}}
+            snap = Postgres(cn, tsh, 'chunks')
         ts0 = iohelper.chunks_to_ts(meta, [chunks[0].chunk])
         ts1 = iohelper.chunks_to_ts(meta, [chunks[1].chunk])
         ts2 = iohelper.chunks_to_ts(meta, [chunks[2].chunk])
@@ -166,7 +172,8 @@ def test_chunks(engine, tsp):
         sql = 'select id, parent, chunk from "{}.snapshot".chunks order by id'.format(
             tsh.namespace
         )
-        chunks = engine.execute(sql).fetchall()
+        with engine.begin() as cn:
+            chunks = cn.execute(sql).fetchall()
         assert len(chunks) == 9
         assert {
             1: None,
@@ -183,37 +190,40 @@ def test_chunks(engine, tsp):
         }
 
         # 2nd commit chunks without filtering
-        snap = Postgres(engine, tsh, 'chunks')
-        chunks = chunksize(meta, snap, 5)
-        assert chunks == {
-            None: 2,
-            1: 2,
-            2: 1,
-            3: 2,
-            4: 2
-        }
+        with engine.begin() as cn:
+            cn.cache = {'series_tablename': {}}
+            snap = Postgres(cn, tsh, 'chunks')
+            chunks = chunksize(meta, snap, 5)
 
-        # 2nd commit chunks with filtering
-        chunks = chunksize(meta, snap, 6, datetime(2010, 1, 5))
-        assert chunks == {1: 2}
+            assert chunks == {
+                None: 2,
+                1: 2,
+                2: 1,
+                3: 2,
+                4: 2
+            }
 
-        # 3rd commit chunks without filtering
-        chunks = chunksize(meta, snap, 9)
-        assert chunks == {
-            None: 2,
-            1: 2,
-            6: 2,
-            7: 2,
-            8: 1
-        }
+            # 2nd commit chunks with filtering
+            chunks = chunksize(meta, snap, 6, datetime(2010, 1, 5))
+            assert chunks == {1: 2}
 
-        # 3rd commit chunks with filtering
-        chunks = chunksize(meta, snap, 9, datetime(2010, 1, 5))
-        assert chunks == {
-            6: 2,
-            7: 2,
-            8: 1
-        }
+            # 3rd commit chunks without filtering
+            chunks = chunksize(meta, snap, 9)
+            assert chunks == {
+                None: 2,
+                1: 2,
+                6: 2,
+                7: 2,
+                8: 1
+            }
+
+            # 3rd commit chunks with filtering
+            chunks = chunksize(meta, snap, 9, datetime(2010, 1, 5))
+            assert chunks == {
+                6: 2,
+                7: 2,
+                8: 1
+            }
 
 
 def test_append(engine, tsp):
@@ -230,7 +240,8 @@ def test_append(engine, tsp):
     sql = 'select id, parent, chunk from "{}.snapshot".append order by id'.format(
         tsh.namespace
     )
-    chunks = engine.execute(sql).fetchall()
+    with engine.begin() as cn:
+        chunks = cn.execute(sql).fetchall()
     c = {
         chunk.id: chunk.parent for chunk in chunks
     }
@@ -258,7 +269,8 @@ def test_prepend(engine, tsp):
     sql = 'select id, parent, chunk from "{}.snapshot".prepend order by id'.format(
         tsh.namespace
     )
-    chunks = engine.execute(sql).fetchall()
+    with engine.begin() as cn:
+        chunks = cn.execute(sql).fetchall()
     c = {
         chunk.id: chunk.parent for chunk in chunks
     }
@@ -273,37 +285,40 @@ def test_get_from_to(engine, tsp):
     tsh.update(engine, ts, 'quitelong', 'aurelien.campeas@pythonian.fr')
     meta = tsh.internal_metadata(engine, 'quitelong')
 
-    snap = Postgres(engine, tsh, 'quitelong')
-    if tsh.namespace == 'z-z':
-        sql = 'select id, parent from "z-z.snapshot".quitelong order by id'
-        chunks = engine.execute(sql).fetchall()
-        # should be perfectly chained
-        chunks = {
-            chunk.id: chunk.parent for chunk in chunks
-        }
-        chunks.pop(1)
-        assert all(k == v+1 for k, v in chunks.items())
+    with engine.begin() as cn:
+        cn.cache = {'series_tablename': {}}
+        snap = Postgres(cn, tsh, 'quitelong')
 
-        snap = Postgres(engine, tsh, 'quitelong')
-        chunks = chunksize(meta, snap, 73)
-        assert chunks == {None: 5, 1: 5, 2: 5, 3: 5, 4: 5, 5: 5, 6: 5, 7: 5,
-                          8: 5, 9: 5, 10: 5, 11: 5, 12: 5, 13: 5, 14: 5, 15: 5,
-                          16: 5, 17: 5, 18: 5, 19: 5, 20: 5, 21: 5, 22: 5,
-                          23: 5, 24: 5, 25: 5, 26: 5, 27: 5, 28: 5, 29: 5,
-                          30: 5, 31: 5, 32: 5, 33: 5, 34: 5, 35: 5, 36: 5,
-                          37: 5, 38: 5, 39: 5, 40: 5, 41: 5, 42: 5, 43: 5, 44: 5,
-                          45: 5, 46: 5, 47: 5, 48: 5, 49: 5, 50: 5, 51: 5, 52: 5,
-                          53: 5, 54: 5, 55: 5, 56: 5, 57: 5, 58: 5, 59: 5, 60: 5,
-                          61: 5, 62: 5, 63: 5, 64: 5, 65: 5, 66: 5, 67: 5, 68: 5,
-                          69: 5, 70: 5, 71: 5, 72: 5}
-        chunks = chunksize(meta, snap, 73, datetime(2015, 5, 1))
-        assert chunks == {24: 5, 25: 5, 26: 5, 27: 5, 28: 5, 29: 5, 30: 5, 31: 5,
-                          32: 5, 33: 5, 34: 5, 35: 5, 36: 5, 37: 5, 38: 5, 39: 5,
-                          40: 5, 41: 5, 42: 5, 43: 5, 44: 5, 45: 5, 46: 5, 47: 5,
-                          48: 5, 49: 5, 50: 5, 51: 5, 52: 5, 53: 5, 54: 5, 55: 5,
-                          56: 5, 57: 5, 58: 5, 59: 5, 60: 5, 61: 5, 62: 5, 63: 5,
-                          64: 5, 65: 5, 66: 5, 67: 5, 68: 5, 69: 5, 70: 5, 71: 5,
-                          72: 5}
+        if tsh.namespace == 'z-z':
+            sql = 'select id, parent from "z-z.snapshot".quitelong order by id'
+            chunks = cn.execute(sql).fetchall()
+            # should be perfectly chained
+            chunks = {
+                chunk.id: chunk.parent for chunk in chunks
+            }
+            chunks.pop(1)
+            assert all(k == v+1 for k, v in chunks.items())
+
+            snap = Postgres(cn, tsh, 'quitelong')
+            chunks = chunksize(meta, snap, 73)
+            assert chunks == {None: 5, 1: 5, 2: 5, 3: 5, 4: 5, 5: 5, 6: 5, 7: 5,
+                              8: 5, 9: 5, 10: 5, 11: 5, 12: 5, 13: 5, 14: 5, 15: 5,
+                              16: 5, 17: 5, 18: 5, 19: 5, 20: 5, 21: 5, 22: 5,
+                              23: 5, 24: 5, 25: 5, 26: 5, 27: 5, 28: 5, 29: 5,
+                              30: 5, 31: 5, 32: 5, 33: 5, 34: 5, 35: 5, 36: 5,
+                              37: 5, 38: 5, 39: 5, 40: 5, 41: 5, 42: 5, 43: 5, 44: 5,
+                              45: 5, 46: 5, 47: 5, 48: 5, 49: 5, 50: 5, 51: 5, 52: 5,
+                              53: 5, 54: 5, 55: 5, 56: 5, 57: 5, 58: 5, 59: 5, 60: 5,
+                              61: 5, 62: 5, 63: 5, 64: 5, 65: 5, 66: 5, 67: 5, 68: 5,
+                              69: 5, 70: 5, 71: 5, 72: 5}
+            chunks = chunksize(meta, snap, 73, datetime(2015, 5, 1))
+            assert chunks == {24: 5, 25: 5, 26: 5, 27: 5, 28: 5, 29: 5, 30: 5, 31: 5,
+                              32: 5, 33: 5, 34: 5, 35: 5, 36: 5, 37: 5, 38: 5, 39: 5,
+                              40: 5, 41: 5, 42: 5, 43: 5, 44: 5, 45: 5, 46: 5, 47: 5,
+                              48: 5, 49: 5, 50: 5, 51: 5, 52: 5, 53: 5, 54: 5, 55: 5,
+                              56: 5, 57: 5, 58: 5, 59: 5, 60: 5, 61: 5, 62: 5, 63: 5,
+                              64: 5, 65: 5, 66: 5, 67: 5, 68: 5, 69: 5, 70: 5, 71: 5,
+                              72: 5}
 
     serie = tsh.get(engine, 'quitelong')
     assert serie.index[0] == pd.Timestamp('2015-01-01 00:00:00')

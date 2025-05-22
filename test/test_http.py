@@ -238,7 +238,7 @@ def test_base(http):
         'freq': 'd',
         'description': 'banana spot price'
     }
-    
+
     # test metadata keys retrieving
     res = http.get('/series/metadata-keys')
     assert res.json == ['description', 'freq']
@@ -252,6 +252,14 @@ def test_base(http):
     res = http.get('/series/metadata?name=test')
     meta2 = res.json
     assert meta2 == {}
+
+    res = http.get('/series/metadata?name=test&type=archive')
+    oldmetas = res.json
+    assert len(oldmetas) == 2
+    assert oldmetas[-1][1:] == [{}, 'no-user']
+    assert oldmetas[0][1:] == [
+        {'freq': 'd', 'description': 'banana spot price'}, 'no-user'
+    ]
 
     # get
     res = http.get('/series/state?name=test')
@@ -457,6 +465,39 @@ insertion_date             value_date
     ]
 
 
+def test_strings(http):
+    ts = pd.Series(
+        ['something']
+        , index=[dt(2025, 1, 1)]
+    )
+    res = http.patch_json('/series/state', params={
+        'name': 'series-string-http',
+        'series': json.loads(util.tojson(ts)),
+        'author': 'Babar',
+        'tzaware': False,
+        'dtype': 'object'
+    })
+    assert res.status_code == 201
+
+    res = http.get('/series/state', params={
+        'name': 'series-string-http',
+    })
+    assert res.text == '{"2025-01-01T00:00:00": "something"}'
+
+    ts = pd.Series(
+        ['else']
+        , index=[dt(2025, 1, 2)]
+    )
+    res = http.patch_json('/series/state', params={
+        'name': 'series-string-http',
+        'series': json.loads(util.tojson(ts)),
+        'author': 'Babar',
+        'tzaware': False,
+        'dtype': 'object'
+    })
+    assert res.status_code == 200
+
+
 def test_get_nans(http):
     # insert
     ts = genserie(utcdt(2024, 1, 1), 'h', 3)
@@ -476,6 +517,27 @@ def test_get_nans(http):
     })
     # NaNs have been converted to nulls
     assert 'null' in res.text
+
+
+def test_client_find(client):
+    ts = pd.Series(
+        [1] * 3,
+        index=pd.date_range(
+            start=utcdt(2024, 1, 1),
+            periods=3,
+            freq='h'
+        )
+    )
+    client.update(
+        'client.find-me',
+        ts,
+        'Babar'
+    )
+    names = client.find('(by.name "client.find-me")')
+    assert names[0].source == 'local'  # good
+
+    names = client.find('(by.name "client.find-me")', _source='remote')
+    assert names[0].source == 'remote'  # still good
 
 
 def test_create_with_only_nans(http):
@@ -781,6 +843,89 @@ def test_apply_tz_on_bounds(client, http):
     # Hence, we receive the date at midnight in the requested tzone
     assert tsr.index[0] == '2023-01-02T00:00:00+01:00'
     assert tsr.index[-1] == '2023-01-03T00:00:00+01:00'
+
+
+def test_inconsistant_size(client, http):
+    series = {
+        '2024-05-13T13:11:20.726413': 1,
+        '2024-05-14T13:11:20.726413': 1,
+        '2025-03-11T00:00:00': 1,
+        '2025-03-12T00:00:00': 1,
+    }
+    res = http.patch_json(
+        '/series/state',
+        params={
+            'name': 'ts-weird-dates',
+            'tzaware': False,
+            'author': 'test',
+            'series': series,
+        }
+    )
+    assert res.status_code == 201
+
+
+def test_exclude(client, http):
+    ts = pd.Series(
+        range(4),
+        index=pd.date_range(
+            start=pd.Timestamp('2023-01-01', tz='UTC'),
+            end=pd.Timestamp('2023-01-04', tz='UTC'),
+            freq='D'
+        )
+    )
+    client.update(
+        'ts-to-exclude-tz',
+        ts,
+        'test'
+    )
+
+    ts = pd.Series(
+        range(4),
+        index=pd.date_range(
+            start=pd.Timestamp('2023-01-01'),
+            end=pd.Timestamp('2023-01-04'),
+            freq='D'
+        )
+    )
+    client.update(
+        'ts-to-exclude-naive',
+        ts,
+        'test'
+    )
+
+    # we build the request like in the UI:
+    # the dates are naives, the tz is always
+    # given and the tzaware parameter is decided
+    # by the internal metadata
+    result = http.get(
+        '/series/state',
+        params={
+            'name': 'ts-to-exclude-tz',
+            'tzone': 'CET',
+            'tzaware': True,
+            'exclude': 'right',
+            'from_value_date': pd.Timestamp('2023-01-01'),
+            'to_value_date': pd.Timestamp('2023-01-04'),
+        }
+    )
+    ts = pd.Series(result.json)
+    assert ts.index[0] == '2023-01-01T01:00:00+01:00'
+    assert ts.index[-1] == '2023-01-03T01:00:00+01:00'
+
+    result = http.get(
+        '/series/state',
+        params={
+            'name': 'ts-to-exclude-naive',
+            'tzone': 'CET',
+            'tzaware': False,
+            'exclude': 'both',
+            'from_value_date': pd.Timestamp('2023-01-01'),
+            'to_value_date': pd.Timestamp('2023-01-04'),
+        }
+    )
+    ts_tz = pd.Series(result.json)
+    assert ts_tz.index[0] == '2023-01-02T00:00:00'
+    assert ts_tz.index[-1] == '2023-01-03T00:00:00'
 
 
 def test_delete(http):
@@ -1248,6 +1393,34 @@ def test_log(http):
 
 # groups
 
+
+def test_group_get_empty(http):
+    df = pd.Series(
+        [1.],
+        index=[pd.Timestamp('2025-1-1', tz='utc')]
+    ).to_frame()
+
+    bgroup = codecs.pack_group(df)
+    http.patch(
+        '/group/state',
+        params={
+            'name': 'empty-with-nans',
+            'author': 'Babar',
+            'tzaware': json.dumps(True),
+            'keepnans': json.dumps(True),
+            'tzone': 'CET',
+            'bgroup': webtest.Upload('bgroup', bgroup)
+        }
+    )
+    res = http.get('/group/state?name=empty-with-nans', params={
+        'tzone': 'CET',
+        'format': 'json',
+        'from_value_date': pd.Timestamp('2026-1-1').isoformat()
+    })
+    assert res.status_code == 200
+    assert res.json == {'0': {}}
+
+
 def test_naive_group(http):
     df = gengroup(
         n_scenarios=3,
@@ -1419,9 +1592,39 @@ def test_tzaware_json_group(http):
             '2021-01-05T00:00:00+00:00': 8.0
         }
     }
-
     df2json = pd.read_json(io.BytesIO(res.body), dtype='float64')
     assert df.equals(df2json)
+
+    # json
+    res = http.get(
+        '/group/state',
+        {
+            'name': 'test_group',
+            'format': 'json',
+            'tzone': 'CET',
+            '_keepnans': json.dumps(True),
+            'from_value_date': pd.Timestamp('2025-01-01').isoformat(),
+            'to_value_date': pd.Timestamp('2025-01-02').isoformat(),
+        }
+    )
+    assert res.json == {'a': {}, 'b': {}, 'c': {}}
+    df2json = pd.read_json(io.BytesIO(res.body), dtype='float64')
+    # may cause issues but not the problem we have
+    assert isinstance(df2json.index, pd.Index)
+
+    # binary
+    res = http.get(
+        '/group/state',
+        {
+            'name': 'test_group',
+            'tzone': 'CET',
+            'format': 'tshpack',
+            'from_value_date': pd.Timestamp('2025-01-01').isoformat(),
+            'to_value_date': pd.Timestamp('2025-01-02').isoformat(),
+        }
+    )
+    df2 = codecs.unpack_group(res.body)
+    assert isinstance(df2.index, pd.DatetimeIndex)
 
 
 def test_apply_tz_on_group_bounds(client, http):

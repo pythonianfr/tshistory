@@ -144,6 +144,26 @@ class httpclient:
         return f"tshistory-http-client(uri='{self.uri}')"
 
     @unwraperror
+    def info(self):
+        res = self.session.get(f'{self.uri}/global/properties', params={
+            'property': 'info'
+        })
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
+    def sources(self):
+        res = self.session.get(f'{self.uri}/global/properties', params={
+            'property': 'sources'
+        })
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
     def exists(self, name):
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
@@ -249,6 +269,80 @@ class httpclient:
             return res.json()
         if res.status_code == 404:
             return None
+
+        return res
+
+    @unwraperror
+    def old_metadata(self, name):
+        res = self.session.get(f'{self.uri}/series/metadata', params={
+            'name': name,
+            'type': 'archive'
+        })
+        if res.status_code == 200:
+            return [
+                (pd.Timestamp(stamp), meta, user)
+                for stamp, meta, user in res.json()
+            ]
+        if res.status_code == 404:
+            return None
+
+        return res
+
+    @unwraperror
+    def tree_attribute(self):
+        res = self.session.get(f'{self.uri}/series/tree-attribute')
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
+    def set_tree_attribute(self, attribute):
+        res = self.session.put(f'{self.uri}/series/tree-attribute', data={
+            'attribute': attribute
+        })
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
+    def path_series(self, pathname):
+        res = self.session.get(f'{self.uri}/series/tree-path', params={
+            'type': 'pathname',
+            'name': pathname
+        })
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
+    def series_path(self, pathname):
+        res = self.session.get(f'{self.uri}/series/tree-path', params={
+            'type': 'seriesname',
+            'name': pathname
+        })
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
+    def tree(self):
+        res = self.session.get(f'{self.uri}/series/tree')
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
+    def delete_path(self, path):
+        res = self.session.delete(f'{self.uri}/series/tree-path', data={
+            'path': path
+        })
+        if res.status_code == 200:
+            return res.json()
 
         return res
 
@@ -376,6 +470,7 @@ class httpclient:
                         to_insertion_date=None,
                         from_value_date=None,
                         to_value_date=None,
+                        limit=None,
                         nocache=False):
         guard_query_dates(
             from_insertion_date, to_insertion_date,
@@ -393,6 +488,8 @@ class httpclient:
             args['from_value_date'] = strft(from_value_date)
         if to_value_date:
             args['to_value_date'] = strft(to_value_date)
+        if limit:
+            args['limit'] = limit
 
         res = self.session.get(
             f'{self.uri}/series/insertion_dates', params=args
@@ -496,7 +593,7 @@ class httpclient:
             to_insertion_date,
             from_value_date,
             to_value_date,
-            nocache
+            nocache=nocache
         )
         base = None
         if diffmode:
@@ -607,18 +704,22 @@ class httpclient:
         return res
 
     @unwraperror
-    def find(self, q, limit=None, meta=False, _source='local'):
+    def find(self, q, limit=None, meta=False, sources=[], _source='local'):
         assert isinstance(q, str)
         res = self.session.get(f'{self.uri}/series/find', params={
             'query': q,
             'limit': limit,
             'meta': meta,
-            'source': _source
+            'sources': ','.join(sources),
+            '_source': _source
         })
 
         if res.status_code == 200:
             return [
-                ts(item['name'], item['imeta'], item['meta'], kind=item['kind'])
+                ts(
+                    item['name'], item['imeta'], item['meta'],
+                    kind=item['kind'], source=item['source']
+                )
                 for item in res.json()
             ]
 
@@ -683,14 +784,16 @@ class httpclient:
         return res
 
     @unwraperror
-    def basket(self, name):
-        res = self.session.get(
-            f'{self.uri}/series/basket',
-            params={'name': name}
-        )
+    def basket(self, name, limit=None, meta=None, sources=[]):
+        res = self.session.get(f'{self.uri}/series/basket', params={
+            'name': name,
+            'limit': limit,
+            'meta': meta,
+            'sources': ','.join(sources)
+        })
         if res.status_code == 200:
             return [
-                ts(item['name'], item['imeta'], item['meta'])
+                ts(item['name'], item['imeta'], item['meta'], item['source'])
                 for item in res.json()
             ]
 
@@ -731,9 +834,10 @@ class httpclient:
     # groups
 
     @unwraperror
-    def group_replace(self, name, df, author,
+    def _group_insert(self, name, df, author,
                       insertion_date=None,
-                      metadata=None):
+                      metadata=None,
+                      replace=True):
         if not isinstance(df, pd.DataFrame):
             raise Exception(f'group `{name}` must be updated with a dataframe')
 
@@ -749,7 +853,7 @@ class httpclient:
             'name': name,
             'author': author,
             'insertion_date': insertion_date.isoformat() if insertion_date else None,
-            'replace': json.dumps(True),
+            'replace': json.dumps(replace),
             'format': 'tshpack'
         }
         if metadata:
@@ -767,6 +871,28 @@ class httpclient:
             raise Exception(res.text)
 
         return res
+
+    @unwraperror
+    def group_update(self, name, df, author,
+                      insertion_date=None,
+                      metadata=None):
+        return self._group_insert(
+            name, df, author,
+            insertion_date=insertion_date,
+            metadata=metadata,
+            replace=False
+        )
+
+    @unwraperror
+    def group_replace(self, name, df, author,
+                      insertion_date=None,
+                      metadata=None):
+        return self._group_insert(
+            name, df, author,
+            insertion_date=insertion_date,
+            metadata=metadata,
+            replace=True
+        )
 
     @unwraperror
     def group_get(self, name,
@@ -900,6 +1026,19 @@ class httpclient:
         return res
 
     @unwraperror
+    def group_source(self, name):
+        res = self.session.get(f'{self.uri}/group/source', params={
+            'name': name
+        })
+
+        if res.status_code == 200:
+            return res.json()
+        elif res.status_code == 404:
+            return None
+
+        return res
+
+    @unwraperror
     def group_metadata(self, name, all=False):
         if all is not None:
             warnings.warn(
@@ -920,6 +1059,22 @@ class httpclient:
             return res
 
         # 404 -> we tried to read a non-existent group, do nothing
+
+    @unwraperror
+    def group_old_metadata(self, name):
+        res = self.session.get(f'{self.uri}/group/metadata', params={
+            'name': name,
+            'type': 'archive'
+        })
+        if res.status_code == 200:
+            return [
+                (pd.Timestamp(stamp), meta, user)
+                for stamp, meta, user in res.json()
+            ]
+        if res.status_code == 404:
+            return None
+
+        return res
 
     @unwraperror
     def group_internal_metadata(self, name):
@@ -991,5 +1146,23 @@ class httpclient:
         )
         if res.status_code == 204:
             return
+
+        return res
+
+    @unwraperror
+    def group_find(self, q, limit=None, meta=False, _source='local'):
+        assert isinstance(q, str)
+        res = self.session.get(f'{self.uri}/group/find', params={
+            'query': q,
+            'limit': limit,
+            'meta': meta,
+            'source': _source
+        })
+
+        if res.status_code == 200:
+            return [
+                ts(item['name'], item['imeta'], item['meta'], kind=item['kind'])
+                for item in res.json()
+            ]
 
         return res

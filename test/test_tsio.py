@@ -6,7 +6,7 @@ import pytz
 import pytest
 import numpy as np
 import pandas as pd
-from sqlalchemy.exc import IntegrityError
+from psycopg.errors import ForeignKeyViolation
 
 from tshistory.storage import Postgres
 from tshistory.util import (
@@ -41,6 +41,75 @@ def utcdt(*dt):
 
 def test_no_series_meta(engine, tsh):
     assert tsh.internal_metadata(engine, 'no-such-series') is None
+    assert tsh.metadata(engine, 'no-such-series') is None
+
+
+def test_oldmeta(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2025, 1, 1), freq='d', periods=3)
+    )
+    tsh.update(
+        engine,
+        ts,
+        'oldmeta',
+        'Babar'
+    )
+    assert tsh.metadata(engine, 'oldmeta') == {}
+
+    tsh.replace_metadata(
+        engine,
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsh.replace_metadata(
+        engine,
+        'oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsh.replace_metadata(
+        engine,
+        'oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsh.update_metadata(
+        engine,
+        'oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsh.metadata(engine, 'oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsh.update_metadata(
+        engine,
+        'oldemeta',
+        {
+            'quux': 43,
+            'foo': 'bar'
+        }
+    )
+
+    old = tsh.old_metadata(engine, 'oldmeta')
+    assert [it[1] for it in old] == [
+        {'foo': 'baz', 'quux': 42},
+        {'foo': 'bar', 'quux': 42},
+        {}
+    ]
+
+    info = tsh.info(engine)
+    assert 'primary_groups' in info
+    assert 'primary_series' in info
 
 
 def test_bad_name(engine, tsh):
@@ -240,6 +309,16 @@ Freq: H
 2017-10-29 04:00:00+00:00    3.0
 """, ts)
 
+    ts = tsh.get(engine, 'tztest', revision_date=pd.Timestamp('2018-1-3'))
+    assert_df("""
+2017-10-28 23:00:00+00:00    0.0
+2017-10-29 00:00:00+00:00    1.0
+2017-10-29 01:00:00+00:00    0.0
+2017-10-29 02:00:00+00:00    1.0
+2017-10-29 03:00:00+00:00    2.0
+2017-10-29 04:00:00+00:00    3.0
+""", ts)
+
     hist = tsh.history(engine, 'tztest')
     assert_hist("""
 insertion_date             value_date               
@@ -279,11 +358,12 @@ def test_base_diff(engine, tsh):
     if not isinstance(tsh, timeseries):
         return
     id1 = tsh.last_id(engine, 'ts_test')
-    assert tsh._previous_cset(
-        _set_cache(engine),
-        'ts_test',
-        id1
-    ) is None
+    with engine.begin() as cn:
+        assert tsh._previous_cset(
+            _set_cache(cn),
+            'ts_test',
+            id1
+        ) is None
 
     assert tsh.exists(engine, 'ts_test')
     assert not tsh.exists(engine, 'this_does_not_exist')
@@ -333,11 +413,13 @@ def test_base_diff(engine, tsh):
     ts_slight_variation.iloc[6] = 0
     tsh.update(engine, ts_slight_variation, 'ts_test', 'celeste')
     id2 = tsh.last_id(engine, 'ts_test')
-    assert tsh._previous_cset(
-        _set_cache(engine),
-        'ts_test',
-        id2
-    ) == id1
+
+    with engine.begin() as cn:
+        assert tsh._previous_cset(
+            _set_cache(cn),
+            'ts_test',
+            id2
+        ) == id1
 
     assert_df("""
 2010-01-01    0.0
@@ -722,6 +804,12 @@ insertion_date             value_date
         pd.Timestamp('2024-04-08 00:00:00+0000', tz='UTC'),
         pd.Timestamp('2024-04-09 00:00:00+0000', tz='UTC'),
         pd.Timestamp('2024-04-10 00:00:00+0000', tz='UTC')
+    ]
+
+    revs = tsh.insertion_dates(engine, 'historical-series', limit=2)
+    assert revs == [
+        pd.Timestamp('2024-04-09 00:00:00+0000', tz='UTC'),
+        pd.Timestamp('2024-04-10 00:00:00+0000', tz='UTC'),
     ]
 
     hist = tsh.history(
@@ -2956,9 +3044,10 @@ def test_replace_reuse(engine, tsh):
         insertion_date=utcdt(2019, 1, 1)
     )
     if isinstance(tsh, timeseries):
-        snap = Postgres(_set_cache(engine), tsh, 'replace-reuse')
-        chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(1)]
-        assert chunks == [(1, None)]
+        with engine.begin() as cn:
+            snap = Postgres(_set_cache(cn), tsh, 'replace-reuse')
+            chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(1)]
+            assert chunks == [(1, None)]
 
     tsh.replace(
         engine, seriesa, 'replace-reuse', 'Babar',
@@ -3359,7 +3448,6 @@ def test_basket(engine, tsh):
 
 # groups
 
-
 def test_primary_group(engine, tsh):
     df = gengroup(
         n_scenarios=3,
@@ -3390,7 +3478,8 @@ def test_primary_group(engine, tsh):
         insertion_date=pd.Timestamp('2021-01-01', tz='UTC')
     )
 
-    infos = tsh._group_info(engine, 'first_group')
+    with engine.begin() as cn:
+        infos = tsh._group_info(cn, 'first_group')
     assert ['a', 'b', 'c'] == [col for col, _name in infos]
     infonames = [sid for name, sid in infos]
 
@@ -3400,7 +3489,8 @@ def test_primary_group(engine, tsh):
     name = infos[0][1]
     tsh_group = tsh.__class__(namespace=f'{tsh.namespace}.group')
 
-    names = list(tsh_group.list_series(engine).keys())
+    with engine.begin() as cn:
+        names = list(tsh_group.list_series(cn).keys())
     assert names == infonames
 
     ts = tsh_group.get(engine, name)
@@ -3490,6 +3580,67 @@ def test_primary_group(engine, tsh):
     )
 
     assert df2.equals(df)
+
+
+def test_group_update(engine, tsh):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=utcdt(2025, 1, 1),
+        length=3,
+        freq='h',
+        seed=1
+    )
+    tsh.group_update(
+        engine,
+        df,
+        'group-update',
+        'Babar'
+    )
+
+    dfo = tsh.group_get(engine, 'group-update')
+    assert_df("""
+                             0    1    2
+2025-01-01 00:00:00+00:00  1.0  2.0  3.0
+2025-01-01 01:00:00+00:00  2.0  3.0  4.0
+2025-01-01 02:00:00+00:00  3.0  4.0  5.0
+""", dfo)
+
+    df = df * 2
+    df.index = df.index.shift(1, 'h')
+    tsh.group_update(
+        engine,
+        df,
+        'group-update',
+        'Babar'
+    )
+
+    dfo = tsh.group_get(engine, 'group-update')
+    assert_df("""
+                             0    1     2
+2025-01-01 00:00:00+00:00  1.0  2.0   3.0
+2025-01-01 01:00:00+00:00  2.0  4.0   6.0
+2025-01-01 02:00:00+00:00  4.0  6.0   8.0
+2025-01-01 03:00:00+00:00  6.0  8.0  10.0
+""", dfo)
+
+    tsh.group_delete(engine, 'group-update')
+
+
+def test_group_nan(engine, tsh):
+    df = pd.Series(
+        [np.nan],
+        index=[pd.Timestamp('2025-1-1', tz='utc')]
+    ).to_frame()
+
+    tsh.group_replace(
+        engine,
+        df,
+        'group-with-nans',
+        'Babar'
+    )
+
+    with pytest.raises(ValueError):
+        tsh.group_get(engine, 'group-with-nans')
 
 
 def test_group_history(engine, tsh):
@@ -3637,6 +3788,167 @@ def test_group_bad_data(engine, tsh):
     assert ['0', '1', '2'] == df.columns.to_list()
 
 
+def test_group_find(engine, cleanup, tsh):
+    df = gengroup(
+        n_scenarios=3,
+        from_date=utcdt(2025, 1, 1),
+        length=5,
+        freq='d',
+        seed=2
+    )
+    tsh.group_replace(
+        engine,
+        df,
+        'gr.find.me.1',
+        'Babar'
+    )
+    tsh.group_replace(
+        engine,
+        df,
+        'gr.find.me.2',
+        'Celeste'
+    )
+
+    # by name
+    r = tsh.group_find(engine, search.byname('nop'))
+    assert r == []
+
+    r = tsh.group_find(engine, search.byname('gr.find.me.1'))
+    assert r == ['gr.find.me.1']
+
+    r = tsh.group_find(engine, search.byname('.me.'))
+    assert len(r) == 2
+
+    r = tsh.group_find(engine, search.byname('find 1'))
+    assert r == ['gr.find.me.1']
+
+    tsh.replace_group_metadata(
+        engine,
+        'gr.find.me.1',
+        {
+            'foo': 42
+        }
+    )
+    tsh.replace_group_metadata(
+        engine,
+        'gr.find.me.2',
+        {
+            'bar': 'Hello',
+            'foo': 43
+        }
+    )
+
+    # by metadata key
+    r = tsh.group_find(engine, search.bymetakey('foo'))
+    assert r == ['gr.find.me.1', 'gr.find.me.2']
+
+    r = tsh.group_find(engine, search.bymetakey('nope'))
+    assert r == []
+
+    r = tsh.group_find(engine, search.bymetakey('bar'))
+    assert r == ['gr.find.me.2']
+
+    # by metadata items
+
+    r = tsh.group_find(engine, search.bymetaitem('foo', 43))
+    assert r == ['gr.find.me.2']
+
+    r = tsh.group_find(engine, search.bymetaitem('foo', 42))
+    assert r == ['gr.find.me.1']
+
+    r = tsh.group_find(engine, search.bymetaitem('bar', 'Hello'))
+    assert r == ['gr.find.me.2']
+
+    # tzaware vs naive
+    df = gengroup(
+        n_scenarios=3,
+        from_date=datetime(2025, 1, 1),
+        length=5,
+        freq='d',
+        seed=2
+    )
+    tsh.group_replace(
+        engine,
+        df,
+        'gr.find.me.tznaive',
+        'Babar'
+    )
+    tsh.replace_group_metadata(
+        engine,
+        'gr.find.me.tznaive',
+        {
+            'foo': 43
+        }
+    )
+
+    r = tsh.group_find(engine, search.tzaware())
+    assert 'gr.find.me.1' in r and 'gr.find.me.2' in r
+
+    # and combination
+    r = tsh.group_find(
+        engine,
+        search.and_(
+            search.bymetaitem('foo', 43),
+            search.bymetaitem('bar', 'Hello')
+        )
+    )
+    assert r == ['gr.find.me.2']
+
+    # negation
+    r = tsh.group_find(
+        engine,
+        search.not_(
+            search.tzaware()
+        )
+    )
+    assert 'gr.find.me.tznaive' in r and 'gr.find.me.1' not in r and 'gr.find.me.2' not in r
+
+    r = tsh.group_find(
+        engine,
+        search.and_(
+            search.bymetaitem('foo', 43),
+            search.not_(
+                search.tzaware()
+            )
+        )
+    )
+    assert r == ['gr.find.me.tznaive']
+
+    r = tsh.group_find(
+        engine,
+        search.and_(
+            search.not_(
+                search.bymetaitem('foo', 43)
+            ),
+            search.tzaware()
+        )
+    )
+    assert r == ['gr.find.me.1']
+
+    # or
+
+    r = tsh.group_find(
+        engine,
+        search.or_(
+            search.bymetaitem('foo', 43),
+            search.bymetaitem('foo', 42),
+        )
+    )
+    assert r == ['gr.find.me.1', 'gr.find.me.2', 'gr.find.me.tznaive']
+
+    r = tsh.group_find(
+        engine,
+        search.and_(
+            search.or_(
+                search.bymetakey('bar'),
+                search.bymetaitem('foo', 42),
+            ),
+            search.tzaware()
+        )
+    )
+    assert r == ['gr.find.me.1', 'gr.find.me.2']
+
+
 def test_group_other_operations(engine, tsh):
     df = gengroup(
         n_scenarios=4,
@@ -3657,7 +3969,8 @@ def test_group_other_operations(engine, tsh):
     lgroups = tsh.list_groups(engine)
     assert 'third_group' in lgroups
 
-    infos = tsh._group_info(engine, 'third_group')
+    with engine.begin() as cn:
+        infos = tsh._group_info(cn, 'third_group')
     names = [name for _, name in infos]
 
     for name in names:
@@ -3666,7 +3979,7 @@ def test_group_other_operations(engine, tsh):
     # if someone tries to delete a group item, an error is raised as
     # it should be -- this is handled by the referential integrity constraint
     # on group <-> series
-    with pytest.raises(IntegrityError):
+    with pytest.raises(ForeignKeyViolation):
         tsh.tsh_group.delete(engine, names[0])
 
     meta = tsh.group_metadata(engine, 'third_group')
@@ -3777,6 +4090,72 @@ def test_group_metadata(engine, tsh):
     assert m == {
         'bar': 42,
     }
+
+
+def test_group_oldmeta(engine, tsh):
+    df = gengroup(
+        n_scenarios=2,
+        from_date=datetime(2025, 1, 1),
+        length=2,
+        freq='d',
+        seed=1
+    )
+    tsh.group_update(
+        engine,
+        df,
+        'group-oldmeta',
+        'Babar'
+    )
+    assert tsh.group_metadata(engine, 'group-oldmeta') == {}
+
+    tsh.replace_group_metadata(
+        engine,
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    # noop
+    tsh.replace_group_metadata(
+        engine,
+        'group-oldmeta',
+        {
+            'foo': 'bar',
+            'quux': 42
+        }
+    )
+    tsh.replace_group_metadata(
+        engine,
+        'group-oldmeta',
+        {
+            'foo': 'baz',
+            'quux': 42
+        }
+    )
+    tsh.update_group_metadata(
+        engine,
+        'group-oldmeta',
+        {
+            'quux': 43
+        }
+    )
+    assert tsh.group_metadata(engine, 'group-oldmeta') == {'foo': 'baz', 'quux': 43}
+    # noop
+    tsh.update_group_metadata(
+        engine,
+        'group-oldmeta',
+        {
+            'quux': 43,
+        }
+    )
+
+    old = tsh.group_old_metadata(engine, 'group-oldmeta')
+    assert [it[1] for it in old] == [
+        {'foo': 'baz', 'quux': 42},
+        {'foo': 'bar', 'quux': 42},
+        {}
+    ]
 
 
 def test_group_log(engine, tsh):

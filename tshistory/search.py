@@ -1,10 +1,7 @@
 import json
 import uuid
-import typing
-from psyl.lisp import (
-    parse,
-    serialize
-)
+
+from psyl.lisp import parse
 
 from tshistory.util import (
     all_subclasses,
@@ -14,7 +11,7 @@ from tshistory.util import (
 
 __all__ = [
     'query', 'and_', 'or_', 'not_', 'tzaware',
-    'byname', 'bymetakey', 'bymetaitem', 'bysource',
+    'byname', 'bymetakey', 'bymetaitem',
     'byeverything',
     'lt', 'lte', 'gt', 'gte'
 ]
@@ -35,146 +32,12 @@ _OPMAP = {
     'by.metakey': 'bymetakey',
     'by.metaitem': 'bymetaitem',
     'by.internal-metaitem': 'byinternalmetaitem',
-    'by.source': 'bysource',
     '<': 'lt',
     '<=': 'lte',
     '>': 'gt',
     '>=': 'gte',
     '=': 'eq'
 }
-
-
-# source handling
-
-def _has_bysource(tree):
-    if not isinstance(tree, list):
-        return tree
-
-    op = tree[0]
-    if op == 'by.source':
-        return True
-
-    for item in tree:
-        if _has_bysource(item):
-            return True
-
-    return False
-
-
-def prunebysource(sourcename: str, querytree: list) -> typing.Optional[list]:
-    """
-    Remove all subtrees associated with by.source expressions that
-    do not match the given sourcename.
-
-    """
-    assert isinstance(querytree, list)
-
-    def _prune(tree):
-        if not isinstance(tree, list):
-            return tree
-
-        if not _has_bysource(tree):
-            # optimise the case where there is no bysource filter
-            # checking is cheaper than rewriting
-            return tree
-
-        op = tree[0]
-        if op == 'by.source' and tree[1] != sourcename:
-            return None  # pruned !
-
-        newtree = []
-        pruned = False
-        for item in tree:
-            newitem = _prune(item)
-            if newitem is None:
-                pruned = True
-                continue
-            newtree.append(newitem)
-
-        if pruned and op in ('by.and', 'by.not'):
-            return None
-
-        if op in ('by.and', 'by.or'):
-            # remove the and/or if they reign over a single clause
-            if len(newtree[1:]) == 1:
-                return newtree[1]
-
-        return newtree
-
-    return _prune(
-        querytree
-    )
-
-
-def removebysource(querytree: list) -> typing.Optional[list]:
-    """
-    Remove all by.source expression and simplify the tree
-    accordingly
-
-    """
-    assert isinstance(querytree, list)
-
-    def _prune(tree):
-        if not isinstance(tree, list):
-            return tree
-
-        if not _has_bysource(tree):
-            # optimise the case where there is no bysource filter
-            # checking is cheaper than rewriting
-            return tree
-
-        op = tree[0]
-        if op == 'by.source':
-            return None  # pruned !
-
-        newtree = []
-        for item in tree:
-            newitem = _prune(item)
-            if newitem is None:
-                continue
-            newtree.append(newitem)
-
-        if op in ('by.and', 'by.or'):
-            # remove the and/or if they reign over a single clause
-            if len(newtree[1:]) == 1:
-                return newtree[1]
-
-        return newtree
-
-    return _prune(
-        querytree
-    )
-
-
-def local_search(cn, tsh, q, source, limit=None, meta=False):
-    """
-    Take a query with parameters (and utilities) and execute it
-    locally after having handled the "by.source" clauses
-
-    """
-    localquery = prunebysource(
-        source,
-        parse(q)
-    )
-    if localquery is None:
-        return []
-
-    # purge all bysource remnants
-    localquery = removebysource(localquery)
-    if localquery is None:
-        localquery = ['by.everything']
-
-    return tsh.find(
-        cn,
-        query.fromexpr(
-            serialize(localquery)
-        ),
-        limit=limit,
-        meta=meta,
-        source=source
-    )
-
-# /source
 
 
 class query:
@@ -211,34 +74,6 @@ class query:
         op = tree[0]
         klass = query.klassbyname(_OPMAP[op])
         return klass._fromtree(tree)
-
-
-class Source(str):
-    pass
-
-
-class bysource(query):
-    __slots__ = ('source',)
-
-    def __init__(self, source: Source):
-        self.source = source
-
-    def __expr__(self):
-        return f'(by.source "{self.source}")'
-
-    @staticmethod
-    def __sig__():
-        return {
-            'source': 'Source',
-            'return': 'query'
-        }
-
-    @classmethod
-    def _fromtree(cls, tree):
-        return cls(tree[1])
-
-    def sql(self, namespace='tsh'):
-        return '', {}
 
 
 class byeverything(query):
@@ -470,10 +305,10 @@ class _comparator(query):
                 }
             )
 
-        vid = usym('value')
+        assert isinstance(self.value, (int, float))
         return (
-            f'jsonb_path_match(metadata, \'$.{self.key} {self._op} %({vid})s\')',
-            {vid: self.value}
+            f"jsonb_path_match(metadata, '$.{self.key} {self._op} {self.value}')",
+            {}
         )
 
 

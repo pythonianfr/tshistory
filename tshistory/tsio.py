@@ -24,6 +24,7 @@ from tshistory.util import (
     guard_query_dates,
     hash64,
     infer_freq,
+    make_find_sqlquery,
     patch,
     pruned_history,
     series_metadata,
@@ -57,6 +58,19 @@ class base:
     othersources = None
     tsh_group = None
 
+    def __init__(self, namespace='tsh', othersources=None, _kvstore=None, _groups=True, **_kw):
+        self.namespace = namespace
+        self.othersources = othersources
+        # primary series for groups in a simple timeseries store
+        # in its own namespace
+        if _groups:
+            self.tsh_group = timeseries(
+                namespace=f'{self.namespace}.group',
+                _kvstore=_kvstore,
+                _groups=False
+            )
+        self.kvstore = _kvstore
+
     def get(self, cn, name, *a, **kw):
         raise NotImplementedError
 
@@ -68,6 +82,17 @@ class base:
 
     def type(self, cn, name):
         return 'primary'
+
+    @tx
+    def info(self, cn):
+        return {
+            'primary_series': cn.execute(
+                f'select count(id) from "{self.namespace}".registry '
+            ).scalar(),
+            'primary_groups': cn.execute(
+                f'select count(id) from "{self.namespace}".group_registry '
+            ).scalar()
+        }
 
     @tx
     def internal_metadata(self, cn, name):
@@ -102,11 +127,98 @@ class base:
         ).scalar()
 
     @tx
-    def update_metadata(self, cn, name, metadata):
+    def tree(self, cn):
+        return cn.execute(
+            f'select path from "{self.namespace}".tree',
+            _binary=False
+        ).scalars()
+
+    @tx
+    def path_series(self, cn, path):
+        return cn.execute(
+            f'select reg.name '
+            f'from "{self.namespace}".registry as reg,'
+            f'     "{self.namespace}".tree_series_map as map,'
+            f'     "{self.namespace}".tree as tree '
+            f'where reg.id = map.seriesid and'
+            f'      map.treeid = tree.id and'
+            f'      tree.path = %(path)s',
+            path=path,
+        ).scalars()
+
+    @tx
+    def series_path(self, cn, name):
+        return cn.execute(
+            f'select tree.path '
+            f'from "{self.namespace}".registry as reg,'
+            f'     "{self.namespace}".tree_series_map as map,'
+            f'     "{self.namespace}".tree as tree '
+            f'where reg.id = map.seriesid and'
+            f'      map.treeid = tree.id and'
+            f'      reg.name = %(name)s',
+            name=name,
+            _binary=False
+        ).scalar()
+
+    def set_in_tree(self, cn, name, path):
+        if not path:  # unset
+            cn.execute(
+                f'delete from "{self.namespace}".tree_series_map as map '
+                f'using "{self.namespace}".registry as reg '
+                f'where map.seriesid = reg.id and '
+                f'      reg.name = %(name)s',
+                name=name
+            )
+            return
+
+        # does the path exist ?
+        if not cn.execute(
+                f'select id from "{self.namespace}".tree '
+                f'where path = %(path)s',
+                path=path).scalar():
+            cn.execute(
+                f'insert into "{self.namespace}".tree (path) '
+                f'values (%(path)s)',
+                path=path
+            )
+
+        cn.execute(
+            f'with tsid as '
+            f'  (select id from "{self.namespace}".registry '
+            f'   where name = %(name)s),'
+            f'treeid as '
+            f'  (select id from "{self.namespace}".tree '
+            f'   where path = %(path)s)'
+            f'insert into "{self.namespace}".tree_series_map '
+            f'  (seriesid, treeid) '
+            f'select tsid.id, treeid.id '
+            f'from tsid, treeid',
+            name=name,
+            path=path
+        )
+
+    @tx
+    def delete_path(self, cn, path):
+        cn.execute(
+            f'delete from "{self.namespace}".tree where '
+            f'path = %(path)s',
+            path=path
+        )
+
+    @tx
+    def update_metadata(self, cn, name, metadata, user='no-user'):
         assert isinstance(metadata, dict)
         existing_metadata = self.metadata(cn, name) or {}
-
+        oldmeta = existing_metadata.copy()
         existing_metadata.update(metadata)
+        if existing_metadata == oldmeta:
+            return
+
+        if self.kvstore:
+            ta = self.kvstore.get('tree-attribute')
+            if ta and ta in metadata:
+                self.set_in_tree(cn, name, metadata[ta])
+
         cn.execute(
             f'update "{self.namespace}".registry '
             'set metadata = %(metadata)s '
@@ -114,10 +226,27 @@ class base:
             metadata=json.dumps(existing_metadata),
             name=name
         )
+        cn.execute(
+            f'with sid as'
+            f'  (select id from "{self.namespace}".registry where name = %(name)s) '
+            f'insert into "{self.namespace}".ts_oldmeta (seriesid, metadata, userid) '
+            f'select id, %(meta)s, %(user)s from sid',
+            meta=oldmeta,
+            name=name,
+            user=user
+        )
 
     @tx
-    def replace_metadata(self, cn, name, metadata):
+    def replace_metadata(self, cn, name, metadata, user='no-user'):
         assert isinstance(metadata, dict)
+        oldmeta = self.metadata(cn, name) or {}
+        if oldmeta == metadata:
+            return
+
+        if self.kvstore:
+            ta = self.kvstore.get('tree-attribute')
+            self.set_in_tree(cn, name, metadata.get(ta, ''))
+
         cn.execute(
             f'update "{self.namespace}".registry '
             'set metadata = %(metadata)s '
@@ -125,6 +254,30 @@ class base:
             metadata=json.dumps(metadata),
             name=name
         )
+        cn.execute(
+            f'with sid as '
+            f'  (select id from "{self.namespace}".registry where name = %(name)s) '
+            f'insert into "{self.namespace}".ts_oldmeta (seriesid, metadata, userid) '
+            f'select id, %(meta)s, %(user)s from sid',
+            meta=oldmeta,
+            name=name,
+            user=user
+        )
+
+    @tx
+    def old_metadata(self, cn, name):
+        return [
+            (item.moment, item.metadata, item.userid)
+            for item in cn.execute(
+                    f'select o.moment, o.metadata, o.userid  '
+                    f'from "{self.namespace}".ts_oldmeta as o, '
+                    f'     "{self.namespace}".registry as r '
+                    f'where o.seriesid = r.id and '
+                    f'      r.name = %(name)s '
+                    f'order by o.moment desc',
+                    name=name
+            ).fetchall()
+        ]
 
     @tx
     def list_metadata_keys(self, cn):
@@ -133,7 +286,7 @@ class base:
             f'from "{self.namespace}".registry '
             'group by key '
             'order by key'
-        ).scalars().all()
+        ).scalars()
 
     def _validate(self, cn, ts, name):
         if ts.isnull().all():
@@ -151,14 +304,16 @@ class base:
                 f'ref=`{meta["index_type"]}`, new=`{ts.index.dtype.name}`'
             )
 
+    @tx
     def list_series(self, cn):
         """Return the mapping of all series to their type"""
         sql = f'select name from "{self.namespace}".registry '
         return {
-            row.name: 'primary'
-            for row in cn.execute(sql)
+            row: 'primary'
+            for row in cn.execute(sql).scalars()
         }
 
+    @tx
     def tzaware(self, cn, name):
         return cn.execute(
             'select internal_metadata->\'tzaware\' '
@@ -182,27 +337,16 @@ class base:
 
     @tx
     def find(self, cn, query, limit=None, meta=False, source='local'):
-        items = self._find_items[:]
-        if meta:
-            items += ['internal_metadata', 'metadata']
-        q = select(
-            *items
-        ).table(
-            f'"{self.namespace}".registry as reg'
-        ).order('name', 'asc')
-        sql, kw = query.sql(self.namespace)
-        if sql:
-            q.where(sql, **kw)
-        if limit:
-            q.limit(limit)
-
-        return self._finish_find(cn, q, meta, source)
+        sqlq = make_find_sqlquery(
+            self.namespace, 'registry', self._find_items[:], query, limit, meta
+        )
+        return self._finish_find(cn, sqlq, meta, source)
 
     def _finish_find(self, cn, q, meta, source):
         if not meta:
             return [
                 ts(name, source=source)
-                for name, in q.do(cn).fetchall()
+                for name in q.do(cn).scalars()
             ]
 
         return [
@@ -236,10 +380,7 @@ class base:
     @tx
     def list_baskets(self, cn):
         q = select('name').table(f'"{self.namespace}".basket').order('name')
-        return [
-            name for name, in
-            q.do(cn).fetchall()
-        ]
+        return q.do(cn).scalars()
 
     @tx
     def delete_basket(self, cn, name):
@@ -374,7 +515,7 @@ class base:
     @tx
     def block_staircase(self, cn, name,
                         from_value_date=None,
-                        to_value_date=None,
+                        to_value_date=None,
                         revision_freq=None,
                         revision_time=None,
                         revision_tz='UTC',
@@ -388,7 +529,7 @@ class base:
         latest_ts = self.get(
             cn, name,
             from_value_date=from_value_date,
-            to_value_date=to_value_date,
+            to_value_date=to_value_date,
             keepnans=True
         )
         tzaware = self.tzaware(cn, name)
@@ -561,9 +702,9 @@ class base:
     def list_groups(self, cn):
         cat = {
             name: 'primary'
-            for name, in cn.execute(
+            for name in cn.execute(
                 f'select name from "{self.namespace}".group_registry'
-            ).fetchall()
+            ).scalars()
         }
         return cat
 
@@ -584,6 +725,17 @@ class base:
             fromdate=fromdate,
             todate=todate
         )
+
+    _group_finish_find = _finish_find
+    _group_find_items = _find_items
+
+    @tx
+    def group_find(self, cn, query, limit=None, meta=False, source='local'):
+        sqlq = make_find_sqlquery(
+            self.namespace, 'group_registry', self._group_find_items[:], query, limit, meta
+        )
+
+        return self._group_finish_find(cn, sqlq, meta, source)
 
     @tx
     def group_internal_metadata(self, cn, name):
@@ -609,8 +761,12 @@ class base:
         cn.execute(sql, oldname=oldname, newname=newname)
 
     @tx
-    def replace_group_metadata(self, cn, name, metadata):
+    def replace_group_metadata(self, cn, name, metadata, user='no-user'):
         assert isinstance(metadata, dict)
+        oldmeta = self.group_metadata(cn, name) or {}
+        if oldmeta == metadata:
+            return
+
         sql = (
             f'update "{self.namespace}".group_registry '
             'set metadata = %(metadata)s '
@@ -621,16 +777,69 @@ class base:
             metadata=json.dumps(metadata),
             name=name
         )
+        cn.execute(
+            f'with grid as '
+            f'  (select id from "{self.namespace}".group_registry where name = %(name)s) '
+            f'insert into "{self.namespace}".gr_oldmeta (groupid, metadata, userid) '
+            f'select id, %(meta)s, %(user)s from grid',
+            meta=oldmeta,
+            name=name,
+            user=user
+        )
 
     @tx
-    def update_group_metadata(self, cn, name, metadata):
+    def update_group_metadata(self, cn, name, metadata, user='no-user'):
         assert isinstance(metadata, dict)
         existing_metadata = self.group_metadata(cn, name) or {}
+        oldmeta = existing_metadata.copy()
+        existing_metadata.update(metadata)
+        if existing_metadata == oldmeta:
+            return
+
+        sql = (
+            f'update "{self.namespace}".group_registry '
+            'set metadata = %(metadata)s '
+            f'where name = %(name)s'
+        )
+        cn.execute(
+            sql,
+            metadata=json.dumps(existing_metadata),
+            name=name
+        )
+        cn.execute(
+            f'with grid as'
+            f'  (select id from "{self.namespace}".group_registry where name = %(name)s) '
+            f'insert into "{self.namespace}".gr_oldmeta (groupid, metadata, userid) '
+            f'select id, %(meta)s, %(user)s from grid',
+            meta=oldmeta,
+            name=name,
+            user=user
+        )
+
+    @tx
+    def group_old_metadata(self, cn, name):
+        return [
+            (item.moment, item.metadata, item.userid)
+            for item in cn.execute(
+                    f'select o.moment, o.metadata, o.userid '
+                    f'from "{self.namespace}".gr_oldmeta as o, '
+                    f'     "{self.namespace}".group_registry as r '
+                    f'where o.groupid = r.id and '
+                    f'      r.name = %(name)s '
+                    f'order by o.moment desc',
+                    name=name
+            ).fetchall()
+        ]
+
+    @tx
+    def update_group_internal_metadata(self, cn, name, metadata):
+        assert isinstance(metadata, dict)
+        existing_metadata = self.group_internal_metadata(cn, name) or {}
 
         existing_metadata.update(metadata)
         sql = (
             f'update "{self.namespace}".group_registry '
-            'set metadata = %(metadata)s '
+            'set internal_metadata = %(metadata)s '
             f'where name = %(name)s'
         )
         cn.execute(
@@ -706,6 +915,37 @@ class base:
             )
 
     @tx
+    def group_update(self, cn, df, name, author,
+                     insertion_date=None):
+        if not self.group_exists(cn, name):
+            return self.group_replace(
+                cn, df, name, author, insertion_date=insertion_date
+            )
+
+        gtype = self.group_type(cn, name)
+        if gtype != 'primary':
+            raise ValueError(
+                f'cannot group-replace `{name}`: '
+                f'this name has type `{gtype}`'
+            )
+        if df.columns.dtype != np.dtype('O'):
+            df.columns = df.columns.astype('str')
+        if insertion_date is None:
+            insertion_date = pd.Timestamp.utcnow()
+
+        infos = self._group_info(cn, name)
+        self._check_group_columns(name, infos, df)
+        for colname, itemname in infos:
+            ts = df[colname]
+            self.tsh_group.update(
+                cn,
+                ts,
+                itemname,
+                author,
+                insertion_date=insertion_date
+            )
+
+    @tx
     def group_replace(self, cn, df, name, author,
                       insertion_date=None):
         assert isinstance(df, pd.DataFrame), (
@@ -764,7 +1004,7 @@ class base:
             )
             return
 
-        # update
+        # replace
         self._check_group_columns(name, infos, df)
         for colname, itemname in infos:
             ts = df[colname]
@@ -874,19 +1114,10 @@ class timeseries(base):
     delete_lock_id = None
     storageclass = Postgres
 
-    def __init__(self, namespace='tsh', othersources=None,
-                 _groups=True, **_kw):
-        self.namespace = namespace
-        self.create_lock_id = sum(ord(c) for c in namespace)
-        self.delete_lock_id = sum(ord(c) for c in namespace)
-        self.othersources = othersources
-        # primary series for groups in a simple timeseries store
-        # in its own namespace
-        if _groups:
-            self.tsh_group = timeseries(
-                namespace=f'{self.namespace}.group',
-                _groups=False
-            )
+    def __init__(self, *a, **_kw):
+        super().__init__(*a, **_kw)
+        self.create_lock_id = sum(ord(c) for c in self.namespace)
+        self.delete_lock_id = sum(ord(c) for c in self.namespace)
 
     @tx
     def update(self, cn, updatets, name, author,
@@ -1112,6 +1343,7 @@ class timeseries(base):
                         to_insertion_date=None,
                         from_value_date=None,
                         to_value_date=None,
+                        limit=None,
                         **kw):
         guard_query_dates(
             from_insertion_date, to_insertion_date,
@@ -1122,7 +1354,8 @@ class timeseries(base):
             from_insertion_date=from_insertion_date,
             to_insertion_date=to_insertion_date,
             from_value_date=from_value_date,
-            to_value_date=to_value_date
+            to_value_date=to_value_date,
+            limit=limit
         )
 
         return [
@@ -1198,16 +1431,16 @@ class timeseries(base):
         if not self.exists(cn, name):
             return []
 
-        log = []
         q = self._log_series_query(
             cn, name, limit, authors,
             fromdate, todate
         )
-        rset = q.do(cn)
-        for csetid, author, revdate, meta in rset.fetchall():
-            log.append({'rev': csetid, 'author': author,
-                        'date': pd.Timestamp(revdate).tz_convert('utc'),
-                        'meta': meta if meta else {}})
+        log = [
+            {'rev': csetid, 'author': author,
+             'date': pd.Timestamp(revdate).tz_convert('utc'),
+             'meta': meta if meta else {}}
+            for csetid, author, revdate, meta in q.do(cn).fetchall()
+        ]
 
         log.sort(key=lambda rev: rev['rev'])
         return log
@@ -1391,7 +1624,7 @@ class timeseries(base):
             namespace=self.namespace,
             tablename=tablename
         )
-        cn.execute(table)
+        cn.execute(table, _binary=False)
 
     def _series_initial_meta(self, _cn, _name, ts):
         return series_metadata(ts)
@@ -1425,7 +1658,8 @@ class timeseries(base):
                    to_insertion_date=None,
                    from_value_date=None,
                    to_value_date=None,
-                   qcallback=None):
+                   qcallback=None,
+                   limit=None):
         tablename = self._series_to_tablename(cn, name)
         q = select(
             'id', 'insertion_date'
@@ -1468,11 +1702,14 @@ class timeseries(base):
         if qcallback:
             qcallback(q)
 
-        q.order('id')
-        return [
+        if limit:
+            q.limit(limit)
+
+        q.order('id', direction='desc')
+        return sorted([
             (csid, pd.Timestamp(idate).astimezone('UTC'))
             for csid, idate in q.do(cn).fetchall()
-        ]
+        ])
 
     def _log_series_query(self, cn, name,
                           limit=None, authors=None,
@@ -1505,12 +1742,12 @@ class timeseriesfs1(base):
     storage = 'filesystem1'
     storageclass = FS1
 
-    def __init__(self, namespace='tsh', othersources=None, _groups=True, uri=None):
-        self.namespace = namespace
-        self.othersources = othersources
+    def __init__(self, *a, uri=None, _kvstore=None, _groups=True, **_kw):
+        super().__init__(*a, _groups=False, **_kw)
         if _groups:
             self.tsh_group = timeseriesfs1(
                 namespace=f'{self.namespace}.group',
+                _kvstore=_kvstore,
                 _groups=False,
                 uri=uri
             )
@@ -1575,7 +1812,8 @@ class timeseriesfs1(base):
                         from_insertion_date=None,
                         to_insertion_date=None,
                         from_value_date=None,
-                        to_value_date=None):
+                        to_value_date=None,
+                        limit=None):
         guard_query_dates(
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date
@@ -1592,27 +1830,28 @@ class timeseriesfs1(base):
             if to_value_date:
                 to_value_date = compatible_date(sto.imeta['tzaware'], to_value_date)
 
-        revs = (
+        revs = [
             (
                 pd.Timestamp(rev.revdate),
                 pd.Timestamp(rev.diffstart),
                 pd.Timestamp(rev.diffend)
             )
             for _index, rev in sto.revs_range(from_insertion_date, to_insertion_date)
-        )
+        ]
         if from_value_date:
-            revs = (
+            revs = [
                 rev for rev in revs
                 if rev[2] >= from_value_date
-            )
+            ]
         if to_value_date:
-            revs = (
+            revs = [
                 rev for rev in revs
                 if rev[1] <= to_value_date
-            )
-        return [
-            rev[0] for rev in revs
-        ]
+            ]
+        revs = sorted([rev[0] for rev in revs])
+        if limit:
+            return revs[len(revs)-limit:]
+        return revs
 
     @tx
     def latest_insertion_date(self, cn, name):

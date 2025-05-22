@@ -1,13 +1,14 @@
 from pathlib import Path
 import shutil
 
-from sqlalchemy import create_engine
+from sqlhelp.pgapi import pgdb
+from sqlhelp.testutil import setup_local_pg_cluster
 import pandas as pd
 import webtest
 
+from dbcache import api as storeapi
 import pytest
 import responses
-from pytest_sa_pg import db as dbsetup
 from click.testing import CliRunner
 
 from tshistory import (
@@ -40,7 +41,7 @@ DBURI = 'postgresql://localhost:5434/postgres'
 
 @pytest.fixture(scope='session')
 def db(request):
-    dbsetup.setup_local_pg_cluster(
+    setup_local_pg_cluster(
         request, DATADIR, 5434, {
         'timezone': 'UTC',
         'log_timezone': 'UTC'
@@ -50,29 +51,10 @@ def db(request):
 
 @pytest.fixture(scope='session')
 def engine(db):
-    return create_engine(DBURI)
+    return pgdb(DBURI)
 
 
 # api fixtures
-# multi-source
-
-@pytest.fixture(scope='session')
-def mapi(engine):
-    schema.tsschema('ns-test-mapi').create(engine)
-    schema.tsschema('ns-test-mapi-2').create(engine)
-
-    config = (
-        f'[dburi]\n'
-        f'test = {str(engine.url)}\n'
-    ).encode()
-    with tempconfig(config):
-        yield tsh_api.timeseries(
-            DBURI,
-            namespace='ns-test-mapi',
-            handler=tsio.timeseries,
-            sources={'remote': (DBURI, 'ns-test-mapi-2')}
-        )
-
 
 @pytest.fixture(scope='session')
 def datadir():
@@ -84,6 +66,10 @@ def datadir():
 def tsh(request, engine):
     driver, namespace = request.param
     schema.tsschema(namespace).create(engine)
+    kvstore = storeapi.kvstore(  # noqa
+        DBURI,
+        namespace=f'{namespace}-kvstore'
+    )
 
     if driver == 'fs1':
         datapath = DATADIR / 'fs1' / namespace
@@ -99,20 +85,20 @@ def tsh(request, engine):
             f'test.path = {datapath}'
         )
         with tempconfig(conf.encode()):
-            yield tsio.timeseriesfs1(namespace, None, uri=DBURI)
+            yield tsio.timeseriesfs1(namespace, _kvstore=kvstore, uri=DBURI)
 
     else:
         if namespace == 'z-z':
             Postgres._max_bucket_size = 5
             FS1._max_bucket_size = 5
 
-            yield tsio.timeseries(namespace)
+            yield tsio.timeseries(namespace, _kvstore=kvstore)
 
             Postgres._max_bucket_size = 150
             FS1._max_bucket_size = 150
 
         else:
-            yield tsio.timeseries(namespace)
+            yield tsio.timeseries(namespace, _kvstore=kvstore)
 
 
 @pytest.fixture(scope='session')
@@ -130,7 +116,7 @@ def pure(engine):
 @pytest.fixture(scope='session')
 def cleanup(engine, tsh):
     with engine.begin() as cn:
-        for name in tsh.list_series(engine):
+        for name in tsh.list_series(cn):
             tsh.delete(cn, name)
 
 
@@ -175,7 +161,7 @@ class NoRaiseWebTester(webtest.TestApp):
 
 
 @pytest.fixture()
-def http(engine):
+def tsa(engine):
     schema.tsschema().create(engine)
     schema.tsschema(ns='other').create(engine)
 
@@ -198,10 +184,15 @@ def http(engine):
         for ts in tsa.find('(by.everything)'):
             tsa.delete(str(ts))
 
-        wsgi = nosecurity(
-            appmaker.make_app(tsa)
-        )
-        yield NoRaiseWebTester(wsgi)
+        yield tsa
+
+
+@pytest.fixture()
+def http(tsa):
+    wsgi = nosecurity(
+        appmaker.make_app(tsa)
+    )
+    yield NoRaiseWebTester(wsgi)
 
 
 # http client

@@ -10,8 +10,8 @@ from typing import (
 from collections import defaultdict
 import warnings
 
-from psyl import lisp
-from sqlalchemy import create_engine
+from dbcache import api as storeapi
+from sqlhelp.pgapi import make_url, pgdb
 import pandas as pd
 
 from tshistory.config import configuration
@@ -20,7 +20,7 @@ from tshistory.util import (
     ensure_versions,
     find_most_specific_tshclass,
     find_most_specific_http_client,
-    safe_urlparse as urlparse,
+    guard_insert,
     threadpool,
     ts,
     with_inferred_freq
@@ -75,7 +75,8 @@ class mainsource:
     __slots__ = (
         'uri', 'namespace',
         'engine', 'tsh',
-        'othersources'
+        'othersources',
+        'kvstore'
     )
 
     def __repr__(self):
@@ -87,7 +88,7 @@ class mainsource:
         )
 
     def _instancename(self):
-        parsed = urlparse(self.uri)
+        parsed = make_url(self.uri)
         if self.tsh.namespace == 'tsh':
             return f'{parsed.database}'
         else:
@@ -100,9 +101,28 @@ class mainsource:
                  othersources=None):
         self.uri = uri
         self.namespace = namespace
-        self.engine = create_engine(uri, max_overflow=100)
-        self.tsh = tshclass(namespace, othersources, uri=uri)
+        self.engine = pgdb(uri)
+        self.kvstore = storeapi.kvstore(  # noqa
+            uri,
+            namespace=f'{namespace}-kvstore'
+        )
+        self.tsh = tshclass(namespace, othersources, _kvstore=self.kvstore, uri=uri)
         self.othersources = othersources
+
+    def sources(self):
+        return [
+            source.name
+            for source in self.othersources.sources
+        ]
+
+    def info(self):
+        with self.engine.begin() as cn:
+            local = self.tsh.info(cn)
+
+        return {
+            'local': local,
+            **self.othersources.info()
+        }
 
     def update(self,
                name: str,
@@ -154,16 +174,19 @@ class mainsource:
 
         """
         insertion_date = ensuretz(insertion_date)
-
-        # check local existence
-        if not self.tsh.exists(self.engine, name):
-            # give a chance to say *no*
-            self.othersources.forbidden(
-                name,
-                'not allowed to update to a secondary source'
-            )
-
+        guard_insert(
+            updatets, name, author, metadata,
+            insertion_date
+        )
         with self.engine.begin() as cn:
+        # check local existence
+            if not self.tsh.exists(cn, name):
+                # give a chance to say *no*
+                self.othersources.forbidden(
+                    name,
+                    'not allowed to update to a secondary source'
+                )
+
             return self.tsh.update(
                 cn,
                 updatets,
@@ -196,32 +219,38 @@ class mainsource:
 
         """
         insertion_date = ensuretz(insertion_date)
+        guard_insert(
+            replacets, name, author, metadata,
+            insertion_date
+        )
 
         # check local existence
-        if not self.tsh.exists(self.engine, name):
-            # give a chance to say *no*
-            self.othersources.forbidden(
-                name,
-                'not allowed to replace to a secondary source'
-            )
+        with self.engine.begin() as cn:
+            if not self.tsh.exists(cn, name):
+                # give a chance to say *no*
+                self.othersources.forbidden(
+                    name,
+                    'not allowed to replace to a secondary source'
+                )
 
-        return self.tsh.replace(
-            self.engine,
-            replacets,
-            name,
-            author,
-            metadata=metadata,
-            insertion_date=insertion_date,
-            **kw
-        )
+            return self.tsh.replace(
+                cn,
+                replacets,
+                name,
+                author,
+                metadata=metadata,
+                insertion_date=insertion_date,
+                **kw
+            )
 
     def exists(self, name: str) -> bool:
         """Checks the existence of a series with a given name.
 
         """
-        if (not self.tsh.exists(self.engine, name) and
-            not self.othersources.exists(name)):
-            return False
+        with self.engine.begin() as cn:
+            if (not self.tsh.exists(cn, name) and
+                not self.othersources.exists(name)):
+                return False
 
         return True
 
@@ -231,13 +260,13 @@ class mainsource:
         When coming from the main source, it returns 'local'.
 
         """
-        if self.tsh.exists(self.engine, name):
-            return 'local'
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return 'local'
 
         for source in self.othersources.sources:
             if source.tsa.exists(name):
                 return source.name
-
 
     def get(self, name: str,
             revision_date: Optional[datetime]=None,
@@ -272,15 +301,16 @@ class mainsource:
         """
         revision_date = ensuretz(revision_date)
 
-        ts = self.tsh.get(
-            self.engine,
-            name,
-            revision_date=revision_date,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            keepnans=keepnans,
-            **kw
-        )
+        with self.engine.begin() as cn:
+            ts = self.tsh.get(
+                cn,
+                name,
+                revision_date=revision_date,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                keepnans=keepnans,
+                **kw
+            )
 
         if ts is not None:
             if inferred_freq:
@@ -306,6 +336,7 @@ class mainsource:
                         to_insertion_date: Optional[datetime]=None,
                         from_value_date: Optional[datetime]=None,
                         to_value_date: Optional[datetime]=None,
+                        limit: Optional[int]=None,
                         **kw):
         """Get the list of all insertion dates (as pandas timestamps).
 
@@ -313,16 +344,18 @@ class mainsource:
         from_insertion_date = ensuretz(from_insertion_date)
         to_insertion_date = ensuretz(to_insertion_date)
 
-        if self.tsh.exists(self.engine, name):
-            return self.tsh.insertion_dates(
-                self.engine,
-                name,
-                from_insertion_date=from_insertion_date,
-                to_insertion_date=to_insertion_date,
-                from_value_date=from_value_date,
-                to_value_date=to_value_date,
-                **kw
-            )
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return self.tsh.insertion_dates(
+                    cn,
+                    name,
+                    from_insertion_date=from_insertion_date,
+                    to_insertion_date=to_insertion_date,
+                    from_value_date=from_value_date,
+                    to_value_date=to_value_date,
+                    limit=limit,
+                    **kw
+                )
 
         return self.othersources.insertion_dates(
             name,
@@ -330,6 +363,7 @@ class mainsource:
             to_insertion_date,
             from_value_date,
             to_value_date,
+            limit=limit,
             **kw
         )
 
@@ -384,17 +418,18 @@ class mainsource:
         from_insertion_date = ensuretz(from_insertion_date)
         to_insertion_date = ensuretz(to_insertion_date)
 
-        hist = self.tsh.history(
-            self.engine,
-            name,
-            from_insertion_date=from_insertion_date,
-            to_insertion_date=to_insertion_date,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            diffmode=diffmode,
-            keepnans=keepnans,
-            **kw
-        )
+        with self.engine.begin() as cn:
+            hist = self.tsh.history(
+                cn,
+                name,
+                from_insertion_date=from_insertion_date,
+                to_insertion_date=to_insertion_date,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                diffmode=diffmode,
+                keepnans=keepnans,
+                **kw
+            )
 
         if hist is None:
             hist = self.othersources.history(
@@ -422,14 +457,14 @@ class mainsource:
         is sound.
 
         """
-
-        sc = self.tsh.staircase(
-            self.engine,
-            name,
-            delta,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date
-        )
+        with self.engine.begin() as cn:
+            sc = self.tsh.staircase(
+                cn,
+                name,
+                delta,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date
+            )
 
         if sc is None:
             sc = self.othersources.staircase(
@@ -494,17 +529,18 @@ class mainsource:
             `maturity_offset`
 
         """
-        bsc = self.tsh.block_staircase(
-            self.engine,
-            name,
-            from_value_date=from_value_date,
-            to_value_date=to_value_date,
-            revision_freq=revision_freq,
-            revision_time=revision_time,
-            revision_tz=revision_tz,
-            maturity_offset=maturity_offset,
-            maturity_time=maturity_time,
-        )
+        with self.engine.begin() as cn:
+            bsc = self.tsh.block_staircase(
+                cn,
+                name,
+                from_value_date=from_value_date,
+                to_value_date=to_value_date,
+                revision_freq=revision_freq,
+                revision_time=revision_time,
+                revision_tz=revision_tz,
+                maturity_offset=maturity_offset,
+                maturity_time=maturity_time,
+            )
         if bsc is None:
             bsc = self.othersources.block_staircase(
                 name,
@@ -529,8 +565,9 @@ class mainsource:
         """
         instancename = self._instancename()
         cat = defaultdict(list)
-        for name, kind in self.tsh.list_series(self.engine).items():
-            cat[(instancename, self.namespace)].append((name, kind))
+        with self.engine.begin() as cn:
+            for name, kind in self.tsh.list_series(cn).items():
+                cat[(instancename, self.namespace)].append((name, kind))
         if allsources:
             for key, val in self.othersources.catalog(False).items():
                 assert key not in cat, f'{key} already in {cat}'
@@ -540,6 +577,7 @@ class mainsource:
     def find(self, query: str,
              limit: Optional[int]=None,
              meta: Optional[int]=False,
+             sources: List[str]=[],
              _source: Optional[str]='local') -> List[ts]:
         """Return a list of series descriptors matching the query.
 
@@ -600,17 +638,23 @@ class mainsource:
         As in `(<= "max_capacity" 900)`
 
         """
-        with self.engine.begin() as cn:
-            localnames = search.local_search(
-                cn,
-                self.tsh,
-                query,
-                _source,
-                limit,
-                meta
-            )
+        localnames = []
+        if not sources or 'local' in sources:
+            with self.engine.begin() as cn:
+                localnames = self.tsh.find(
+                    cn,
+                    search.query.fromexpr(query),
+                    limit,
+                    meta,
+                    source=_source
+                )
+            if sources == ['local']:
+                return sorted(localnames)
 
-        remotenames = self.othersources.find(query, limit, meta)
+        if 'local' in sources:
+            sources.remove('local')
+
+        remotenames = self.othersources.find(query, limit, meta, sources)
         return sorted(
             localnames + remotenames
         )
@@ -621,7 +665,8 @@ class mainsource:
 
         """
         try:
-            ival = self.tsh.interval(self.engine, name)
+            with self.engine.begin() as cn:
+                ival = self.tsh.interval(cn, name)
         except ValueError:
             return self.othersources.interval(name)
         return ival
@@ -660,7 +705,9 @@ class mainsource:
             )
             imeta = self.internal_metadata(name)
 
-        meta = self.tsh.metadata(self.engine, name)
+        with self.engine.begin() as cn:
+            meta = self.tsh.metadata(cn, name)
+
         if meta is None:
             meta = self.othersources.metadata(name)
             if meta is None:
@@ -675,21 +722,50 @@ class mainsource:
     def internal_metadata(self,
                           name: str) -> Dict[str, Any]:
         """Return a series internal metadata dictionary."""
-        meta = self.tsh.internal_metadata(self.engine, name)
+        with self.engine.begin() as cn:
+            meta = self.tsh.internal_metadata(cn, name)
         if not meta:
             meta = self.othersources.internal_metadata(name)
         return meta
 
+    def tree_attribute(self) -> Optional[str]:
+        """Get the metadata attribute used for the tree. """
+        return self.kvstore.get('tree-attribute')
+
+    def set_tree_attribute(self, attribute: str):
+        """Define the metadata attribute used for the tree. """
+        if not attribute:
+            self.kvstore.delete('tree-attribute')
+        else:
+            self.kvstore.set('tree-attribute', attribute)
+
+    def tree(self) -> List[str]:
+        with self.engine.begin() as cn:
+            return self.tsh.tree(cn)
+
+    def path_series(self, path:str) -> Optional[str]:
+        with self.engine.begin() as cn:
+            return self.tsh.path_series(cn, path)
+
+    def series_path(self, name:str) -> Optional[str]:
+        with self.engine.begin() as cn:
+            return self.tsh.series_path(cn, name)
+
+    def delete_path(self, path:str) -> NONETYPE:
+        with self.engine.begin() as cn:
+            self.tsh.delete_path(cn, path)
+
     def replace_metadata(self,
-                        name: str,
-                        metadata: dict) -> NONETYPE:
+                         name: str,
+                         metadata: dict,
+                         user:str='no-user') -> NONETYPE:
         """Replace a series metadata with a dictionary from strings to anything
         json-serializable.
 
         """
         with self.engine.begin() as cn:
             if self.tsh.exists(cn, name):
-                return self.tsh.replace_metadata(cn, name, metadata)
+                return self.tsh.replace_metadata(cn, name, metadata, user)
 
         self.othersources.forbidden(
             name,
@@ -698,19 +774,29 @@ class mainsource:
 
     def update_metadata(self,
                         name: str,
-                        metadata: dict) -> NONETYPE:
+                        metadata: dict,
+                        user: str='no-user') -> NONETYPE:
         """Update a series metadata with a dictionary from strings to anything
         json-serializable.
 
         """
         with self.engine.begin() as cn:
             if self.tsh.exists(cn, name):
-                return self.tsh.update_metadata(cn, name, metadata)
+                return self.tsh.update_metadata(cn, name, metadata, user)
 
         self.othersources.forbidden(
             name,
             'not allowed to update metadata to a secondary source'
         )
+
+    def old_metadata(self, name:str) -> List[Tuple[pd.Timestamp, dict]]:
+        """Get a list of the the older versions of the metadata.
+        """
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return self.tsh.old_metadata(cn, name)
+
+        return self.othersources.old_metadata(name)
 
     def list_metadata_keys(self) -> List[str]:
         """List available metadata keys"""
@@ -721,8 +807,9 @@ class mainsource:
         """Return the type of a series, for instance 'primary' or 'formula'.
 
         """
-        if self.tsh.exists(self.engine, name):
-            return self.tsh.type(self.engine, name)
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return self.tsh.type(cn, name)
 
         return self.othersources.type(name)
 
@@ -741,21 +828,23 @@ class mainsource:
         * meta: the revision metadata
 
         """
-        if not self.tsh.exists(self.engine, name):
-            return self.othersources.log(
-                name,
-                limit=limit,
-                fromdate=fromdate,
-                todate=todate
-            )
+        with self.engine.begin() as cn:
+            if self.tsh.exists(cn, name):
+                return self.tsh.log(
+                    cn,
+                    name,
+                    limit=limit,
+                    fromdate=fromdate,
+                    todate=todate
+                )
 
-        return self.tsh.log(
-            self.engine,
+        return self.othersources.log(
             name,
             limit=limit,
             fromdate=fromdate,
             todate=todate
         )
+
 
     def rename(self,
                currname: str,
@@ -772,7 +861,8 @@ class mainsource:
             'not allowed to rename to a secondary source'
         )
 
-        return self.tsh.rename(self.engine, currname, newname, propagate=propagate)
+        with self.engine.begin() as cn:
+            return self.tsh.rename(cn, currname, newname, propagate=propagate)
 
     def delete(self, name: str):
         """Delete a series.
@@ -798,10 +888,10 @@ class mainsource:
         """
 
         insertion_date = ensuretz(insertion_date)
-        if not self.tsh.exists(self.engine, name):
-            raise Exception(f'no series {name} exists')
-
         with self.engine.begin() as cn:
+            if not self.tsh.exists(cn, name):
+                raise Exception(f'no series {name} exists')
+
             return self.tsh.strip(cn, name, insertion_date)
 
     def register_basket(self, name: str, query: str) -> NONETYPE:
@@ -816,7 +906,10 @@ class mainsource:
             search.query.fromexpr(query)
             self.tsh.register_basket(cn, name, query)
 
-    def basket(self, name: str) -> List[str]:
+    def basket(self, name: str,
+               limit: Optional[int]=None,
+               meta: Optional[int]=False,
+               sources: List[str]=[]) -> List[ts]:
         """Returns the list of series descriptors associated with a basket.
 
         A series descriptor is a string-like object (exhibiting the
@@ -829,7 +922,11 @@ class mainsource:
         """
         with self.engine.begin() as cn:
             query = self.tsh.basket_definition(cn, name)
-        return self.find(query)
+            if query is None:
+                return []
+        return self.find(
+            query, limit=limit, meta=meta, sources=sources
+        )
 
     def basket_definition(self, name: str) -> str:
         """Returns the query string associated with a basket."""
@@ -852,9 +949,10 @@ class mainsource:
         """Checks the existence of a group with a given name.
 
         """
-        if not (self.tsh.group_exists(self.engine, name) or
-                self.othersources.group_exists(name)):
-            return False
+        with self.engine.begin() as cn:
+            if not (self.tsh.group_exists(cn, name) or
+                    self.othersources.group_exists(name)):
+                return False
 
         return True
 
@@ -883,6 +981,79 @@ class mainsource:
                 todate=todate
             )
 
+    def group_find(self, query: str,
+                   limit: Optional[int]=None,
+                   meta: Optional[int]=False,
+                   _source: Optional[str]='local') -> List[ts]:
+        """Return a list of group descriptors matching the query.
+
+        A series descriptor is a string-like object (exhibiting the
+        series name) with additional attributes. If `meta` has been
+        set to True, the .meta (for normal metadata) and .imeta (for
+        internal metadata) fields will be populated (non
+        None). Lastly, the .source and .kind attributes provides the
+        series source and kind.
+
+        Here is an example:
+
+        .. highlight:: python
+        .. code-block:: python
+
+         tsa.group_find(
+            '(by.and '
+            '  (by.tzaware)'
+            '  (by.name "power capacity") '
+            '  (by.metakey "plant")'
+            '  (by.not (by.or '
+            '    (by.metaitem "plant_type" "oil")'
+            '    (by.metaitem "plant_type" "coal")))'
+            '  (by.metaitem "unit" "mwh")'
+            '  (by.metaitem "country" "fr"))'
+         )
+
+        The following filters can be used from the search module:
+
+        * by.tzaware: no parameter, yields time zone aware series names
+
+        * by.name <str>: takes a space separated string of word, yields
+          series names containing the substrings (in order)
+
+        * by.metakey <str>: takes a string, strictly matches all series
+          having this metadata key
+
+        * by.metaitems <str>  <str-or-number>: takes a string (key) and an
+          str (or numerical) value and yields all series strictly
+          matching this metadata item
+
+        * by.and: takes a variable number of filters as above
+          to combine them
+
+        * by.or: takes a variable number of filters as above
+          to combine them
+
+        * by.not: produce the negation of a filter
+
+        Also inequalities on metadata values can be used:
+
+        * <, <=, >, >=, =: take a string key, a value (str or num)
+
+        As in `(<= "max_capacity" 900)`
+
+        """
+        with self.engine.begin() as cn:
+            localnames = self.tsh.group_find(
+                cn,
+                search.query.fromexpr(query),
+                limit,
+                meta,
+                source=_source,
+            )
+
+        remotenames = self.othersources.group_find(query, limit, meta)
+        return sorted(
+            localnames + remotenames
+        )
+
     def group_rename(self, oldname: str, newname: str) -> NONETYPE:
         """Rename a group.
 
@@ -891,6 +1062,20 @@ class mainsource:
         """
         with self.engine.begin() as cn:
             self.tsh.group_rename(cn, oldname, newname)
+
+    def group_source(self, name: str) -> Optional[str]:
+        """Provide the source name of a group.
+
+        When coming from the main source, it returns 'local'.
+
+        """
+        with self.engine.begin() as cn:
+            if self.tsh.group_exists(cn, name):
+                return 'local'
+
+        for source in self.othersources.sources:
+            if source.tsa.group_exists(name):
+                return source.name
 
     def group_get(self,
                   name: str,
@@ -989,6 +1174,32 @@ class mainsource:
             to_insertion_date
         )
 
+    def group_update(self,
+                     name: str,
+                     df: pd.DataFrame,
+                     author: str,
+                     insertion_date: Optional[pd.Timestamp]=None) -> NONETYPE:
+        """Update a group named by <name> with the input dataframe.
+
+        This creates a new version of the group.
+
+        The `author` is mandatory.
+        The `metadata` dictionary allows to associate any metadata
+        with the new group revision.
+
+        It is possible to force an `insertion_date`, which can only be
+        higher than the previous `insertion_date`.
+
+        """
+        with self.engine.begin() as cn:
+            self.tsh.group_update(
+                cn,
+                df,
+                name,
+                author,
+                insertion_date
+            )
+
     def group_replace(self,
                       name: str,
                       df: pd.DataFrame,
@@ -1048,21 +1259,36 @@ class mainsource:
 
         return self.othersources.group_metadata(name)
 
-    def update_group_metadata(self, name: str, meta: Dict[str, Any]) -> NONETYPE:
+    def group_old_metadata(self, name:str) -> List[Tuple[pd.Timestamp, dict]]:
+        """Get a list of the the older versions of the metadata.
+        """
+        with self.engine.begin() as cn:
+            if self.tsh.group_exists(cn, name):
+                return self.tsh.group_old_metadata(cn, name)
+
+        return self.othersources.group_old_metadata(name)
+
+    def update_group_metadata(self,
+                              name: str,
+                              meta: Dict[str, Any],
+                              user: str='no-user') -> NONETYPE:
         """Update a group metadata with a dictionary from strings to anything
         json-serializable.
 
         """
         with self.engine.begin() as cn:
-            self.tsh.update_group_metadata(cn, name, meta)
+            self.tsh.update_group_metadata(cn, name, meta, user)
 
-    def replace_group_metadata(self, name: str, meta: Dict[str, Any]) -> NONETYPE:
+    def replace_group_metadata(self,
+                               name: str,
+                               meta: Dict[str, Any],
+                               user: str='no-user') -> NONETYPE:
         """Replace a group metadata with a dictionary from strings to anything
         json-serializable.
 
         """
         with self.engine.begin() as cn:
-            self.tsh.replace_group_metadata(cn, name, meta)
+            self.tsh.replace_group_metadata(cn, name, meta, user)
 
     def group_catalog(self, allsources: bool=True) -> Dict[Tuple[str, str], List[Tuple[str,str]]]:
         """Produces a catalog of all groups in the form of a mapping from
@@ -1128,6 +1354,24 @@ class altsources:
                 print(f'findsource[group]: source {source} currently unavailable (cause: {err})')
                 raise
 
+    def info(self):
+        pool = threadpool(len(self.sources))
+        out = []
+        def getinfo(source):
+            try:
+                out.append(
+                    (source.name, source.tsa.info()['local'])
+                )
+            except:
+                import traceback as tb; tb.print_exc()
+                print(f'source {source} temporarily unavailable')
+
+        pool(getinfo, [(s,) for s in self.sources])
+        infos = {}
+        for name, info in out:
+            infos[name] = info
+        return infos
+
     def exists(self, name):
         for source in self.sources:
             try:
@@ -1182,8 +1426,13 @@ class altsources:
         source = self._findsourcefor(name)
         if source is None:
             return
-        meta = source.tsa.metadata(name)
-        return meta
+        return source.tsa.metadata(name)
+
+    def old_metadata(self, name):
+        source = self._findsourcefor(name)
+        if source is None:
+            return
+        return source.tsa.old_metadata(name)
 
     def internal_metadata(self, name: str):
         source = self._findsourcefor(name)
@@ -1213,6 +1462,7 @@ class altsources:
                         to_insertion_date: Optional[datetime]=None,
                         from_value_date: Optional[datetime]=None,
                         to_value_date: Optional[datetime]=None,
+                        limit: Optional[str]=None,
                         **kw) -> List[pd.Timestamp]:
         source = self._findsourcefor(name)
         if source is None:
@@ -1224,6 +1474,7 @@ class altsources:
             to_insertion_date=to_insertion_date,
             from_value_date=from_value_date,
             to_value_date=to_value_date,
+            limit=limit,
             **kw
         )
 
@@ -1249,29 +1500,19 @@ class altsources:
             cat.update(c)
         return cat
 
-    def find(self, query, limit=None, meta=False):
+    def find(self, query, limit=None, meta=False, sources=[]):
+        return self._find(query, limit, meta, sources, 'find')
+
+    def _find(self, query, limit, meta, sources, finder):
         nameslist = []
         pool = threadpool(len(self.sources))
-        parsedquery = lisp.parse(query)
 
-        def readbasket(source):
-            # this looks 90% like search.local_search
-            # but not easy to factor this in ...
-            localquery = search.prunebysource(
-                source.name, parsedquery
-            )
-            if localquery is None:
-                return []
+        def find(source):
+            find = getattr(source.tsa, finder)
             try:
-                # at this point, no bysource expression should remain
-                # and all relevant source-bound subexpressions should
-                # have been pruned
-                localquery = search.removebysource(localquery)
-                if not localquery:
-                    localquery = ['by.everything']
                 nameslist.append(
-                    source.tsa.find(
-                        lisp.serialize(localquery),
+                    find(
+                        query,
                         limit=limit,
                         meta=meta,
                         _source=source.name
@@ -1281,7 +1522,12 @@ class altsources:
                 import traceback as tb; tb.print_exc()
                 print(f'source {source} temporarily unavailable')
 
-        pool(readbasket, [(s,) for s in self.sources])
+        if not sources:
+            usesources = self.sources
+        else:
+            usesources = [s for s in self.sources if s.name in sources]
+
+        pool(find, [(s,) for s in usesources])
         return list(
             itertools.chain.from_iterable(nameslist)
         )
@@ -1347,8 +1593,16 @@ class altsources:
         source = self._findsourceforgroup(name)
         if source is None:
             return
-        meta = source.tsa.group_metadata(name)
-        return meta
+        return source.tsa.group_metadata(name)
+
+    def group_old_metadata(self, name):
+        source = self._findsourceforgroup(name)
+        if source is None:
+            return
+        return source.tsa.group_old_metadata(name)
+
+    def group_find(self, query, limit=None, meta=False):
+        return self._find(query, limit, meta, [], 'group_find')
 
     def group_get(self,
                   name,
