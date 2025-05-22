@@ -1088,6 +1088,11 @@ def test_basket(tsx):
     assert tsx.list_baskets() == ['b2']
 
 
+def test_no_basket(tsx):
+    with pytest.raises(Exception):
+        tsx.basket('<nope>')
+
+
 def test_federated_basket(tsx, engine):
     ts = pd.Series(
         [1, 2, 3],
