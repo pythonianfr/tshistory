@@ -112,8 +112,6 @@ def unwraperror(func):
 
 def healthcheck(session, uri):
     # strip the /api part
-    if uri.endswith('/api'):
-        uri = uri[:-3]
     if not uri.endswith('/'):
         uri += '/'
     r = session.get(uri + 'versions')
