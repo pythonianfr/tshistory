@@ -922,6 +922,8 @@ class mainsource:
         """
         with self.engine.begin() as cn:
             query = self.tsh.basket_definition(cn, name)
+            if query is None:
+                return []
         return self.find(
             query, limit=limit, meta=meta, sources=sources
         )

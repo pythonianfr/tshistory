@@ -1089,8 +1089,7 @@ def test_basket(tsx):
 
 
 def test_no_basket(tsx):
-    with pytest.raises(Exception):
-        tsx.basket('<nope>')
+    assert tsx.basket('<nope>') == []
 
 
 def test_federated_basket(tsx, engine):
