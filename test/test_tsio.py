@@ -3281,6 +3281,29 @@ def test_search_inequalities(engine, tsh):
     assert names == ['find.me.B']
 
 
+def test_search_and_or(engine, tsh):
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2025, 1, 1), freq='d', periods=3)
+    )
+    tsh.update(engine, ts, 'fr.entsoe', 'Babar')
+    tsh.update(engine, ts, 'fr_.entsoe', 'Babar')
+    tsh.update(engine, ts, 'FR_.entsoe', 'Babar')
+    tsh.update(engine, ts, 'de.entsoe', 'Babar')
+    tsh.update(engine, ts, 'just-fr_.', 'Babar')
+
+    names = tsh.find(
+        engine,
+        search.query.fromexpr(
+            '(by.and '
+            '  (by.name "entsoe") '
+            '  (by.or '
+            '    (by.name "fr.") '
+            '    (by.name "fr_.")))'
+        )
+    )
+    assert names == ['fr.entsoe', 'fr_.entsoe', 'just-fr_.']
+
 
 def test_basket(engine, tsh):
     ts = pd.Series(
