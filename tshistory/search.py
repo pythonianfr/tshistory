@@ -32,7 +32,6 @@ _OPMAP = {
     'by.metakey': 'bymetakey',
     'by.metaitem': 'bymetaitem',
     'by.internal-metaitem': 'byinternalmetaitem',
-    'by.source': 'bysource',
     '<': 'lt',
     '<=': 'lte',
     '>': 'gt',
@@ -75,34 +74,6 @@ class query:
         op = tree[0]
         klass = query.klassbyname(_OPMAP[op])
         return klass._fromtree(tree)
-
-
-class Source(str):
-    pass
-
-
-class bysource(query):
-    __slots__ = ('source',)
-
-    def __init__(self, source: Source):
-        self.source = source
-
-    def __expr__(self):
-        return f'(by.source "{self.source}")'
-
-    @staticmethod
-    def __sig__():
-        return {
-            'source': 'Source',
-            'return': 'query'
-        }
-
-    @classmethod
-    def _fromtree(cls, tree):
-        return cls(tree[1])
-
-    def sql(self, namespace='tsh'):
-        return '', {}
 
 
 class byeverything(query):

@@ -96,12 +96,6 @@ def tests_eq_str():
     assert _serialize_roundtrip(s13)
 
 
-def test_bysource():
-    s14 = search.bysource('remote')
-    assert s14.expr() == '(by.source "remote")'
-    assert _serialize_roundtrip(s14)
-
-
 def test_byinternalmetaitem():
     s15 = search.byinternalmetaitem('key', 42)
     assert s15.expr() == '(by.internal-metaitem "key" 42)'
@@ -133,6 +127,5 @@ def test_search_types():
         'by.name': {'query': 'str', 'return': 'query'},
         'by.not': {'item': 'query', 'return': 'query'},
         'by.or': {'items': 'Packed[query]', 'return': 'query'},
-        'by.source': {'source': 'Source', 'return': 'query'},
         'by.tzaware': {'return': 'query'}
     }
