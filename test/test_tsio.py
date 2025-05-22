@@ -3302,7 +3302,21 @@ def test_search_and_or(engine, tsh):
             '    (by.name "fr_.")))'
         )
     )
-    assert names == ['fr.entsoe', 'fr_.entsoe', 'just-fr_.']
+    assert names == ['fr.entsoe', 'fr_.entsoe']
+
+
+    names = tsh.find(
+        engine,
+        search.query.fromexpr(
+            '(by.and '
+            '  (by.name "entsoe") '
+            '  (by.not '
+            '    (by.or '
+            '      (by.name "fr.") '
+            '      (by.name "fr_."))))'
+        )
+    )
+    assert names == ['FR_.entsoe', 'de.entsoe']
 
 
 def test_basket(engine, tsh):

@@ -288,7 +288,8 @@ class and_(query):
             sql, kw = item.sql()
             sqls.append(sql)
             kws.update(kw)
-        return ' and '.join(sqls), kws
+        andsql = ' and '.join(sqls)
+        return f'({andsql})', kws
 
 
 class or_(query):
@@ -322,7 +323,8 @@ class or_(query):
             sql, kw = item.sql()
             sqls.append(sql)
             kws.update(kw)
-        return ' or '.join(sqls), kws
+        orsql = ' or '.join(sqls)
+        return f'({orsql})', kws
 
 
 class not_(query):
@@ -347,7 +349,7 @@ class not_(query):
 
     def sql(self, namespace='tsh'):
         sql, kw = self.item.sql()
-        return f'not {sql}', kw
+        return f'not ({sql})', kw
 
 
 class tzaware(query):
