@@ -43,7 +43,12 @@ class nosecurity:
 
     def __call__(self, environ, start_response):
         environ['ROLE'] = self.role
-        environ['USER'] = 'no-user'
+        xfu = environ.get('HTTP_X_FORWARDED_USER')
+        if xfu:
+            environ['USER'] = xfu
+        else:
+            environ['USER'] = 'no-user'
+
         return self.app(environ, start_response)
 
 
