@@ -903,18 +903,22 @@ class httpapi:
                         args.bseries.stream.read()
                     )
 
+                if args.author == 'no-user':
+                    user = request.environ.get('USER')
+                else:
+                    user = args.author
                 exists = tsa.exists(args.name)
                 try:
                     if args.replace:
                         diff = tsa.replace(
-                            args.name, series, args.author,
+                            args.name, series, user,
                             metadata=args.metadata,
                             insertion_date=args.insertion_date,
                             manual=args.supervision
                         )
                     else:
                         diff = tsa.update(
-                            args.name, series, args.author,
+                            args.name, series, user,
                             metadata=args.metadata,
                             insertion_date=args.insertion_date,
                             keepnans=args.keepnans,
