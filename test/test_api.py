@@ -1577,6 +1577,12 @@ def test_tree_api(tsx, engine):
     assert tsx.series_path('ue.france') == 'UE.France'
     assert tsx.series_path('ue.italy') is None
 
+    with pytest.raises(Exception) as excinfo:
+        tsx.update_metadata('ue.france', {'tree': "a.name"})
+    assert str(excinfo.value) == (
+        'duplicate key value violates unique constraint "tree_series_map_seriesid_key"'
+        '\nDETAIL:  Key (seriesid)=(2) already exists.'
+    )
 
 # groups
 
