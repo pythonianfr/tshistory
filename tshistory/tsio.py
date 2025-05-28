@@ -191,8 +191,10 @@ class base:
             f'   where path = %(path)s)'
             f'insert into "{self.namespace}".tree_series_map '
             f'  (seriesid, treeid) '
-            f'select tsid.id, treeid.id '
-            f'from tsid, treeid',
+            f' select tsid.id, treeid.id from tsid, treeid '
+            f' on conflict (seriesid) '
+            f' do update '
+            f' set treeid = (select treeid.id from treeid) ',
             name=name,
             path=path
         )
