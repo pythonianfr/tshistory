@@ -516,9 +516,14 @@ class FS1(base):
         node_index -= delta
         ftree.seek((node_index - 1) * node._size)
         bnodes = ftree.read(node._size * (delta + 1))
-        for idx, n in enumerate(node.unpack_many(self.tz, bnodes)):
-            c[node_index + idx] = n
-
+        c.update(
+            dict(
+                enumerate(
+                    node.unpack_many(self.tz, bnodes),
+                    start=node_index
+                )
+            )
+        )
         return self.node_at(index)
 
     def nodes(self, fromindex=1):
