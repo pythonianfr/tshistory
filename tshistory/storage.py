@@ -424,7 +424,7 @@ class FS1(base):
 
     def revs_range(self, fromdate=None, todate=None, limit=None):
         if limit == 0:
-            return []
+            return
 
         with open(self.revs, 'rb') as frevs:
             # long prologue to determine the boundaries
@@ -435,7 +435,8 @@ class FS1(base):
                     # could not find anything fromdate is out of range
                     # if it is in the future, we can't do much
                     if fromdate > self.last_rev.revdate:
-                        return []
+                        return
+
             if fromdate is None or index is None:
                 # we then can assume we start from the beginning
                 index = 0
@@ -448,12 +449,12 @@ class FS1(base):
                     # could not find anything: todate is out of range
                     # if it is in the past, we can't do much
                     if todate < self.first_rev.revdate:
-                        return []
+                        return
+
+            yield index, startrev
 
             count = 1
-            revs = [(index, startrev)]
             frevs.seek(rev._size * (index + 1))
-
             while True:
                 if limit and count >= limit:
                     break
@@ -465,9 +466,8 @@ class FS1(base):
                     break
                 count += 1
                 index += 1
-                revs.append((index, irev))
 
-            return revs
+                yield index, irev
 
     @property
     def last_rev(self):
