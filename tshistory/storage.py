@@ -527,19 +527,14 @@ class FS1(base):
         return self.node_at(index)
 
     def nodes(self, fromindex=1):
-        nodes = []
         fromindex -= 1
         with open(self.tree, 'rb') as ftree:
             ftree.seek(node._size * fromindex)
 
-            while True:
-                bnode = ftree.read(node._size)
-                if not len(bnode):
-                    return nodes
-
-                nodes.append(
-                    node.unpack(self.tz, bnode)
-                )
+            return node.unpack_many(
+                self.tz,
+                ftree.read(node._size * (self.tree_entries + fromindex))
+            )
 
     def find_rev(self, revdate):
         with open(self.revs, 'rb') as frevs:
