@@ -14,7 +14,10 @@ from tshistory.testutil import gengroup, tempconfig
 
 DATADIR = Path(__file__).parent.parent / 'test' / 'data'
 DBURI = 'postgresql://localhost:5433/postgres'
-SIZES = {}
+
+ISIZE = None
+SIZES = pd.DataFrame()
+TIMES = pd.DataFrame()
 
 
 def get_dir_size(path):
@@ -26,7 +29,7 @@ def get_dir_size(path):
     return sum(size.values())
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def db(request):
     shutil.rmtree(DATADIR / 'pgdb', ignore_errors=True)
     setup_local_pg_cluster(
@@ -35,32 +38,71 @@ def db(request):
         'log_timezone': 'UTC'
         }
     )
-    SIZES['init'] = get_dir_size(DATADIR / 'pgdb')
-    print('initial empty postgres db size: ', SIZES['init'])
+    global ISIZE
+    ISIZE = get_dir_size(DATADIR / 'pgdb')
 
 
-def show_sizes():
+def driver(tsh):
+    if tsh.__class__.__name__ == 'timeseries':
+        return 'pg'
+    return 'fs1'
+
+
+def record_sizes(testname, tsh, op):
     # size computation
-    SIZES['pg'] = get_dir_size(DATADIR / 'pgdb')
-    print('filled postgres db size: ', SIZES['pg'])
+    pgsize = get_dir_size(DATADIR / 'pgdb') - ISIZE
+    fssize = get_dir_size(DATADIR / 'fs1' / 'perf')
+    total = pgsize + fssize
 
-    SIZES['fs1'] = get_dir_size(DATADIR / 'fs1' / 'perf')
-    print('filled postgres fs1 size: ', SIZES['fs1'])
+    driv = driver(tsh)
+    sizes = pd.DataFrame.from_records(
+        [
+            (testname, driv, op, pgsize, fssize, total),
+        ],
+        columns=(
+            'test      ',
+            'driver    ',
+            'operation ',
+            'pgsize    ',
+            'fssize    ',
+            'total     '
+        )
+    )
+    global SIZES
+    SIZES = pd.concat([SIZES, sizes], ignore_index=True)
 
-    for k in SIZES:
-        print(f'{k}:', SIZES[k])
-    total = SIZES['pg'] + SIZES['fs1']
-    print('delta: ', (total - SIZES['init']))
+
+def record_times(testname, tsh, op, time):
+    driv = driver(tsh)
+    times = pd.DataFrame.from_records(
+        [
+            (testname, driv, op, "{:2.4f}".format(time))
+        ],
+        columns=(
+            'test      ',
+            'driver    ',
+            'operation ',
+            'time      '
+        )
+    )
+    global TIMES
+    TIMES = pd.concat([TIMES, times], ignore_index=True)
 
 
+def write_stats():
+    import tabulate
+    tabulate.PRESERVE_WHITESPACE = True
+    args = {'tablefmt': 'mixed_outline'}
+    (DATADIR / 'sizes').write_text(SIZES.to_markdown(**args) + '\n')
+    (DATADIR / 'times').write_text(TIMES.to_markdown(**args) + '\n')
 
-@pytest.fixture(scope='session')
+
+@pytest.fixture
 def engine(db):
     return create_engine(DBURI)
 
 
-@pytest.fixture(params=['a', 'b'],
-                scope='session')
+@pytest.fixture(params=['a', 'b'])
 def tsh(request, engine):
     namespace = 'perf'
     schema.tsschema(namespace).create(engine)
@@ -83,6 +125,8 @@ def tsh(request, engine):
             yield tsio.timeseriesfs1(namespace, None, uri=DBURI)
     else:
         yield tsio.timeseries(namespace)
+
+    write_stats()
 
 
 @pytest.mark.perf
@@ -127,14 +171,14 @@ def test_big_update(engine, tsh):
         'Babar'
     )
 
-    print(f'{tsh}.update ran in {time() - t0} seconds.')
+    record_sizes('bigupdate', tsh, 'update1')
+    record_times('bigupdate', tsh, 'update1', time() - t0)
 
     t0 = time()
     ts = tsh.get(engine, name)
     assert len(ts) == 600000
-    print(f'{tsh}.get ran in {time() - t0} seconds.')
 
-    show_sizes()
+    record_times('bigupdate', tsh, 'get1', time() - t0)
 
     # edit 1 point at the beginning, exhibiting the worst case scenario
     ts[0] = 42
@@ -146,14 +190,13 @@ def test_big_update(engine, tsh):
         'Babar'
     )
 
-    print(f'{tsh}.update ran in {time() - t0} seconds.')
+    record_sizes('bigupdate', tsh, 'update2')
+    record_times('bigupdate', tsh, 'get2', time() - t0)
 
     t0 = time()
     ts = tsh.get(engine, name)
     assert len(ts) == 600000
-    print(f'{tsh}.get ran in {time() - t0} seconds.')
-
-    show_sizes()
+    record_times('bigupdate', tsh, 'get3', time() - t0)
 
 
 @pytest.mark.perf
@@ -204,13 +247,13 @@ def test_meteo_versions(engine, tsh):
                 'Babar',
                 insertion_date=pd.Timestamp(f'2025-1-{6+d} {h}:00:00', tz='utc')
             )
-    print(f'{tsh}.update ran in {time() - t0} seconds.')
+    record_times('meteo', tsh, 'update', time() - t0)
+    record_sizes('meteo', tsh, 'update')
 
     t0 = time()
     tsh.history(engine, 'solar-fcst')
-    print(f'{tsh}.history ran in {time() - t0} seconds.')
-
-    show_sizes()
+    record_times('meteo', tsh, 'history', time() - t0)
+    record_sizes('meteo', tsh, 'history')
 
 
 @pytest.mark.perf
