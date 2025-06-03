@@ -22,13 +22,12 @@ class base:
 
     def buckets(self, ts):
         if len(ts) < self._max_bucket_size:
-            return [ts]
+            yield ts
+            return
 
-        buckets = []
         for start in range(0, len(ts),
                            self._max_bucket_size):
-            buckets.append(ts[start:start + self._max_bucket_size])
-        return buckets
+            yield ts[start:start + self._max_bucket_size]
 
 
 class Postgres(base):
