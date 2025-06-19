@@ -2450,3 +2450,62 @@ def test_group_find(tsx):
         'foo': 43
     }
     assert gr.source == 'local'
+
+
+def test_federated_group_find(tsx, engine):
+    # cleanup
+    cat = tsx.group_catalog()
+    if cat:
+        for name, _ in list(cat.values())[0]:
+            tsx.group_delete(name)
+
+    df = gengroup(
+        n_scenarios=3,
+        from_date=utcdt(2025, 1, 1),
+        length=5,
+        freq='d',
+        seed=2
+    )
+    tsx.group_update(
+        'local.basket.fed',
+        df,
+        'Babar'
+    )
+
+    remoteapi = timeseries(
+        str(engine.url), 'remote', handler=tsio.timeseries, sources={}
+    )
+    # cleanup
+    cat = remoteapi.group_catalog()
+    if cat:
+        for name, _ in list(cat.values())[0]:
+            remoteapi.group_delete(name)
+
+    remoteapi.group_update(
+        'remote.basket.fed',
+        df,
+        'Celeste'
+    )
+
+    names = tsx.group_find('(by.name "basket.fed")')
+    assert names == [
+        'local.basket.fed',
+        'remote.basket.fed'
+    ]
+
+    # some top-level bysource
+    with pytest.raises(TypeError):
+        names = tsx.group_find('(by.everything)', sources=['remote'])
+        assert names == ['remote.basket.fed']
+        assert names[0].source == 'remote'
+
+    with pytest.raises(TypeError):
+        names = tsx.group_find('(by.everything)', sources=['local'])
+        assert names == ['local.basket.fed']
+        assert names[0].source == 'local'
+
+    with pytest.raises(TypeError):
+        names = tsx.group_find('(by.everything)', sources=['local', 'remote'])
+        assert names == ['local.basket.fed', 'remote.basket.fed']
+        assert names[0].source == 'local'
+        assert names[1].source == 'remote'
