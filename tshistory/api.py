@@ -984,6 +984,7 @@ class mainsource:
     def group_find(self, query: str,
                    limit: Optional[int]=None,
                    meta: Optional[int]=False,
+                   sources: List[str]=[],
                    _source: Optional[str]='local') -> List[ts]:
         """Return a list of group descriptors matching the query.
 
@@ -1040,14 +1041,21 @@ class mainsource:
         As in `(<= "max_capacity" 900)`
 
         """
-        with self.engine.begin() as cn:
-            localnames = self.tsh.group_find(
-                cn,
-                search.query.fromexpr(query),
-                limit,
-                meta,
-                source=_source,
-            )
+        localnames = []
+        if not sources or 'local' in sources:
+            with self.engine.begin() as cn:
+                localnames = self.tsh.group_find(
+                    cn,
+                    search.query.fromexpr(query),
+                    limit,
+                    meta,
+                    source=_source,
+                )
+            if sources == ['local']:
+                return sorted(localnames)
+
+        if 'local' in sources:
+            sources.remove('local')
 
         remotenames = self.othersources.group_find(query, limit, meta)
         return sorted(

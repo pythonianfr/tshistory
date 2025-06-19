@@ -1150,18 +1150,22 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_find(self, q, limit=None, meta=False, _source='local'):
+    def group_find(self, q, limit=None, meta=False, sources=[], _source='local'):
         assert isinstance(q, str)
         res = self.session.get(f'{self.uri}/group/find', params={
             'query': q,
             'limit': limit,
             'meta': meta,
+            'sources': ','.join(sources),
             'source': _source
         })
 
         if res.status_code == 200:
             return [
-                ts(item['name'], item['imeta'], item['meta'], kind=item['kind'])
+                ts(
+                    item['name'], item['imeta'], item['meta'],
+                    kind=item['kind'], source=item['source']
+                )
                 for item in res.json()
             ]
 

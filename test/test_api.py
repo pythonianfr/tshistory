@@ -2493,19 +2493,15 @@ def test_federated_group_find(tsx, engine):
         'remote.basket.fed'
     ]
 
-    # some top-level bysource
-    with pytest.raises(TypeError):
-        names = tsx.group_find('(by.everything)', sources=['remote'])
-        assert names == ['remote.basket.fed']
-        assert names[0].source == 'remote'
+    names = tsx.group_find('(by.everything)', sources=['remote'])
+    assert names == ['remote.basket.fed']
+    assert names[0].source == 'remote'
 
-    with pytest.raises(TypeError):
-        names = tsx.group_find('(by.everything)', sources=['local'])
-        assert names == ['local.basket.fed']
-        assert names[0].source == 'local'
+    names = tsx.group_find('(by.everything)', sources=['local'])
+    assert names == ['local.basket.fed']
+    assert names[0].source == 'local'
 
-    with pytest.raises(TypeError):
-        names = tsx.group_find('(by.everything)', sources=['local', 'remote'])
-        assert names == ['local.basket.fed', 'remote.basket.fed']
-        assert names[0].source == 'local'
-        assert names[1].source == 'remote'
+    names = tsx.group_find('(by.everything)', sources=['local', 'remote'])
+    assert names == ['local.basket.fed', 'remote.basket.fed']
+    assert names[0].source == 'local'
+    assert names[1].source == 'remote'

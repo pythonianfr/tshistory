@@ -488,20 +488,6 @@ put_groupmetadata.add_argument(
 
 groupsource = base.copy()
 
-groupfind = reqparse.RequestParser()
-groupfind.add_argument(
-    'query', type=str
-)
-groupfind.add_argument(
-    'limit', type=int
-)
-groupfind.add_argument(
-    'meta', type=inputs.boolean, default=False
-)
-groupfind.add_argument(
-    '_source', type=str, default='local'
-)
-
 
 class httpapi:
     __slots__ = 'tsa', 'bp', 'api', 'nsglobal', 'nss', 'nsg'
@@ -1729,7 +1715,7 @@ class httpapi:
         class group_find(Resource):
 
             @api.doc(responses={200: 'Got content'})
-            @api.expect(groupfind)
+            @api.expect(find)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
@@ -1789,6 +1775,7 @@ class httpapi:
                             args.query,
                             limit=args.limit,
                             meta=args.meta,
+                            sources=args.sources,
                             _source=args._source
                     )
                 ]
