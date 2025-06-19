@@ -1523,7 +1523,8 @@ class altsources:
                         query,
                         limit=limit,
                         meta=meta,
-                        _source=source.name
+                        _source=source.name,
+                        sources=['local']
                     )
                 )
             except:
