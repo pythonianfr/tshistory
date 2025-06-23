@@ -33,6 +33,7 @@ _OPMAP = {
     'by.metaitem': 'bymetaitem',
     'by.internal-metaitem': 'byinternalmetaitem',
     'by.without-path': 'bywithoutpath',
+    'by.at-path': 'byatpath',
     '<': 'lt',
     '<=': 'lte',
     '>': 'gt',
@@ -378,3 +379,34 @@ class bywithoutpath(query):
 
     def sql(self, namespace='tsh'):
         return f'id not in (select seriesid from "{namespace}".tree_series_map)', {}
+
+
+class byatpath(query):
+
+    def __init__(self, path):
+        self.path = path
+
+    def __expr__(self):
+        return f'(by.at-path "{self.path}")'
+
+    @staticmethod
+    def __sig__():
+        return {
+            'path': 'str',
+            'return': 'query'
+        }
+
+    @classmethod
+    def _fromtree(cls, tree):
+        return cls(tree[1])
+
+    def sql(self, namespace='tsh'):
+        return (
+            f'id in '
+            f'(select seriesid '
+            f' from "{namespace}".tree_series_map as map, '
+            f'      "{namespace}".tree as tree'
+            f' where map.treeid = tree.id and '
+            f'       tree.path <@ \'{self.path}\''
+            f')'
+        ), {}

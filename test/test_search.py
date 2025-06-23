@@ -108,6 +108,13 @@ def test_withoutpath():
     assert _serialize_roundtrip(s16)
 
 
+def test_atpath():
+    s17 = search.byatpath("Foo.Bar")
+    assert s17.expr() == '(by.at-path "Foo.Bar")'
+    assert _serialize_roundtrip(s17)
+
+
+
 def test_search_types():
     types = {}
     for lispname, kname in search._OPMAP.items():
@@ -134,5 +141,6 @@ def test_search_types():
         'by.not': {'item': 'query', 'return': 'query'},
         'by.or': {'items': 'Packed[query]', 'return': 'query'},
         'by.tzaware': {'return': 'query'},
-        'by.without-path': {'return': 'query'}
+        'by.without-path': {'return': 'query'},
+        'by.at-path': {'path': 'str', 'return': 'query'}
     }
