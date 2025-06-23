@@ -110,9 +110,12 @@ def test_withoutpath():
 
 def test_atpath():
     s17 = search.byatpath("Foo.Bar")
-    assert s17.expr() == '(by.at-path "Foo.Bar")'
+    assert s17.expr() == '(by.at-path "Foo.Bar" #:strict #f)'
     assert _serialize_roundtrip(s17)
 
+    s18 = search.byatpath("Foo.Bar", True)
+    assert s18.expr() == '(by.at-path "Foo.Bar" #:strict #t)'
+    assert _serialize_roundtrip(s18)
 
 
 def test_search_types():
@@ -142,5 +145,5 @@ def test_search_types():
         'by.or': {'items': 'Packed[query]', 'return': 'query'},
         'by.tzaware': {'return': 'query'},
         'by.without-path': {'return': 'query'},
-        'by.at-path': {'path': 'str', 'return': 'query'}
+        'by.at-path': {'path': 'str', 'return': 'query', 'strict': 'bool'}
     }

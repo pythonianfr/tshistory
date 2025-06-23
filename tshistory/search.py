@@ -383,30 +383,39 @@ class bywithoutpath(query):
 
 class byatpath(query):
 
-    def __init__(self, path):
+    def __init__(self, path, strict=False):
         self.path = path
+        self.strict = strict
 
     def __expr__(self):
-        return f'(by.at-path "{self.path}")'
+        strict = '#t' if self.strict else '#f'
+        return f'(by.at-path "{self.path}" #:strict {strict})'
 
     @staticmethod
     def __sig__():
         return {
             'path': 'str',
+            'strict': 'bool',
             'return': 'query'
         }
 
     @classmethod
     def _fromtree(cls, tree):
+        treelen = len(tree)
+        if treelen == 3:  # strict as positional
+            return cls(tree[1], tree[2])
+        elif treelen == 4:  # strict as keyword
+            return cls(tree[1], tree[3])
         return cls(tree[1])
 
     def sql(self, namespace='tsh'):
+        op = '=' if self.strict else '<@'
         return (
             f'id in '
             f'(select seriesid '
             f' from "{namespace}".tree_series_map as map, '
             f'      "{namespace}".tree as tree'
             f' where map.treeid = tree.id and '
-            f'       tree.path <@ \'{self.path}\''
+            f'       tree.path {op} \'{self.path}\''
             f')'
         ), {}
