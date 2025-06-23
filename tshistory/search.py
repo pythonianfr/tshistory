@@ -32,6 +32,7 @@ _OPMAP = {
     'by.metakey': 'bymetakey',
     'by.metaitem': 'bymetaitem',
     'by.internal-metaitem': 'byinternalmetaitem',
+    'by.without-path': 'bywithoutpath',
     '<': 'lt',
     '<=': 'lte',
     '>': 'gt',
@@ -232,6 +233,8 @@ class byname(query):
         return f'name like %({vid})s', {vid: f'%%{query}%%'}
 
 
+# metadata
+
 class MetaKey(str):
     pass
 
@@ -354,3 +357,24 @@ class byinternalmetaitem(eq):
         if isinstance(self.value, str):
             return f'(by.internal-metaitem "{self.key}" "{self.value}")'
         return f'(by.internal-metaitem "{self.key}" {self.value})'
+
+
+# tree
+
+class bywithoutpath(query):
+
+    def __expr__(self):
+        return '(by.without-path)'
+
+    @staticmethod
+    def __sig__():
+        return {
+            'return': 'query'
+        }
+
+    @classmethod
+    def _fromtree(cls, _):
+        return cls()
+
+    def sql(self, namespace='tsh'):
+        return f'id not in (select seriesid from "{namespace}".tree_series_map)', {}

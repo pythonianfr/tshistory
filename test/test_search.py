@@ -102,6 +102,12 @@ def test_byinternalmetaitem():
     assert _serialize_roundtrip(s15)
 
 
+def test_withoutpath():
+    s16 = search.bywithoutpath()
+    assert s16.expr() == '(by.without-path)'
+    assert _serialize_roundtrip(s16)
+
+
 def test_search_types():
     types = {}
     for lispname, kname in search._OPMAP.items():
@@ -127,5 +133,6 @@ def test_search_types():
         'by.name': {'query': 'str', 'return': 'query'},
         'by.not': {'item': 'query', 'return': 'query'},
         'by.or': {'items': 'Packed[query]', 'return': 'query'},
-        'by.tzaware': {'return': 'query'}
+        'by.tzaware': {'return': 'query'},
+        'by.without-path': {'return': 'query'}
     }
