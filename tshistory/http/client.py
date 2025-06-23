@@ -1,6 +1,10 @@
 import json
 import warnings
-from datetime import timedelta
+from datetime import (
+    datetime,
+    timedelta
+)
+from typing import Optional
 
 import requests
 import pandas as pd
@@ -164,7 +168,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def exists(self, name):
+    def exists(self, name: str):
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'exists'
@@ -218,8 +222,14 @@ class httpclient:
         return res
 
     @unwraperror
-    def update(self, name, series, author,
-               metadata=None, insertion_date=None, keepnans=False, manual=False):
+    def update(self,
+               name: str,
+               series: pd.Series,
+               author: str,
+               metadata: Optional[dict]=None,
+               insertion_date: Optional[datetime]=None,
+               keepnans: bool=False,
+               manual: bool=False):
         return self._insert(
             name, series, author,
             metadata=metadata,
@@ -229,8 +239,13 @@ class httpclient:
         )
 
     @unwraperror
-    def replace(self, name, series, author,
-                metadata=None, insertion_date=None, manual=False):
+    def replace(self,
+                name:str,
+                series: pd.Series,
+                author: str,
+                metadata: Optional[dict]=None,
+                insertion_date: Optional[datetime]=None,
+                manual: bool=False):
         return self._insert(
             name, series, author,
             metadata=metadata,
@@ -240,7 +255,7 @@ class httpclient:
         )
 
     @unwraperror
-    def source(self, name):
+    def source(self, name: str):
         res = self.session.get(f'{self.uri}/series/source', params={
             'name': name
         })
@@ -253,7 +268,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def metadata(self, name, all=False):
+    def metadata(self, name: str, all: bool=False):
         if all is not None:
             warnings.warn(
                 'The `all` parameter is deprecated and has now no effect. '
@@ -273,7 +288,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def old_metadata(self, name):
+    def old_metadata(self, name: str):
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'archive'
@@ -297,7 +312,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def set_tree_attribute(self, attribute):
+    def set_tree_attribute(self, attribute: str):
         res = self.session.put(f'{self.uri}/series/tree-attribute', data={
             'attribute': attribute
         })
@@ -307,7 +322,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def path_series(self, pathname):
+    def path_series(self, pathname: str):
         res = self.session.get(f'{self.uri}/series/tree-path', params={
             'type': 'pathname',
             'name': pathname
@@ -318,7 +333,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def series_path(self, pathname):
+    def series_path(self, pathname: str):
         res = self.session.get(f'{self.uri}/series/tree-path', params={
             'type': 'seriesname',
             'name': pathname
@@ -337,7 +352,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def delete_path(self, path):
+    def delete_path(self, path: str):
         res = self.session.delete(f'{self.uri}/series/tree-path', data={
             'path': path
         })
@@ -347,7 +362,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def internal_metadata(self, name):
+    def internal_metadata(self, name: str):
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'internal'
@@ -374,7 +389,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def update_metadata(self, name, metadata):
+    def update_metadata(self, name: str, metadata: dict):
         assert isinstance(metadata, dict)
         existing_metadata = self.metadata(name)
         if existing_metadata is None:
@@ -391,7 +406,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def replace_metadata(self, name, metadata):
+    def replace_metadata(self, name: str, metadata: dict):
         assert isinstance(metadata, dict)
         res = self.session.put(f'{self.uri}/series/metadata', data={
             'name': name,
@@ -401,10 +416,11 @@ class httpclient:
         return res
 
     @unwraperror
-    def inferred_freq(self, name,
-                      revision_date=None,
-                      from_value_date=None,
-                      to_value_date=None):
+    def inferred_freq(self,
+                      name: str,
+                      revision_date: Optional[datetime]=None,
+                      from_value_date: Optional[datetime]=None,
+                      to_value_date: Optional[datetime]=None):
         args = {
             'name': name
         }
@@ -429,14 +445,15 @@ class httpclient:
         return res
 
     @unwraperror
-    def get(self, name,
-            revision_date=None,
-            from_value_date=None,
-            to_value_date=None,
-            nocache=False,
-            live=False,
-            inferred_freq=False,
-            keepnans=False):
+    def get(self,
+            name: str,
+            revision_date: Optional[datetime]=None,
+            from_value_date: Optional[datetime]=None,
+            to_value_date: Optional[datetime]=None,
+            nocache: Optional[bool]=False,
+            live: Optional[bool]=False,
+            inferred_freq: Optional[bool]=False,
+            keepnans: Optional[bool]=False):
         guard_query_dates(
             revision_date, from_value_date, to_value_date
         )
@@ -465,13 +482,14 @@ class httpclient:
         return res
 
     @unwraperror
-    def insertion_dates(self, name,
-                        from_insertion_date=None,
-                        to_insertion_date=None,
-                        from_value_date=None,
-                        to_value_date=None,
-                        limit=None,
-                        nocache=False):
+    def insertion_dates(self,
+                        name: str,
+                        from_insertion_date: Optional[datetime]=None,
+                        to_insertion_date: Optional[datetime]=None,
+                        from_value_date: Optional[datetime]=None,
+                        to_value_date: Optional[datetime]=None,
+                        limit: Optional[int]=None,
+                        nocache: bool=False):
         guard_query_dates(
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date
@@ -505,9 +523,11 @@ class httpclient:
         return res
 
     @unwraperror
-    def staircase(self, name, delta,
-                  from_value_date=None,
-                  to_value_date=None):
+    def staircase(self,
+                  name: str,
+                  delta: pd.Timedelta,
+                  from_value_date: Optional[datetime]=None,
+                  to_value_date: Optional[datetime]=None):
         guard_query_dates(
             from_value_date, to_value_date
         )
@@ -532,14 +552,15 @@ class httpclient:
 
 
     @unwraperror
-    def block_staircase(self, name,
-                        from_value_date=None,
-                        to_value_date=None,
-                        revision_freq=None,
-                        revision_time=None,
-                        revision_tz='UTC',
-                        maturity_offset=None,
-                        maturity_time=None):
+    def block_staircase(self,
+                        name: str,
+                        from_value_date: Optional[datetime] = None,
+                        to_value_date: Optional[datetime] = None,
+                        revision_freq: Optional[dict[str, int]] = None,
+                        revision_time: Optional[dict[str, int]] = None,
+                        revision_tz: str = 'UTC',
+                        maturity_offset: Optional[dict[str, int]] = None,
+                        maturity_time: Optional[dict[str, int]] = None):
 
         guard_query_dates(from_value_date, to_value_date)
         args = {'name': name, 'format': 'tshpack'}
@@ -571,14 +592,15 @@ class httpclient:
 
 
     @unwraperror
-    def history(self, name,
-                from_insertion_date=None,
-                to_insertion_date=None,
-                from_value_date=None,
-                to_value_date=None,
-                diffmode=False,
-                nocache=False,
-                keepnans=False):
+    def history(self,
+                name: str,
+                from_insertion_date: Optional[datetime]=None,
+                to_insertion_date: Optional[datetime]=None,
+                from_value_date: Optional[datetime]=None,
+                to_value_date: Optional[datetime]=None,
+                diffmode: bool=False,
+                nocache: bool=False,
+                keepnans: bool=False):
         guard_query_dates(
             from_insertion_date, to_insertion_date,
             from_value_date, to_value_date
@@ -625,7 +647,7 @@ class httpclient:
         return hist
 
     @unwraperror
-    def type(self, name):
+    def type(self, name: str):
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'type'
@@ -639,7 +661,7 @@ class httpclient:
         # 404 -> we tried to delete a non-existent series, do nothing
 
     @unwraperror
-    def interval(self, name):
+    def interval(self, name: str):
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'interval'
@@ -659,7 +681,10 @@ class httpclient:
         # raise ValueError(f'no interval for series: {name}')
 
     @unwraperror
-    def log(self, name, limit=None, fromdate=None, todate=None):
+    def log(self, name: str,
+            limit: Optional[int]=None,
+            fromdate: Optional[datetime]=None,
+            todate: Optional[datetime]=None):
         query = {
             'name': name
         }
@@ -680,7 +705,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def catalog(self, allsources=True):
+    def catalog(self, allsources: bool=True):
         res = self.session.get(
             f'{self.uri}/series/catalog',
             params={
@@ -704,7 +729,12 @@ class httpclient:
         return res
 
     @unwraperror
-    def find(self, q, limit=None, meta=False, sources=[], _source='local'):
+    def find(self,
+             q: str,
+             limit: Optional[int]=None,
+             meta: bool=False,
+             sources: list=[],
+             _source: str='local'):
         assert isinstance(q, str)
         res = self.session.get(f'{self.uri}/series/find', params={
             'query': q,
@@ -726,7 +756,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def rename(self, oldname, newname, propagate=True):
+    def rename(self, oldname: str, newname: str, propagate: bool=True):
         res = self.session.put(
             f'{self.uri}/series/state',
             data={'name': oldname, 'newname': newname, 'propagate': json.dumps(propagate)}
@@ -745,7 +775,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def strip(self, name, insertion_date):
+    def strip(self, name: str, insertion_date: datetime):
         res = self.session.put(
             f'{self.uri}/series/strip',
             data={'name': name,
@@ -757,7 +787,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def delete(self, name):
+    def delete(self, name: str):
         res = self.session.delete(
             f'{self.uri}/series/state',
             data={'name': name}
@@ -770,7 +800,7 @@ class httpclient:
     # basket
 
     @unwraperror
-    def register_basket(self, name, query):
+    def register_basket(self, name: str, query: str):
         res = self.session.put(
             f'{self.uri}/series/basket',
             data={
@@ -784,7 +814,11 @@ class httpclient:
         return res
 
     @unwraperror
-    def basket(self, name, limit=None, meta=None, sources=[]):
+    def basket(self,
+               name: str,
+               limit: Optional[int]=None,
+               meta: Optional[dict]=None,
+               sources: list=[]):
         res = self.session.get(f'{self.uri}/series/basket', params={
             'name': name,
             'limit': limit,
@@ -800,7 +834,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def basket_definition(self, name):
+    def basket_definition(self, name: str):
         res = self.session.get(
             f'{self.uri}/series/basket-definition',
             params={'name': name}
@@ -819,7 +853,7 @@ class httpclient:
             return res.json()
 
     @unwraperror
-    def delete_basket(self, name):
+    def delete_basket(self, name: str):
         res = self.session.delete(
             f'{self.uri}/series/basket',
             data={
@@ -873,9 +907,12 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_update(self, name, df, author,
-                      insertion_date=None,
-                      metadata=None):
+    def group_update(self,
+                     name: str,
+                     df: pd.DataFrame,
+                     author: str,
+                     insertion_date: Optional[datetime]=None,
+                     metadata: Optional[dict]=None):
         return self._group_insert(
             name, df, author,
             insertion_date=insertion_date,
@@ -884,9 +921,12 @@ class httpclient:
         )
 
     @unwraperror
-    def group_replace(self, name, df, author,
-                      insertion_date=None,
-                      metadata=None):
+    def group_replace(self,
+                      name: str,
+                      df: pd.DataFrame,
+                      author: str,
+                      insertion_date: Optional[datetime]=None,
+                      metadata: Optional[dict]=None):
         return self._group_insert(
             name, df, author,
             insertion_date=insertion_date,
@@ -895,10 +935,10 @@ class httpclient:
         )
 
     @unwraperror
-    def group_get(self, name,
-                  revision_date=None,
-                  from_value_date=None,
-                  to_value_date=None):
+    def group_get(self, name: str,
+                  revision_date: Optional[datetime]=None,
+                  from_value_date: Optional[datetime]=None,
+                  to_value_date: Optional[datetime]=None):
         args = {
             'name': name,
             'format': 'tshpack'
@@ -920,9 +960,10 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_insertion_dates(self, name,
-                        from_insertion_date=None,
-                        to_insertion_date=None):
+    def group_insertion_dates(self,
+                              name: str,
+                              from_insertion_date: Optional[datetime]=None,
+                              to_insertion_date: Optional[datetime]=None):
         args = {
             'name': name,
         }
@@ -945,11 +986,12 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_history(self, name,
-                from_insertion_date=None,
-                to_insertion_date=None,
-                from_value_date=None,
-                to_value_date=None):
+    def group_history(self,
+                      name: str,
+                      from_insertion_date: Optional[datetime]=None,
+                      to_insertion_date: Optional[datetime]=None,
+                      from_value_date: Optional[datetime]=None,
+                      to_value_date: Optional[datetime]=None):
         args = {
             'name': name,
             'format': 'tshpack',
@@ -977,7 +1019,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_catalog(self, allsources=True):
+    def group_catalog(self, allsources: bool=True):
         res = self.session.get(f'{self.uri}/group/catalog', params={
             'allsources': allsources
         })
@@ -991,7 +1033,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_type(self, name):
+    def group_type(self, name: str):
         res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name,
             'type': 'type'
@@ -1005,7 +1047,11 @@ class httpclient:
         # 404 -> we tried to delete a non-existent group, do nothing
 
     @unwraperror
-    def group_log(self, name, limit=None, fromdate=None, todate=None):
+    def group_log(self,
+                  name: str,
+                  limit: Optional[int]=None,
+                  fromdate: Optional[datetime]=None,
+                  todate: Optional[datetime]=None):
         query = {
             'name': name
         }
@@ -1026,7 +1072,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_source(self, name):
+    def group_source(self, name: str):
         res = self.session.get(f'{self.uri}/group/source', params={
             'name': name
         })
@@ -1039,7 +1085,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_metadata(self, name, all=False):
+    def group_metadata(self, name: str, all: bool=False):
         if all is not None:
             warnings.warn(
                 'The `all` parameter is deprecated and has now no effect. '
@@ -1061,7 +1107,7 @@ class httpclient:
         # 404 -> we tried to read a non-existent group, do nothing
 
     @unwraperror
-    def group_old_metadata(self, name):
+    def group_old_metadata(self, name: str):
         res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name,
             'type': 'archive'
@@ -1077,7 +1123,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_internal_metadata(self, name):
+    def group_internal_metadata(self, name: str):
         res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name,
             'type': 'internal'
@@ -1091,7 +1137,7 @@ class httpclient:
         # 404 -> we tried to delete a non-existent group, do nothing
 
     @unwraperror
-    def replace_group_metadata(self, name, meta):
+    def replace_group_metadata(self, name: str, meta: dict):
         assert isinstance(meta, dict)
         res = self.session.put(f'{self.uri}/group/metadata', data={
             'name': name,
@@ -1103,7 +1149,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def update_group_metadata(self, name, meta):
+    def update_group_metadata(self, name: str, meta: dict):
         assert isinstance(meta, dict)
         res = self.session.patch(f'{self.uri}/group/metadata', data={
             'name': name,
@@ -1115,7 +1161,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_exists(self, name):
+    def group_exists(self, name: str):
         res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name
         })
@@ -1128,7 +1174,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_delete(self, name):
+    def group_delete(self, name: str):
         res = self.session.delete(
             f'{self.uri}/group/state',
             data={'name': name}
@@ -1139,7 +1185,7 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_rename(self, oldname, newname):
+    def group_rename(self, oldname: str, newname: str):
         res = self.session.put(
             f'{self.uri}/group/state',
             data={'name': oldname, 'newname': newname}
@@ -1150,7 +1196,12 @@ class httpclient:
         return res
 
     @unwraperror
-    def group_find(self, q, limit=None, meta=False, sources=[], _source='local'):
+    def group_find(self,
+                   q: str,
+                   limit: Optional[int]=None,
+                   meta: bool=False,
+                   sources: list=[],
+                   _source: str='local'):
         assert isinstance(q, str)
         res = self.session.get(f'{self.uri}/group/find', params={
             'query': q,

@@ -517,7 +517,7 @@ class base:
     @tx
     def block_staircase(self, cn, name,
                         from_value_date=None,
-                        to_value_date=None,
+                        to_value_date=None,
                         revision_freq=None,
                         revision_time=None,
                         revision_tz='UTC',
