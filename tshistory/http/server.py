@@ -173,6 +173,13 @@ treepath_delete.add_argument(
     help='path to delete'
 )
 
+treepath_rename = treepath_delete.copy()
+treepath_rename.add_argument(
+    'newpath', type=str, required=True,
+    help='new path name'
+)
+
+
 inferred_freq = base.copy()
 inferred_freq.add_argument(
     'revision_date', type=utcdt, default=None,
@@ -768,6 +775,13 @@ class httpapi:
 
                 assert args.type == 'seriesname'
                 return tsa.series_path(args.name)
+
+            @api.expect(treepath_rename)
+            @onerror
+            @required_roles('admin', 'rw', 'ro')
+            def put(self):
+                args = treepath_rename.parse_args()
+                return tsa.rename_path(args.path, args.newpath)
 
             @api.expect(treepath_delete)
             @onerror

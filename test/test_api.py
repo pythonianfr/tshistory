@@ -1591,6 +1591,11 @@ def test_tree_api(tsx, engine):
     assert tsx.path_series('a.name') == ['ue.france']
     assert tsx.tree() == ['UE.France', 'a.name']
 
+    tsx.rename_path('a.name', 'UE.RepubliqueFrancaise')
+    assert tsx.tree() == ['UE.France', 'UE.RepubliqueFrancaise']
+    assert tsx.path_series('a.name') == []
+    assert tsx.path_series('UE.RepubliqueFrancaise') == ['ue.france']
+
 
 # groups
 

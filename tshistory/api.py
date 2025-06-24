@@ -755,6 +755,10 @@ class mainsource:
         with self.engine.begin() as cn:
             self.tsh.delete_path(cn, path)
 
+    def rename_path(self, path: str, newpath: str) -> NONETYPE:
+        with self.engine.begin() as cn:
+            self.tsh.rename_path(cn, path, newpath)
+
     def replace_metadata(self,
                          name: str,
                          metadata: dict,

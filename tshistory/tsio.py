@@ -208,6 +208,16 @@ class base:
         )
 
     @tx
+    def rename_path(self, cn, path, newpath):
+        cn.execute(
+            f'update "{self.namespace}".tree  '
+            f'set path = %(newpath)s '
+            f'where path = %(path)s',
+            path=path,
+            newpath=newpath
+        )
+
+    @tx
     def update_metadata(self, cn, name, metadata, user='no-user'):
         assert isinstance(metadata, dict)
         existing_metadata = self.metadata(cn, name) or {}

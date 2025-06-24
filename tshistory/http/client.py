@@ -362,6 +362,17 @@ class httpclient:
         return res
 
     @unwraperror
+    def rename_path(self, path: str, newpath: str):
+        res = self.session.put(f'{self.uri}/series/tree-path', data={
+            'path': path,
+            'newpath': newpath
+        })
+        if res.status_code == 200:
+            return res.json()
+
+        return res
+
+    @unwraperror
     def internal_metadata(self, name: str):
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
