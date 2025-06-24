@@ -15,7 +15,10 @@ from requests_auth import (
 )
 
 from tshistory.tsio import timeseries
-from tshistory.config import configuration
+from tshistory.config import (
+    configuration,
+    NoConfigFile
+)
 from tshistory.util import (
     diff,
     guard_insert,
@@ -115,11 +118,16 @@ def unwraperror(func):
 
 
 def healthcheck(session, uri):
-    # strip the /api part
     if not uri.endswith('/'):
         uri += '/'
     r = session.get(uri + 'versions')
     if r.status_code != 200:
+        if r.status_code == 401:
+            print(
+                'Access forbidden. '
+                'Do you have a config file with the credentials ?'
+            )
+            return
         print(
             'The server is not answering. Your uri may be wrong. '
             'Or you are talking to an old version'
@@ -133,13 +141,25 @@ class httpclient:
     def __init__(self, uri):
         self.uri = uri
         self.session = requests.Session()
-        auth = get_auth(uri, configuration())
-        if 'login' in auth:
-            self.session.auth = auth['login'], auth['password']
-        elif 'pkce' in auth:
-            self.session.auth = pkce_auth(uri, auth)
-        elif 'client_id' in auth:
-            self.session.auth = oauth2_auth(auth)
+
+        # look up the config, and accept to work
+        # without one (which entails no auth)
+        cfg = None
+        try:
+            cfg = configuration()
+        except NoConfigFile:
+            print('No config file found -> No auth method available.')
+        except:
+            raise
+
+        if cfg is not None:
+            auth = get_auth(uri, cfg)
+            if 'login' in auth:
+                self.session.auth = auth['login'], auth['password']
+            elif 'pkce' in auth:
+                self.session.auth = pkce_auth(uri, auth)
+            elif 'client_id' in auth:
+                self.session.auth = oauth2_auth(auth)
 
         # immediately check the uri
         healthcheck(self.session, uri)

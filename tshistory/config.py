@@ -7,6 +7,18 @@ from sqlhelp.pgapi import make_url
 from tshistory.util import unflatten
 
 
+class NoConfigFile(Exception):
+    pass
+
+
+class NoEntry(Exception):
+    pass
+
+
+class NoUri(Exception):
+    pass
+
+
 class configuration:
     optsections = ('storage', 'sources', 'auth', 'server-auth', 'dashboard')
     defaults = {
@@ -47,7 +59,7 @@ class configuration:
         else:
             cfgpath = configuration.path()
             if not cfgpath:
-                raise Exception('No `tshistory.cfg` file could be found.')
+                raise NoConfigFile('No `tshistory.cfg` file could be found.')
             self.cfg = reader(cfgpath)
         self._finish()
 
@@ -76,7 +88,7 @@ class configuration:
         try:
             return self.cfg['dburi'][something]
         except Exception as exc:
-            raise Exception(
+            raise NoEntry(
                 f'could not find the `{something}` entry in the '
                 f'[dburi] section of the tshistory.cfg '
                 f'conf file (cause: {exc.__class__.__name__} -> {exc})'
@@ -105,7 +117,7 @@ class configuration:
             if uri == dburi:
                 break
         else:
-            raise Exception(f'No match for {uri} in the tshistory.cfg file.')
+            raise NoUri(f'No match for {uri} in the tshistory.cfg file.')
 
         allsources = unflatten(self.cfg['sources'])
         sources = {}

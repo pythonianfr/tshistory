@@ -40,10 +40,15 @@ class timeseries:
                 handler=None,
                 sources=None,
                 clientclass=None):
-        cfg = configuration()
+        cfg = None
+        # if we got an http uri, take care to not read the config file
         if uri is None:
+            cfg = configuration()
             uri = cfg.find_first_uri()
+
         if uri.startswith('postgres'):
+            if cfg is None:
+                cfg = configuration()
             if handler is None:
                 handler = find_most_specific_tshclass(
                     cfg.storage(uri)
@@ -57,12 +62,11 @@ class timeseries:
                 tshclass=handler,
                 othersources=altsources(handler, sources)
             )
-        elif uri.startswith('http'):
-            if clientclass is None:
-                clientclass = find_most_specific_http_client()
-            return clientclass(uri)
 
-        raise NotImplementedError(uri)
+        assert uri.startswith('http')
+        if clientclass is None:
+            clientclass = find_most_specific_http_client()
+        return clientclass(uri)
 
 
 class mainsource:
