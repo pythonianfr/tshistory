@@ -3377,7 +3377,6 @@ def test_search_and_or(engine, tsh):
     )
     tsh.update(engine, ts, 'fr.entsoe', 'Babar')
     tsh.update(engine, ts, 'fr_.entsoe', 'Babar')
-    tsh.update(engine, ts, 'FR_.entsoe', 'Babar')
     tsh.update(engine, ts, 'de.entsoe', 'Babar')
     tsh.update(engine, ts, 'just-fr_.', 'Babar')
 
@@ -3405,7 +3404,7 @@ def test_search_and_or(engine, tsh):
             '      (by.name "fr_."))))'
         )
     )
-    assert names == ['FR_.entsoe', 'de.entsoe']
+    assert names == ['de.entsoe']
 
 
 def test_basket(engine, tsh):

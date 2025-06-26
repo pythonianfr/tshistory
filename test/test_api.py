@@ -816,7 +816,7 @@ def test_find(tsx):
         pd.date_range(utcdt(2023, 1, 1), freq='D', periods=3)
     )
     tsx.update(
-        'find.me.1',
+        'Find.me.1',
         ts,
         'Babar'
     )
@@ -826,14 +826,14 @@ def test_find(tsx):
         'Celeste'
     )
 
-    assert tsx.source('find.me.1') == 'local'
+    assert tsx.source('Find.me.1') == 'local'
 
     # by name
     r = tsx.find('(by.name "nop")')
     assert r == []
 
     r = tsx.find('(by.name "find.me.1")')
-    assert r == ['find.me.1']
+    assert r == ['Find.me.1']
 
     assert r[0].kind == 'primary'
 
@@ -841,10 +841,10 @@ def test_find(tsx):
     assert len(r) == 2
 
     r = tsx.find('(by.name "find 1")')
-    assert r == ['find.me.1']
+    assert r == ['Find.me.1']
 
     tsx.replace_metadata(
-        'find.me.1',
+        'Find.me.1',
         {
             'foo': 42
         }
@@ -859,7 +859,7 @@ def test_find(tsx):
 
     # by metadata key
     r = tsx.find('(by.metakey "foo")')
-    assert r == ['find.me.1', 'find.me.2']
+    assert r == ['Find.me.1', 'find.me.2']
 
     r = tsx.find('(by.metakey "nope")')
     assert r == []
@@ -873,7 +873,7 @@ def test_find(tsx):
     assert r == ['find.me.2']
 
     r = tsx.find('(by.metaitem "foo" 42)')
-    assert r == ['find.me.1']
+    assert r == ['Find.me.1']
 
     r = tsx.find('(by.metaitem "bar" "Hello")')
     assert r == ['find.me.2']
@@ -896,7 +896,7 @@ def test_find(tsx):
     )
 
     r = tsx.find('(by.tzaware)')
-    assert 'find.me.1' in r and 'find.me.2' in r
+    assert 'Find.me.1' in r and 'find.me.2' in r
 
     # and combination
     r = tsx.find(
@@ -910,7 +910,7 @@ def test_find(tsx):
     r = tsx.find(
         '(by.not (by.tzaware))'
     )
-    assert 'find.me.tznaive' in r and 'find.me.1' not in r and 'find.me.2' not in r
+    assert 'find.me.tznaive' in r and 'Find.me.1' not in r and 'find.me.2' not in r
 
     r = tsx.find(
         '(by.and '
@@ -924,7 +924,7 @@ def test_find(tsx):
         '  (by.not (by.metaitem "foo" 43))'
         '  (by.tzaware))'
     )
-    assert r == ['find.me.1']
+    assert r == ['Find.me.1']
 
     # or
 
@@ -933,14 +933,14 @@ def test_find(tsx):
         '  (= "foo" 43)'
         '  (= "foo" 42))'
     )
-    assert r == ['find.me.1', 'find.me.2', 'find.me.tznaive']
+    assert r == ['Find.me.1', 'find.me.2', 'find.me.tznaive']
 
     r = tsx.find(
         '(by.or '
         '  (by.metaitem "foo" 43)'
         '  (by.metaitem "foo" 42))'
     )
-    assert r == ['find.me.1', 'find.me.2', 'find.me.tznaive']
+    assert r == ['Find.me.1', 'find.me.2', 'find.me.tznaive']
 
     r = tsx.find(
         '(by.and '
@@ -949,10 +949,10 @@ def test_find(tsx):
         '     (by.metaitem "foo" 42))'
         '  (by.tzaware))'
     )
-    assert r == ['find.me.1', 'find.me.2']
+    assert r == ['Find.me.1', 'find.me.2']
 
     ts = r[0]
-    assert ts == 'find.me.1'
+    assert ts == 'Find.me.1'
     assert ts.imeta is None
     assert ts.meta is None
     assert ts.source == 'local'
@@ -982,8 +982,8 @@ def test_find(tsx):
     }
     assert ts.source == 'local'
 
-    r = tsx.find('(by.internal-metaitem "tablename" "find.me.1")')
-    assert r == ['find.me.1']
+    r = tsx.find('(by.internal-metaitem "tablename" "Find.me.1")')
+    assert r == ['Find.me.1']
 
 
 def test_find_two_metaitems(tsx):

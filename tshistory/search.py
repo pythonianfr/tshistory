@@ -231,7 +231,7 @@ class byname(query):
     def sql(self, namespace='tsh'):
         vid = usym('name')
         query = self.query.replace(' ', '%%')
-        return f'name like %({vid})s', {vid: f'%%{query}%%'}
+        return f'name ilike %({vid})s', {vid: f'%%{query}%%'}
 
 
 # metadata
