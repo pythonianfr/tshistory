@@ -1570,9 +1570,8 @@ def test_tree_api(tsx, engine):
 
     assert tsx.find('(by.without-path)') == []
     assert tsx.find('(by.at-path "UE")') == ['ue.france', 'ue.italy']
-    assert tsx.find('(by.at-path "UE" #t)') == []
+    assert tsx.find('(by.at-path "UE" #:childen #f)') == []
     assert tsx.find('(by.at-path "UE.France")') == ['ue.france']
-    assert tsx.find('(by.at-path "UE.France" #:strict #t)') == ['ue.france']
 
     tsx.delete_path('UE.Italy')
     assert tsx.tree() == ['UE.France']
@@ -1584,7 +1583,7 @@ def test_tree_api(tsx, engine):
     assert tsx.series_path('ue.italy') is None
 
     assert tsx.find('(by.without-path)') == ['ue.italy']
-    assert tsx.find('(by.at-path "UE")') == ['ue.france']
+    assert tsx.find('(by.at-path "UE" #:children #t)') == ['ue.france']
 
     tsx.update_metadata('ue.france', {'tree': "a.name"})
     assert tsx.series_path('ue.france') == 'a.name'
