@@ -574,13 +574,14 @@ class httpapi:
         @nsglobal.route('/properties')
         class global_properties(Resource):
 
-            @api.doc(responses={200: 'Got content'})
+            @api.doc(
+                responses={200: 'Got content'},
+                description='Return the secondary sources of the local instance.'
+            )
             @api.expect(properties)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """returns the secondary sources of the local instance.
-                """
                 args = properties.parse_args()
                 if args.property == 'sources':
                     return tsa.sources(), 200
@@ -593,16 +594,18 @@ class httpapi:
         @nss.route('/source')
         class timeseries_source(Resource):
 
-            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.doc(
+                responses={200: 'Got content', 404: 'Does not exist'},
+                description="""Return the source of a series.
+
+If it comes from a secondary source, it returns the source name.
+If it comes from the main source it returns the "local" string.
+                """
+            )
             @api.expect(source)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """returns the source of a series
-
-                If it comes from a secondary source, it returns the source name.
-                If it comes from the main source it returns the "local" string.
-                """
                 args = source.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -612,30 +615,34 @@ class httpapi:
         @nss.route('/sources')
         class timeseries_sources(Resource):
 
-            @api.doc(responses={200: 'Got content'})
+            @api.doc(
+                responses={200: 'Got content'},
+                description='Returns the sources of a Refinery'
+            )
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """returns the sources of a Refinery"""
                 return cfg.sources(), 200
 
         @nss.route('/metadata')
         class timeseries_metadata(Resource):
 
-            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.doc(
+                responses={200: 'Got content',
+                           404: 'Does not exist'},
+                description="""Get a series metadata
+
+The "type" field decides which kind of metadata is returned.
+* exists -> tells if the series exists (bool)
+* type -> returns the type of the series ("primary" or "formula")
+* standard -> return the user defined metadata (str -> scalar dict)
+* internal -> return the internal metadata (str -> scalar dict)
+"""
+            )
             @api.expect(metadata)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """get a series metadata
-
-                The "type" field decides which kind of metadata is returned.
-                * exists -> tells if the series exists (bool)
-                * type -> returns the type of the series ("primary" or "formula")
-                * standard -> return the user defined metadata (str -> scalar dict)
-                * internal -> return the internal metadata (str -> scalar dict)
-
-                """
                 args = metadata.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -678,21 +685,23 @@ class httpapi:
                         ival.left.isoformat(),
                         ival.right.isoformat()), 200
 
-            @api.doc(responses={
-                200: 'Got content',
-                404: 'Does not exist',
-                405: 'Not allowed'
-            })
+            @api.doc(
+                responses={
+                    200: 'Got content',
+                    404: 'Does not exist',
+                    405: 'Not allowed'
+                },
+                description="""Replace the user metadata of a series
+
+The metadata must be provided as a json string.
+The format is a key-value mapping.
+Values must be scalars.
+"""
+            )
             @api.expect(put_metadata)
             @onerror
             @required_roles('admin', 'rw')
             def put(self):
-                """replace the user metadata of a series
-
-                The metadata must be provided as a json string.
-                The format is a key-value mapping.
-                Values must be scalars.
-                """
                 args = put_metadata.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -708,19 +717,21 @@ class httpapi:
 
                 return '', 200
 
-            @api.doc(responses={204: 'Success', 404: 'Does not exist'})
+            @api.doc(
+                responses={204: 'Success', 404: 'Does not exist'},
+                description="""Update the user metadata of a series
+
+The unmodified entries are left unmodified.
+
+The metadata must be provided as a json string.
+The format is a key-value mapping.
+Values must be scalars.
+"""
+            )
             @api.expect(put_metadata)
             @onerror
             @required_roles('admin', 'rw')
             def patch(self):
-                """update the user metadata of a series
-
-                The unmodified entries are left unmodified.
-
-                The metadata must be provided as a json string.
-                The format is a key-value mapping.
-                Values must be scalars.
-                """
                 args = put_metadata.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -739,11 +750,11 @@ class httpapi:
         @nss.route('/metadata-keys')
         class timeseries_metadata_keys(Resource):
 
+            @api.doc(description='returns the sources of a Refinery')
             @api.expect(nothing)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """returns the sources of a Refinery"""
                 return tsa.list_metadata_keys()
 
         @nss.route('/tree-attribute')
@@ -802,26 +813,28 @@ class httpapi:
         @nss.route('/freq')
         class timeseries_freq(Resource):
 
-            @api.doc(responses={200: 'Got Content', 404: 'Does not exist'})
+            @api.doc(
+                responses={200: 'Got Content', 404: 'Does not exist'},
+                description="""Return the inferred period and a quality indicator of a series
+
+The return format is a mapping from "inferred_freq" to a tuple.
+Tuple element 1 contains the freq as an ISO9601 time delta.
+Tuple element 2 contains the quality indicator as a float (from 0 to 1).
+
+Example:
+
+{
+ "inferred_freq": [
+  "P0DT0H0M3600S",
+  "1.0"
+ ]
+}
+"""
+            )
             @api.expect(inferred_freq)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """returns the inferred period and a quality indicator of a series
-
-                The return format is a mapping from "inferred_freq" to a tuple.
-                Tuple element 1 contains the freq as an ISO9601 time delta.
-                Tuple element 2 contains the quality indicator as a float (from 0 to 1).
-
-                Example:
-
-                {
-                 "inferred_freq": [
-                  "P0DT0H0M3600S",
-                  "1.0"
-                 ]
-                }
-                """
                 args = inferred_freq.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -848,34 +861,35 @@ class httpapi:
         @nss.route('/state')
         class timeseries_state(Resource):
 
-            @api.doc(responses={
-                200: 'Updated',
-                201: 'Created',
-                405: 'Not allowed'
-            })
+            @api.doc(
+                responses={
+                    200: 'Updated',
+                    201: 'Created',
+                    405: 'Not allowed'
+                },
+                description="""Create or update a series
+
+The series field should receive a json mapping encoded series, like
+{
+ "2023-1-1T00:00:00": 42.5,
+ "2023-1-2T00:00:00": 172.3
+}
+
+The tzaware field must be set to indicate if the
+series is timezone aware or not.
+
+The replace boolean indicates if we are doing an
+"update" or a "replace" api call.
+
+The format fields accept another value than "json" but
+this is used by the Python client and will be left
+undocumented.
+"""
+            )
             @api.expect(update)
             @onerror
             @required_roles('admin', 'rw')
             def patch(self):
-                """create or update a series
-
-                The series field should receive a json mapping encoded series, like
-                {
-                 "2023-1-1T00:00:00": 42.5,
-                 "2023-1-2T00:00:00": 172.3
-                }
-
-                The tzaware field must be set to indicate if the
-                series is timezone aware or not.
-
-                The replace boolean indicates if we are doing an
-                "update" or a "replace" api call.
-
-                The format fields accept another value than "json" but
-                this is used by the Python client and will be left
-                undocumented.
-
-                """
                 args = update.parse_args()
                 if args.format == 'json':
                     meta = tsa.internal_metadata(args.name)
@@ -945,17 +959,19 @@ class httpapi:
                     200 if exists else 201
                 )
 
-            @api.doc(responses={
-                204: 'Success',
-                404: 'Does not exist',
-                405: 'Not allowed',
-                409: 'Target already exists',
-            })
+            @api.doc(
+                responses={
+                    204: 'Success',
+                    404: 'Does not exist',
+                    405: 'Not allowed',
+                    409: 'Target already exists',
+                },
+                description='rename a series'
+            )
             @api.expect(rename)
             @onerror
             @required_roles('admin', 'rw')
             def put(self):
-                "rename a series"
                 args = rename.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -971,38 +987,39 @@ class httpapi:
 
                 return no_content()
 
-            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.doc(
+                responses={200: 'Got content', 404: 'Does not exist'},
+                description="""Return a series in json format
+
+The return format is like this:
+{
+ "2023-1-1T00:00:00": 42.5,
+ "2023-1-2T00:00:00": 172.3
+}
+
+By default one gets the latest version of the series
+over its full horizon.
+
+By specifying the "insertion_date" argument, one can
+get the series version closest to the provided date
+(in ISO8601 string format).
+
+The "from_value_date" and "to_value_date" parameters
+allow to restrict the query horizon. The must be
+encoded as ISO8601 dates.
+
+The "nocache" parameter allows to read a computed
+series by bypassing its cache if it has one.
+
+The "live" parameter allows to read a computed series
+by getting its cached content (if it has a cache) and
+provide the latest uncached points.
+"""
+            )
             @api.expect(get)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """return a series in json format
-
-                The return format is like this:
-                {
-                 "2023-1-1T00:00:00": 42.5,
-                 "2023-1-2T00:00:00": 172.3
-                }
-
-                By default one gets the latest version of the series
-                over its full horizon.
-
-                By specifying the "insertion_date" argument, one can
-                get the series version closest to the provided date
-                (in ISO8601 string format).
-
-                The "from_value_date" and "to_value_date" parameters
-                allow to restrict the query horizon. The must be
-                encoded as ISO8601 dates.
-
-                The "nocache" parameter allows to read a computed
-                series by bypassing its cache if it has one.
-
-                The "live" parameter allows to read a computed series
-                by getting its cached content (if it has a cache) and
-                provide the latest uncached points.
-
-                """
                 args = get.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -1044,19 +1061,21 @@ class httpapi:
                     200
                 )
 
-            @api.doc(responses={
-                204: 'Sucess',
-                404: 'Does not exist',
-                405: 'Not allowed'
-            })
+            @api.doc(
+                responses={
+                    204: 'Sucess',
+                    404: 'Does not exist',
+                    405: 'Not allowed'
+                },
+                description="""Delete a series
+
+Warning: this is an irreversible operation.
+"""
+            )
             @api.expect(delete)
             @onerror
             @required_roles('admin', 'rw')
             def delete(self):
-                """delete a series
-
-                Warning: this is an irreversible operation.
-                """
                 args = delete.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -1074,15 +1093,15 @@ class httpapi:
         @nss.route('/strip')
         class timeseries_strip(Resource):
 
+            @api.doc(description="""Strip a series
+
+Remove all versions starting from the "inssertion_date" parameter.
+This is an irreversible operation.
+""")
             @api.expect(strip)
             @onerror
             @required_roles('admin', 'rw')
             def put(self):
-                """strip a series
-
-                Remove all versions starting from the "inssertion_date" parameter.
-                This is an irreversible operation.
-                """
                 args = strip.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -1094,25 +1113,26 @@ class httpapi:
         @nss.route('/insertion_dates')
         class timeseries_idates(Resource):
 
-            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.doc(
+                responses={200: 'Got content', 404: 'Does not exist'},
+                description="""Return the revisions of a series
+
+It comes as a json list of ISO8601 string encoded dates.
+
+It is possible to restrict the horizon by using the
+"from_insertion_date" / "to_insertion_date" /
+"from_value_date" / "to_value_date" / "limit"
+parameters, all (but limit) encoded as ISO8601 strings.
+
+The "nocache" parameter allows to bypass the cache of
+a computed series (if it exists) and get the revisions
+of the live formula.
+"""
+            )
             @api.expect(insertion_dates)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """return the revisions of a series
-
-                It comes as a json list of ISO8601 string encoded dates.
-
-                It is possible to restrict the horizon by using the
-                "from_insertion_date" / "to_insertion_date" /
-                "from_value_date" / "to_value_date" / "limit"
-                parameters, all (but limit) encoded as ISO8601 strings.
-
-                The "nocache" parameter allows to bypass the cache of
-                a computed series (if it exists) and get the revisions
-                of the live formula.
-
-                """
                 args = insertion_dates.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -1251,15 +1271,17 @@ class httpapi:
         @nss.route('/catalog')
         class timeseries_catalog(Resource):
 
-            @api.doc(responses={200: 'Got content'})
+            @api.doc(
+                responses={200: 'Got content'},
+                description="""Return the series catalog (deprecated)
+
+This is a deprecated method, you should use "/find" instead.
+"""
+            )
             @api.expect(catalog)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """returns the series catalog (deprecated)
-
-                This is a deprecated method, you should use "/find" instead.
-                """
                 args = catalog.parse_args()
                 cat = {
                     f'{uri}': series
@@ -1270,60 +1292,62 @@ class httpapi:
         @nss.route('/find')
         class timeseries_find(Resource):
 
-            @api.doc(responses={200: 'Got content'})
+            @api.doc(
+                responses={200: 'Got content'},
+                description="""Return a list of series descriptor from a filter query
+
+A filter query is a lisp expression.
+Examples:
+* (by.everything) will return descriptors for all series
+* (by.name ".fcst") will return descriptos for all
+  series whose name contains the ".fcst" string
+
+The complete description of the filter language can be
+found in the main documentation.
+
+It is possible to specify a limit argument to limit
+the results. Results are sorted by series name.
+
+By setting the "meta" argument to true, one gets the
+internal and user metadata in the returned series
+descriptors.
+
+The series descriptor is an object with fixed fields.
+Without metadata it looks like this:
+
+{
+ "name": "series0",
+ "imeta": null,
+ "meta": null,
+ "source": "local",
+ "kind": "primary"
+}
+
+With metadata, we have this:
+
+{
+ "name": "series0",
+ "imeta": {
+  "tzaware": false,
+  "tablename": "series0",
+  "index_type": "datetime64[ns]",
+  "value_type": "float64",
+  "index_dtype": "<M8[ns]",
+  "value_dtype": "<f8",
+  "supervision_status": "supervised"
+ },
+ "meta": {
+  "foo": "bar"
+ },
+ "source": "local",
+ "kind": "primary"
+}
+"""
+            )
             @api.expect(find)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """return a list of series descriptor from a filter query
-
-                A filter query is a lisp expression.
-                Examples:
-                * (by.everything) will return descriptors for all series
-                * (by.name ".fcst") will return descriptos for all
-                  series whose name contains the ".fcst" string
-
-                The complete description of the filter language can be
-                found in the main documentation.
-
-                It is possible to specify a limit argument to limit
-                the results. Results are sorted by series name.
-
-                By setting the "meta" argument to true, one gets the
-                internal and user metadata in the returned series
-                descriptors.
-
-                The series descriptor is an object with fixed fields.
-                Without metadata it looks like this:
-
-                {
-                 "name": "series0",
-                 "imeta": null,
-                 "meta": null,
-                 "source": "local",
-                 "kind": "primary"
-                }
-
-                With metadata, we have this:
-
-                {
-                 "name": "series0",
-                 "imeta": {
-                  "tzaware": false,
-                  "tablename": "series0",
-                  "index_type": "datetime64[ns]",
-                  "value_type": "float64",
-                  "index_dtype": "<M8[ns]",
-                  "value_dtype": "<f8",
-                  "supervision_status": "supervised"
-                 },
-                 "meta": {
-                  "foo": "bar"
-                 },
-                 "source": "local",
-                 "kind": "primary"
-                }
-                """
                 args = find.parse_args()
                 return [
                     item.to_json()
@@ -1398,31 +1422,32 @@ class httpapi:
         @nss.route('/log')
         class series_log(Resource):
 
-            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.doc(
+                responses={200: 'Got content', 404: 'Does not exist'},
+                description="""Return the insertion log of a series, as a list.
+
+Individual items as returned as such:
+
+{
+ "rev": 2,
+ "author": "webui",
+ "date": "2022-10-27T13:46:34.777338+00:00",
+ "meta": {
+  "edited": true
+ }
+}
+
+It is possible to specify a limit.
+
+Also the fromdate/todate parameters allow to restrict
+the versions horizon. Dates should be provided as
+ISO8601 strings.
+"""
+            )
             @api.expect(log)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """returns the insertion log of a series, as a list.
-
-                Individual items as returned as such:
-
-                {
-                 "rev": 2,
-                 "author": "webui",
-                 "date": "2022-10-27T13:46:34.777338+00:00",
-                 "meta": {
-                  "edited": true
-                 }
-                }
-
-                It is possible to specify a limit.
-
-                Also the fromdate/todate parameters allow to restrict
-                the versions horizon. Dates should be provided as
-                ISO8601 strings.
-
-                """
                 args = log.parse_args()
                 if not tsa.exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -1443,16 +1468,18 @@ class httpapi:
         @nsg.route('/source')
         class timeseries_group_source(Resource):
 
-            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.doc(
+                responses={200: 'Got content', 404: 'Does not exist'},
+                description="""Return the source of a group
+
+If it comes from a secondary source, it returns the source name.
+If it comes from the main source it returns the "local" string.
+"""
+            )
             @api.expect(groupsource)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """returns the source of a group
-
-                If it comes from a secondary source, it returns the source name.
-                If it comes from the main source it returns the "local" string.
-                """
                 args = groupsource.parse_args()
                 if not tsa.group_exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -1688,28 +1715,29 @@ class httpapi:
         @nsg.route('/log')
         class group_log(Resource):
 
-            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.doc(
+                responses={200: 'Got content', 404: 'Does not exist'},
+                description="""Return the insertion log of a group, as a list.
+
+Individual items as returned as such:
+
+{
+ "rev": 2,
+ "author": "webui",
+ "date": "2022-10-27T13:46:34.777338+00:00",
+}
+
+It is possible to specify a limit.
+
+Also the fromdate/todate parameters allow to restrict
+the versions horizon. Dates should be provided as
+ISO8601 strings.
+"""
+            )
             @api.expect(log)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """returns the insertion log of a group, as a list.
-
-                Individual items as returned as such:
-
-                {
-                 "rev": 2,
-                 "author": "webui",
-                 "date": "2022-10-27T13:46:34.777338+00:00",
-                }
-
-                It is possible to specify a limit.
-
-                Also the fromdate/todate parameters allow to restrict
-                the versions horizon. Dates should be provided as
-                ISO8601 strings.
-
-                """
                 args = log.parse_args()
                 if not tsa.group_exists(args.name):
                     api.abort(404, f'`{args.name}` does not exists')
@@ -1728,60 +1756,62 @@ class httpapi:
         @nsg.route('/find')
         class group_find(Resource):
 
-            @api.doc(responses={200: 'Got content'})
+            @api.doc(
+                responses={200: 'Got content'},
+                description="""Return a list of group descriptor from a filter query
+
+A filter query is a lisp expression.
+Examples:
+* (by.everything) will return descriptors for all series
+* (by.name ".fcst") will return descriptos for all
+  series whose name contains the ".fcst" string
+
+The complete description of the filter language can be
+found in the main documentation.
+
+It is possible to specify a limit argument to limit
+the results. Results are sorted by series name.
+
+By setting the "meta" argument to true, one gets the
+internal and user metadata in the returned series
+descriptors.
+
+The group descriptor is an object with fixed fields.
+Without metadata it looks like this:
+
+{
+ "name": "series0",
+ "imeta": null,
+ "meta": null,
+ "source": "local",
+ "kind": "primary"
+}
+
+With metadata, we have this:
+
+{
+ "name": "series0",
+ "imeta": {
+  "tzaware": false,
+  "tablename": "series0",
+  "index_type": "datetime64[ns]",
+  "value_type": "float64",
+  "index_dtype": "<M8[ns]",
+  "value_dtype": "<f8",
+  "supervision_status": "supervised"
+ },
+ "meta": {
+  "foo": "bar"
+ },
+ "source": "local",
+ "kind": "primary"
+}
+"""
+            )
             @api.expect(find)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                """return a list of group descriptor from a filter query
-
-                A filter query is a lisp expression.
-                Examples:
-                * (by.everything) will return descriptors for all series
-                * (by.name ".fcst") will return descriptos for all
-                  series whose name contains the ".fcst" string
-
-                The complete description of the filter language can be
-                found in the main documentation.
-
-                It is possible to specify a limit argument to limit
-                the results. Results are sorted by series name.
-
-                By setting the "meta" argument to true, one gets the
-                internal and user metadata in the returned series
-                descriptors.
-
-                The group descriptor is an object with fixed fields.
-                Without metadata it looks like this:
-
-                {
-                 "name": "series0",
-                 "imeta": null,
-                 "meta": null,
-                 "source": "local",
-                 "kind": "primary"
-                }
-
-                With metadata, we have this:
-
-                {
-                 "name": "series0",
-                 "imeta": {
-                  "tzaware": false,
-                  "tablename": "series0",
-                  "index_type": "datetime64[ns]",
-                  "value_type": "float64",
-                  "index_dtype": "<M8[ns]",
-                  "value_dtype": "<f8",
-                  "supervision_status": "supervised"
-                 },
-                 "meta": {
-                  "foo": "bar"
-                 },
-                 "source": "local",
-                 "kind": "primary"
-                }
-                """
                 args = find.parse_args()
                 return [
                     item.to_json()
