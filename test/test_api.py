@@ -1722,6 +1722,76 @@ def test_tree_parallel(tsx, tsh, engine):
     assert not len(errors)
 
 
+def test_tree_roundtrip(tsx):
+    # setup tree-attribute
+    tsx.set_tree_attribute('folders')
+
+    # Create empty node
+    # Nothing yet
+
+    # insert series and put in tree
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
+    )
+    name = 'series-folder-0'
+    tsx.update( name, ts, 'test')
+    tsx.update_metadata(name, {'folders': 'a'})
+
+    name = 'series-folder-1'
+    tsx.update( name, ts, 'test')
+    tsx.update_metadata(name, {'folders': 'a.b'})
+
+    name = 'series-folder-2'
+    tsx.update( name, ts, 'test')
+    tsx.update_metadata(name, {'folders': 'a.b.c'})
+
+    assert tsx.tree() == ['a', 'a.b', 'a.b.c']
+
+    # deletion
+    # terminal node
+
+    tsx.delete_path('a.b.c')
+    assert tsx.tree() == ['a', 'a.b']
+    assert tsx.metadata('series-folder-2') == {'folders': 'a.b.c'}
+    # i.e. incoherent state
+
+    # restore previous state
+    tsx.update_metadata('series-folder-2', {'folders': 'a.b'})
+    tsx.update_metadata('series-folder-2', {'folders': 'a.b.c'})
+    assert tsx.tree() == ['a', 'a.b', 'a.b.c']
+
+    # intermediary node
+    tsx.delete_path('a.b')
+    assert tsx.tree() == ['a', 'a.b.c']
+    assert tsx.metadata('series-folder-1') == {'folders': 'a.b'}
+    assert tsx.metadata('series-folder-2') == {'folders': 'a.b.c'}
+
+    # restore previous state
+    tsx.update_metadata('series-folder-1', {'folders': 'a'})
+    tsx.update_metadata('series-folder-1', {'folders': 'a.b'})
+    assert tsx.tree() == ['a', 'a.b.c', 'a.b']
+    # NB: the path are given in another order
+
+    # rename
+    # terminal node
+    tsx.rename_path('a.b.c', 'a.b.x')
+    assert tsx.tree() == ['a', 'a.b', 'a.b.x']
+    assert tsx.metadata('series-folder-2') == {'folders': 'a.b.c'}
+    # incoherent state
+
+    # restore previous state
+    tsx.rename_path('a.b.x', 'a.b.c')
+    assert tsx.tree() == ['a', 'a.b', 'a.b.c']
+
+    # intermediary node
+    tsx.rename_path('a.b.c', 'a.x.c')
+    assert tsx.tree() == ['a', 'a.b', 'a.x.c']
+    assert tsx.metadata('series-folder-1') == {'folders': 'a.b'}
+    assert tsx.metadata('series-folder-2') == {'folders': 'a.b.c'}
+    # incoherent state
+
+
 # groups
 
 def test_remote_group(engine, tsx):
