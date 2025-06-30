@@ -576,7 +576,7 @@ class httpapi:
 
             @api.doc(
                 responses={200: 'Got content'},
-                description='Return the secondary sources of the local instance.'
+                description='Return global properties of the local instance.'
             )
             @api.expect(properties)
             @onerror
@@ -600,7 +600,7 @@ class httpapi:
 
 If it comes from a secondary source, it returns the source name.
 If it comes from the main source it returns the "local" string.
-                """
+"""
             )
             @api.expect(source)
             @onerror
@@ -619,6 +619,7 @@ If it comes from the main source it returns the "local" string.
                 responses={200: 'Got content'},
                 description='Returns the sources of a Refinery'
             )
+            @api.expect(nothing)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
@@ -750,7 +751,7 @@ Values must be scalars.
         @nss.route('/metadata-keys')
         class timeseries_metadata_keys(Resource):
 
-            @api.doc(description='returns the sources of a Refinery')
+            @api.doc(description='List available metadata keys across all series')
             @api.expect(nothing)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -760,12 +761,16 @@ Values must be scalars.
         @nss.route('/tree-attribute')
         class timeseries_tree_attribute(Resource):
 
+            @api.doc(description='Get the metadata attribute used for the series tree organization')
             @api.expect(nothing)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
                 return tsa.tree_attribute()
 
+            @api.doc(
+                description='Set the metadata attribute to use for series tree organization'
+            )
             @api.expect(tree)
             @onerror
             @required_roles('admin')
@@ -776,6 +781,9 @@ Values must be scalars.
         @nss.route('/tree-path')
         class timeseries_tree_path(Resource):
 
+            @api.doc(
+                description='Get series name from tree path or tree path from series name'
+            )
             @api.expect(treepath)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -787,6 +795,7 @@ Values must be scalars.
                 assert args.type == 'seriesname'
                 return tsa.series_path(args.name)
 
+            @api.doc(description='Rename a tree path to a new path name')
             @api.expect(treepath_rename)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -794,6 +803,7 @@ Values must be scalars.
                 args = treepath_rename.parse_args()
                 return tsa.rename_path(args.path, args.newpath)
 
+            @api.doc(description='Delete a tree path')
             @api.expect(treepath_delete)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -804,6 +814,7 @@ Values must be scalars.
         @nss.route('/tree')
         class timeseries_tree(Resource):
 
+            @api.doc(description='Get the complete series tree structure')
             @api.expect(nothing)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1095,7 +1106,7 @@ Warning: this is an irreversible operation.
 
             @api.doc(description="""Strip a series
 
-Remove all versions starting from the "inssertion_date" parameter.
+Remove all versions starting from the "insertion_date" parameter.
 This is an irreversible operation.
 """)
             @api.expect(strip)
@@ -1157,6 +1168,10 @@ of the live formula.
         @nss.route('/history')
         class timeseries_history(Resource):
 
+            @api.doc(
+                responses={200: 'Got content', 404: 'Does not exist'},
+                description='Return the complete history of a series with all its revisions'
+            )
             @api.expect(history)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1196,7 +1211,10 @@ of the live formula.
         @nss.route('/staircase')
         class timeseries_staircase(Resource):
 
-            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.doc(
+                responses={200: 'Got content', 404: 'Does not exist'},
+                description='Compute a series staircase whose values are constrained by delta time after insertion dates'
+            )
             @api.expect(staircase)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1231,7 +1249,10 @@ of the live formula.
         @nss.route('/block_staircase')
         class timeseries_block_staircase(Resource):
 
-            @api.doc(responses={200: 'Got content', 404: 'Does not exist'})
+            @api.doc(
+                responses={200: 'Got content', 404: 'Does not exist'},
+                description='Compute a block staircase series with revision frequency and maturity offset parameters'
+            )
             @api.expect(block_staircase)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1363,6 +1384,10 @@ With metadata, we have this:
         @nss.route('/basket')
         class timeseries_basket(Resource):
 
+            @api.doc(
+                responses={200: 'Got content'},
+                description='Returns the list of series descriptors associated with a basket'
+            )
             @api.expect(basket)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1378,6 +1403,10 @@ With metadata, we have this:
                     )
                 ]
 
+            @api.doc(
+                responses={200: 'Got content'},
+                description='Register a new basket with a name and query string'
+            )
             @api.expect(register_basket)
             @onerror
             @required_roles('admin', 'rw')
@@ -1389,6 +1418,10 @@ With metadata, we have this:
                 )
                 return '', 200
 
+            @api.doc(
+                responses={200: 'Got content'},
+                description='Delete a basket'
+            )
             @api.expect(basket)
             @onerror
             @required_roles('admin', 'rw')
@@ -1401,6 +1434,10 @@ With metadata, we have this:
         @nss.route('/baskets')
         class timeseries_baskets(Resource):
 
+            @api.doc(
+                responses={200: 'Got content'},
+                description='Return the list of available basket names'
+            )
             @api.expect(nothing)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1410,6 +1447,10 @@ With metadata, we have this:
         @nss.route('/basket-definition')
         class timeseries_basket_def(Resource):
 
+            @api.doc(
+                responses={200: 'Got content'},
+                description='Returns the query string associated with a basket'
+            )
             @api.expect(basket)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1489,6 +1530,10 @@ If it comes from the main source it returns the "local" string.
         @nsg.route('/state')
         class timeseries_group_state(Resource):
 
+            @api.doc(
+                responses={200: 'Updated', 201: 'Created'},
+                description='Create or update a group of series'
+            )
             @api.expect(groupupdate)
             @onerror
             @required_roles('admin', 'rw')
@@ -1517,6 +1562,10 @@ If it comes from the main source it returns the "local" string.
 
                 return '', 200 if exists else 201
 
+            @api.doc(
+                responses={200: 'Got content', 404: 'Does not exist'},
+                description='Return a group of series in json or binary format'
+            )
             @api.expect(groupget)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1545,6 +1594,12 @@ If it comes from the main source it returns the "local" string.
                     200
                 )
 
+            @api.doc(
+                responses={204: 'Success',
+                           404: 'Does not exist',
+                           409: 'Target already exists'},
+                description='Rename a group'
+            )
             @api.expect(grouprename)
             @onerror
             @required_roles('admin', 'rw')
@@ -1564,6 +1619,10 @@ If it comes from the main source it returns the "local" string.
 
                 return no_content()
 
+            @api.doc(
+                responses={204: 'Success', 404: 'Does not exist'},
+                description='Delete a group'
+            )
             @api.expect(groupdelete)
             @onerror
             @required_roles('admin', 'rw')
@@ -1584,6 +1643,11 @@ If it comes from the main source it returns the "local" string.
         @nsg.route('/insertion_dates')
         class timeseries_group_idates(Resource):
 
+            @api.doc(
+                responses={200: 'Got content',
+                           404: 'Does not exist'},
+                description='Return the insertion dates of a group as a list of ISO8601 string encoded dates'
+            )
             @api.expect(group_insertion_dates)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1608,6 +1672,11 @@ If it comes from the main source it returns the "local" string.
         @nsg.route('/history')
         class timeseries_group_history(Resource):
 
+            @api.doc(
+                responses={200: 'Got content',
+                           404: 'Does not exist'},
+                description='Return the complete history of a group with all its revisions'
+            )
             @api.expect(group_history)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1633,6 +1702,10 @@ If it comes from the main source it returns the "local" string.
         @nsg.route('/catalog')
         class timeseries_groupcatalog(Resource):
 
+            @api.doc(
+                responses={200: 'Got content'},
+                description='Return the groups catalog'
+            )
             @api.expect(groupcatalog)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1647,6 +1720,11 @@ If it comes from the main source it returns the "local" string.
         @nsg.route('/metadata')
         class timeseries_groupmetadata(Resource):
 
+            @api.doc(
+                responses={200: 'Got content',
+                           404: 'Does not exist'},
+                description='Get group metadata - type, standard, internal or archive'
+            )
             @api.expect(groupmetadata)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -1674,6 +1752,10 @@ If it comes from the main source it returns the "local" string.
                 meta = tsa.group_metadata(args.name, all=args.all) or {}
                 return meta, 200
 
+            @api.doc(
+                responses={200: 'Success', 404: 'Does not exist', 405: 'Not allowed'},
+                description='Replace the user metadata of a group'
+            )
             @api.expect(put_groupmetadata)
             @onerror
             @required_roles('admin', 'rw')
@@ -1693,6 +1775,12 @@ If it comes from the main source it returns the "local" string.
 
                 return '', 200
 
+            @api.doc(
+                responses={200: 'Success',
+                           404: 'Does not exist',
+                           405: 'Not allowed'},
+                description='Update the user metadata of a group'
+            )
             @api.expect(put_groupmetadata)
             @onerror
             @required_roles('admin', 'rw')
