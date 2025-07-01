@@ -831,12 +831,13 @@ class httpclient:
     # basket
 
     @unwraperror
-    def register_basket(self, name: str, query: str):
+    def register_basket(self, name: str, query: str, group: bool=False):
         res = self.session.put(
             f'{self.uri}/series/basket',
             data={
                 'name': name,
-                'query': query
+                'query': query,
+                'group': group
             }
         )
         if res.status_code == 200:
@@ -849,12 +850,14 @@ class httpclient:
                name: str,
                limit: Optional[int]=None,
                meta: Optional[dict]=None,
-               sources: list=[]):
+               sources: list=[],
+               group: bool=False):
         res = self.session.get(f'{self.uri}/series/basket', params={
             'name': name,
             'limit': limit,
             'meta': meta,
-            'sources': ','.join(sources)
+            'sources': ','.join(sources),
+            'group': group
         })
         if res.status_code == 200:
             return [
@@ -865,10 +868,10 @@ class httpclient:
         return res
 
     @unwraperror
-    def basket_definition(self, name: str):
+    def basket_definition(self, name: str, group: bool=False):
         res = self.session.get(
             f'{self.uri}/series/basket-definition',
-            params={'name': name}
+            params={'name': name, 'group': group}
         )
         if res.status_code == 200:
             return res.json()
@@ -876,19 +879,21 @@ class httpclient:
         return res
 
     @unwraperror
-    def list_baskets(self):
+    def list_baskets(self, group: bool=False):
         res = self.session.get(
-            f'{self.uri}/series/baskets'
+            f'{self.uri}/series/baskets',
+            params={'group': group}
         )
         if res.status_code == 200:
             return res.json()
 
     @unwraperror
-    def delete_basket(self, name: str):
+    def delete_basket(self, name: str, group: bool=False):
         res = self.session.delete(
             f'{self.uri}/series/basket',
             data={
                 'name': name,
+                'group': group
             }
         )
         if res.status_code == 200:

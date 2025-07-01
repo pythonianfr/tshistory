@@ -355,6 +355,9 @@ basket.add_argument(
 basket.add_argument(
     'sources', type=csv, default=[]
 )
+basket.add_argument(
+    'group', type=inputs.boolean, default=False
+)
 
 register_basket = reqparse.RequestParser()
 register_basket.add_argument(
@@ -363,8 +366,16 @@ register_basket.add_argument(
 register_basket.add_argument(
     'query', type=str
 )
+register_basket.add_argument(
+    'group', type=inputs.boolean, default=False
+)
 
 nothing = reqparse.RequestParser()
+
+list_baskets = reqparse.RequestParser()
+list_baskets.add_argument(
+    'group', type=inputs.boolean, default=False
+)
 
 
 strip = base.copy()
@@ -1399,7 +1410,8 @@ With metadata, we have this:
                             args.name,
                             limit=args.limit,
                             meta=args.meta,
-                            sources=args.sources
+                            sources=args.sources,
+                            group=args.group
                     )
                 ]
 
@@ -1414,7 +1426,8 @@ With metadata, we have this:
                 args = register_basket.parse_args()
                 tsa.register_basket(
                     name=args.name,
-                    query=args.query
+                    query=args.query,
+                    group=args.group
                 )
                 return '', 200
 
@@ -1428,7 +1441,8 @@ With metadata, we have this:
             def delete(self):
                 args = basket.parse_args()
                 return tsa.delete_basket(
-                    args.name
+                    args.name,
+                    group=args.group
                 )
 
         @nss.route('/baskets')
@@ -1438,11 +1452,12 @@ With metadata, we have this:
                 responses={200: 'Got content'},
                 description='Return the list of available basket names'
             )
-            @api.expect(nothing)
+            @api.expect(list_baskets)
             @onerror
             @required_roles('admin', 'rw', 'ro')
             def get(self):
-                return tsa.list_baskets()
+                args = list_baskets.parse_args()
+                return tsa.list_baskets(group=args.group)
 
         @nss.route('/basket-definition')
         class timeseries_basket_def(Resource):
@@ -1457,7 +1472,8 @@ With metadata, we have this:
             def get(self):
                 args = basket.parse_args()
                 return tsa.basket_definition(
-                    args.name
+                    args.name,
+                    group=args.group
                 )
 
         @nss.route('/log')

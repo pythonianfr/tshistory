@@ -1092,6 +1092,86 @@ def test_no_basket(tsx):
     assert tsx.basket('<nope>') == []
 
 
+def test_group_basket(tsx):
+    # test group support in basket operations through API layer
+
+    # create some test groups
+    group1 = gengroup(
+        n_scenarios=2,
+        from_date=dt(2021, 1, 1),
+        length=3,
+        freq='d',
+        seed=1
+    )
+    group1.columns = ['test_group_basket_a', 'test_group_basket_b']
+
+    group2 = gengroup(
+        n_scenarios=2,
+        from_date=dt(2021, 1, 1),
+        length=3,
+        freq='d',
+        seed=2
+    )
+    group2.columns = ['test_group_basket_c', 'test_group_basket_d']
+
+    tsx.group_replace(
+        'test_group_basket_group1',
+        group1,
+        'test_author'
+    )
+    tsx.group_replace(
+        'test_group_basket_group2',
+        group2,
+        'test_author'
+    )
+
+    # register group baskets
+    tsx.register_basket(
+        'test_group_basket_1',
+        '(by.name "test_group_basket_group")',
+        group=True
+    )
+    tsx.register_basket(
+        'test_group_basket_2',
+        '(by.name "test_group_basket_group1")',
+        group=True
+    )
+
+    # test basket listing
+    group_baskets = tsx.list_baskets(group=True)
+    assert 'test_group_basket_1' in group_baskets
+    assert 'test_group_basket_2' in group_baskets
+
+    # test basket content retrieval
+    basket_1_content = tsx.basket('test_group_basket_1', group=True)
+    assert 'test_group_basket_group1' in basket_1_content
+    assert 'test_group_basket_group2' in basket_1_content
+
+    basket_2_content = tsx.basket('test_group_basket_2', group=True)
+    assert basket_2_content == ['test_group_basket_group1']
+
+    # test basket definition retrieval
+    assert tsx.basket_definition(
+        'test_group_basket_1',
+        group=True
+    ) == '(by.name "test_group_basket_group")'
+    assert tsx.basket_definition(
+        'test_group_basket_2',
+        group=True
+    ) == '(by.name "test_group_basket_group1")'
+
+    # test basket deletion
+    tsx.delete_basket('test_group_basket_1', group=True)
+    remaining_group_baskets = tsx.list_baskets(group=True)
+    assert 'test_group_basket_1' not in remaining_group_baskets
+    assert 'test_group_basket_2' in remaining_group_baskets
+
+    # cleanup
+    tsx.delete_basket('test_group_basket_2', group=True)
+    tsx.group_delete('test_group_basket_group1')
+    tsx.group_delete('test_group_basket_group2')
+
+
 def test_federated_basket(tsx, engine):
     ts = pd.Series(
         [1, 2, 3],

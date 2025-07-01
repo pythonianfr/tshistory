@@ -367,38 +367,47 @@ class base:
         ]
 
     @tx
-    def register_basket(self, cn, name, query):
+    def register_basket(self, cn, name, query, group=False):
+        kind = 'Group' if group else 'Series'
         cn.execute(
             f'insert into "{self.namespace}".basket '
-            '(name, query) '
-            'values (%(name)s, %(query)s)'
-            'on conflict (name) do update set query = %(query)s',
+            '(name, query, kind) '
+            'values (%(name)s, %(query)s, %(kind)s)'
+            'on conflict (name, kind) do update set query = %(query)s',
             name=name,
-            query=query
+            query=query,
+            kind=kind
         )
 
     @tx
-    def basket_definition(self, cn, name):
-        query = select(
-            'query'
+    def basket_definition(self, cn, name, group=False):
+        kind = 'Group' if group else 'Series'
+        result = select(
+            'query', 'kind'
         ).table(
             f'"{self.namespace}".basket'
         ).where(
-            name=name
-        ).do(cn).scalar()
-
-        return query
+            name=name,
+            kind=kind
+        ).do(cn).fetchone()
+        
+        if result:
+            return result.query
+        return None
 
     @tx
-    def list_baskets(self, cn):
-        q = select('name').table(f'"{self.namespace}".basket').order('name')
+    def list_baskets(self, cn, group=False):
+        kind = 'Group' if group else 'Series'
+        q = select('name').table(f'"{self.namespace}".basket').where(kind=kind).order('name')
         return q.do(cn).scalars()
 
     @tx
-    def delete_basket(self, cn, name):
+    def delete_basket(self, cn, name, group=False):
+        kind = 'Group' if group else 'Series'
         cn.execute(
-            f'delete from "{self.namespace}".basket where name=%(name)s',
-            name=name
+            f'delete from "{self.namespace}".basket where name=%(name)s and kind=%(kind)s',
+            name=name,
+            kind=kind
         )
 
     def infer_freq(self, cn, name,

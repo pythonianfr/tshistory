@@ -902,7 +902,10 @@ class mainsource:
 
             return self.tsh.strip(cn, name, insertion_date)
 
-    def register_basket(self, name: str, query: str) -> NONETYPE:
+    def register_basket(self,
+                        name: str,
+                        query: str,
+                        group: bool=False) -> NONETYPE:
         """Register a dynamic series basket using a search query.
 
         The search query has the same specification as the .find(...,
@@ -912,12 +915,14 @@ class mainsource:
         with self.engine.begin() as cn:
             # noop, catch malformed query
             search.query.fromexpr(query)
-            self.tsh.register_basket(cn, name, query)
+            self.tsh.register_basket(cn, name, query, group=group)
 
-    def basket(self, name: str,
+    def basket(self,
+               name: str,
                limit: Optional[int]=None,
                meta: Optional[int]=False,
-               sources: List[str]=[]) -> List[ts]:
+               sources: List[str]=[],
+               group: bool=False) -> List[ts]:
         """Returns the list of series descriptors associated with a basket.
 
         A series descriptor is a string-like object (exhibiting the
@@ -929,27 +934,33 @@ class mainsource:
 
         """
         with self.engine.begin() as cn:
-            query = self.tsh.basket_definition(cn, name)
+            query = self.tsh.basket_definition(cn, name, group=group)
             if query is None:
                 return []
+        if group:
+            return self.group_find(
+                query, limit=limit, meta=meta, sources=sources
+            )
         return self.find(
             query, limit=limit, meta=meta, sources=sources
         )
 
-    def basket_definition(self, name: str) -> str:
+    def basket_definition(self,
+                          name: str,
+                          group: bool=False) -> str:
         """Returns the query string associated with a basket."""
         with self.engine.begin() as cn:
-            return self.tsh.basket_definition(cn, name)
+            return self.tsh.basket_definition(cn, name, group=group)
 
-    def list_baskets(self) -> List[str]:
+    def list_baskets(self, group: bool=False) -> List[str]:
         """Return the list of available basket names."""
         with self.engine.begin() as cn:
-            return self.tsh.list_baskets(cn)
+            return self.tsh.list_baskets(cn, group=group)
 
-    def delete_basket(self, name):
+    def delete_basket(self, name, group: bool=False):
         """Delete a basket."""
         with self.engine.begin() as cn:
-            return self.tsh.delete_basket(cn, name)
+            return self.tsh.delete_basket(cn, name, group=group)
 
     # groups
 

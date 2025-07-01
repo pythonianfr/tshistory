@@ -1,11 +1,16 @@
 -- baskets
 
+create type "{ns}".kinds as enum ('Series', 'Group');
+
 create table "{ns}".basket (
   id serial primary key,
   name text not null,
   "query" text not null,
-  unique(name)
+  kind "{ns}".kinds not null default 'Series',
+  unique(name, kind)
 );
+
+create index on "{ns}".basket (kind);
 
 
 -- metadata-history

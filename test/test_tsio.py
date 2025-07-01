@@ -3445,6 +3445,150 @@ def test_basket(engine, tsh):
     assert tsh.list_baskets(engine) == ['b2']
 
 
+def test_group_basket(engine, tsh):
+    df1 = gengroup(
+        n_scenarios=2,
+        from_date=datetime(2021, 1, 1),
+        length=3,
+        freq='d',
+        seed=1
+    )
+
+    df2 = gengroup(
+        n_scenarios=2,
+        from_date=datetime(2021, 1, 1),
+        length=3,
+        freq='d',
+        seed=2
+    )
+
+    tsh.group_replace(
+        engine,
+        df1,
+        'test_group_basket.group1',
+        author='Babar'
+    )
+    tsh.group_replace(
+        engine,
+        df2,
+        'test_group_basket.group2',
+        author='Celeste'
+    )
+
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(datetime(2021, 1, 1), freq='d', periods=3)
+    )
+    tsh.update(
+        engine,
+        ts,
+        'test_group_basket.series1',
+        'Babar'
+    )
+    tsh.register_basket(
+        engine,
+        'test_group_basket_series_b1',
+        '(by.name "test_group_basket.series")',
+        group=False
+    )
+
+    tsh.register_basket(
+        engine,
+        'test_group_basket_group_b1',
+        '(by.name "test_group_basket.group")',
+        group=True
+    )
+    group_baskets = tsh.list_baskets(engine, group=True)
+    assert 'test_group_basket_group_b1' in group_baskets
+    series_baskets = tsh.list_baskets(engine, group=False)
+    assert 'test_group_basket_series_b1' in series_baskets
+
+    result = tsh.basket_definition(
+        engine,
+        'test_group_basket_group_b1',
+        group=True
+    )
+    assert result == '(by.name "test_group_basket.group")'
+    result = tsh.basket_definition(
+        engine,
+        'test_group_basket_group_b1',
+        group=False
+    )
+    assert result is None
+
+    tsh.register_basket(
+        engine,
+        'test_group_basket_group_b2',
+        '(by.name "test_group_basket.group1")',
+        group=True
+    )
+    group_baskets = tsh.list_baskets(engine, group=True)
+    assert 'test_group_basket_group_b1' in group_baskets
+    assert 'test_group_basket_group_b2' in group_baskets
+
+    tsh.delete_basket(
+        engine,
+        'test_group_basket_group_b1',
+        group=True
+    )
+    group_baskets = tsh.list_baskets(engine, group=True)
+    assert 'test_group_basket_group_b1' not in group_baskets
+    assert 'test_group_basket_group_b2' in group_baskets
+
+    series_baskets = tsh.list_baskets(engine, group=False)
+    assert 'test_group_basket_series_b1' in series_baskets
+
+    tsh.register_basket(
+        engine,
+        'test_group_basket_same_name',
+        '(by.name "test_group_basket.series")',
+        group=False
+    )
+    tsh.register_basket(
+        engine,
+        'test_group_basket_same_name',
+        '(by.name "test_group_basket.group")',
+        group=True
+    )
+
+    result = tsh.basket_definition(
+        engine,
+        'test_group_basket_same_name',
+        group=False
+    )
+    assert result == '(by.name "test_group_basket.series")'
+    result = tsh.basket_definition(
+        engine,
+        'test_group_basket_same_name',
+        group=True
+    )
+    assert result == '(by.name "test_group_basket.group")'
+
+    tsh.delete_basket(
+        engine,
+        'test_group_basket_same_name',
+        group=False
+    )
+    tsh.delete_basket(
+        engine,
+        'test_group_basket_same_name',
+        group=True
+    )
+    tsh.delete_basket(
+        engine,
+        'test_group_basket_group_b2',
+        group=True
+    )
+    tsh.delete_basket(
+        engine,
+        'test_group_basket_series_b1',
+        group=False
+    )
+    tsh.group_delete(engine, 'test_group_basket.group1')
+    tsh.group_delete(engine, 'test_group_basket.group2')
+    tsh.delete(engine, 'test_group_basket.series1')
+
+
 # groups
 
 def test_primary_group(engine, tsh):
