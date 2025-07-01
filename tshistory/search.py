@@ -243,7 +243,7 @@ class MetaKey(str):
 class bymetakey(query):
     __slots__ = ('key',)
 
-    def __init__(self, key: MetaKey):
+    def __init__(self, key: str):
         self.key = key
 
     def __expr__(self):
