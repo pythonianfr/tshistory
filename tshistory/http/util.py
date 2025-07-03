@@ -170,7 +170,6 @@ def series_response(format, series, metadata, code):
     if format == 'json':
         if series is not None:
             response = make_response(
-
                 series_to_json(series)
             )
         else:

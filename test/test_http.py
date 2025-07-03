@@ -1663,14 +1663,14 @@ def test_apply_tz_on_group_bounds(client, http):
     assert tsr.index[-1] == '2024-01-03T00:00:00+01:00'
 
 
-def test_tzaware_group_with_cet_timezone_crash(client, http):
+def test_tzaware_group_with_cet_timezone_crash(client, http, engine):
     """Test for issue #133: crash on tzaware group view when non UTC
 
     This test demonstrates the current bug where requesting a tzaware group
-    in a non-UTC timezone causes a crash due to tz_convert being called
-    on a naive index instead of tz_localize.
+    from a federated source (secondary source) in a non-UTC timezone causes
+    a crash due to tz_convert being called on a naive index instead of tz_localize.
     """
-    # Create a timezone-aware group
+
     df = gengroup(
         n_scenarios=2,
         from_date=utcdt(2025, 1, 1),
@@ -1679,23 +1679,20 @@ def test_tzaware_group_with_cet_timezone_crash(client, http):
         seed=1.
     )
 
-    # Store the group
     client.group_replace(
-        'tzaware-group-cet-crash-test',
+        'federated-group-cet-crash-test',
         df,
         'test-author'
     )
 
-    # This currently crashes when requesting in CET timezone
-    # The bug: tz_convert called on naive index instead of tz_localize
-    result = http.get(
+    res = http.get(
         '/group/state',
         params={
-            'name': 'tzaware-group-cet-crash-test',
+            'name': 'federated-group-cet-crash-test',
+            'from_value_date': '2025-12-31',
             'tzone': 'CET',
-            'format': 'json'
+            'format': 'tshpack'
         }
     )
-
-    # works locally
-    assert result.status_code == 200
+    df2 = codecs.unpack_group(res.body)
+    assert df2.index.tz is None
