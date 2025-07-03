@@ -300,7 +300,10 @@ def unpack_group(bytestr):
             bidtype
         )
     else:
-        return pd.DataFrame(index=pd.DatetimeIndex([]))
+        df = pd.DataFrame(index=pd.DatetimeIndex([]))
+        if bidtype.startswith(b'|'):
+            df.index = df.index.tz_localize(pytz.utc)
+        return df
 
     values = {}
     iterbseries = zip(*[iter(byteslist[2:])] * 3)

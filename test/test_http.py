@@ -1695,4 +1695,4 @@ def test_tzaware_group_with_cet_timezone_crash(client, http, engine):
         }
     )
     df2 = codecs.unpack_group(res.body)
-    assert df2.index.tz is None
+    assert df2.index.tz is not None
