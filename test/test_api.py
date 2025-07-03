@@ -986,6 +986,23 @@ def test_find(tsx):
     assert r == ['Find.me.1']
 
 
+def test_find_noparam(tsx):
+    for name in tsx.find():
+        tsx.delete(name)
+
+    ts = pd.Series(
+        [1, 2, 3],
+        pd.date_range(utcdt(2023, 1, 1), freq='d', periods=3)
+    )
+    tsx.update(
+        'find.me-all',
+        ts,
+        'Babar'
+    )
+
+    assert len(tsx.find()) == 1
+
+
 def test_find_two_metaitems(tsx):
     ts = pd.Series(
         [1, 2, 3],

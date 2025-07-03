@@ -761,12 +761,11 @@ class httpclient:
 
     @unwraperror
     def find(self,
-             q: str,
+             q: Optional[str]=None,
              limit: Optional[int]=None,
              meta: bool=False,
              sources: list=[],
              _source: str='local'):
-        assert isinstance(q, str)
         res = self.session.get(f'{self.uri}/series/find', params={
             'query': q,
             'limit': limit,

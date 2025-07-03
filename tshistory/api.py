@@ -578,7 +578,7 @@ class mainsource:
                 cat[key] = val
         return dict(cat)
 
-    def find(self, query: str,
+    def find(self, query: Optional[str]=None,
              limit: Optional[int]=None,
              meta: Optional[int]=False,
              sources: List[str]=[],
@@ -642,6 +642,8 @@ class mainsource:
         As in `(<= "max_capacity" 900)`
 
         """
+        if query is None:
+            query = '(by.everything)'
         localnames = []
         if not sources or 'local' in sources:
             with self.engine.begin() as cn:
