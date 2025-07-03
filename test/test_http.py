@@ -1661,3 +1661,41 @@ def test_apply_tz_on_group_bounds(client, http):
     # the tz has no effect
     assert tsr.index[0] == '2024-01-02T00:00:00+01:00'
     assert tsr.index[-1] == '2024-01-03T00:00:00+01:00'
+
+
+def test_tzaware_group_with_cet_timezone_crash(client, http):
+    """Test for issue #133: crash on tzaware group view when non UTC
+
+    This test demonstrates the current bug where requesting a tzaware group
+    in a non-UTC timezone causes a crash due to tz_convert being called
+    on a naive index instead of tz_localize.
+    """
+    # Create a timezone-aware group
+    df = gengroup(
+        n_scenarios=2,
+        from_date=utcdt(2025, 1, 1),
+        length=5,
+        freq='d',
+        seed=1.
+    )
+
+    # Store the group
+    client.group_replace(
+        'tzaware-group-cet-crash-test',
+        df,
+        'test-author'
+    )
+
+    # This currently crashes when requesting in CET timezone
+    # The bug: tz_convert called on naive index instead of tz_localize
+    result = http.get(
+        '/group/state',
+        params={
+            'name': 'tzaware-group-cet-crash-test',
+            'tzone': 'CET',
+            'format': 'json'
+        }
+    )
+
+    # works locally
+    assert result.status_code == 200
