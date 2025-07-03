@@ -1391,9 +1391,9 @@ class altsources:
                 out.append(
                     (source.name, source.tsa.info()['local'])
                 )
-            except:
+            except Exception as err:
                 import traceback as tb; tb.print_exc()
-                print(f'source {source} temporarily unavailable')
+                print(f'source {source} temporarily unavailable (cause: {err})')
 
         pool(getinfo, [(s,) for s in self.sources])
         infos = {}
@@ -1519,9 +1519,9 @@ class altsources:
                 cats.append(
                     source.tsa.catalog(allsources)
                 )
-            except:
+            except Exception as err:
                 import traceback as tb; tb.print_exc()
-                print(f'source {source} temporarily unavailable')
+                print(f'source {source} temporarily unavailable (cause: {err})')
 
         pool(getcat, [(s,) for s in self.sources])
         cat = {}
@@ -1548,9 +1548,9 @@ class altsources:
                         sources=['local']
                     )
                 )
-            except:
+            except Exception as err:
                 import traceback as tb; tb.print_exc()
-                print(f'source {source} temporarily unavailable')
+                print(f'source {source} temporarily unavailable (cause: {err})')
 
         if not sources:
             usesources = self.sources
@@ -1690,9 +1690,9 @@ class altsources:
                 cats.append(
                     source.tsa.group_catalog(allsources)
                 )
-            except:
+            except Exception as err:
                 import traceback as tb; tb.print_exc()
-                print(f'source {source} temporarily unavailable')
+                print(f'source {source} temporarily unavailable (cause: {err})')
 
         pool(getcat, [(s,) for s in self.sources])
         cat = {}
