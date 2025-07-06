@@ -1,5 +1,6 @@
 import io
 import os
+from typing import Any, Optional, Generator
 
 import zstandard as zstd
 import pandas as pd
@@ -20,7 +21,7 @@ from tshistory.codecs import (
 class base:
     _max_bucket_size = 150
 
-    def buckets(self, ts):
+    def buckets(self, ts: pd.Series) -> Generator[pd.Series, None, None]:
         if len(ts) < self._max_bucket_size:
             yield ts
             return
@@ -109,19 +110,19 @@ class Postgres(base):
     """
     __slots__ = ('cn', 'name', 'tsh', 'tablename')
 
-    def __init__(self, cn, tsh, name):
+    def __init__(self, cn: Any, tsh: Any, name: str) -> None:
         self.cn = cn
         self.tsh = tsh
         self.name = name
         self.tablename = self.tsh._series_to_tablename(cn, name)
 
     @property
-    def isstr(self):
+    def isstr(self) -> bool:
         return self.tsh.internal_metadata(
             self.cn, self.name
         )['value_type'] == 'object'
 
-    def insert_buckets(self, parent, ts):
+    def insert_buckets(self, parent: Optional[int], ts: pd.Series) -> int:
         isstr = self.isstr
         for bucket in self.buckets(ts):
             start = bucket.index[0]
@@ -138,12 +139,14 @@ class Postgres(base):
                 iohelper.serialize_ts(bucket, isstr)
             ).scalar()
 
-        return parent
+        # buckets() always yields at least one bucket for non-empty series,
+        # so the loop executes and parent gets reassigned to int
+        return parent  # type: ignore
 
-    def create(self, initial_ts):
+    def create(self, initial_ts: pd.Series) -> int:
         return self.insert_buckets(None, initial_ts)
 
-    def update(self, series_diff):
+    def update(self, series_diff: pd.Series) -> int:
         meta = self.tsh.internal_metadata(self.cn, self.name)
         # get last chunkhead for cset
         tablename = self.tsh._series_to_tablename(self.cn, self.name)
@@ -189,7 +192,11 @@ class Postgres(base):
         select cid, parent, chunk from allchunks
     """
 
-    def rawchunks(self, head, from_value_date=None):
+    def rawchunks(
+        self,
+        head: int,
+        from_value_date: Optional[pd.Timestamp] = None
+    ) -> list[tuple[int, Optional[int], bytes]]:
         where = ''
         if from_value_date:
             where = 'where chunks.cend >= %(start)s '
@@ -205,7 +212,12 @@ class Postgres(base):
         chunks.reverse()
         return chunks
 
-    def chunk(self, head, from_value_date=None, to_value_date=None):
+    def chunk(
+        self,
+        head: int,
+        from_value_date: Optional[pd.Timestamp] = None,
+        to_value_date: Optional[pd.Timestamp] = None
+    ) -> pd.Series:
         meta = self.tsh.internal_metadata(self.cn, self.name)
         snapdata = iohelper.chunks_to_ts(
             meta,
@@ -220,15 +232,27 @@ class Postgres(base):
                 f'(from "{err}")'
             )
 
-    def last(self, from_value_date=None, to_value_date=None):
+    def last(
+        self,
+        from_value_date: Optional[pd.Timestamp] = None,
+        to_value_date: Optional[pd.Timestamp] = None
+    ) -> pd.Series:
         return self.find(from_value_date=from_value_date,
                          to_value_date=to_value_date)[1]
 
-    def last_id(self, from_value_date=None, to_value_date=None):
+    def last_id(
+        self,
+        from_value_date: Optional[pd.Timestamp] = None,
+        to_value_date: Optional[pd.Timestamp] = None
+    ) -> Optional[int]:
         return self.find(from_value_date=from_value_date,
                          to_value_date=to_value_date)[0]
 
-    def cset_heads_query(self, csetfilter=(), order='desc'):
+    def cset_heads_query(
+        self,
+        csetfilter: tuple[Any, ...] = (),
+        order: str = 'desc'
+    ) -> Any:
         tablename = self.tsh._series_to_tablename(self.cn, self.name)
         q = select(
             'id', 'snapshot'
@@ -243,8 +267,12 @@ class Postgres(base):
         q.order('id', order)
         return q
 
-    def find(self, csetfilter=(),
-             from_value_date=None, to_value_date=None):
+    def find(
+        self,
+        csetfilter: tuple[Any, ...] = (),
+        from_value_date: Optional[pd.Timestamp] = None,
+        to_value_date: Optional[pd.Timestamp] = None
+    ) -> tuple[Optional[int], Optional[pd.Series]]:
 
         q = self.cset_heads_query(csetfilter)
         q.limit(1)
@@ -258,7 +286,11 @@ class Postgres(base):
         chunk = self.chunk(cid, from_value_date, to_value_date)
         return csid, chunk
 
-    def allchunks(self, heads, from_value_date=None):
+    def allchunks(
+        self,
+        heads: list[int],
+        from_value_date: Optional[pd.Timestamp] = None
+    ) -> dict[int, tuple[Optional[int], bytes]]:
         where = ''
         if from_value_date:
             where = 'where chunks.cend >= %(start)s '
@@ -274,7 +306,7 @@ class Postgres(base):
                   for cid, parent, rawchunk in res.fetchall()}
         return chunks
 
-    def garbage(self):
+    def garbage(self) -> set[int]:
         """ inefficient but simple garbage list builder
         garbage chunks are created on strip operations
         """
@@ -305,7 +337,7 @@ class Postgres(base):
 
         return allchuks - reachable_chunks
 
-    def reclaim(self):
+    def reclaim(self) -> None:
         todelete = ','.join(str(id) for id in self.garbage())
         sql = (f'delete from "{self.tsh.namespace}.snapshot"."{self.tablename}" '
                f'where id in ({todelete})')
@@ -315,14 +347,14 @@ class Postgres(base):
 class irange:
     __slots__ = 'start', 'end'
 
-    def __init__(self, start, end):
+    def __init__(self, start: int, end: int) -> None:
         self.start = start
         self.end = end
 
-    def __contains__(self, index):
+    def __contains__(self, index: int) -> bool:
         return self.start <= index <= self.end
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<{self.start}:{self.end-self.start}:{self.end}>'
 
 
@@ -330,13 +362,13 @@ class pager:
     __slots__ = 'source', 'range', 'page', 'offset'
     _size = 2 ** 18
 
-    def __init__(self, source):
+    def __init__(self, source: Any) -> None:
         self.source = source
         self.page = None
         self.range = None
         self.offset = 0
 
-    def _fault(self, start, end):
+    def _fault(self, start: int, end: int) -> None:
         # We want to read up to 256kb in a page knowing we need to
         # prepare for reads coming with lower addresses !
         # So what we are reading now should contain the start/end
@@ -349,7 +381,7 @@ class pager:
         self.offset = newstart
         assert len(self.page) == self.range.end - self.range.start
 
-    def get(self, start, end):
+    def get(self, start: int, end: int) -> bytes:
         if not self.page:
             self._fault(start, end)
 
@@ -362,7 +394,13 @@ class pager:
 class FS1(base):
     __slots__ = 'imeta', 'tz', 'root', 'cache'
 
-    def __init__(self, cn, tsh, name, path=None):
+    def __init__(
+        self,
+        cn: Any,
+        tsh: Any,
+        name: str,
+        path: Optional[str] = None
+    ) -> None:
         self.imeta = tsh.internal_metadata(cn, name)
         self.tz = pytz.utc if self.imeta['tzaware'] else None
         path = path or tsh._path(cn, name)
@@ -374,7 +412,7 @@ class FS1(base):
             'blocks': None
         }
 
-    def rbfile(self, path):
+    def rbfile(self, path: Any) -> Any:
         """maintain a cache of files opened in binary read-only mode
 
         This will greatly help small accessor methods like .node_at
@@ -386,7 +424,7 @@ class FS1(base):
         self.cache['rbfiles'][path] = io.FileIO(path, 'rb')
         return self.rbfile(path)
 
-    def abfile(self, path):
+    def abfile(self, path: Any) -> Any:
         """maintain a cache of files opened in binary append-only mode
 
         This will greatly help for methods like _update
@@ -398,30 +436,35 @@ class FS1(base):
         return self.abfile(path)
 
     @property
-    def tzaware(self):
+    def tzaware(self) -> bool:
         return self.imeta['tzaware']
 
     @property
-    def revs(self):
+    def revs(self) -> Any:
         return self.root / 'revs'
 
     @property
-    def tree(self):
+    def tree(self) -> Any:
         return self.root / 'tree'
 
     @property
-    def chunks(self):
+    def chunks(self) -> Any:
         return self.root / 'chunks'
 
     @property
-    def revs_size(self):
+    def revs_size(self) -> int:
         return os.stat(self.revs).st_size
 
     @property
-    def revs_entries(self):
+    def revs_entries(self) -> int:
         return self.revs_size // rev._size
 
-    def revs_range(self, fromdate=None, todate=None, limit=None):
+    def revs_range(
+        self,
+        fromdate: Optional[pd.Timestamp] = None,
+        todate: Optional[pd.Timestamp] = None,
+        limit: Optional[int] = None
+    ) -> Generator[tuple[int, rev], None, None]:
         if limit == 0:
             return
 
@@ -469,37 +512,37 @@ class FS1(base):
                 yield index, irev
 
     @property
-    def last_rev(self):
+    def last_rev(self) -> rev:
         with open(self.revs, 'rb') as frevs:
             frevs.seek(self.revs_size - rev._size)  # end of penultimate rev
             return rev.unpack(self.tz, frevs.read(rev._size))
 
     @property
-    def first_rev(self):
+    def first_rev(self) -> rev:
         with open(self.revs, 'rb') as frevs:
             frevs.seek(0)
             return rev.unpack(self.tz, frevs.read(rev._size))
 
     @property
-    def tree_size(self):
+    def tree_size(self) -> int:
         return os.stat(self.tree).st_size
 
     @property
-    def tree_entries(self):
+    def tree_entries(self) -> int:
         return self.tree_size // node._size
 
     @property
-    def chunks_size(self):
+    def chunks_size(self) -> int:
         return os.stat(self.chunks).st_size
 
-    def chunk_at(self, start, size):
+    def chunk_at(self, start: int, size: int) -> bytes:
         blocks = self.cache['blocks']
         if blocks is None:
             # first visit, let's setup the pager
             self.cache['blocks'] = blocks = pager(self.rbfile(self.chunks))
         return blocks.get(start, start + size)
 
-    def node_at(self, node_index):
+    def node_at(self, node_index: int) -> node:
         c = self.cache['nodes']
         n = c.get(node_index)
         if n:
@@ -525,7 +568,7 @@ class FS1(base):
         )
         return self.node_at(index)
 
-    def nodes(self, fromindex=1):
+    def nodes(self, fromindex: int = 1) -> Generator[node, None, None]:
         fromindex -= 1
         with open(self.tree, 'rb') as ftree:
             ftree.seek(node._size * fromindex)
@@ -535,7 +578,10 @@ class FS1(base):
                 ftree.read(node._size * (self.tree_entries + fromindex))
             )
 
-    def find_rev(self, revdate):
+    def find_rev(
+        self,
+        revdate: pd.Timestamp
+    ) -> tuple[Optional[int], Optional[rev]]:
         with open(self.revs, 'rb') as frevs:
             start = 0
             end = self.revs_entries - 1
@@ -572,10 +618,19 @@ class FS1(base):
             frevs.seek(start * rev._size)
             return start, rev.unpack(self.tz, frevs.read(rev._size))
 
-    def last(self, from_value_date=None, to_value_date=None):
+    def last(
+        self,
+        from_value_date: Optional[pd.Timestamp] = None,
+        to_value_date: Optional[pd.Timestamp] = None
+    ) -> pd.Series:
         return self.get(self.last_rev.revdate, from_value_date, to_value_date)
 
-    def get(self, revdate, from_value_date=None, to_value_date=None):
+    def get(
+        self,
+        revdate: pd.Timestamp,
+        from_value_date: Optional[pd.Timestamp] = None,
+        to_value_date: Optional[pd.Timestamp] = None
+    ) -> pd.Series:
         _, rev = self.find_rev(revdate)
         if rev is None:
             rev = self.last_rev
@@ -598,7 +653,12 @@ class FS1(base):
             self.imeta, chunks, compressor=zstd
         )[from_value_date:to_value_date]
 
-    def find_nodes_matching(self, nodeindex, mindate=None, maxdate=None):
+    def find_nodes_matching(
+        self,
+        nodeindex: int,
+        mindate: Optional[pd.Timestamp] = None,
+        maxdate: Optional[pd.Timestamp] = None
+    ) -> Generator[tuple[int, node], None, None]:
         """return nodes (and their index) from a given index, walking
         down the parent chain until the end or a given date
         """
@@ -619,7 +679,7 @@ class FS1(base):
                 continue
             yield (nodeindex, node)
 
-    def series_from_nodes(self, nodes):
+    def series_from_nodes(self, nodes: list[node]) -> pd.Series:
         chunks = []
         for n in nodes:
             chunks.append(
@@ -631,7 +691,12 @@ class FS1(base):
             return empty_series(self.imeta['tzaware'])
         return iohelper.chunks_to_ts(self.imeta, chunks, compressor=zstd)
 
-    def initial_update(self, ts, revdate, metaid):
+    def initial_update(
+        self,
+        ts: pd.Series,
+        revdate: pd.Timestamp,
+        metaid: int
+    ) -> None:
         # I/O prologue
         self.root.mkdir()
         open(self.root / 'revs', mode='x')
@@ -642,7 +707,14 @@ class FS1(base):
         address = 0  # initial chunk
         self._update(parent, address, ts, revdate, ts.index[0], ts.index[-1], metaid)
 
-    def update(self, ts, revdate, diffstart, diffend, metaid):
+    def update(
+        self,
+        ts: pd.Series,
+        revdate: pd.Timestamp,
+        diffstart: pd.Timestamp,
+        diffend: pd.Timestamp,
+        metaid: int
+    ) -> None:
         """We will build a new node, whith a parent node.
 
         The parent may be immediate or older (at worst there is no parent)
@@ -670,10 +742,24 @@ class FS1(base):
 
         self._update(parentindex, self.chunks_size, ts, revdate, diffstart, diffend, metaid)
 
-    def replace(self, ts, revdate, metaid):
+    def replace(
+        self,
+        ts: pd.Series,
+        revdate: pd.Timestamp,
+        metaid: int
+    ) -> None:
         self._update(0, self.chunks_size, ts, revdate, ts.index[0], ts.index[-1], metaid)
 
-    def _update(self, parent, address, ts, revdate, diffstart, diffend, metaid):
+    def _update(
+        self,
+        parent: int,
+        address: int,
+        ts: pd.Series,
+        revdate: pd.Timestamp,
+        diffstart: pd.Timestamp,
+        diffend: pd.Timestamp,
+        metaid: int
+    ) -> None:
         # we can now have our tree node
         isstr = ts.values.dtype.name == 'object'
         fchunks = self.abfile(self.chunks)
@@ -703,7 +789,7 @@ class FS1(base):
         with open(self.revs, 'ab') as frevs:
             frevs.write(newbrev)
 
-    def strip(self, revdate):
+    def strip(self, revdate: pd.Timestamp) -> None:
         index, rev = self.find_rev(revdate)
         # we will remove all that's above, and not touch
         # the nodes nor the chunks
