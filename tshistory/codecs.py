@@ -7,12 +7,13 @@ import zlib
 
 import numpy as np
 import pandas as pd
+from typing import Any, Iterable
 
 
 
 # binary
 
-def numpy_serialize(series, isstr=False):
+def numpy_serialize(series: pd.Series, isstr: bool = False) -> tuple[bytes, bytes]:
     # use `view` as a workarround for "cannot include dtype 'M' in a buffer"
     if len(series):
         bindex = np.ascontiguousarray(
@@ -41,7 +42,7 @@ def numpy_serialize(series, isstr=False):
 SIZE = struct.Struct('!L')
 
 
-def binary_pack(bytes1, bytes2):
+def binary_pack(bytes1: bytes, bytes2: bytes) -> bytes:
     """assemble two byte strings into a unique byte string
     storing the size of the first string first
     this will permit to destructure back the two
@@ -52,7 +53,7 @@ def binary_pack(bytes1, bytes2):
     return bytes1_size + bytes1 + bytes2
 
 
-def binary_unpack(packedbytes):
+def binary_unpack(packedbytes: bytes) -> tuple[bytes, bytes]:
     """get a compressed bytes stream and return the two embedded
     bytes strings
 
@@ -62,7 +63,7 @@ def binary_unpack(packedbytes):
     return packedbytes[4:bytes2_offset], packedbytes[bytes2_offset:]
 
 
-def nary_pack(*bytestr):
+def nary_pack(*bytestr: bytes) -> bytes:
     sizes = [
         SIZE.pack(len(b))
         for b in bytestr
@@ -76,7 +77,7 @@ def nary_pack(*bytestr):
     return stream.getvalue()
 
 
-def nary_unpack(packedbytes):
+def nary_unpack(packedbytes: bytes) -> tuple[bytes, ...]:
     [sizes_size] = SIZE.unpack(packedbytes[:4])
     payloadoffset = 4 + sizes_size * 4
     sizes = struct.unpack(
@@ -87,7 +88,11 @@ def nary_unpack(packedbytes):
     return struct.unpack(fmt, packedbytes[payloadoffset:])
 
 
-def numpy_deserialize(bindex, bvalues, metadata):
+def numpy_deserialize(
+    bindex: bytes,
+    bvalues: bytes,
+    metadata: dict[str, Any]
+) -> tuple[np.ndarray, np.ndarray | list[str | None]]:
     """produce a pandas series from serialized index and values (numpy
     arrays)
 
@@ -114,7 +119,11 @@ def numpy_deserialize(bindex, bvalues, metadata):
     return index, values
 
 
-def pack_series(metadata, series, compressor=zlib.compress):
+def pack_series(
+    metadata: dict[str, Any],
+    series: pd.Series,
+    compressor = zlib.compress
+) -> bytes:
     """Transform a series, using associated metadata, into a binary format
     (using an optional serializer e.g. b85encode)
     """
@@ -132,7 +141,11 @@ def pack_series(metadata, series, compressor=zlib.compress):
     )
 
 
-def unpack_series(name, bytestream, decompressor=zlib.decompress):
+def unpack_series(
+    name: str,
+    bytestream: bytes,
+    decompressor = zlib.decompress
+) -> pd.Series:
     """Transform a binary string into a pandas series of the given name
     """
     bmeta, bindex, bvalues = nary_unpack(
@@ -155,7 +168,10 @@ def unpack_series(name, bytestream, decompressor=zlib.decompress):
     return series
 
 
-def pack_many_series(serieslist, compressor=zlib.compress):
+def pack_many_series(
+    serieslist: list[pd.Series],
+    compressor = zlib.compress
+) -> bytes:
     """Transform a series list, using associated metadata, into a binary format
     """
     binaries = []
@@ -177,7 +193,10 @@ def pack_many_series(serieslist, compressor=zlib.compress):
     )
 
 
-def unpack_many_series(bytestream, decompressor=zlib.decompress):
+def unpack_many_series(
+    bytestream: bytes,
+    decompressor = zlib.decompress
+) -> list[pd.Series]:
     """Transform a binary string into a pandas series of the given name
     """
     binaries = nary_unpack(
@@ -204,7 +223,10 @@ def unpack_many_series(bytestream, decompressor=zlib.decompress):
     return serieslist
 
 
-def pack_history(metadata, hist):
+def pack_history(
+    metadata: dict[str, Any],
+    hist: dict[pd.Timestamp, pd.Series]
+) -> bytes:
     byteslist = [json.dumps(metadata).encode('utf-8')]
     arr = np.array(
         [tstamp.to_datetime64() for tstamp in hist],
@@ -227,7 +249,9 @@ def pack_history(metadata, hist):
     return stream.getvalue()
 
 
-def unpack_history(bytestring):
+def unpack_history(
+    bytestring: bytes
+) -> tuple[dict[str, Any], dict[pd.Timestamp, pd.Series]]:
     byteslist = nary_unpack(zlib.decompress(bytestring))
     metadata = json.loads(byteslist[0])
     print('D', byteslist[1])
@@ -251,7 +275,7 @@ def unpack_history(bytestring):
 
 # groups
 
-def serialize_index(df):
+def serialize_index(df: pd.DataFrame) -> tuple[bytes, bytes]:
     dtype = df.index.dtype.str.encode('utf-8')
     if len(df):
         return dtype, np.ascontiguousarray(
@@ -260,7 +284,7 @@ def serialize_index(df):
     return dtype, b''
 
 
-def serialize_values(df):
+def serialize_values(df: pd.DataFrame) -> list[bytes]:
     """ convert each values of a dataframe into a list
     a series takes 3 list entries, for:
     * the dtype
@@ -284,14 +308,14 @@ def serialize_values(df):
     return byteslist
 
 
-def pack_group(df):
+def pack_group(df: pd.DataFrame) -> bytes:
     bidtype, bindex = serialize_index(df)
     out = [bidtype, bindex]
     out += serialize_values(df)
     return zlib.compress(nary_pack(*out))
 
 
-def unpack_group(bytestr):
+def unpack_group(bytestr: bytes) -> pd.DataFrame:
     byteslist = nary_unpack(zlib.decompress(bytestr))
     bidtype, bindex = byteslist[0:2]
     if len(bindex):
@@ -321,7 +345,9 @@ def unpack_group(bytestr):
     return df
 
 
-def pack_group_history(hist):
+def pack_group_history(
+    hist: dict[pd.Timestamp, pd.DataFrame]
+) -> bytes:
     byteslist = []
     byteslist.append(
         np.array(
@@ -345,7 +371,9 @@ def pack_group_history(hist):
     return stream.getvalue()
 
 
-def unpack_group_history(bytestring):
+def unpack_group_history(
+    bytestring: bytes
+) -> dict[pd.Timestamp, pd.DataFrame]:
     byteslist = nary_unpack(zlib.decompress(bytestring))
     idates = np.frombuffer(
         array('d', byteslist[0]),'|M8[ns]'
@@ -396,7 +424,15 @@ class rev:
     __slots__ = 'revdate_ns', 'diffstart_ns', 'diffend_ns', 'index', 'metaid', '_tz'
     parser = struct.Struct('!qqqII')
 
-    def __init__(self, revdate_ns, diffstart_ns, diffend_ns, index, metaid, tz):
+    def __init__(
+        self,
+        revdate_ns: int,
+        diffstart_ns: int,
+        diffend_ns: int,
+        index: int,
+        metaid: int,
+        tz: pytz.BaseTzInfo | None
+    ) -> None:
         self.revdate_ns = revdate_ns
         self.diffstart_ns = diffstart_ns
         self.diffend_ns = diffend_ns
@@ -424,13 +460,22 @@ class rev:
         )
 
     @staticmethod
-    def pack(revdate, diffstart, diffend, index, metaid):
+    def pack(
+        revdate: pd.Timestamp,
+        diffstart: pd.Timestamp,
+        diffend: pd.Timestamp,
+        index: int,
+        metaid: int
+    ) -> bytearray:
         buff = bytearray(rev._size)
         rev.parser.pack_into(buff, 0, revdate.value, diffstart.value, diffend.value, index, metaid)
         return buff
 
     @staticmethod
-    def unpack(tz, bytestr):
+    def unpack(
+        tz: pytz.BaseTzInfo | None,
+        bytestr: bytes
+    ) -> 'rev':
         revdate, diffstart, diffend, index, metaid = rev.parser.unpack_from(bytestr, 0)
         return rev(revdate, diffstart, diffend, index, metaid, tz)
 
@@ -440,7 +485,15 @@ class node:
     __slots__ = 'start_ns', 'end_ns', 'parent', 'address', 'size', '_tz'
     parser = struct.Struct('!qqIIh')
 
-    def __init__(self, start_ns, end_ns, parent, address, size, tz):
+    def __init__(
+        self,
+        start_ns: int,
+        end_ns: int,
+        parent: int,
+        address: int,
+        size: int,
+        tz: pytz.BaseTzInfo | None
+    ) -> None:
         self.start_ns = start_ns
         self.end_ns = end_ns
         self.parent = parent
@@ -461,18 +514,30 @@ class node:
         return f'node({self.start},{self.end},{self.parent},{self.address},{self.size})'
 
     @staticmethod
-    def pack(start, end, parent, address, datasize):
+    def pack(
+        start: pd.Timestamp,
+        end: pd.Timestamp,
+        parent: int,
+        address: int,
+        datasize: int
+    ) -> bytearray:
         buff = bytearray(node._size)
         node.parser.pack_into(buff, 0, start.value, end.value, parent, address, datasize)
         return buff
 
     @staticmethod
-    def unpack(tz, bytestr):
+    def unpack(
+        tz: pytz.BaseTzInfo | None,
+        bytestr: bytes
+    ) -> 'node':
         start, end, parent, address, size = node.parser.unpack_from(bytestr, 0)
         return node(start, end, parent, address, size, tz)
 
     @staticmethod
-    def unpack_many(tz, bytestr):
+    def unpack_many(
+        tz: pytz.BaseTzInfo | None,
+        bytestr: bytes
+    ):
         for start, end, parent, address, size in node.parser.iter_unpack(bytestr):
             yield node(start, end, parent, address, size, tz)
 
@@ -480,12 +545,20 @@ class node:
 class iohelper:
 
     @staticmethod
-    def serialize_ts(ts, isstr, compressor=zlib):
+    def serialize_ts(
+        ts: pd.Series,
+        isstr: bool,
+        compressor = zlib
+    ) -> bytes:
         index, values = numpy_serialize(ts, isstr)
         return compressor.compress(binary_pack(index, values))
 
     @staticmethod
-    def chunks_to_ts(metadata, chunks, compressor=zlib):
+    def chunks_to_ts(
+        metadata: dict[str, Any],
+        chunks: Iterable[bytes],
+        compressor = zlib
+    ) -> pd.Series:
         nchunks = (
             binary_unpack(compressor.decompress(chunk))
             for chunk in chunks
