@@ -393,15 +393,29 @@ def unpack_group_history(bytestring):
 
 class rev:
     _size = 32
-    __slots__ = 'revdate', 'diffstart', 'diffend', 'index', 'metaid'
+    __slots__ = 'revdate_ns', 'diffstart_ns', 'diffend_ns', 'index', 'metaid', '_tz'
     parser = struct.Struct('!qqqII')
 
-    def __init__(self, revdate, diffstart, diffend, index, metaid):
-        self.revdate = revdate
-        self.diffstart = diffstart
-        self.diffend = diffend
+    def __init__(self, revdate_ns, diffstart_ns, diffend_ns, index, metaid, tz):
+        self.revdate_ns = revdate_ns
+        self.diffstart_ns = diffstart_ns
+        self.diffend_ns = diffend_ns
         self.index = index
         self.metaid = metaid
+        self._tz = tz
+
+    # Lazy Timestamp creation for backward compatibility
+    @property
+    def revdate(self):
+        return pd.Timestamp(self.revdate_ns, 'ns', tz=pytz.utc)
+
+    @property
+    def diffstart(self):
+        return pd.Timestamp(self.diffstart_ns, 'ns', tz=self._tz)
+
+    @property
+    def diffend(self):
+        return pd.Timestamp(self.diffend_ns, 'ns', tz=self._tz)
 
     def __repr__(self):
         return (
@@ -417,28 +431,31 @@ class rev:
 
     @staticmethod
     def unpack(tz, bytestr):
-        buff = array('B', bytestr)
-        revdate, diffstart, diffend, index, metaid = rev.parser.unpack_from(buff)
-        return rev(
-            pd.Timestamp(revdate, 'ns', tz=pytz.utc),
-            pd.Timestamp(diffstart, 'ns', tz=tz),
-            pd.Timestamp(diffend, 'ns', tz=tz),
-            index,
-            metaid
-        )
+        revdate, diffstart, diffend, index, metaid = rev.parser.unpack_from(bytestr, 0)
+        return rev(revdate, diffstart, diffend, index, metaid, tz)
 
 
 class node:
     _size = 26
-    __slots__ = 'start', 'end', 'parent', 'address', 'size'
+    __slots__ = 'start_ns', 'end_ns', 'parent', 'address', 'size', '_tz'
     parser = struct.Struct('!qqIIh')
 
-    def __init__(self, start, end, parent, address, size):
-        self.start = start
-        self.end = end
+    def __init__(self, start_ns, end_ns, parent, address, size, tz):
+        self.start_ns = start_ns
+        self.end_ns = end_ns
         self.parent = parent
         self.address = address
         self.size = size
+        self._tz = tz
+
+    # Lazy Timestamp creation for backward compatibility
+    @property
+    def start(self):
+        return pd.Timestamp(self.start_ns, 'ns', tz=self._tz)
+
+    @property
+    def end(self):
+        return pd.Timestamp(self.end_ns, 'ns', tz=self._tz)
 
     def __repr__(self):
         return f'node({self.start},{self.end},{self.parent},{self.address},{self.size})'
@@ -451,27 +468,13 @@ class node:
 
     @staticmethod
     def unpack(tz, bytestr):
-        buff = array('B', bytestr)
-        start, end, parent, address, size = node.parser.unpack_from(buff)
-        return node(
-            pd.Timestamp(start, 'ns', tz=tz),
-            pd.Timestamp(end, 'ns', tz=tz),
-            parent,
-            address,
-            size
-        )
+        start, end, parent, address, size = node.parser.unpack_from(bytestr, 0)
+        return node(start, end, parent, address, size, tz)
 
     @staticmethod
     def unpack_many(tz, bytestr):
-        buff = array('B', bytestr)
-        for start, end, parent, address, size in node.parser.iter_unpack(buff):
-            yield node(
-                pd.Timestamp(start, 'ns', tz=tz),
-                pd.Timestamp(end, 'ns', tz=tz),
-                parent,
-                address,
-                size
-            )
+        for start, end, parent, address, size in node.parser.iter_unpack(bytestr):
+            yield node(start, end, parent, address, size, tz)
 
 
 class iohelper:

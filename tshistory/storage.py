@@ -433,7 +433,7 @@ class FS1(base):
                 if index is None:
                     # could not find anything fromdate is out of range
                     # if it is in the future, we can't do much
-                    if fromdate > self.last_rev.revdate:
+                    if fromdate.value > self.last_rev.revdate_ns:
                         return
 
             if fromdate is None or index is None:
@@ -447,7 +447,7 @@ class FS1(base):
                 if toindex is None:
                     # could not find anything: todate is out of range
                     # if it is in the past, we can't do much
-                    if todate < self.first_rev.revdate:
+                    if todate.value < self.first_rev.revdate_ns:
                         return
 
             yield index, startrev
@@ -461,7 +461,7 @@ class FS1(base):
                 if brev == b'':
                     break
                 irev = rev.unpack(self.tz, brev)
-                if todate is not None and todate < irev.revdate:
+                if todate is not None and todate.value < irev.revdate_ns:
                     break
                 count += 1
                 index += 1
@@ -539,19 +539,20 @@ class FS1(base):
         with open(self.revs, 'rb') as frevs:
             start = 0
             end = self.revs_entries - 1
+            revdate_ns = revdate.value
 
             frevs.seek(start)
             startrev = rev.unpack(self.tz, frevs.read(rev._size))
             frevs.seek(self.revs_size - rev._size)
             endrev = rev.unpack(self.tz, frevs.read(rev._size))
 
-            if revdate < startrev.revdate:
+            if revdate_ns < startrev.revdate_ns:
                 return None, None
-            if revdate == startrev.revdate:
+            if revdate_ns == startrev.revdate_ns:
                 return start, startrev
-            if revdate == endrev.revdate:
+            if revdate_ns == endrev.revdate_ns:
                 return end, endrev
-            if revdate > endrev.revdate:
+            if revdate_ns > endrev.revdate_ns:
                 return None, None
 
             # now, let's bisect between these points to find the best
@@ -563,7 +564,7 @@ class FS1(base):
                 frevs.seek(middle * rev._size)
                 irev = rev.unpack(self.tz, frevs.read(rev._size))
 
-                if revdate >= irev.revdate:
+                if revdate_ns >= irev.revdate_ns:
                     start = middle
                 else:
                     end = middle
@@ -601,6 +602,10 @@ class FS1(base):
         """return nodes (and their index) from a given index, walking
         down the parent chain until the end or a given date
         """
+        # Convert dates to nanoseconds for fast comparison
+        mindate_ns = mindate.value if mindate else None
+        maxdate_ns = maxdate.value if maxdate else None
+
         node = self.node_at(nodeindex)
         yield (nodeindex, node)
         while True:
@@ -608,9 +613,9 @@ class FS1(base):
                 return
             nodeindex = node.parent
             node = self.node_at(nodeindex)
-            if mindate and node.end < mindate:
+            if mindate_ns and node.end_ns < mindate_ns:
                 return
-            if maxdate and node.start > maxdate:
+            if maxdate_ns and node.start_ns > maxdate_ns:
                 continue
             yield (nodeindex, node)
 

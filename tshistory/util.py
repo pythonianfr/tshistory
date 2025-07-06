@@ -191,6 +191,17 @@ class ts(str):
         }
 
 
+def to_nanoseconds(timestamp):
+    """Convert various timestamp types to nanoseconds for fast comparison"""
+    if timestamp is None:
+        return None
+    if hasattr(timestamp, 'value'):
+        # pandas Timestamp
+        return timestamp.value
+    # datetime.datetime - convert to pandas first
+    return pd.Timestamp(timestamp).value
+
+
 def ensuretz(adate):
     if adate is None:
         return
@@ -271,6 +282,10 @@ def inject_in_index(series, revdate):
 def compatible_date(tzaware, date):
     if date is None:
         return
+
+    # Ensure we have a pandas Timestamp with nanosecond precision
+    if not isinstance(date, pd.Timestamp):
+        date = pd.Timestamp(date)
 
     if not tzaware:
         return date.replace(tzinfo=None)
