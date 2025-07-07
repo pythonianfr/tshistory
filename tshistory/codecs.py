@@ -1,4 +1,3 @@
-from array import array
 import io
 import json
 import pytz
@@ -97,10 +96,10 @@ def numpy_deserialize(
     arrays)
 
     """
-    # array is a workaround for an obscure bug with pandas.isin
+    # Direct frombuffer is more efficient and correct
     index = np.frombuffer(
-        array('d', bindex),
-        metadata['index_dtype'] # NOTE: this is not sufficient
+        bindex,
+        metadata['index_dtype']
     )
 
     if metadata['value_type'] == 'object':  # str
@@ -254,9 +253,8 @@ def unpack_history(
 ) -> tuple[dict[str, Any], dict[pd.Timestamp, pd.Series]]:
     byteslist = nary_unpack(zlib.decompress(bytestring))
     metadata = json.loads(byteslist[0])
-    print('D', byteslist[1])
     idates = np.frombuffer(
-        array('d', byteslist[1]),
+        byteslist[1],
         '|M8[ns]' if metadata['tzaware'] else '<M8[ns]'
     )
     hist = {}
@@ -320,7 +318,7 @@ def unpack_group(bytestr: bytes) -> pd.DataFrame:
     bidtype, bindex = byteslist[0:2]
     if len(bindex):
         index = np.frombuffer(
-            array('d', bindex),
+            bindex,
             bidtype
         )
     else:
@@ -376,7 +374,8 @@ def unpack_group_history(
 ) -> dict[pd.Timestamp, pd.DataFrame]:
     byteslist = nary_unpack(zlib.decompress(bytestring))
     idates = np.frombuffer(
-        array('d', byteslist[0]),'|M8[ns]'
+        byteslist[0],
+        '|M8[ns]'
     )
     idates = [
         pd.Timestamp(idate).tz_localize(pytz.utc)
@@ -394,7 +393,7 @@ def unpack_group_history(
         cursor = cursor + 3 + nbvalues
         if len(bindex):
             index = np.frombuffer(
-                array('d', bindex),
+                bindex,
                 bidtype
             )
         else:
