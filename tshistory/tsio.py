@@ -2,7 +2,6 @@ from datetime import timedelta
 import logging
 import hashlib
 import uuid
-import json
 from pathlib import Path
 import shutil
 
@@ -114,7 +113,7 @@ class base:
             f'update "{self.namespace}".registry '
             'set internal_metadata = %(metadata)s '
             'where name = %(name)s',
-            metadata=json.dumps(imeta),
+            metadata=imeta,
             name=name
         )
 
@@ -235,7 +234,7 @@ class base:
             f'update "{self.namespace}".registry '
             'set metadata = %(metadata)s '
             'where registry.name = %(name)s',
-            metadata=json.dumps(existing_metadata),
+            metadata=existing_metadata,
             name=name
         )
         cn.execute(
@@ -263,7 +262,7 @@ class base:
             f'update "{self.namespace}".registry '
             'set metadata = %(metadata)s '
             'where registry.name = %(name)s',
-            metadata=json.dumps(metadata),
+            metadata=metadata,
             name=name
         )
         cn.execute(
@@ -795,7 +794,7 @@ class base:
         )
         cn.execute(
             sql,
-            metadata=json.dumps(metadata),
+            metadata=metadata,
             name=name
         )
         cn.execute(
@@ -824,7 +823,7 @@ class base:
         )
         cn.execute(
             sql,
-            metadata=json.dumps(existing_metadata),
+            metadata=existing_metadata,
             name=name
         )
         cn.execute(
@@ -865,7 +864,7 @@ class base:
         )
         cn.execute(
             sql,
-            metadata=json.dumps(existing_metadata),
+            metadata=existing_metadata,
             name=name
         )
 
@@ -1019,8 +1018,8 @@ class base:
                 'set internal_metadata = %(imeta)s, '
                 '    metadata = %(metadata)s '
                 f'where name = %(name)s',
-                imeta=json.dumps(tsmeta),
-                metadata=json.dumps({}),
+                imeta=tsmeta,
+                metadata={},
                 name=name
             )
             return
@@ -1584,8 +1583,7 @@ class timeseries(base):
             assert idate > latest_idate, (
                 f'"{name}" already has a newer revision than "{idate}"'
             )
-        if metadata:
-            metadata = json.dumps(metadata)
+        # metadata stays as dict - will be converted by sqlhelp if present
 
         q = insert(
             f'"{self.namespace}.revision"."{tablename}" '
@@ -1656,11 +1654,11 @@ class timeseries(base):
         cn.execute(
             f'insert into "{self.namespace}".registry '
             '(name, internal_metadata, metadata) '
-            'values (%s, %s, %s) '
+            'values (%(name)s, %(internal_metadata)s, %(metadata)s) '
             'returning id',
-            name,
-            json.dumps(seriesmeta),
-            json.dumps({})
+            name=name,
+            internal_metadata=seriesmeta,
+            metadata={}
         ).scalar()
 
     # changeset handling
@@ -1948,7 +1946,7 @@ class timeseriesfs1(base):
             seriesid=seriesid,
             name=name,
             author=author,
-            meta=json.dumps(metadata)
+            meta=metadata
         ).scalar()
 
     def _revision_metadata(self, cn, name, metaid):
@@ -1970,11 +1968,11 @@ class timeseriesfs1(base):
         cn.execute(
             f'insert into "{self.namespace}".registry '
             '(name, internal_metadata, metadata) '
-            'values (%s, %s, %s) '
+            'values (%(name)s, %(internal_metadata)s, %(metadata)s) '
             'returning id',
-            name,
-            json.dumps(seriesmeta),
-            json.dumps({})
+            name=name,
+            internal_metadata=seriesmeta,
+            metadata={}
         ).scalar()
         # meta
         start, end = start_end(ts, notz=tzaware_series(ts))

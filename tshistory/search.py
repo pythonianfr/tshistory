@@ -1,4 +1,3 @@
-import json
 import uuid
 
 from psyl.lisp import parse
@@ -305,7 +304,7 @@ class _comparator(query):
                 f'%({jid})s)',
                 {
                     kid: self.key,
-                    jid: json.dumps({'value': self.value})
+                    jid: {'value': self.value}
                 }
             )
 
