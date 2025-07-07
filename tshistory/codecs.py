@@ -1,8 +1,9 @@
 import io
-import json
 import pytz
 import struct
 import zlib
+
+import orjson as json
 
 import numpy as np
 import pandas as pd
@@ -135,7 +136,7 @@ def pack_series(
         series,
         metadata['value_type'] == 'object'
     )
-    bmeta = json.dumps(metadata).encode('utf-8')
+    bmeta = json.dumps(metadata)
     return compressor(
         nary_pack(
             bmeta,
@@ -185,7 +186,7 @@ def pack_many_series(
             metadata['value_type'] == 'object'
         )
         metadata['name'] = series.name
-        bmeta = json.dumps(metadata).encode('utf-8')
+        bmeta = json.dumps(metadata)
         binaries.append(bmeta)
         binaries.append(bindex)
         binaries.append(bvalues)
@@ -231,7 +232,7 @@ def pack_history(
     metadata: dict[str, Any],
     hist: dict[pd.Timestamp, pd.Series]
 ) -> bytes:
-    byteslist = [json.dumps(metadata).encode('utf-8')]
+    byteslist = [json.dumps(metadata)]
     arr = np.array(
         [tstamp.to_datetime64() for tstamp in hist],
         dtype='datetime64[ns]'

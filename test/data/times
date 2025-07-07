@@ -1,16 +1,16 @@
 ┍━━━━┯━━━━━━━━━━━━━━┯━━━━━━━━━━━━━━┯━━━━━━━━━━━━━━┯━━━━━━━━━━━━━━┑
 │    │ test         │ driver       │ operation    │   time       │
 ┝━━━━┿━━━━━━━━━━━━━━┿━━━━━━━━━━━━━━┿━━━━━━━━━━━━━━┿━━━━━━━━━━━━━━┥
-│  0 │ bigupdate    │ pg           │ update1      │       0.9108 │
-│  1 │ bigupdate    │ pg           │ get1         │       0.0567 │
-│  2 │ bigupdate    │ pg           │ get2         │       1.0225 │
-│  3 │ bigupdate    │ pg           │ get3         │       0.0529 │
-│  4 │ bigupdate    │ fs1          │ update1      │       0.2229 │
-│  5 │ bigupdate    │ fs1          │ get1         │       0.0231 │
-│  6 │ bigupdate    │ fs1          │ get2         │       0.2766 │
-│  7 │ bigupdate    │ fs1          │ get3         │       0.0244 │
-│  8 │ meteo        │ pg           │ update       │       0.4409 │
-│  9 │ meteo        │ pg           │ history      │       0.0903 │
-│ 10 │ meteo        │ fs1          │ update       │       0.3377 │
-│ 11 │ meteo        │ fs1          │ history      │       0.0584 │
+│  0 │ bigupdate    │ pg           │ update1      │       0.9106 │
+│  1 │ bigupdate    │ pg           │ get1         │       0.0557 │
+│  2 │ bigupdate    │ pg           │ get2         │       1.016  │
+│  3 │ bigupdate    │ pg           │ get3         │       0.0535 │
+│  4 │ bigupdate    │ fs1          │ update1      │       0.221  │
+│  5 │ bigupdate    │ fs1          │ get1         │       0.0234 │
+│  6 │ bigupdate    │ fs1          │ get2         │       0.3017 │
+│  7 │ bigupdate    │ fs1          │ get3         │       0.0245 │
+│  8 │ meteo        │ pg           │ update       │       0.4326 │
+│  9 │ meteo        │ pg           │ history      │       0.0908 │
+│ 10 │ meteo        │ fs1          │ update       │       0.3145 │
+│ 11 │ meteo        │ fs1          │ history      │       0.0586 │
 ┕━━━━┷━━━━━━━━━━━━━━┷━━━━━━━━━━━━━━┷━━━━━━━━━━━━━━┷━━━━━━━━━━━━━━┙

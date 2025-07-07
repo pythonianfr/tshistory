@@ -279,7 +279,7 @@ def test_make_snapshot_record():
     assert n.end == utcdt(2020, 1, 2)
     assert n.parent == 0
     assert n.address == 0
-    assert n.size == 140  # Fast compression (level 1) produces slightly larger output
+    assert n.size == 138
 
     bn = node.pack(
         utcdt(2020, 1, 1),
@@ -299,7 +299,7 @@ def test_make_snapshot_record():
     assert n.end == utcdt(2020, 1, 2)
     assert n.parent == 1
     assert n.address == 0
-    assert n.size == 140  # Fast compression (level 1) produces slightly larger output
+    assert n.size == 138
 
 
 def test_version_record():
