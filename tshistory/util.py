@@ -18,10 +18,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from warnings import warn
 from typing import (
-    Any, 
-    Optional, 
-    Union, 
-    Generator, 
+    Any,
+    Optional,
+    Union,
+    Generator,
     Callable
 )
 
@@ -666,14 +666,26 @@ def patchmany(series: Union[list[pd.Series], tuple[pd.Series, ...]]) -> pd.Serie
     if not series:
         return first
 
-    uindex = reduce(
-        np.union1d,
-        (ts.index.values for ts in series)
-    )
+    # build union index more efficiently
+    all_indices = np.concatenate([ts.index.values for ts in series])
+    uindex = np.unique(all_indices)
     uvalues = np.zeros(len(uindex))
 
+    # single-pass population using searchsorted
     for ts in series:
-        _populate(ts.index.values, ts.values, uindex, uvalues)
+        if len(ts) == 0:
+            continue
+
+        # find positions in uindex for this series' indices
+        positions = np.searchsorted(uindex, ts.index.values)
+
+        # verify positions are correct (safety check)
+        mask = (positions < len(uindex)) & (uindex[positions] == ts.index.values)
+        valid_positions = positions[mask]
+        valid_values = ts.values[mask]
+
+        # update values at found positions
+        uvalues[valid_positions] = valid_values
 
     # assumption: all series are tzaware or naive
     tz = index_zone(first) if tzaware_series(first) else None
@@ -708,8 +720,7 @@ def diff(
 
     # equal values at intersection
     if base.dtype == 'float64':
-        mask_equal = np.isclose(base_overlap, other_overlap,
-                                rtol=0, atol=_precision)
+        mask_equal = np.abs(base_overlap.values - other_overlap.values) < _precision
     else:
         mask_equal = base_overlap == other_overlap
 
