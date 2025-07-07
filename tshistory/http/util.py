@@ -1,4 +1,4 @@
-import simplejson as json
+import orjson as json
 from functools import wraps
 import logging
 import traceback as tb
@@ -153,7 +153,7 @@ def series_to_json(series):
     return json.dumps({
         stamp.isoformat(): val
         for stamp, val in series.items()
-    }, ignore_nan=True)
+    }).decode('utf-8')
 
 
 def group_to_json(df):
@@ -163,7 +163,7 @@ def group_to_json(df):
             stamp.isoformat(): val
             for stamp, val in df[col].items()
         }
-    return json.dumps(result, ignore_nan=True)
+    return json.dumps(result).decode('utf-8')
 
 
 def series_response(format, series, metadata, code):

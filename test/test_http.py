@@ -120,9 +120,9 @@ def test_naive(http):
 
     assert res.status_code == 201
     assert res.body == (
-        b'{"2018-01-01T00:00:00": 0.0, '
-        b'"2018-01-01T01:00:00": 1.0, '
-        b'"2018-01-01T02:00:00": 2.0}'
+        b'{"2018-01-01T00:00:00":0.0,'
+        b'"2018-01-01T01:00:00":1.0,'
+        b'"2018-01-01T02:00:00":2.0}'
     )
 
     res = http.get('/series/metadata?name=test-naive&all=1')
@@ -169,9 +169,9 @@ def test_base(http):
 
     assert res.status_code == 201
     assert res.body == (
-        b'{"2018-01-01T00:00:00+00:00": 0.0, '
-        b'"2018-01-01T01:00:00+00:00": 1.0, '
-        b'"2018-01-01T02:00:00+00:00": 2.0}'
+        b'{"2018-01-01T00:00:00+00:00":0.0,'
+        b'"2018-01-01T01:00:00+00:00":1.0,'
+        b'"2018-01-01T02:00:00+00:00":2.0}'
     )
 
     res = http.patch_json('/series/state', params={
@@ -482,7 +482,7 @@ def test_strings(http):
     res = http.get('/series/state', params={
         'name': 'series-string-http',
     })
-    assert res.text == '{"2025-01-01T00:00:00": "something"}'
+    assert res.text == '{"2025-01-01T00:00:00":"something"}'
 
     ts = pd.Series(
         ['else']
