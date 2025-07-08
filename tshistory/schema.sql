@@ -32,7 +32,7 @@ create extension if not exists ltree;
 
 create table "{ns}".tree (
   id serial primary key,
-  path ltree
+  path ltree unique
 );
 
 create index tree_path_idx on "{ns}".tree using gist (path);

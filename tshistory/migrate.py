@@ -172,6 +172,7 @@ class Migrator:
 @version('tshistory', '0.22.0')
 def migrate_022(engine, namespace, interactive):
     do_migrate_tree(engine, namespace, interactive)
+    do_make_ltree_unique(engine, namespace, interactive)
     do_migrate_old_metadata(engine, namespace, interactive)
     do_enforce_series_metadata_integrity(engine, namespace, interactive)
     do_enforce_groups_metadata_integrity(engine, namespace, interactive)
@@ -199,6 +200,17 @@ create table if not exists "{ns}".tree_series_map (
 
 create index if not exists tree_series_map_idx on "{ns}".tree_series_map (treeid);
 """, _binary=False)
+
+
+def do_make_ltree_unique(engine, namespace, interactive):
+    ns = namespace
+    with engine.begin() as cn:
+        cn.execute(
+            f'alter table "{ns}".tree drop constraint if exists unique_tree;'
+            f'alter table "{ns}".tree drop constraint if exists tree_path_key;'
+            f'alter table "{ns}".tree add unique (path);',
+            _binary=False
+        )
 
 
 def do_migrate_old_metadata(engine, namespace, interactive):
