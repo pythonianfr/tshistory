@@ -13,7 +13,6 @@ from datetime import (
     timedelta
 )
 from importlib_metadata import entry_points
-from functools import reduce
 from contextlib import contextmanager
 from pathlib import Path
 from warnings import warn
