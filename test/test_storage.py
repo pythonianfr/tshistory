@@ -3,7 +3,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
-from tshistory.util import _set_cache
+from tshistory.util import ensure_cache
 from tshistory.storage import Postgres
 from tshistory.testutil import (
     assert_df,
@@ -25,7 +25,7 @@ def chunksize(meta, snap, head, from_value_date=None):
 
 def test_chunks(engine, tsp):
     tsh = tsp
-    _set_cache(engine)
+    ensure_cache(engine)
     with tempattr(Postgres, '_max_bucket_size', 2):
         ts = genserie(datetime(2010, 1, 1), 'D', 5)
         tsh.update(engine, ts, 'chunks', 'test')

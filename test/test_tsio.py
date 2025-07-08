@@ -10,7 +10,7 @@ from psycopg.errors import ForeignKeyViolation
 
 from tshistory.storage import Postgres
 from tshistory.util import (
-    _set_cache,
+    ensure_cache,
     diff,
     empty_series,
     threadpool,
@@ -360,7 +360,7 @@ def test_base_diff(engine, tsh):
     id1 = tsh.last_id(engine, 'ts_test')
     with engine.begin() as cn:
         assert tsh._previous_cset(
-            _set_cache(cn),
+            ensure_cache(cn),
             'ts_test',
             id1
         ) is None
@@ -416,7 +416,7 @@ def test_base_diff(engine, tsh):
 
     with engine.begin() as cn:
         assert tsh._previous_cset(
-            _set_cache(cn),
+            ensure_cache(cn),
             'ts_test',
             id2
         ) == id1
@@ -3045,7 +3045,7 @@ def test_replace_reuse(engine, tsh):
     )
     if isinstance(tsh, timeseries):
         with engine.begin() as cn:
-            snap = Postgres(_set_cache(cn), tsh, 'replace-reuse')
+            snap = Postgres(ensure_cache(cn), tsh, 'replace-reuse')
             chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(1)]
             assert chunks == [(1, None)]
 
@@ -3090,7 +3090,7 @@ def test_revisions_callback(engine, tsh):
     )
 
     with engine.begin() as cn:
-        _set_cache(cn)
+        ensure_cache(cn)
         babarrevs = tsh._revisions(
             cn,
             'rev-callback',
@@ -3106,7 +3106,7 @@ def test_revisions_callback(engine, tsh):
     assert [rid for rid, _ in celesterevs] == [2, 4]
 
     with engine.begin() as cn:
-        _set_cache(cn)
+        ensure_cache(cn)
         goodstatus = tsh._revisions(
             cn,
             'rev-callback',
