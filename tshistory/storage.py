@@ -174,6 +174,23 @@ class Postgres(base):
 
         return self.insert_buckets(parent, newsnapshot)
 
+    find_start_sql = """
+        with recursive descend as (
+            select chunks.id, chunks.parent, chunks.cstart, chunks.cend
+            from "{namespace}"."{table}" as chunks
+            where chunks.id = {heads}
+        union
+            select chunks.id, chunks.parent, chunks.cstart, chunks.cend
+            from "{namespace}"."{table}" as chunks
+            join descend on chunks.id = descend.parent
+        )
+        select id
+        from descend
+        where cstart <= %(end)s
+        order by id desc
+        limit 1
+    """
+
     rawsql = """
         with recursive allchunks as (
             select chunks.id as cid,
@@ -195,8 +212,21 @@ class Postgres(base):
     def rawchunks(
         self,
         head: int,
-        from_value_date: Optional[pd.Timestamp] = None
+        from_value_date: Optional[pd.Timestamp] = None,
+        to_value_date: Optional[pd.Timestamp] = None
     ) -> list[tuple[int, Optional[int], bytes]]:
+        # If there's a to_value_date, find the appropriate starting chunk
+        if to_value_date:
+            sql = self.find_start_sql.format(
+                namespace=f'{self.tsh.namespace}.snapshot',
+                table=self.tablename,
+                heads=str(head)
+            )
+            res = self.cn.execute(sql, end=to_value_date)
+            row = res.fetchone()
+            if row:
+                head = row.id
+
         where = ''
         if from_value_date:
             where = 'where chunks.cend >= %(start)s '
@@ -204,13 +234,14 @@ class Postgres(base):
         sql = self.rawsql.format(
             namespace=f'{self.tsh.namespace}.snapshot',
             table=self.tablename,
-            heads=','.join([str(head)]),
+            heads=str(head),
             where=where
         )
         res = self.cn.execute(sql, start=from_value_date)
         chunks = list(res.fetchall())
         chunks.reverse()
         return chunks
+
 
     def chunk(
         self,
@@ -221,7 +252,7 @@ class Postgres(base):
         meta = self.tsh.internal_metadata(self.cn, self.name)
         snapdata = iohelper.chunks_to_ts(
             meta,
-            (raw[2] for raw in self.rawchunks(head, from_value_date))
+            (raw[2] for raw in self.rawchunks(head, from_value_date, to_value_date))
         )
         try:
             return snapdata.loc[from_value_date:to_value_date]
