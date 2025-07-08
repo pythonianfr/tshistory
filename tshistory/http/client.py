@@ -40,6 +40,12 @@ from tshistory.codecs import (
 from tshistory.http.util import get_auth
 
 
+# HTTP timeout constants
+CONNECT_TIMEOUT = 2   # seconds - fail fast if connection is slow
+READ_TIMEOUT = 60     # seconds - safety net for hung connections
+DEFAULT_TIMEOUT = (CONNECT_TIMEOUT, READ_TIMEOUT)
+
+
 def strft(dt):
     """Format dt object into str.
 
@@ -120,7 +126,7 @@ def unwraperror(func):
 def healthcheck(session, uri):
     if not uri.endswith('/'):
         uri += '/'
-    r = session.get(uri + 'versions')
+    r = session.get(uri + 'versions', timeout=DEFAULT_TIMEOUT)
     if r.status_code != 200:
         if r.status_code == 401:
             print(
@@ -171,7 +177,7 @@ class httpclient:
     def info(self):
         res = self.session.get(f'{self.uri}/global/properties', params={
             'property': 'info'
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -181,7 +187,7 @@ class httpclient:
     def sources(self):
         res = self.session.get(f'{self.uri}/global/properties', params={
             'property': 'sources'
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -192,7 +198,7 @@ class httpclient:
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'exists'
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return True
         elif res.status_code == 404:
@@ -230,7 +236,8 @@ class httpclient:
             data=qdata,
             files={
                 'bseries': pack_series(meta, series)
-            }
+            },
+            timeout=DEFAULT_TIMEOUT
         )
 
         if res.status_code == 405:
@@ -278,7 +285,7 @@ class httpclient:
     def source(self, name: str):
         res = self.session.get(f'{self.uri}/series/source', params={
             'name': name
-        })
+        }, timeout=DEFAULT_TIMEOUT)
 
         if res.status_code == 200:
             return res.json()
@@ -299,7 +306,7 @@ class httpclient:
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'all': all
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
         if res.status_code == 404:
@@ -312,7 +319,7 @@ class httpclient:
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'archive'
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return [
                 (pd.Timestamp(stamp), meta, user)
@@ -325,7 +332,7 @@ class httpclient:
 
     @unwraperror
     def tree_attribute(self):
-        res = self.session.get(f'{self.uri}/series/tree-attribute')
+        res = self.session.get(f'{self.uri}/series/tree-attribute', timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -335,7 +342,7 @@ class httpclient:
     def set_tree_attribute(self, attribute: str):
         res = self.session.put(f'{self.uri}/series/tree-attribute', data={
             'attribute': attribute
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -346,7 +353,7 @@ class httpclient:
         res = self.session.get(f'{self.uri}/series/tree-path', params={
             'type': 'pathname',
             'name': pathname
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -357,7 +364,7 @@ class httpclient:
         res = self.session.get(f'{self.uri}/series/tree-path', params={
             'type': 'seriesname',
             'name': pathname
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -365,7 +372,7 @@ class httpclient:
 
     @unwraperror
     def tree(self):
-        res = self.session.get(f'{self.uri}/series/tree')
+        res = self.session.get(f'{self.uri}/series/tree', timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -375,7 +382,7 @@ class httpclient:
     def delete_path(self, path: str):
         res = self.session.delete(f'{self.uri}/series/tree-path', data={
             'path': path
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -386,7 +393,7 @@ class httpclient:
         res = self.session.put(f'{self.uri}/series/tree-path', data={
             'path': path,
             'newpath': newpath
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -397,7 +404,7 @@ class httpclient:
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'internal'
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
         if res.status_code == 404:
@@ -405,7 +412,7 @@ class httpclient:
             res = self.session.get(f'{self.uri}/series/metadata', params={
                 'name': name,
                 'all': True
-            })
+            }, timeout=DEFAULT_TIMEOUT)
             if res.status_code == 404:
                 return None
             if res.status_code == 200:
@@ -430,7 +437,7 @@ class httpclient:
         res = self.session.patch(f'{self.uri}/series/metadata', data={
             'name': name,
             'metadata': json.dumps(existing_metadata)
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 204:
             return None
 
@@ -442,7 +449,7 @@ class httpclient:
         res = self.session.put(f'{self.uri}/series/metadata', data={
             'name': name,
             'metadata': json.dumps(metadata)
-        })
+        }, timeout=DEFAULT_TIMEOUT)
 
         return res
 
@@ -463,7 +470,7 @@ class httpclient:
             args['to_value_date'] = strft(to_value_date)
 
         res = self.session.get(
-            f'{self.uri}/series/freq', params=args
+            f'{self.uri}/series/freq', params=args, timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 404:
             return None
@@ -503,7 +510,7 @@ class httpclient:
         if to_value_date:
             args['to_value_date'] = strft(to_value_date)
         res = self.session.get(
-            f'{self.uri}/series/state', params=args
+            f'{self.uri}/series/state', params=args, timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 404:
             return None
@@ -541,7 +548,7 @@ class httpclient:
             args['limit'] = limit
 
         res = self.session.get(
-            f'{self.uri}/series/insertion_dates', params=args
+            f'{self.uri}/series/insertion_dates', params=args, timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 404:
             return None
@@ -572,7 +579,7 @@ class httpclient:
         if to_value_date:
             args['to_value_date'] = strft(to_value_date)
         res = self.session.get(
-            f'{self.uri}/series/staircase', params=args
+            f'{self.uri}/series/staircase', params=args, timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 404:
             return None
@@ -611,7 +618,7 @@ class httpclient:
         if maturity_time is not None:
             args['maturity_time'] = json.dumps(maturity_time)
 
-        res = self.session.get(f'{self.uri}/series/block_staircase', params=args)
+        res = self.session.get(f'{self.uri}/series/block_staircase', params=args, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 404:
             return None
         if res.status_code == 200:
@@ -682,7 +689,7 @@ class httpclient:
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'type'
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -696,7 +703,7 @@ class httpclient:
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,
             'type': 'interval'
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             tzaware, left, right = res.json()
             tz = 'utc' if tzaware else None
@@ -725,7 +732,7 @@ class httpclient:
             query['fromdate'] = fromdate.isoformat()
         if todate:
             query['todate'] = todate.isoformat()
-        res = self.session.get(f'{self.uri}/series/log', params=query)
+        res = self.session.get(f'{self.uri}/series/log', params=query, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             logs = []
             for item in res.json():
@@ -742,7 +749,7 @@ class httpclient:
             params={
                 'allsources': allsources
             },
-            timeout=(2, 3)
+            timeout=DEFAULT_TIMEOUT
         )
         tuplify = lambda x: (x, 'tsh') if '@' not in x else (x, x.split('@')[1])
         if res.status_code == 200:
@@ -772,7 +779,7 @@ class httpclient:
             'meta': meta,
             'sources': ','.join(sources),
             '_source': _source
-        })
+        }, timeout=DEFAULT_TIMEOUT)
 
         if res.status_code == 200:
             return [
@@ -789,7 +796,8 @@ class httpclient:
     def rename(self, oldname: str, newname: str, propagate: bool=True):
         res = self.session.put(
             f'{self.uri}/series/state',
-            data={'name': oldname, 'newname': newname, 'propagate': json.dumps(propagate)}
+            data={'name': oldname, 'newname': newname, 'propagate': json.dumps(propagate)},
+            timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 204:
             return
@@ -809,7 +817,8 @@ class httpclient:
         res = self.session.put(
             f'{self.uri}/series/strip',
             data={'name': name,
-                  'insertion_date': insertion_date}
+                  'insertion_date': insertion_date},
+            timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 204:
             return
@@ -820,7 +829,8 @@ class httpclient:
     def delete(self, name: str):
         res = self.session.delete(
             f'{self.uri}/series/state',
-            data={'name': name}
+            data={'name': name},
+            timeout=DEFAULT_TIMEOUT
         )
         if res.status_code in (204, 404):
             return
@@ -837,7 +847,8 @@ class httpclient:
                 'name': name,
                 'query': query,
                 'group': group
-            }
+            },
+            timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 200:
             return
@@ -857,7 +868,7 @@ class httpclient:
             'meta': meta,
             'sources': ','.join(sources),
             'group': group
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return [
                 ts(item['name'], item['imeta'], item['meta'], item['source'])
@@ -870,7 +881,7 @@ class httpclient:
     def basket_definition(self, name: str, group: bool=False):
         res = self.session.get(
             f'{self.uri}/series/basket-definition',
-            params={'name': name, 'group': group}
+            params={'name': name, 'group': group}, timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 200:
             return res.json()
@@ -881,7 +892,7 @@ class httpclient:
     def list_baskets(self, group: bool=False):
         res = self.session.get(
             f'{self.uri}/series/baskets',
-            params={'group': group}
+            params={'group': group}, timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 200:
             return res.json()
@@ -893,7 +904,8 @@ class httpclient:
             data={
                 'name': name,
                 'group': group
-            }
+            },
+            timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 200:
             return
@@ -932,7 +944,8 @@ class httpclient:
             data=qdata,
             files={
                 'bgroup': pack_group(df)
-            }
+            },
+            timeout=DEFAULT_TIMEOUT
         )
         if res.status_code in (200, 201):
             return
@@ -985,7 +998,7 @@ class httpclient:
         if to_value_date:
             args['to_value_date'] = strft(to_value_date)
         res = self.session.get(
-            f'{self.uri}/group/state', params=args
+            f'{self.uri}/group/state', params=args, timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 404:
             return None
@@ -1008,7 +1021,7 @@ class httpclient:
             args['to_insertion_date'] = strft(to_insertion_date)
 
         res = self.session.get(
-            f'{self.uri}/group/insertion_dates', params=args
+            f'{self.uri}/group/insertion_dates', params=args, timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 404:
             return None
@@ -1041,7 +1054,7 @@ class httpclient:
         if to_value_date:
             args['to_value_date'] = strft(to_value_date)
         res = self.session.get(
-            f'{self.uri}/group/history', params=args
+            f'{self.uri}/group/history', params=args, timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 404:
             return None
@@ -1057,7 +1070,7 @@ class httpclient:
     def group_catalog(self, allsources: bool=True):
         res = self.session.get(f'{self.uri}/group/catalog', params={
             'allsources': allsources
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             tuplify = lambda x: (x, 'tsh') if '@' not in x else (x, x.split('@')[1])
             return {
@@ -1072,7 +1085,7 @@ class httpclient:
         res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name,
             'type': 'type'
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -1096,7 +1109,7 @@ class httpclient:
             query['fromdate'] = fromdate.isoformat()
         if todate:
             query['todate'] = todate.isoformat()
-        res = self.session.get(f'{self.uri}/group/log', params=query)
+        res = self.session.get(f'{self.uri}/group/log', params=query, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             logs = []
             for item in res.json():
@@ -1110,7 +1123,7 @@ class httpclient:
     def group_source(self, name: str):
         res = self.session.get(f'{self.uri}/group/source', params={
             'name': name
-        })
+        }, timeout=DEFAULT_TIMEOUT)
 
         if res.status_code == 200:
             return res.json()
@@ -1132,7 +1145,7 @@ class httpclient:
             'name': name,
             'type': 'standard',
             'all': all
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -1146,7 +1159,7 @@ class httpclient:
         res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name,
             'type': 'archive'
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return [
                 (pd.Timestamp(stamp), meta, user)
@@ -1162,7 +1175,7 @@ class httpclient:
         res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name,
             'type': 'internal'
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code == 200:
             return res.json()
 
@@ -1177,7 +1190,7 @@ class httpclient:
         res = self.session.put(f'{self.uri}/group/metadata', data={
             'name': name,
             'metadata': json.dumps(meta)
-        })
+        }, timeout=DEFAULT_TIMEOUT)
 
         assert res.status_code != 404
 
@@ -1189,7 +1202,7 @@ class httpclient:
         res = self.session.patch(f'{self.uri}/group/metadata', data={
             'name': name,
             'metadata': json.dumps(meta)
-        })
+        }, timeout=DEFAULT_TIMEOUT)
 
         assert res.status_code != 404
 
@@ -1199,7 +1212,7 @@ class httpclient:
     def group_exists(self, name: str):
         res = self.session.get(f'{self.uri}/group/metadata', params={
             'name': name
-        })
+        }, timeout=DEFAULT_TIMEOUT)
         if res.status_code in (200, 404):
             meta = res.json()
             if 'message' in meta and meta['message'].endswith('does not exists'):
@@ -1212,7 +1225,8 @@ class httpclient:
     def group_delete(self, name: str):
         res = self.session.delete(
             f'{self.uri}/group/state',
-            data={'name': name}
+            data={'name': name},
+            timeout=DEFAULT_TIMEOUT
         )
         if res.status_code in (204, 404):
             return
@@ -1223,7 +1237,8 @@ class httpclient:
     def group_rename(self, oldname: str, newname: str):
         res = self.session.put(
             f'{self.uri}/group/state',
-            data={'name': oldname, 'newname': newname}
+            data={'name': oldname, 'newname': newname},
+            timeout=DEFAULT_TIMEOUT
         )
         if res.status_code == 204:
             return
@@ -1244,7 +1259,7 @@ class httpclient:
             'meta': meta,
             'sources': ','.join(sources),
             'source': _source
-        })
+        }, timeout=DEFAULT_TIMEOUT)
 
         if res.status_code == 200:
             return [
