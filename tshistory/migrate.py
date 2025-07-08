@@ -173,6 +173,9 @@ class Migrator:
 def migrate_022(engine, namespace, interactive):
     do_migrate_tree(engine, namespace, interactive)
     do_migrate_old_metadata(engine, namespace, interactive)
+    do_enforce_series_metadata_integrity(engine, namespace, interactive)
+    do_enforce_groups_metadata_integrity(engine, namespace, interactive)
+    do_enforce_series_metadata_integrity(engine, f'{namespace}.group', interactive)
 
 
 def do_migrate_tree(engine, namespace, interactive):
@@ -222,6 +225,101 @@ create table if not exists "{ns}".gr_oldmeta (
 create index on "{ns}".gr_oldmeta (moment);
 create index on "{ns}".gr_oldmeta (groupid);
 """, _binary=False)
+
+
+def do_enforce_series_metadata_integrity(engine, namespace, interactive):
+    print(f'enforce series metadata integrity for {namespace}')
+
+    with engine.begin() as cn:
+        # Data migration: ensure all NULL metadata values are set to empty objects
+        cn.execute(
+            f'update "{namespace}".registry '
+            f'set metadata = %s '
+            f'where metadata is null',
+            '{}'
+        )
+
+        cn.execute(
+            f'update "{namespace}".registry '
+            f'set internal_metadata = %s '
+            f'where internal_metadata is null',
+            '{}'
+        )
+
+        # Schema migration: add constraints and defaults to match schema files
+        # registry: add default and NOT NULL constraints
+        cn.execute(
+            f'alter table "{namespace}".registry '
+            f'alter column metadata set default \'{{}}\' ::jsonb'
+        )
+
+        # Only add NOT NULL if column is currently nullable
+        if cn.execute(
+            "select is_nullable from information_schema.columns "
+            f"where table_schema = '{namespace}' and table_name = 'registry' "
+            "and column_name = 'metadata'"
+        ).scalar() == 'YES':
+            cn.execute(
+                f'alter table "{namespace}".registry '
+                f'alter column metadata set not null'
+            )
+
+        if cn.execute(
+            "select is_nullable from information_schema.columns "
+            f"where table_schema = '{namespace}' and table_name = 'registry' "
+            "and column_name = 'internal_metadata'"
+        ).scalar() == 'YES':
+            cn.execute(
+                f'alter table "{namespace}".registry '
+                f'alter column internal_metadata set not null'
+            )
+
+
+def do_enforce_groups_metadata_integrity(engine, namespace, interactive):
+    print(f'enforce groups metadata integrity for {namespace}')
+
+    with engine.begin() as cn:
+        # Data migration: ensure all NULL metadata values are set to empty objects
+        cn.execute(
+            f'update "{namespace}".group_registry '
+            f'set metadata = %s '
+            f'where metadata is null',
+            '{}'
+        )
+
+        cn.execute(
+            f'update "{namespace}".group_registry '
+            f'set internal_metadata = %s '
+            f'where internal_metadata is null',
+            '{}'
+        )
+
+        # Schema migration: add constraints and defaults to match schema files
+        # group_registry: add default and NOT NULL constraints
+        cn.execute(
+            f'alter table "{namespace}".group_registry '
+            f'alter column metadata set default \'{{}}\' ::jsonb'
+        )
+
+        if cn.execute(
+            "select is_nullable from information_schema.columns "
+            f"where table_schema = '{namespace}' and table_name = 'group_registry' "
+            "and column_name = 'metadata'"
+        ).scalar() == 'YES':
+            cn.execute(
+                f'alter table "{namespace}".group_registry '
+                f'alter column metadata set not null'
+            )
+
+        if cn.execute(
+            "select is_nullable from information_schema.columns "
+            f"where table_schema = '{namespace}' and table_name = 'group_registry' "
+            "and column_name = 'internal_metadata'"
+        ).scalar() == 'YES':
+            cn.execute(
+                f'alter table "{namespace}".group_registry '
+                f'alter column internal_metadata set not null'
+            )
 
 
 @version('tshistory', '0.21.0')

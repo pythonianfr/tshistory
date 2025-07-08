@@ -3785,6 +3785,8 @@ def test_group_nan(engine, tsh):
     with pytest.raises(ValueError):
         tsh.group_get(engine, 'group-with-nans')
 
+    tsh.group_delete(engine, 'group-with-nans')
+
 
 def test_group_history(engine, tsh):
     for idx, idate in enumerate(

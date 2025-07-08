@@ -1722,7 +1722,6 @@ def test_remote_group(engine, tsx):
     meta = tsx.group_metadata('remote-group')
     assert meta == {}
     imeta = tsx.group_internal_metadata('remote-group')
-    imeta.pop('tablename')
     assert imeta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
@@ -1813,7 +1812,6 @@ def test_primary_group(tsx):
     assert meta == {'name': 'babar'}
 
     meta = tsx.group_internal_metadata('first_group_api')
-    meta.pop('tablename')
     assert meta == {
         'index_dtype': '<M8[ns]',
         'index_type': 'datetime64[ns]',
@@ -2553,8 +2551,8 @@ def test_group_find(tsx):
     assert gr.imeta == {
         'index_dtype': '|M8[ns]',
         'index_type': 'datetime64[ns, UTC]',
-        'left': '2025-01-01T00:00:00',
-        'right': '2025-01-05T00:00:00',
+        'left': '2025-01-01T00:00:00+00:00',
+        'right': '2025-01-05T00:00:00+00:00',
         'tzaware': True,
         'value_dtype': '<f8',
         'value_type': 'float64'

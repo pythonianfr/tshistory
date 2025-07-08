@@ -3,8 +3,8 @@
 create table "{ns}".group_registry (
   id serial primary key,
   name text not null unique,
-  internal_metadata jsonb,
-  metadata jsonb
+  internal_metadata jsonb not null,
+  metadata jsonb not null default '{{}}'
 );
 
 create index "ix_{ns}_group_registry_idx" on "{ns}".group_registry(name);

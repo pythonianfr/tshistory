@@ -3,8 +3,8 @@
 create table "{ns}".registry (
   id serial primary key,
   name text not null,
-  internal_metadata jsonb,
-  metadata jsonb,
+  internal_metadata jsonb not null,
+  metadata jsonb not null default '{{}}',
   unique(name)
 );
 

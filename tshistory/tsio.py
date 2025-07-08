@@ -97,12 +97,14 @@ class base:
     def internal_metadata(self, cn, name):
         if name in cn.cache['internal_metadata']:
             return cn.cache['internal_metadata'][name]
-        meta = cn.cache['internal_metadata'][name] = cn.execute(
+        meta = cn.execute(
             f'select internal_metadata '
             f'from "{self.namespace}".registry '
             f'where name = %(name)s',
             name=name
         ).scalar()
+        if meta:
+            cn.cache['internal_metadata'][name] = meta
         return meta
 
     @tx
@@ -986,13 +988,24 @@ class base:
         infos = self._group_info(cn, name)
 
         if not len(infos):
-            # first insertion -> register group
-            sql = (
-                f'insert into "{self.namespace}".group_registry (name)'
-                'values (%(name)s)'
-                'returning id'
+            ts1 = guard_insert(
+                df[df.columns[0]], name, author, None,
+                insertion_date
             )
-            group_id = cn.execute(sql, name=name).scalar()
+            # first insertion -> register group
+            imeta = series_metadata(ts1)
+            imeta.update({
+                'left': ts1.index[0].isoformat(),
+                'right': ts1.index[-1].isoformat()
+            })
+            group_id = cn.execute(
+                f'insert into "{self.namespace}".group_registry '
+                '(name, internal_metadata) '
+                'values (%(name)s, %(imeta)s) '
+                'returning id',
+                name=name,
+                imeta=imeta
+            ).scalar()
             for colname in df.columns:
                 self._create_group_item(
                     cn,
@@ -1002,26 +1015,6 @@ class base:
                     author,
                     insertion_date
                 )
-            tsmeta = cn.execute(
-                'select tsr.internal_metadata '
-                f'from "{self.namespace}".group_registry as gr, '
-                f'     "{self.namespace}".groupmap as gm,'
-                f'     "{self.namespace}.group".registry as tsr '
-                'where gr.name = %(name)s and '
-                '      gr.id = gm.groupid and '
-                '      gm.seriesid = tsr.id '
-                'limit 1',
-                name=name
-            ).scalar()
-            cn.execute(
-                f'update "{self.namespace}".group_registry '
-                'set internal_metadata = %(imeta)s, '
-                '    metadata = %(metadata)s '
-                f'where name = %(name)s',
-                imeta=tsmeta,
-                metadata={},
-                name=name
-            )
             return
 
         # replace
