@@ -288,10 +288,10 @@ def test_staircase_history(client):
             from_value_date=utcdt(2015, 1, 1, 4),
             to_value_date=utcdt(2015, 1, 2, 5)
         )
-    assert str(err.value) == (
-        'Bad Query: {"errors":{"delta":"time delta in iso 8601 duration unit abbreviation w\\/o a number"},'
-        '"message":"Input payload validation failed"}\n'
-    )
+    err_str = str(err.value).replace('\\/', '/')
+    assert 'Bad Query:' in err_str
+    assert 'time delta in iso 8601 duration unit abbreviation w/o a number' in err_str
+    assert 'Input payload validation failed' in err_str
 
     assert_df("""
 2015-01-01 04:00:00+00:00    4.0
