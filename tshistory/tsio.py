@@ -69,6 +69,7 @@ class base:
                 _groups=False
             )
         self.kvstore = _kvstore
+        self.tree_lock_id = sum(ord(c) for c in self.namespace) + 1
 
     def get(self, cn, name, *a, **kw):
         raise NotImplementedError
@@ -171,7 +172,10 @@ class base:
                 name=name
             )
             return
-
+        # serialize upserts postgres-side
+        cn.execute(
+                f'select pg_advisory_xact_lock({self.tree_lock_id})'
+            )
         # does the path exist ?
         if not cn.execute(
                 f'select id from "{self.namespace}".tree '

@@ -19,6 +19,7 @@ from tshistory.testutil import (
 from tshistory.util import (
     replicate_series,
     replicate_basket,
+    threadpool,
 )
 
 
@@ -1691,6 +1692,34 @@ def test_tree_api(tsx, engine):
     assert tsx.tree() == ['UE.France', 'UE.RepubliqueFrancaise']
     assert tsx.path_series('a.name') == []
     assert tsx.path_series('UE.RepubliqueFrancaise') == ['ue.france']
+
+
+def test_tree_parallel(tsx, tsh, engine):
+    tsx.set_tree_attribute('tree')
+    ts = genserie(dt(2025, 1, 1), 'd', 10)
+    path = 'my.new.folder'
+    names = [
+        ( 'series.a.tree', path ),
+        ( 'series.b.tree', path ),
+        ( 'series.c.tree', path ),
+        ( 'series.d.tree', path ),
+        ( 'series.e.tree', path ),
+        ( 'series.f.tree', path ),
+    ]
+    for sn in names:
+        tsx.update(sn[0], ts, 'test')
+    errors = []
+
+    def put_in_folder(sn, path):
+        try:
+            tsx.update_metadata(sn, {'tree': path})
+        except Exception as e:
+            errors.append(e)
+
+    pool = threadpool(7)
+    pool(put_in_folder, names)
+    assert tsx.metadata('series.a.tree') == {'tree': 'my.new.folder'}
+    assert not len(errors)
 
 
 # groups
