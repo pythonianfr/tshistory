@@ -1609,11 +1609,13 @@ class timeseries(base):
                       tablename=tablename).scalar():
             tablename = str(uuid.uuid4())
 
-        cn.cache['series_tablename'][name] = tablename
+        cache_key = f"{self.namespace}:{name}"
+        cn.cache['series_tablename'][cache_key] = tablename
         return tablename
 
     def _series_to_tablename(self, cn, name):
-        tablename = cn.cache['series_tablename'].get(name)
+        cache_key = f"{self.namespace}:{name}"
+        tablename = cn.cache['series_tablename'].get(cache_key)
         if tablename is not None:
             return tablename
 
@@ -1626,7 +1628,7 @@ class timeseries(base):
         if tablename is None:
             # bogus series name
             return
-        cn.cache['series_tablename'][name] = tablename
+        cn.cache['series_tablename'][cache_key] = tablename
         return tablename
 
     def _make_ts_table(self, cn, name):
