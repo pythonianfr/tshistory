@@ -55,6 +55,7 @@ class nosecurity:
 def required_roles(*roles):
 
     def decorator(func):
+        @wraps(func)
         def wrapper(*a, **kw):
             role = request.environ.get('ROLE') or 'guest'
             if role not in roles:
