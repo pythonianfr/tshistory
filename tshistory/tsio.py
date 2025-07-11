@@ -1231,6 +1231,11 @@ class timeseries(base):
 
         self._validate(cn, newts, name)
 
+        # serialize updates to avoid race conditions on storage
+        cn.execute(
+            f'select pg_advisory_xact_lock({hash64(name)})'
+        )
+
         # check that we don't insert a duplicate of current value
         current = self.get(cn, name)
         if current.equals(newts):
@@ -1389,7 +1394,7 @@ class timeseries(base):
     def delete(self, cn, name):
         tablename = self._series_to_tablename(cn, name)
         if tablename is None:
-            print('not deleting unknown series', name, self.namespace)
+            L.warning('Not deleting unknown series `%s` (%s)', name, self.namespace)
             return
         # serialize all deletions to avoid deadlocks
         cn.execute(
@@ -1400,6 +1405,11 @@ class timeseries(base):
             'where name = %(name)s',
             name=name
         ).scalar()
+        if rid is None:
+            # concurrent deletion path
+            L.warning('Attempting to delete non existent series `%s`', name)
+            return
+
         # drop series tables
         cn.execute(
             f'drop table "{self.namespace}.revision"."{tablename}" cascade'
@@ -1507,6 +1517,11 @@ class timeseries(base):
             return empty_series(self.tzaware(cn, name))
 
         self._validate(cn, newts, name)
+
+        # serialize updates to avoid race conditions on storage
+        cn.execute(
+            f'select pg_advisory_xact_lock({hash64(name)})'
+        )
 
         snapshot = self.storageclass(cn, self, name)
         # NOTE: there is a potential for a small i/o optimisation
