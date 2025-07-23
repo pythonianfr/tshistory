@@ -14,7 +14,6 @@ from requests_auth import (
     OAuth2ClientCredentials
 )
 
-from tshistory.tsio import timeseries
 from tshistory.config import (
     configuration,
     NoConfigFile
@@ -417,11 +416,6 @@ class httpclient:
                 return None
             if res.status_code == 200:
                 meta = res.json()
-                for key in list(meta):
-                    # list call above to help against a weird
-                    # `dictionary changed size during iteration`
-                    if key not in timeseries.metakeys:
-                        meta.pop(key, None)
                 return meta
 
         return res
