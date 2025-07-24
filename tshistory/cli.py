@@ -1,6 +1,6 @@
 from collections import defaultdict
+from importlib.metadata import entry_points
 
-from pkg_resources import iter_entry_points
 import click
 from sqlhelp.pgapi import pgdb as create_engine
 
@@ -81,8 +81,8 @@ def shell(db_uri, namespace='tsh'):
 
 def register_plugin_subcommands():
     errors = defaultdict(set)
-    entrypoints = list(iter_entry_points('tshistory.subcommands'))
-    entrypoints.sort(key=lambda ep: 'pro' in ep.module_name)
+    entrypoints = list(entry_points().select(group='tshistory.subcommands'))
+    entrypoints.sort(key=lambda ep: 'pro' in ep.module)
     for ep in entrypoints:
         try:
             cmd = ep.load()

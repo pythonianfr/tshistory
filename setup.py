@@ -16,7 +16,7 @@ setup(name='tshistory',
       long_description=doc.read_text(),
       long_description_content_type='text/markdown',
       packages=find_packages(),
-      python_requires='>= 3.9',
+      python_requires='>= 3.10,',
       install_requires=[
           'ipdb',
           'orjson',
