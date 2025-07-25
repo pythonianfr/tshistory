@@ -1,6 +1,48 @@
 # Changelog
 
-## [0.21.0]
+## [Unreleased] - 0.22.0
+
+### Added
+- tree structure support for organizing time series hierarchically
+  - api: tree creation, deletion, path updates, and renaming operations
+  - search: `at-path` and `without-path` predicates for tree-based filtering
+- metadata history tracking
+  - api/old_metadata: retrieve historical versions of series metadata
+  - api/group_old_metadata: retrieve historical versions of group metadata
+- api/group_find: search and filter groups with predicates
+- api/group_update: incremental updates to groups (no longer requires full replacement)
+- api/group_source: identify the source of a group
+- api/info: high-level usage statistics about the tshistory instance
+- api/sources: list all secondary source names
+- api/insertion_dates: accept a `limit` parameter
+- api/get and api/group_get: `exclude` argument to filter out series/groups
+- advisory locks on postgresql update/replace operations for better concurrency
+- case-insensitive name searches
+- search parameter `allsources` to control federation behavior
+- http client: configless run when fed an http uri
+- comprehensive type annotations for http client and core modules
+
+### Changed
+- internal: replaced sqlalchemy + psycopg2 with sqlhelp + psycopg3
+- performance: migrated from json to orjson for 8x json performance improvement
+- performance: fast compression (level 1) for 2.3x speedup with minimal size cost
+- performance: optimized patch and diff functions for 3.4x speedup
+- performance: optimized timestamp object creation in hot paths
+- search with empty parameters now returns all names instead of empty results
+- http client: consistent timeout handling for all operations
+- updated minimum python version requirements
+- relaxed numpy constraints and bumped maximum pandas version
+
+### Fixed
+- empty group handling with proper datetimeindex
+- json date handling with different sizes
+- federation issues with group finding
+- http client source name passing issues
+- migration state test for empty series
+- namespace cache collision in series tablename lookup
+- various error reporting improvements when sources don't respond
+
+## [0.21.0] - 2025-02-27
 ### Fixed
 - more robust handling of passwords in db uris (sill "@" is not admitted)
 - do not show the password in the logs
@@ -21,14 +63,14 @@
 ### Changed
 - empty series are now allowed
 
-## [0.20.1]
+## [0.20.1] - 2024-10-25
 ### Fixed
 - api/inferred_freq: fix some edge cases
 - api/baskets: fix by.source handling
 - api/get: remove experimental horizon parameter
 - api/find: fix queries with by.metaitem
 
-## [0.20.0]
+## [0.20.0] - 2024-08-23
 ### Added
 - api/inferred_freq: get the inferred frequency (and a quality
   indicator) for a series over a given horizon and for a given
@@ -104,7 +146,7 @@
 - api/catalog: do not choke on secondary source unavailability
 - api/update: fix a crasher with str series when updating with no effect
 
-## Removed
+### Removed
 - cli: a number of practically unused commands have been removed
 
 ## [0.18.0] 2023-02-24
