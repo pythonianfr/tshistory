@@ -96,16 +96,12 @@ class base:
 
     @tx
     def internal_metadata(self, cn, name):
-        if name in cn.cache['internal_metadata']:
-            return cn.cache['internal_metadata'][name]
         meta = cn.execute(
             f'select internal_metadata '
             f'from "{self.namespace}".registry '
             f'where name = %(name)s',
             name=name
         ).scalar()
-        if meta:
-            cn.cache['internal_metadata'][name] = meta
         return meta
 
     @tx
@@ -1186,7 +1182,7 @@ class timeseries(base):
             return self._create(cn, updatets, name, author, seriesmeta,
                                 metadata, insertion_date)
 
-        return self._update(cn, updatets, name, author,
+        return self._update(cn, updatets, name, author, tablename,
                             metadata, insertion_date)
 
     @tx
@@ -1249,7 +1245,7 @@ class timeseries(base):
             cn, name, {'left': start.isoformat(), 'right': end.isoformat()}
         )
 
-        head = self.storageclass(cn, self, name).create(newts)
+        head = self.storageclass(cn, self, name, tablename).create(newts)
         self._new_revision(
             cn, name, head, start, end,
             author, insertion_date, metadata
@@ -1293,7 +1289,8 @@ class timeseries(base):
             if to_value_date:
                 to_value_date = compatible_date(tzaware, to_value_date)
 
-        snap = self.storageclass(cn, self, name)
+        tablename = self._series_to_tablename(cn, name)
+        snap = self.storageclass(cn, self, name, tablename)
         try:
             _, current = snap.find(csetfilter=csetfilter,
                                    from_value_date=from_value_date,
@@ -1387,7 +1384,10 @@ class timeseries(base):
 
     @tx
     def last_id(self, cn, name):
-        snapshot = self.storageclass(cn, self, name)
+        tablename = self._series_to_tablename(cn, name)
+        if tablename is None:
+            return None
+        snapshot = self.storageclass(cn, self, name, tablename)
         return snapshot.last_id()
 
     @tx
@@ -1445,7 +1445,7 @@ class timeseries(base):
             'where id >= %(csid)s'
         )
         cn.execute(sql, csid=csid)
-        snapshot = self.storageclass(cn, self, name)
+        snapshot = self.storageclass(cn, self, name, tablename)
         snapshot.reclaim()
 
     @tx
@@ -1489,10 +1489,10 @@ class timeseries(base):
             f'select pg_advisory_xact_lock({self.create_lock_id})'
         )
 
-        self._make_ts_table(cn, name)
-        self._register_serie(cn, name, seriesmeta)
+        tablename = self._make_ts_table(cn, name)
+        self._register_serie(cn, name, seriesmeta, tablename)
 
-        snapshot = self.storageclass(cn, self, name)
+        snapshot = self.storageclass(cn, self, name, tablename)
         head = snapshot.create(newts)
         start, end = start_end(newts)
 
@@ -1511,7 +1511,7 @@ class timeseries(base):
                name, len(newts), author)
         return newts
 
-    def _update(self, cn, newts, name, author,
+    def _update(self, cn, newts, name, author, tablename,
                 metadata=None, insertion_date=None):
         if not len(newts):
             return empty_series(self.tzaware(cn, name))
@@ -1523,7 +1523,7 @@ class timeseries(base):
             f'select pg_advisory_xact_lock({hash64(name)})'
         )
 
-        snapshot = self.storageclass(cn, self, name)
+        snapshot = self.storageclass(cn, self, name, tablename)
         # NOTE: there is a potential for a small i/o optimisation
         # there as we get a bunch of chunks, and in .update we will
         # get _mostly_ the same chunks: some reads might be avoided by
@@ -1628,26 +1628,15 @@ class timeseries(base):
                       tablename=tablename).scalar():
             tablename = str(uuid.uuid4())
 
-        cache_key = f"{self.namespace}:{name}"
-        cn.cache['series_tablename'][cache_key] = tablename
         return tablename
 
     def _series_to_tablename(self, cn, name):
-        cache_key = f"{self.namespace}:{name}"
-        tablename = cn.cache['series_tablename'].get(cache_key)
-        if tablename is not None:
-            return tablename
-
         tablename = cn.execute(
             f'select internal_metadata->\'tablename\' '
             f'from "{self.namespace}".registry '
             f'where name = %(name)s',
             name=name
         ).scalar()
-        if tablename is None:
-            # bogus series name
-            return
-        cn.cache['series_tablename'][cache_key] = tablename
         return tablename
 
     def _make_ts_table(self, cn, name):
@@ -1658,12 +1647,12 @@ class timeseries(base):
             tablename=tablename
         )
         cn.execute(table, _binary=False)
+        return tablename
 
     def _series_initial_meta(self, _cn, _name, ts):
         return series_metadata(ts)
 
-    def _register_serie(self, cn, name, seriesmeta):
-        tablename = self._series_to_tablename(cn, name)
+    def _register_serie(self, cn, name, seriesmeta, tablename):
         seriesmeta['tablename'] = tablename
         cn.execute(
             f'insert into "{self.namespace}".registry '
@@ -1798,9 +1787,7 @@ class timeseriesfs1(base):
 
     @tx
     def internal_metadata(self, cn, name):
-        if name in cn.cache['internal_metadata']:
-            return cn.cache['internal_metadata'][name]
-        meta = cn.cache['internal_metadata'][name] = cn.execute(
+        meta = cn.execute(
             f'select internal_metadata '
             f'from "{self.namespace}".registry '
             f'where name = %(name)s',
@@ -2223,22 +2210,13 @@ class timeseriesfs1(base):
         ).scalar():
             path = str(uuid.uuid4())
 
-        cn.cache['series_path'][name] = path
         return path
 
     def _path(self, cn, name):
-        path = cn.cache['series_path'].get(name)
-        if path is not None:
-            return path
-
         path = cn.execute(
             f'select internal_metadata->\'path\' '
             f'from "{self.namespace}".registry '
             f'where name = %(name)s',
             name=name
         ).scalar()
-        if path is None:
-            # bogus series name
-            return
-        cn.cache['series_path'][name] = path
         return path

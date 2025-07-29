@@ -10,7 +10,6 @@ from psycopg.errors import ForeignKeyViolation
 
 from tshistory.storage import Postgres
 from tshistory.util import (
-    ensure_cache,
     diff,
     empty_series,
     threadpool,
@@ -360,7 +359,7 @@ def test_base_diff(engine, tsh):
     id1 = tsh.last_id(engine, 'ts_test')
     with engine.begin() as cn:
         assert tsh._previous_cset(
-            ensure_cache(cn),
+            cn,
             'ts_test',
             id1
         ) is None
@@ -416,7 +415,7 @@ def test_base_diff(engine, tsh):
 
     with engine.begin() as cn:
         assert tsh._previous_cset(
-            ensure_cache(cn),
+            cn,
             'ts_test',
             id2
         ) == id1
@@ -1019,7 +1018,6 @@ def test_insertion_dates_without_diffs(engine, tsh):
         return
     # now, erase one diffstart / diffend
     with engine.begin() as cn:
-        cn.cache = {'series_tablename': {}}
         tablename = tsh._series_to_tablename(cn, 'hist-no-diff')
         # engine.execute(f'select id, diffstart from "tsh.revision"."{tablename}"').fetchall()
 
@@ -1217,8 +1215,8 @@ def test_point_deletion(engine, tsh):
 
     if isinstance(tsh, timeseries):
         with engine.begin() as cn:
-            cn.cache = {'series_tablename': {}}
-            _, ts = Postgres(cn, tsh, 'ts_del').find()
+            tablename = tsh._series_to_tablename(cn, 'ts_del')
+            _, ts = Postgres(cn, tsh, 'ts_del', tablename).find()
         assert ts.iloc[-3] == 8.0
 
     ts_begin.iloc[0] = np.nan
@@ -1927,8 +1925,8 @@ insertion_date             value_date
 
     if isinstance(tsh, timeseries):
         with engine.begin() as cn:
-            cn.cache = {'series_tablename': {}}
-            snap = Postgres(cn, tsh, 'xserie')
+            tablename = tsh._series_to_tablename(cn, 'xserie')
+            snap = Postgres(cn, tsh, 'xserie', tablename)
             assert snap.garbage() == set()
             tsh.strip(cn, 'xserie', datetime(2017, 1, 3))
 
@@ -3045,7 +3043,8 @@ def test_replace_reuse(engine, tsh):
     )
     if isinstance(tsh, timeseries):
         with engine.begin() as cn:
-            snap = Postgres(ensure_cache(cn), tsh, 'replace-reuse')
+            tablename = tsh._series_to_tablename(cn, 'replace-reuse')
+            snap = Postgres(cn, tsh, 'replace-reuse', tablename)
             chunks = [(sid, parent) for sid, parent, _ in snap.rawchunks(1)]
             assert chunks == [(1, None)]
 
@@ -3090,7 +3089,7 @@ def test_revisions_callback(engine, tsh):
     )
 
     with engine.begin() as cn:
-        ensure_cache(cn)
+        cn
         babarrevs = tsh._revisions(
             cn,
             'rev-callback',
@@ -3106,7 +3105,6 @@ def test_revisions_callback(engine, tsh):
     assert [rid for rid, _ in celesterevs] == [2, 4]
 
     with engine.begin() as cn:
-        ensure_cache(cn)
         goodstatus = tsh._revisions(
             cn,
             'rev-callback',

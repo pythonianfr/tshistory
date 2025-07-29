@@ -877,30 +877,15 @@ def threadpool(maxthreads: int) -> Callable[[Callable, list[tuple]], None]:
 
 # transaction wrapper
 
-_required_keys = ('internal_metadata', 'series_tablename', 'series_path')
-
-def ensure_cache(cnobj: Any) -> Any:
-    """Ensure cache exists and has all required keys. Safe to call multiple times."""
-    if not hasattr(cnobj, 'cache'):
-        cnobj.cache = {}
-
-    # ensure all required cache keys exist
-    for key in _required_keys:
-        if key not in cnobj.cache:
-            cnobj.cache[key] = {}
-
-    return cnobj
-
-
 def tx(func: Callable) -> Callable:
     " a decorator to check that the first method argument is a transaction "
     def check_tx_and_call(self, cn, *a, **kw):
         # safety belt to make sure important api points are tx-safe
         if isinstance(cn, pgapi.pgdb):
             with cn.begin() as txcn:
-                return func(self, ensure_cache(txcn), *a, **kw)
+                return func(self, txcn, *a, **kw)
 
-        return func(self, ensure_cache(cn), *a, **kw)
+        return func(self, cn, *a, **kw)
     check_tx_and_call.__name__ = func.__name__
     return check_tx_and_call
 
@@ -1081,7 +1066,6 @@ def checkdiffs_for_name(
 ) -> None:
     tsh = tsa.tsh
     with engine.begin() as cn:
-        cn.cache = {'series_tablename': {}}
         tablename = tsh._series_to_tablename(cn, name)
 
     things = engine.execute(

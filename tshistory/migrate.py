@@ -349,7 +349,6 @@ def do_migrate_intervals(engine, namespace, interactive):
 def migrate_intervals(engine, namespace, interactive):
     tsh = tshclass(namespace)
     with engine.begin() as cn:
-        cn.cache = {'series_tablename': {}}
         tables = {
             name: tsh._series_to_tablename(cn, name)
             for name in tsh.list_series(engine).keys()
@@ -494,7 +493,6 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive, onlydata=False
     # main
     tsh = tshclass(namespace)
     with engine.begin() as cn:
-        cn.cache = {'series_tablename': {}}
         allnames = {
             name: tsh._series_to_tablename(cn, name)
             for name in tsh.list_series(engine).keys()
@@ -517,7 +515,6 @@ def migrate_add_diffstart_diffend(engine, namespace, interactive, onlydata=False
         engine = pgdb(url)
         for name in names:
             with engine.begin() as cn:
-                cn.cache = {'series_tablename': {}}
                 tablename = tsh._series_to_tablename(cn, name)
                 print(f'{pid}: migrating `{name}` (table: {tablename})')
                 if not migdata:
@@ -565,7 +562,6 @@ def migrate_seriesdata_diffstart_diffend(engine, namespace, name):
     pid = os.getpid()
 
     with engine.begin() as cn:
-        cn.cache = {'series_tablename': {}}
         tablename = tsh._series_to_tablename(cn, name)
         if tablename:
             print(f'{pid}: migrating `{name}` (table: {tablename})')

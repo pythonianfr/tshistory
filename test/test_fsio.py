@@ -18,7 +18,6 @@ from tshistory.storage import FS1
 
 def assert_nodes(engine, name, tsh, nodes):
     with engine.begin() as cn:
-        cn.cache = {'series_path': {}}
         sto = FS1(cn, tsh, name)
         assert {
             idx: (node.parent, node.address, node.size)

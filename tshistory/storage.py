@@ -110,11 +110,11 @@ class Postgres(base):
     """
     __slots__ = ('cn', 'name', 'tsh', 'tablename')
 
-    def __init__(self, cn: Any, tsh: Any, name: str) -> None:
+    def __init__(self, cn: Any, tsh: Any, name: str, tablename: str) -> None:
         self.cn = cn
         self.tsh = tsh
         self.name = name
-        self.tablename = self.tsh._series_to_tablename(cn, name)
+        self.tablename = tablename
 
     @property
     def isstr(self) -> bool:

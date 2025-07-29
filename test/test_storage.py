@@ -3,7 +3,6 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
-from tshistory.util import ensure_cache
 from tshistory.storage import Postgres
 from tshistory.testutil import (
     assert_df,
@@ -25,7 +24,6 @@ def chunksize(meta, snap, head, from_value_date=None):
 
 def test_chunks(engine, tsp):
     tsh = tsp
-    ensure_cache(engine)
     with tempattr(Postgres, '_max_bucket_size', 2):
         ts = genserie(datetime(2010, 1, 1), 'D', 5)
         tsh.update(engine, ts, 'chunks', 'test')
@@ -49,8 +47,8 @@ def test_chunks(engine, tsp):
         assert chunks[1].parent == 1
         assert chunks[2].parent == 2
         with engine.begin() as cn:
-            cn.cache = {'series_tablename': {}}
-            snap = Postgres(cn, tsh, 'chunks')
+            tablename = tsh._series_to_tablename(cn, 'chunks')
+            snap = Postgres(cn, tsh, 'chunks', tablename)
         meta = tsh.internal_metadata(engine, 'chunks')
         ts0 = iohelper.chunks_to_ts(meta, [chunks[0].chunk])
         ts1 = iohelper.chunks_to_ts(meta, [chunks[1].chunk])
@@ -108,8 +106,8 @@ def test_chunks(engine, tsp):
         }
 
         with engine.begin() as cn:
-            cn.cache = {'series_tablename': {}}
-            snap = Postgres(cn, tsh, 'chunks')
+            tablename = tsh._series_to_tablename(cn, 'chunks')
+            snap = Postgres(cn, tsh, 'chunks', tablename)
         ts0 = iohelper.chunks_to_ts(meta, [chunks[0].chunk])
         ts1 = iohelper.chunks_to_ts(meta, [chunks[1].chunk])
         ts2 = iohelper.chunks_to_ts(meta, [chunks[2].chunk])
@@ -191,8 +189,8 @@ def test_chunks(engine, tsp):
 
         # 2nd commit chunks without filtering
         with engine.begin() as cn:
-            cn.cache = {'series_tablename': {}}
-            snap = Postgres(cn, tsh, 'chunks')
+            tablename = tsh._series_to_tablename(cn, 'chunks')
+            snap = Postgres(cn, tsh, 'chunks', tablename)
             chunks = chunksize(meta, snap, 5)
 
             assert chunks == {
@@ -286,8 +284,8 @@ def test_get_from_to(engine, tsp):
     meta = tsh.internal_metadata(engine, 'quitelong')
 
     with engine.begin() as cn:
-        cn.cache = {'series_tablename': {}}
-        snap = Postgres(cn, tsh, 'quitelong')
+        tablename = tsh._series_to_tablename(cn, 'quitelong')
+        snap = Postgres(cn, tsh, 'quitelong', tablename)
 
         if tsh.namespace == 'z-z':
             sql = 'select id, parent from "z-z.snapshot".quitelong order by id'
@@ -299,7 +297,8 @@ def test_get_from_to(engine, tsp):
             chunks.pop(1)
             assert all(k == v+1 for k, v in chunks.items())
 
-            snap = Postgres(cn, tsh, 'quitelong')
+            tablename = tsh._series_to_tablename(cn, 'quitelong')
+            snap = Postgres(cn, tsh, 'quitelong', tablename)
             chunks = chunksize(meta, snap, 73)
             assert chunks == {None: 5, 1: 5, 2: 5, 3: 5, 4: 5, 5: 5, 6: 5, 7: 5,
                               8: 5, 9: 5, 10: 5, 11: 5, 12: 5, 13: 5, 14: 5, 15: 5,
