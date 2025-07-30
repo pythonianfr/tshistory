@@ -87,7 +87,7 @@ def register_plugin_subcommands():
         try:
             cmd = ep.load()
         except Exception as e:
-            errors[str(e)].add(ep.module_name)
+            errors[str(e)].add(ep.module)
             continue
         tsh.add_command(cmd)
 
