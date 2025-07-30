@@ -890,6 +890,27 @@ def tx(func: Callable) -> Callable:
     return check_tx_and_call
 
 
+def tx_cache(func: Callable) -> Callable:
+    from functools import wraps
+    
+    @wraps(func)
+    def wrapper(self, cn, *args):
+        # build cache key from namespace, function name and positional arguments
+        cache_key = (self.namespace, func.__name__, args)
+        
+        # check cache
+        if cache_key in cn.cache:
+            return cn.cache[cache_key]
+        
+        # call function and cache result only if not None
+        result = func(self, cn, *args)
+        if result is not None:
+            cn.cache[cache_key] = result
+        return result
+        
+    return wrapper
+
+
 # bisection
 
 def bisect_search(values: Union[np.ndarray, list[float]], value: float) -> int:

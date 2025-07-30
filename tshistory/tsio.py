@@ -30,6 +30,7 @@ from tshistory.util import (
     start_end,
     ts,
     tx,
+    tx_cache,
     tzaware_series
 )
 from tshistory.storage import Postgres, FS1
@@ -95,6 +96,7 @@ class base:
         }
 
     @tx
+    @tx_cache
     def internal_metadata(self, cn, name):
         meta = cn.execute(
             f'select internal_metadata '
@@ -327,6 +329,7 @@ class base:
         }
 
     @tx
+    @tx_cache
     def tzaware(self, cn, name):
         return cn.execute(
             'select internal_metadata->\'tzaware\' '
@@ -1630,6 +1633,7 @@ class timeseries(base):
 
         return tablename
 
+    @tx_cache
     def _series_to_tablename(self, cn, name):
         tablename = cn.execute(
             f'select internal_metadata->\'tablename\' '
@@ -1786,6 +1790,7 @@ class timeseriesfs1(base):
         ).scalar()
 
     @tx
+    @tx_cache
     def internal_metadata(self, cn, name):
         meta = cn.execute(
             f'select internal_metadata '
@@ -2212,6 +2217,7 @@ class timeseriesfs1(base):
 
         return path
 
+    @tx_cache
     def _path(self, cn, name):
         path = cn.execute(
             f'select internal_metadata->\'path\' '
