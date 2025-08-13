@@ -79,6 +79,45 @@ def shell(db_uri, namespace='tsh'):
     import pdb; pdb.set_trace()
 
 
+@tsh.command(name='diagnose-indexes')
+@click.argument('db-uri')
+@click.option('--namespace', default='tsh')
+@click.option('--fix', is_flag=True, help='Fix the issues (rename and drop duplicates)')
+def diagnose_indexes(db_uri, namespace='tsh', fix=False):
+    """Diagnose and optionally fix index issues (duplicates, missing, wrong names)"""
+    from tshistory import dbdiag
+
+    uri = configuration().find_dburi(db_uri)
+    engine = create_engine(uri)
+
+    # Always show diagnosis first
+    report = dbdiag.diagnose_indexes(engine, namespace)
+    print(report)
+
+    if not fix:
+        return
+
+    print("\nFix plan - Commands to execute:")
+
+    # Get expected indexes for this namespace
+    expected_indexes = dbdiag.get_expected_indexes(namespace)
+
+    # First show what would be done (dry run)
+    commands = dbdiag.fix_indexes(engine, namespace, expected_indexes, dry_run=True)
+
+    if commands:
+        for cmd in commands:
+            print(f"  {cmd}")
+
+        commands = dbdiag.fix_indexes(engine, namespace, expected_indexes, dry_run=False)
+        print(f"\nExecuted {len(commands)} commands.")
+
+        # Show diagnosis again to confirm fix
+        print("\nFinal state:")
+        report = dbdiag.diagnose_indexes(engine, namespace)
+        print(report)
+
+
 def register_plugin_subcommands():
     errors = defaultdict(set)
     entrypoints = list(entry_points().select(group='tshistory.subcommands'))

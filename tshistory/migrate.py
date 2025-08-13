@@ -178,6 +178,11 @@ def migrate_022(engine, namespace, interactive):
     do_enforce_groups_metadata_integrity(engine, namespace, interactive)
     do_enforce_series_metadata_integrity(engine, f'{namespace}.group', interactive)
 
+    # Fix indexes with explicit expected indexes for tshistory
+    from tshistory import dbdiag
+    tshistory_indexes = dbdiag.get_expected_indexes(namespace)
+    do_fix_indexes(engine, namespace, interactive, tshistory_indexes)
+
 
 def do_migrate_tree(engine, namespace, interactive):
     ns = namespace
@@ -224,8 +229,8 @@ create table if not exists "{ns}".ts_oldmeta (
   metadata jsonb not null
 );
 
-create index on "{ns}".ts_oldmeta (moment);
-create index on "{ns}".ts_oldmeta (seriesid);
+create index if not exists "{ns}_ts_oldmeta_moment_idx" on "{ns}".ts_oldmeta (moment);
+create index if not exists "{ns}_ts_oldmeta_seriesid_idx" on "{ns}".ts_oldmeta (seriesid);
 
 create table if not exists "{ns}".gr_oldmeta (
   moment timestamptz unique not null default now(),
@@ -234,8 +239,8 @@ create table if not exists "{ns}".gr_oldmeta (
   metadata jsonb not null
 );
 
-create index on "{ns}".gr_oldmeta (moment);
-create index on "{ns}".gr_oldmeta (groupid);
+create index if not exists "{ns}_gr_oldmeta_moment_idx" on "{ns}".gr_oldmeta (moment);
+create index if not exists "{ns}_gr_oldmeta_groupid_idx" on "{ns}".gr_oldmeta (groupid);
 """, _binary=False)
 
 
@@ -332,6 +337,34 @@ def do_enforce_groups_metadata_integrity(engine, namespace, interactive):
                 f'alter table "{namespace}".group_registry '
                 f'alter column internal_metadata set not null'
             )
+
+
+def do_fix_indexes(engine, namespace, interactive, indexes):
+    from tshistory import dbdiag
+
+    print(f'fix indexes to match naming convention for {namespace}')
+
+    # Get current state
+    actual = dbdiag.get_actual_indexes(engine, namespace)
+    issues = dbdiag.find_issues(indexes, actual)
+
+    # Only proceed if there are issues
+    if not issues['wrong_name'] and not issues['missing'] and not issues['duplicates']:
+        print('  All indexes are already correct')
+        return
+
+    # Report what we'll fix
+    if issues['wrong_name']:
+        print(f"  Will rename {len(issues['wrong_name'])} indexes")
+    if issues['missing']:
+        print(f"  Will create {len(issues['missing'])} missing indexes")
+    if issues['duplicates']:
+        print(f"  Will drop {len(issues['duplicates'])} duplicate index sets")
+
+    # Use dbdiag to fix all index issues
+    commands = dbdiag.fix_indexes(engine, namespace, indexes, dry_run=False)
+    if commands:
+        print(f'  Executed {len(commands)} index operations')
 
 
 @version('tshistory', '0.21.0')
@@ -592,11 +625,11 @@ def migrate_metadata(engine, namespace, interactive):
             f'add column if not exists "internal_metadata" jsonb'
         )
         cn.execute(
-            f'create index if not exists idx_metadata '
+            f'create index if not exists "{ns}_registry_metadata_idx" '
             f'on "{ns}".registry using gin (metadata)'
         )
         cn.execute(
-            f'create index if not exists idx_internal_metadata '
+            f'create index if not exists "{ns}_registry_internal_metadata_idx" '
             f'on "{ns}".registry using gin (internal_metadata)'
         )
         if unmigrated:
@@ -661,11 +694,11 @@ def migrate_groups_metadata(engine, namespace, interactive):
             f'add column if not exists "internal_metadata" jsonb'
         )
         cn.execute(
-            f'create index if not exists idx_group_metadata '
+            f'create index if not exists "{ns}_group_registry_metadata_idx" '
             f'on "{ns}".group_registry using gin (metadata)'
         )
         cn.execute(
-            f'create index if not exists idx_group_internal_metadata '
+            f'create index if not exists "{ns}_group_registry_internal_metadata_idx" '
             f'on "{ns}".group_registry using gin (internal_metadata)'
         )
 

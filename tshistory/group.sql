@@ -8,8 +8,8 @@ create table "{ns}".group_registry (
 );
 
 create index "ix_{ns}_group_registry_idx" on "{ns}".group_registry(name);
-create index on "{ns}".group_registry using gin(internal_metadata);
-create index on "{ns}".group_registry using gin(metadata);
+create index "{ns}_group_registry_internal_metadata_idx" on "{ns}".group_registry using gin(internal_metadata);
+create index "{ns}_group_registry_metadata_idx" on "{ns}".group_registry using gin(metadata);
 
 -- in the series <-> group mapping below
 -- we don't give series names their member name
@@ -37,5 +37,5 @@ create table "{ns}".gr_oldmeta (
   metadata jsonb not null
 );
 
-create index on "{ns}".gr_oldmeta (moment);
-create index on "{ns}".gr_oldmeta (groupid);
+create index "{ns}_gr_oldmeta_moment_idx" on "{ns}".gr_oldmeta (moment);
+create index "{ns}_gr_oldmeta_groupid_idx" on "{ns}".gr_oldmeta (groupid);

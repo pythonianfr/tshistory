@@ -41,7 +41,8 @@ setup(name='tshistory',
           'importlib-metadata == 6.8',
           'deprecation',
           'requests_auth',
-          'zstandard == 0.23.0'
+          'zstandard == 0.23.0',
+          'hypothesis'
       ],
       package_data={'tshistory': [
           'registry.sql',

@@ -8,8 +8,8 @@ create table "{ns}".registry (
   unique(name)
 );
 
-create index on "{ns}".registry using gin(internal_metadata);
-create index on "{ns}".registry using gin(metadata);
+create index "{ns}_registry_internal_metadata_idx" on "{ns}".registry using gin(internal_metadata);
+create index "{ns}_registry_metadata_idx" on "{ns}".registry using gin(metadata);
 
 -- commit author + metadata (for the fs backend)
 
@@ -20,4 +20,4 @@ create table "{ns}".revision_metadata (
   metadata jsonb
 );
 
-create index on "{ns}".revision_metadata(series);
+create index "{ns}_revision_metadata_series_idx" on "{ns}".revision_metadata(series);

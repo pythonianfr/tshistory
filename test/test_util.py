@@ -4,8 +4,11 @@ import io
 import pytest
 import pandas as pd
 import numpy as np
+from hypothesis import given, strategies as st, assume, settings
 
 from tshistory import tsio
+from tshistory import dbdiag
+from tshistory.migrate import do_fix_indexes
 from tshistory.util import (
     bisect_search,
     diff,
@@ -18,6 +21,7 @@ from tshistory.util import (
 )
 from tshistory.testutil import (
     assert_df,
+    create_index_issues,
     genserie,
     tables,
     utcdt
@@ -428,3 +432,127 @@ def test_timeseries_repr(tsh):
     if isinstance(tsh, tsio.timeseries):
         assert repr(tsh) == f'tsio.timeseries({tsh.namespace},othersources=None)'
 
+
+def test_fix_missing_indexes(tsp, engine):
+    """Test that we can create missing indexes with correct types"""
+    # 1. Drop some indexes to simulate missing ones
+    with engine.begin() as cn:
+        # Drop a regular btree index
+        cn.execute('DROP INDEX tsh.tsh_basket_kind_idx')
+
+        # Drop a GIN index (for JSONB)
+        cn.execute('DROP INDEX tsh.tsh_registry_metadata_idx')
+
+        # Drop a GIST index (for ltree)
+        cn.execute('DROP INDEX tsh.tree_path_idx')
+
+        # Drop a foreign key index
+        cn.execute('DROP INDEX tsh.tsh_ts_oldmeta_seriesid_idx')
+
+    # 2. Verify they're missing
+    report = dbdiag.diagnose_indexes(engine, 'tsh')
+    assert 'MISSING' in report
+    assert 'basket(kind)' in report
+    assert 'registry(metadata)' in report
+    assert 'tree(path)' in report
+    assert 'ts_oldmeta(seriesid)' in report
+
+    # 3. Fix the missing indexes
+    expected_indexes = dbdiag.get_expected_indexes('tsh')
+    commands = dbdiag.fix_indexes(engine, 'tsh', expected_indexes, dry_run=False)
+
+    # Should have create index commands
+    assert any('create index' in cmd for cmd in commands)
+
+    # Check that correct index types were used
+    gin_cmd = [c for c in commands if 'registry_metadata_idx' in c]
+    assert gin_cmd and 'using gin' in gin_cmd[0]
+
+    gist_cmd = [c for c in commands if 'tree_path_idx' in c]
+    assert gist_cmd and 'using gist' in gist_cmd[0]
+
+    # 4. Verify all fixed
+    report = dbdiag.diagnose_indexes(engine, 'tsh')
+    assert '✓ All indexes are correct!' in report
+
+    # 5. Verify the indexes actually exist and work
+    with engine.begin() as cn:
+        # Check they exist in pg_indexes
+        result = cn.execute("""
+            SELECT indexname, indexdef
+            FROM pg_indexes
+            WHERE schemaname='tsh'
+            AND indexname IN ('tsh_basket_kind_idx', 'tsh_registry_metadata_idx',
+                              'tree_path_idx', 'tsh_ts_oldmeta_seriesid_idx')
+            ORDER BY indexname
+        """).fetchall()
+
+        assert len(result) == 4
+
+        # Verify index types in definitions
+        for name, definition in result:
+            if name == 'tsh_registry_metadata_idx':
+                assert 'gin' in definition.lower()
+            elif name == 'tree_path_idx':
+                assert 'gist' in definition.lower()
+            # btree is default, may not appear in definition
+
+
+# index testing is now available from testutil.create_index_issues
+
+
+@given(
+    to_duplicate_idx=st.sets(st.integers(0, 14), max_size=10),  # 15 indexes total (0-14)
+    to_drop_idx=st.sets(st.integers(0, 14), max_size=10),
+    to_misname_idx=st.sets(st.integers(0, 14), max_size=10)
+)
+@settings(max_examples=20, deadline=10000)
+def test_migration_fix_indexes_with_hypothesis(
+        tsp, engine, to_duplicate_idx, to_drop_idx, to_misname_idx
+):
+    """property-based test that migration handles any combination of index issues"""
+    # ensure no overlap between drop and misname (can't rename a dropped index)
+    assume(not (to_drop_idx & to_misname_idx))
+
+    expected_indexes = dbdiag.get_expected_indexes('tsh')
+    all_indexes = list(expected_indexes.keys())
+
+    # convert indices to actual index tuples
+    to_duplicate = [all_indexes[i] for i in to_duplicate_idx]
+    to_drop = [all_indexes[i] for i in to_drop_idx]
+    to_misname = [all_indexes[i] for i in to_misname_idx]
+
+    # diagnose initial clean state
+    initial_report = dbdiag.diagnose_indexes(engine, 'tsh')
+    assert '✓ All indexes are correct!' in initial_report
+
+    create_index_issues(
+        engine, 'tsh', to_duplicate, to_drop, to_misname, expected_indexes
+    )
+
+    issues_report = dbdiag.diagnose_indexes(engine, 'tsh')
+
+    if to_duplicate or to_drop or to_misname:
+        assert '✓ All indexes are correct!' not in issues_report
+
+    do_fix_indexes(
+        engine, 'tsh', interactive=False, indexes=expected_indexes
+    )
+
+    fixed_report = dbdiag.diagnose_indexes(engine, 'tsh')
+    assert '✓ All indexes are correct!' in fixed_report
+
+    do_fix_indexes(
+        engine, 'tsh', interactive=False, indexes=expected_indexes
+    )
+    idempotent_report = dbdiag.diagnose_indexes(engine, 'tsh')
+    assert idempotent_report == fixed_report
+
+    # property 3: all expected indexes should exist with correct names
+    actual = dbdiag.get_actual_indexes(engine, 'tsh')
+
+    for (table, columns), (expected_name, _) in expected_indexes.items():
+        matching = [idx for idx in actual
+                   if idx['table'] == table and idx['columns'] == columns]
+        assert len(matching) == 1, f"expected exactly one index for {table}({columns})"
+        assert matching[0]['name'] == expected_name, f"wrong name for {table}({columns})"

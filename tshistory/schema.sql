@@ -10,7 +10,7 @@ create table "{ns}".basket (
   unique(name, kind)
 );
 
-create index on "{ns}".basket (kind);
+create index "{ns}_basket_kind_idx" on "{ns}".basket (kind);
 
 
 -- metadata-history
@@ -22,8 +22,8 @@ create table "{ns}".ts_oldmeta (
   metadata jsonb not null
 );
 
-create index on "{ns}".ts_oldmeta (moment);
-create index on "{ns}".ts_oldmeta (seriesid);
+create index "{ns}_ts_oldmeta_moment_idx" on "{ns}".ts_oldmeta (moment);
+create index "{ns}_ts_oldmeta_seriesid_idx" on "{ns}".ts_oldmeta (seriesid);
 
 
 -- tree
