@@ -177,11 +177,65 @@ def migrate_022(engine, namespace, interactive):
     do_enforce_series_metadata_integrity(engine, namespace, interactive)
     do_enforce_groups_metadata_integrity(engine, namespace, interactive)
     do_enforce_series_metadata_integrity(engine, f'{namespace}.group', interactive)
+    do_migrate_basket_kinds(engine, namespace, interactive)
 
     # Fix indexes with explicit expected indexes for tshistory
     from tshistory import dbdiag
     tshistory_indexes = dbdiag.get_expected_indexes(namespace)
     do_fix_indexes(engine, namespace, interactive, tshistory_indexes)
+
+
+def do_migrate_basket_kinds(engine, namespace, interactive):
+    """Add kind column to basket table for group support"""
+    ns = namespace
+
+    with engine.begin() as cn:
+        type_exists = cn.execute(
+            f"""
+            select exists (
+                select 1 from pg_type t
+                join pg_namespace n on t.typnamespace = n.oid
+                where n.nspname = '{ns}'
+                and t.typname = 'kinds'
+            )
+            """
+        ).scalar()
+
+        if not type_exists:
+            cn.execute(
+                f'create type "{ns}".kinds as enum (\'Series\', \'Group\')'
+            )
+
+        cn.execute(
+            f'alter table "{ns}".basket add column if not exists kind "{ns}".kinds '
+            f'not null default \'Series\''
+        )
+        cn.execute(
+            f'alter table "{ns}".basket drop constraint if exists basket_name_key'
+        )
+
+        constraint_exists = cn.execute(
+            f"""
+            select exists (
+                select 1 from pg_constraint c
+                join pg_namespace n on n.oid = c.connamespace
+                join pg_class r on r.oid = c.conrelid
+                where n.nspname = '{ns}'
+                and r.relname = 'basket'
+                and c.conname = 'basket_name_kind_key'
+            )
+            """
+        ).scalar()
+
+        if not constraint_exists:
+            cn.execute(
+                f'alter table "{ns}".basket add constraint basket_name_kind_key '
+                f'unique(name, kind)'
+            )
+
+        cn.execute(
+            f'create index if not exists "{ns}_basket_kind_idx" on "{ns}".basket (kind)'
+        )
 
 
 def do_migrate_tree(engine, namespace, interactive):
