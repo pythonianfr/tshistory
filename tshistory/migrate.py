@@ -174,6 +174,7 @@ def migrate_022(engine, namespace, interactive):
     do_migrate_tree(engine, namespace, interactive)
     do_make_ltree_unique(engine, namespace, interactive)
     do_migrate_old_metadata(engine, namespace, interactive)
+    do_migrate_revision_metadata(engine, namespace, interactive)
     do_enforce_series_metadata_integrity(engine, namespace, interactive)
     do_enforce_groups_metadata_integrity(engine, namespace, interactive)
     do_enforce_series_metadata_integrity(engine, f'{namespace}.group', interactive)
@@ -183,6 +184,33 @@ def migrate_022(engine, namespace, interactive):
     from tshistory import dbdiag
     tshistory_indexes = dbdiag.get_expected_indexes(namespace)
     do_fix_indexes(engine, namespace, interactive, tshistory_indexes)
+
+
+def do_migrate_revision_metadata(engine, namespace, interactive):
+    """Create revision_metadata table for commit history support"""
+
+    def create_revision_metadata_for_ns(engine, ns):
+        print(f'create revision_metadata table for {ns}')
+        with engine.begin() as cn:
+            cn.execute(
+                f'create table if not exists "{ns}".revision_metadata ('
+                f'  id serial primary key,'
+                f'  series integer not null references "{ns}".registry(id) on delete cascade,'
+                f'  author text not null,'
+                f'  metadata jsonb'
+                f')'
+            )
+
+            cn.execute(
+                f'create index if not exists "{ns}_revision_metadata_series_idx" '
+                f'on "{ns}".revision_metadata(series)'
+            )
+
+    # Create for main namespace
+    create_revision_metadata_for_ns(engine, namespace)
+
+    # Create for .group namespace
+    create_revision_metadata_for_ns(engine, f'{namespace}.group')
 
 
 def do_migrate_basket_kinds(engine, namespace, interactive):
