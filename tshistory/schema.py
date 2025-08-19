@@ -20,8 +20,10 @@ class tsschema(object):
     def __init__(self, ns='tsh'):
         self.namespace = ns
 
-    def create(self, engine, base=True, groups=True):
+    def create(self, engine, base=True, groups=True, stores=True):
         self._create_series(engine, self.namespace)
+        if stores:
+            self._create_kvstore(engine, self.namespace)
         if base:
             self._create_base(engine)
         if groups:
@@ -40,7 +42,6 @@ class tsschema(object):
             cn.execute(f'create schema "{namespace}.revision"')
             cn.execute(f'create schema "{namespace}.snapshot"')
             cn.execute(sqlfile(SERIES, ns=namespace), _binary=False)
-        self._create_kvstore(engine, namespace)
 
     def _create_groups(self, engine):
         # dedicated time series store for the groups

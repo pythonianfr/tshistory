@@ -179,6 +179,7 @@ def migrate_022(engine, namespace, interactive):
     do_enforce_groups_metadata_integrity(engine, namespace, interactive)
     do_enforce_series_metadata_integrity(engine, f'{namespace}.group', interactive)
     do_migrate_basket_kinds(engine, namespace, interactive)
+    do_cleanup_kvstore(engine, f'{namespace}.group', interactive)
 
     # Fix indexes with explicit expected indexes for tshistory
     from tshistory import dbdiag
@@ -419,6 +420,19 @@ def do_enforce_groups_metadata_integrity(engine, namespace, interactive):
                 f'alter table "{namespace}".group_registry '
                 f'alter column internal_metadata set not null'
             )
+
+
+def do_cleanup_kvstore(engine, namespace, interactive):
+    kvstore_ns = f'{namespace}-kvstore'
+
+    if interactive:
+        if not yesno(f'Drop unnecessary kvstore schema "{kvstore_ns}" ? [y/n] '):
+            return
+
+    print(f'dropping unnecessary kvstore schema "{kvstore_ns}"')
+
+    with engine.begin() as cn:
+        cn.execute(f'drop schema if exists "{kvstore_ns}" cascade')
 
 
 def do_fix_indexes(engine, namespace, interactive, indexes):
