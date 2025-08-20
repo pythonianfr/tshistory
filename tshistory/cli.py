@@ -86,6 +86,10 @@ def shell(db_uri, namespace='tsh'):
 def diagnose_indexes(db_uri, namespace='tsh', fix=False):
     """Diagnose and optionally fix index issues (duplicates, missing, wrong names)"""
     from tshistory import dbdiag
+    from tshistory.sqlparser import (
+        parse_indexes,
+        TSHISTORY_SQLFILES
+    )
 
     uri = configuration().find_dburi(db_uri)
     engine = create_engine(uri)
@@ -97,25 +101,18 @@ def diagnose_indexes(db_uri, namespace='tsh', fix=False):
     if not fix:
         return
 
-    print("\nFix plan - Commands to execute:")
+    print("\nApplying fixes...")
 
     # Get expected indexes for this namespace
-    expected_indexes = dbdiag.get_expected_indexes(namespace)
+    expected_indexes = parse_indexes(TSHISTORY_SQLFILES, namespace)
 
-    # First show what would be done (dry run)
-    commands = dbdiag.fix_indexes(engine, namespace, expected_indexes, dry_run=True)
+    dbdiag.fix_indexes(engine, namespace, expected_indexes)
+    print("Fix operations completed.")
 
-    if commands:
-        for cmd in commands:
-            print(f"  {cmd}")
-
-        commands = dbdiag.fix_indexes(engine, namespace, expected_indexes, dry_run=False)
-        print(f"\nExecuted {len(commands)} commands.")
-
-        # Show diagnosis again to confirm fix
-        print("\nFinal state:")
-        report = dbdiag.diagnose_indexes(engine, namespace)
-        print(report)
+    # Show diagnosis again to confirm fix
+    print("\nFinal state:")
+    report = dbdiag.diagnose_indexes(engine, namespace)
+    print(report)
 
 
 def register_plugin_subcommands():

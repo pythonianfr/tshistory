@@ -529,29 +529,34 @@ def make_tsx(uri,
 
 def create_index_issues(engine, namespace, to_duplicate, to_drop, to_misname, expected_indexes):
     """create specific index issues for testing"""
+    # Build lookup map from (table, columns) to Index object
+    index_map = {}
+    for idx in expected_indexes:
+        index_map[(idx.table, idx.columns)] = idx
+
     with engine.begin() as cn:
         # create duplicates
         for table, columns in to_duplicate:
             col_str = ','.join(columns)
-            expected_name, index_type = expected_indexes[(table, columns)]
+            idx = index_map[(table, columns)]
 
-            # create 1-3 duplicate indexes with auto-generated names
-            for i in range(2):  # create 2 duplicates
-                if index_type == 'gin':
+            # create 2 duplicate indexes with auto-generated names
+            for i in range(2):
+                if idx.type == 'gin':
                     cn.execute(f'create index on {namespace}.{table} using gin ({col_str})')
-                elif index_type == 'gist':
+                elif idx.type == 'gist':
                     cn.execute(f'create index on {namespace}.{table} using gist ({col_str})')
                 else:
                     cn.execute(f'create index on {namespace}.{table} ({col_str})')
 
         # drop indexes
         for table, columns in to_drop:
-            expected_name, _ = expected_indexes[(table, columns)]
-            cn.execute(f'drop index if exists {namespace}.{expected_name}')
+            idx = index_map[(table, columns)]
+            cn.execute(f'drop index if exists {namespace}.{idx.name}')
 
         # misname indexes
         for table, columns in to_misname:
-            expected_name, _ = expected_indexes[(table, columns)]
+            idx = index_map[(table, columns)]
             # only rename if it exists and wasn't dropped
             if (table, columns) not in to_drop:
-                cn.execute(f'alter index if exists {namespace}.{expected_name} rename to wrong_{expected_name}')
+                cn.execute(f'alter index if exists {namespace}.{idx.name} rename to wrong_{idx.name}')

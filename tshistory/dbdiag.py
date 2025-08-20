@@ -1,37 +1,10 @@
-"""Database diagnostics for tshistory - index health checks"""
-
 from collections import defaultdict
-from pathlib import Path
 
-from tshistory.sqlparser import parse_indexes
-
-
-def get_expected_indexes(namespace='tsh'):
-    """Dynamically discover expected indexes from SQL files
-
-    Returns dict of (table, columns) -> (index_name, index_type)
-    where index_type is 'btree', 'gin', or 'gist'
-    """
-    base_path = Path(__file__).parent
-    sql_files = [
-        base_path / 'schema.sql',
-        base_path / 'registry.sql', 
-        base_path / 'group.sql'
-    ]
-    
-    indexes = parse_indexes(sql_files, namespace)
-    
-    # Also parse registry.sql for the .group namespace
-    group_indexes = parse_indexes([base_path / 'registry.sql'], f'{namespace}.group')
-    indexes.extend(group_indexes)
-
-    result = {}
-    for idx in indexes:
-        if idx.schema == namespace:
-            key = (idx.table, idx.columns)
-            result[key] = (idx.name, idx.type)
-
-    return result
+from tshistory.sqlparser import (
+    Index,
+    parse_indexes,
+    TSHISTORY_SQLFILES
+)
 
 
 def get_actual_indexes(engine, namespace='tsh'):
@@ -40,60 +13,73 @@ def get_actual_indexes(engine, namespace='tsh'):
     SELECT
         t.relname as table_name,
         i.relname as index_name,
+        am.amname as index_type,
         array_agg(a.attname ORDER BY array_position(ix.indkey, a.attnum)) as columns
     FROM pg_class t
     JOIN pg_namespace n ON n.oid = t.relnamespace
     JOIN pg_index ix ON t.oid = ix.indrelid
     JOIN pg_class i ON i.oid = ix.indexrelid
+    JOIN pg_am am ON am.oid = i.relam
     JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
     WHERE n.nspname = %(namespace)s
       AND NOT ix.indisprimary  -- skip primary keys
       AND NOT ix.indisunique   -- skip unique constraints
-    GROUP BY t.relname, i.relname
+    GROUP BY t.relname, i.relname, am.amname
     ORDER BY t.relname, i.relname
     """
 
     indexes = []
     with engine.begin() as cn:
         for row in cn.execute(query, namespace=namespace).fetchall():
-            indexes.append({
-                'table': row.table_name,
-                'name': row.index_name,
-                'columns': tuple(row.columns)
-            })
+            indexes.append(
+                Index(
+                    name=row.index_name,
+                    schema=namespace,
+                    table=row.table_name,
+                    columns=tuple(row.columns),
+                    type=row.index_type
+                )
+            )
     return indexes
 
 
 def find_issues(expected, actual):
-    """Compare expected vs actual and find issues
-
-    Returns dict with raw data about issues found
-    """
-    # group actual by (table, columns)
+    # group actual by (table, columns) to find duplicates
     by_columns = defaultdict(list)
     for idx in actual:
-        key = (idx['table'], idx['columns'])
-        by_columns[key].append(idx['name'])
+        key = (idx.table, idx.columns)
+        by_columns[key].append(idx)
 
     issues = {
-        'duplicates': [],  # [(table, columns, [idx1, idx2, ...])]
-        'wrong_name': [],  # [(table, columns, actual_name, expected_name)]
-        'missing': [],     # [(table, columns, expected_name)]
+        'duplicates': [],
+        'wrong_name': [],
+        'missing': [],
     }
 
     # check each expected index
-    for (table, columns), (expected_name, _index_type) in expected.items():
-        actual_names = by_columns.get((table, columns), [])
+    for expected_idx in expected:
+        matching = by_columns.get((expected_idx.table, expected_idx.columns), [])
 
-        if not actual_names:
-            issues['missing'].append((table, columns, expected_name))
-        elif len(actual_names) > 1:
-            issues['duplicates'].append((table, columns, actual_names))
+        if not matching:
+            issues['missing'].append(
+                (expected_idx.table, expected_idx.columns, expected_idx.name)
+            )
+        elif len(matching) > 1:
+            actual_names = [m.name for m in matching]
+            issues['duplicates'].append(
+                (expected_idx.table, expected_idx.columns, actual_names)
+            )
             # also check if the name is wrong
-            if expected_name not in actual_names:
-                issues['wrong_name'].append((table, columns, actual_names[0], expected_name))
-        elif actual_names[0] != expected_name:
-            issues['wrong_name'].append((table, columns, actual_names[0], expected_name))
+            if not any(m.name == expected_idx.name for m in matching):
+                issues['wrong_name'].append(
+                    (expected_idx.table, expected_idx.columns,
+                     actual_names[0], expected_idx.name)
+                )
+        elif matching[0].name != expected_idx.name:
+            issues['wrong_name'].append(
+                (expected_idx.table, expected_idx.columns,
+                 matching[0].name, expected_idx.name)
+            )
 
     return issues
 
@@ -141,141 +127,100 @@ def format_report(issues):
 
 def diagnose_indexes(engine, namespace='tsh'):
     """Main entry point - diagnose and return formatted report"""
-    expected = get_expected_indexes(namespace)
+    expected = parse_indexes(TSHISTORY_SQLFILES, namespace)
     actual = get_actual_indexes(engine, namespace)
     issues = find_issues(expected, actual)
     return format_report(issues)
 
 
-def ensure_expected_indexes(engine, namespace, indexes, dry_run=False):
-    """Ensure all expected indexes exist with correct names
+# fixing part
 
-    This method:
-    1. Creates any missing indexes with the correct type (gin, gist, btree)
-    2. Renames existing indexes that have wrong names
-
-    Returns list of SQL commands executed (or would execute if dry_run=True)
-    """
+def ensure_expected_indexes(engine, namespace, indexes):
     actual = get_actual_indexes(engine, namespace)
 
     # group actual indexes by (table, columns)
     by_columns = defaultdict(list)
     for idx in actual:
-        key = (idx['table'], idx['columns'])
-        by_columns[key].append(idx['name'])
+        key = (idx.table, idx.columns)
+        by_columns[key].append(idx)
 
     commands = []
 
-    with engine.begin() as cn:
-        for (table, columns), (expected_name, index_type) in indexes.items():
-            # Check if table exists before trying to create index
-            table_exists = cn.execute(
-                'select exists ('
-                '  select 1 from information_schema.tables '
-                '  where table_schema = %(namespace)s '
-                '  and table_name = %(table)s'
-                ')',
-                namespace=namespace,
-                table=table
-            ).scalar()
+    for idx in indexes:
+        matching = by_columns.get((idx.table, idx.columns), [])
 
-            if not table_exists:
-                # Skip indexes for non-existent tables
-                continue
+        if not matching:
+            # missing - create it with the correct index type
+            # properly quote all identifiers
+            col_list = ', '.join(f'"{col}"' for col in idx.columns)
 
-            actual_names = by_columns.get((table, columns), [])
+            # use the explicit index type from our mapping
+            if idx.type == 'gin':
+                cmd = (
+                    f'create index if not exists "{idx.name}" '
+                    f'on "{namespace}"."{idx.table}" using gin ({col_list})'
+                )
+            elif idx.type == 'gist':
+                cmd = (
+                    f'create index if not exists "{idx.name}" '
+                    f'on "{namespace}"."{idx.table}" using gist ({col_list})'
+                )
+            else:  # btree
+                cmd = (
+                    f'create index if not exists "{idx.name}" '
+                    f'on "{namespace}"."{idx.table}" ({col_list})'
+                )
 
-            if not actual_names:
-                # missing - create it with the correct index type
-                # properly quote all identifiers
-                col_list = ', '.join(f'"{col}"' for col in columns)
-
-                # use the explicit index type from our mapping
-                if index_type == 'gin':
-                    cmd = (
-                        f'create index if not exists "{expected_name}" '
-                        f'on "{namespace}"."{table}" using gin ({col_list})'
-                    )
-                elif index_type == 'gist':
-                    cmd = (
-                        f'create index if not exists "{expected_name}" '
-                        f'on "{namespace}"."{table}" using gist ({col_list})'
-                    )
-                else:  # btree
-                    cmd = (
-                        f'create index if not exists "{expected_name}" '
-                        f'on "{namespace}"."{table}" ({col_list})'
-                    )
-
-                commands.append(cmd)
-                if not dry_run:
-                    cn.execute(cmd)
-                continue
-
-            # check if expected name already exists
-            if expected_name in actual_names:
-                # already has correct name, nothing to rename
-                continue
-
-            # find the original index (typically the one without numeric suffix)
-            # sort to get consistent ordering, pick first non-numbered one
-            original = None
-            for name in sorted(actual_names):
-                # check if name ends with a digit (like idx1, idx2)
-                if name and not name[-1].isdigit():
-                    original = name
-                    break
-
-            # if no non-numbered index found, just use the first one
-            if not original:
-                original = sorted(actual_names)[0]
-
-            # rename it to the expected name
-            cmd = f'alter index "{namespace}"."{original}" rename to "{expected_name}"'
             commands.append(cmd)
-            if not dry_run:
-                cn.execute(cmd)
+            continue
 
-    return commands
+        # check if expected name already exists
+        if any(m.name == idx.name for m in matching):
+            # already has correct name, nothing to rename
+            continue
+
+        # just pick the first one to rename (others will be dropped)
+        original = matching[0].name
+
+        # rename it to the expected name
+        cmd = f'alter index "{namespace}"."{original}" rename to "{idx.name}"'
+        commands.append(cmd)
+
+    with engine.begin() as cn:
+        for cmd in commands:
+            cn.execute(cmd)
 
 
-def drop_duplicates(engine, namespace, indexes, dry_run=False):
-    """Phase 2: Drop all duplicate indexes (keep only the expected ones)
-
-    Returns list of SQL commands executed (or would execute if dry_run=True)
-    """
+def drop_duplicates(engine, namespace, indexes):
+    """Phase 2: Drop all duplicate indexes (keep only the expected ones)"""
     actual = get_actual_indexes(engine, namespace)
 
     # group actual indexes by (table, columns)
     by_columns = defaultdict(list)
     for idx in actual:
-        key = (idx['table'], idx['columns'])
-        by_columns[key].append(idx['name'])
+        key = (idx.table, idx.columns)
+        by_columns[key].append(idx)
 
     commands = []
 
+    for idx in indexes:
+        matching = by_columns.get((idx.table, idx.columns), [])
+
+        # drop everything except the expected name
+        for m in matching:
+            if m.name != idx.name:
+                cmd = f'drop index if exists "{namespace}"."{m.name}"'
+                commands.append(cmd)
+
     with engine.begin() as cn:
-        for (table, columns), (expected_name, _index_type) in indexes.items():
-            actual_names = by_columns.get((table, columns), [])
-
-            # drop everything except the expected name
-            for name in actual_names:
-                if name != expected_name:
-                    cmd = f'drop index if exists "{namespace}"."{name}"'
-                    commands.append(cmd)
-                    if not dry_run:
-                        cn.execute(cmd)
-
-    return commands
+        for cmd in commands:
+            cn.execute(cmd)
 
 
-def fix_indexes(engine, namespace, indexes, dry_run=False):
+def fix_indexes(engine, namespace, indexes):
     """Fix all index issues: ensure correct indexes then drop duplicates
 
     Convenience function that calls both phases.
-    Returns list of all SQL commands executed.
     """
-    commands = []
-    commands.extend(ensure_expected_indexes(engine, namespace, indexes, dry_run))
-    commands.extend(drop_duplicates(engine, namespace, indexes, dry_run))
-    return commands
+    ensure_expected_indexes(engine, namespace, indexes)
+    drop_duplicates(engine, namespace, indexes)

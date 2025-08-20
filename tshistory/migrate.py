@@ -182,9 +182,21 @@ def migrate_022(engine, namespace, interactive):
     do_cleanup_kvstore(engine, f'{namespace}.group', interactive)
 
     # Fix indexes with explicit expected indexes for tshistory
-    from tshistory import dbdiag
-    tshistory_indexes = dbdiag.get_expected_indexes(namespace)
+    from tshistory.sqlparser import (
+        parse_indexes,
+        TSHISTORY_SQLFILES,
+        TSHISTORY_PATH
+    )
+
+    tshistory_indexes = parse_indexes(TSHISTORY_SQLFILES, namespace)
     do_fix_indexes(engine, namespace, interactive, tshistory_indexes)
+
+    # Also fix indexes for .group namespace
+    group_indexes = parse_indexes(
+        [TSHISTORY_PATH / 'registry.sql'],
+        f'{namespace}.group'
+    )
+    do_fix_indexes(engine, f'{namespace}.group', interactive, group_indexes)
 
 
 def do_migrate_revision_metadata(engine, namespace, interactive):
@@ -458,9 +470,8 @@ def do_fix_indexes(engine, namespace, interactive, indexes):
         print(f"  Will drop {len(issues['duplicates'])} duplicate index sets")
 
     # Use dbdiag to fix all index issues
-    commands = dbdiag.fix_indexes(engine, namespace, indexes, dry_run=False)
-    if commands:
-        print(f'  Executed {len(commands)} index operations')
+    dbdiag.fix_indexes(engine, namespace, indexes)
+    print('  Index operations completed')
 
 
 @version('tshistory', '0.21.0')

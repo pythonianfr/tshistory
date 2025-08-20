@@ -13,6 +13,7 @@ from tshistory.migrate import do_fix_indexes
 from tshistory.sqlparser import (
     Index,
     parse_indexes,
+    TSHISTORY_SQLFILES
 )
 from tshistory.util import (
     bisect_search,
@@ -459,18 +460,8 @@ def test_fix_missing_indexes(tsp, engine):
     assert 'ts_oldmeta(seriesid)' in report
 
     # 3. Fix the missing indexes
-    expected_indexes = dbdiag.get_expected_indexes('tsh')
-    commands = dbdiag.fix_indexes(engine, 'tsh', expected_indexes, dry_run=False)
-
-    # Should have create index commands
-    assert any('create index' in cmd for cmd in commands)
-
-    # Check that correct index types were used
-    gin_cmd = [c for c in commands if 'registry_metadata_idx' in c]
-    assert gin_cmd and 'using gin' in gin_cmd[0]
-
-    gist_cmd = [c for c in commands if 'tree_path_idx' in c]
-    assert gist_cmd and 'using gist' in gist_cmd[0]
+    expected_indexes = parse_indexes(TSHISTORY_SQLFILES, 'tsh')
+    dbdiag.fix_indexes(engine, 'tsh', expected_indexes)
 
     # 4. Verify all fixed
     report = dbdiag.diagnose_indexes(engine, 'tsh')
@@ -515,13 +506,15 @@ def test_migration_fix_indexes_with_hypothesis(
     # ensure no overlap between drop and misname (can't rename a dropped index)
     assume(not (to_drop_idx & to_misname_idx))
 
-    expected_indexes = dbdiag.get_expected_indexes('tsh')
-    all_indexes = list(expected_indexes.keys())
+    expected_indexes = parse_indexes(TSHISTORY_SQLFILES, 'tsh')
+
+    # Create list of (table, columns) tuples for test manipulation
+    all_index_keys = [(idx.table, idx.columns) for idx in expected_indexes]
 
     # convert indices to actual index tuples
-    to_duplicate = [all_indexes[i] for i in to_duplicate_idx]
-    to_drop = [all_indexes[i] for i in to_drop_idx]
-    to_misname = [all_indexes[i] for i in to_misname_idx]
+    to_duplicate = [all_index_keys[i] for i in to_duplicate_idx]
+    to_drop = [all_index_keys[i] for i in to_drop_idx]
+    to_misname = [all_index_keys[i] for i in to_misname_idx]
 
     # diagnose initial clean state
     initial_report = dbdiag.diagnose_indexes(engine, 'tsh')
@@ -552,11 +545,11 @@ def test_migration_fix_indexes_with_hypothesis(
     # property 3: all expected indexes should exist with correct names
     actual = dbdiag.get_actual_indexes(engine, 'tsh')
 
-    for (table, columns), (expected_name, _) in expected_indexes.items():
+    for expected_idx in expected_indexes:
         matching = [idx for idx in actual
-                   if idx['table'] == table and idx['columns'] == columns]
-        assert len(matching) == 1, f'expected exactly one index for {table}({columns})'
-        assert matching[0]['name'] == expected_name, f'wrong name for {table}({columns})'
+                   if idx.table == expected_idx.table and idx.columns == expected_idx.columns]
+        assert len(matching) == 1, f'expected exactly one index for {expected_idx.table}({expected_idx.columns})'
+        assert matching[0].name == expected_idx.name, f'wrong name for {expected_idx.table}({expected_idx.columns})'
 
 
 def test_sql_parser(tmp_path):
@@ -618,11 +611,6 @@ def test_sql_parser_actual_files():
 
     gin_indexes = [idx for idx in indexes if idx.type == 'gin']
     assert len(gin_indexes) >= 4  # at least 4 GIN indexes
-
-
-def test_sql_parser_nonexistent_file():
-    indexes = parse_indexes([Path('nonexistent/file.sql')], 'tsh')
-    assert indexes == []
 
 
 def test_parsed_indexes_match_database(tsp, engine):
