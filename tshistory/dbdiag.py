@@ -2,36 +2,24 @@
 
 from collections import defaultdict
 
+from tshistory.sqlparser import tshistory_indexes
+
 
 def get_expected_indexes(namespace='tsh'):
-    """Hard-code the expected indexes based on our SQL files
+    """Dynamically discover expected indexes from SQL files
 
     Returns dict of (table, columns) -> (index_name, index_type)
     where index_type is 'btree', 'gin', or 'gist'
     """
-    # simple and explicit - no parsing needed
-    return {
-        # schema.sql
-        ('basket', ('kind',)): (f'{namespace}_basket_kind_idx', 'btree'),
-        ('ts_oldmeta', ('moment',)): (f'{namespace}_ts_oldmeta_moment_idx', 'btree'),
-        ('ts_oldmeta', ('seriesid',)): (f'{namespace}_ts_oldmeta_seriesid_idx', 'btree'),
-        ('tree', ('path',)): ('tree_path_idx', 'gist'),  # no namespace prefix, GIST for ltree
-        ('tree_series_map', ('treeid',)): ('tree_series_map_idx', 'btree'),  # no namespace prefix
+    indexes = tshistory_indexes(namespace)
 
-        # registry.sql
-        ('registry', ('internal_metadata',)): (f'{namespace}_registry_internal_metadata_idx', 'gin'),
-        ('registry', ('metadata',)): (f'{namespace}_registry_metadata_idx', 'gin'),
-        ('revision_metadata', ('series',)): (f'{namespace}_revision_metadata_series_idx', 'btree'),
+    result = {}
+    for idx in indexes:
+        if idx.schema == namespace:
+            key = (idx.table, idx.columns)
+            result[key] = (idx.name, idx.type)
 
-        # group.sql
-        ('group_registry', ('name',)): (f'ix_{namespace}_group_registry_idx', 'btree'),
-        ('group_registry', ('internal_metadata',)): (f'{namespace}_group_registry_internal_metadata_idx', 'gin'),
-        ('group_registry', ('metadata',)): (f'{namespace}_group_registry_metadata_idx', 'gin'),
-        ('groupmap', ('groupid',)): (f'ix_{namespace}_groupmap_group_idx', 'btree'),
-        ('groupmap', ('seriesid',)): (f'ix_{namespace}_groupmap_series_idx', 'btree'),
-        ('gr_oldmeta', ('moment',)): (f'{namespace}_gr_oldmeta_moment_idx', 'btree'),
-        ('gr_oldmeta', ('groupid',)): (f'{namespace}_gr_oldmeta_groupid_idx', 'btree'),
-    }
+    return result
 
 
 def get_actual_indexes(engine, namespace='tsh'):

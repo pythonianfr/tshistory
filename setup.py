@@ -42,7 +42,8 @@ setup(name='tshistory',
           'deprecation',
           'requests_auth',
           'zstandard == 0.23.0',
-          'hypothesis'
+          'hypothesis',
+          'sqlglot'
       ],
       package_data={'tshistory': [
           'registry.sql',

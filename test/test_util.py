@@ -1,5 +1,6 @@
 from datetime import datetime
 import io
+from pathlib import Path
 
 import pytest
 import pandas as pd
@@ -9,6 +10,11 @@ from hypothesis import given, strategies as st, assume, settings
 from tshistory import tsio
 from tshistory import dbdiag
 from tshistory.migrate import do_fix_indexes
+from tshistory.sqlparser import (
+    Index,
+    parse_indexes,
+    parse_sql_file,
+)
 from tshistory.util import (
     bisect_search,
     diff,
@@ -550,5 +556,82 @@ def test_migration_fix_indexes_with_hypothesis(
     for (table, columns), (expected_name, _) in expected_indexes.items():
         matching = [idx for idx in actual
                    if idx['table'] == table and idx['columns'] == columns]
-        assert len(matching) == 1, f"expected exactly one index for {table}({columns})"
-        assert matching[0]['name'] == expected_name, f"wrong name for {table}({columns})"
+        assert len(matching) == 1, f'expected exactly one index for {table}({columns})'
+        assert matching[0]['name'] == expected_name, f'wrong name for {table}({columns})'
+
+
+def test_sql_parser():
+    sql = """
+    create index "test_idx" on "tsh".mytable (col1);
+    create index if not exists "test_gin_idx" on "tsh".mytable using gin (metadata);
+    create index multi_col_idx on "tsh".mytable (col1, col2, col3);
+    """
+
+    indexes = parse_indexes(sql, 'myns')
+
+    assert indexes == [
+        Index('test_idx', 'myns', 'mytable', ('col1',), 'btree'),
+        Index('test_gin_idx', 'myns', 'mytable', ('metadata',), 'gin'),
+        Index('multi_col_idx', 'myns', 'mytable',
+              ('col1', 'col2', 'col3'), 'btree')
+    ]
+
+
+def test_sql_parser_namespace_replacement():
+    sql = """
+    create index "{ns}_basket_kind_idx" on "{ns}".basket (kind);
+    create index "{ns}_registry_metadata_idx" on "{ns}".registry using gin(metadata);
+    """
+
+    indexes = parse_indexes(sql, 'pure')
+
+    assert indexes == [
+        Index('pure_basket_kind_idx', 'pure', 'basket', ('kind',), 'btree'),
+        Index('pure_registry_metadata_idx', 'pure', 'registry',
+              ('metadata',), 'gin')
+    ]
+
+
+def test_sql_parser_actual_files():
+    tshistory_path = Path(__file__).parent.parent / 'tshistory'
+
+    indexes = parse_sql_file(str(tshistory_path / 'schema.sql'), 'tsh')
+    assert len(indexes) == 5
+    assert indexes[0] == Index(
+        'tsh_basket_kind_idx', 'tsh', 'basket', ('kind',), 'btree'
+    )
+    assert indexes[3] == Index(
+        'tree_path_idx', 'tsh', 'tree', ('path',), 'gist'
+    )
+
+    indexes = parse_sql_file(str(tshistory_path / 'registry.sql'), 'tsh')
+    assert indexes[0] == Index(
+        'tsh_registry_internal_metadata_idx',
+        'tsh',
+        'registry',
+        ('internal_metadata',),
+        'gin'
+    )
+    assert indexes[1] == Index(
+        'tsh_registry_metadata_idx',
+        'tsh',
+        'registry',
+        ('metadata',),
+        'gin'
+    )
+    assert len([idx for idx in indexes if idx.type == 'gin']) == 2
+
+    indexes = parse_sql_file(str(tshistory_path / 'group.sql'), 'tsh')
+    assert len(indexes) == 7
+    assert len([idx for idx in indexes if idx.name.startswith('ix_')]) == 3
+
+
+def test_sql_parser_nonexistent_file():
+    indexes = parse_sql_file('nonexistent/file.sql', 'tsh')
+    assert indexes == []
+
+
+def test_parsed_indexes_match_database(tsp, engine):
+    """Test that SQL parser correctly identifies indexes created by schema"""
+    report = dbdiag.diagnose_indexes(engine, 'tsh')
+    assert '✓ All indexes are correct!' in report
