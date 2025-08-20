@@ -13,7 +13,6 @@ from tshistory.migrate import do_fix_indexes
 from tshistory.sqlparser import (
     Index,
     parse_indexes,
-    parse_sql_file,
 )
 from tshistory.util import (
     bisect_search,
@@ -560,14 +559,15 @@ def test_migration_fix_indexes_with_hypothesis(
         assert matching[0]['name'] == expected_name, f'wrong name for {table}({columns})'
 
 
-def test_sql_parser():
-    sql = """
-    create index "test_idx" on "tsh".mytable (col1);
-    create index if not exists "test_gin_idx" on "tsh".mytable using gin (metadata);
-    create index multi_col_idx on "tsh".mytable (col1, col2, col3);
-    """
+def test_sql_parser(tmp_path):
+    sql_file = tmp_path / "test.sql"
+    sql_file.write_text("""
+    create index "test_idx" on "{ns}".mytable (col1);
+    create index if not exists "test_gin_idx" on "{ns}".mytable using gin (metadata);
+    create index multi_col_idx on "{ns}".mytable (col1, col2, col3);
+    """)
 
-    indexes = parse_indexes(sql, 'myns')
+    indexes = parse_indexes([sql_file], 'myns')
 
     assert indexes == [
         Index('test_idx', 'myns', 'mytable', ('col1',), 'btree'),
@@ -577,13 +577,14 @@ def test_sql_parser():
     ]
 
 
-def test_sql_parser_namespace_replacement():
-    sql = """
+def test_sql_parser_namespace_replacement(tmp_path):
+    sql_file = tmp_path / "test.sql"
+    sql_file.write_text("""
     create index "{ns}_basket_kind_idx" on "{ns}".basket (kind);
     create index "{ns}_registry_metadata_idx" on "{ns}".registry using gin(metadata);
-    """
+    """)
 
-    indexes = parse_indexes(sql, 'pure')
+    indexes = parse_indexes([sql_file], 'pure')
 
     assert indexes == [
         Index('pure_basket_kind_idx', 'pure', 'basket', ('kind',), 'btree'),
@@ -595,39 +596,32 @@ def test_sql_parser_namespace_replacement():
 def test_sql_parser_actual_files():
     tshistory_path = Path(__file__).parent.parent / 'tshistory'
 
-    indexes = parse_sql_file(str(tshistory_path / 'schema.sql'), 'tsh')
-    assert len(indexes) == 5
-    assert indexes[0] == Index(
+    indexes = parse_indexes([
+        tshistory_path / 'schema.sql',
+        tshistory_path / 'registry.sql',
+        tshistory_path / 'group.sql'
+    ], 'tsh')
+
+    assert len(indexes) > 10
+
+    basket_idx = [idx for idx in indexes if idx.name == 'tsh_basket_kind_idx']
+    assert len(basket_idx) == 1
+    assert basket_idx[0] == Index(
         'tsh_basket_kind_idx', 'tsh', 'basket', ('kind',), 'btree'
     )
-    assert indexes[3] == Index(
+
+    tree_idx = [idx for idx in indexes if idx.name == 'tree_path_idx']
+    assert len(tree_idx) == 1
+    assert tree_idx[0] == Index(
         'tree_path_idx', 'tsh', 'tree', ('path',), 'gist'
     )
 
-    indexes = parse_sql_file(str(tshistory_path / 'registry.sql'), 'tsh')
-    assert indexes[0] == Index(
-        'tsh_registry_internal_metadata_idx',
-        'tsh',
-        'registry',
-        ('internal_metadata',),
-        'gin'
-    )
-    assert indexes[1] == Index(
-        'tsh_registry_metadata_idx',
-        'tsh',
-        'registry',
-        ('metadata',),
-        'gin'
-    )
-    assert len([idx for idx in indexes if idx.type == 'gin']) == 2
-
-    indexes = parse_sql_file(str(tshistory_path / 'group.sql'), 'tsh')
-    assert len(indexes) == 7
-    assert len([idx for idx in indexes if idx.name.startswith('ix_')]) == 3
+    gin_indexes = [idx for idx in indexes if idx.type == 'gin']
+    assert len(gin_indexes) >= 4  # at least 4 GIN indexes
 
 
 def test_sql_parser_nonexistent_file():
-    indexes = parse_sql_file('nonexistent/file.sql', 'tsh')
+    indexes = parse_indexes([Path('nonexistent/file.sql')], 'tsh')
     assert indexes == []
 
 

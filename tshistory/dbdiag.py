@@ -1,8 +1,9 @@
 """Database diagnostics for tshistory - index health checks"""
 
 from collections import defaultdict
+from pathlib import Path
 
-from tshistory.sqlparser import tshistory_indexes
+from tshistory.sqlparser import parse_indexes
 
 
 def get_expected_indexes(namespace='tsh'):
@@ -11,7 +12,18 @@ def get_expected_indexes(namespace='tsh'):
     Returns dict of (table, columns) -> (index_name, index_type)
     where index_type is 'btree', 'gin', or 'gist'
     """
-    indexes = tshistory_indexes(namespace)
+    base_path = Path(__file__).parent
+    sql_files = [
+        base_path / 'schema.sql',
+        base_path / 'registry.sql', 
+        base_path / 'group.sql'
+    ]
+    
+    indexes = parse_indexes(sql_files, namespace)
+    
+    # Also parse registry.sql for the .group namespace
+    group_indexes = parse_indexes([base_path / 'registry.sql'], f'{namespace}.group')
+    indexes.extend(group_indexes)
 
     result = {}
     for idx in indexes:
