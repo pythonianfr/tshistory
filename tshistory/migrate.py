@@ -199,26 +199,27 @@ def migrate_022(engine, namespace, interactive):
     do_fix_indexes(engine, f'{namespace}.group', interactive, group_indexes)
 
 
+def create_revision_metadata_for_ns(engine, ns):
+    """Create revision_metadata table for a namespace"""
+    print(f'create revision_metadata table for {ns}')
+    with engine.begin() as cn:
+        cn.execute(
+            f'create table if not exists "{ns}".revision_metadata ('
+            f'  id serial primary key,'
+            f'  series integer not null references "{ns}".registry(id) on delete cascade,'
+            f'  author text not null,'
+            f'  metadata jsonb'
+            f')'
+        )
+
+        cn.execute(
+            f'create index if not exists "{ns}_revision_metadata_series_idx" '
+            f'on "{ns}".revision_metadata(series)'
+        )
+
+
 def do_migrate_revision_metadata(engine, namespace, interactive):
     """Create revision_metadata table for commit history support"""
-
-    def create_revision_metadata_for_ns(engine, ns):
-        print(f'create revision_metadata table for {ns}')
-        with engine.begin() as cn:
-            cn.execute(
-                f'create table if not exists "{ns}".revision_metadata ('
-                f'  id serial primary key,'
-                f'  series integer not null references "{ns}".registry(id) on delete cascade,'
-                f'  author text not null,'
-                f'  metadata jsonb'
-                f')'
-            )
-
-            cn.execute(
-                f'create index if not exists "{ns}_revision_metadata_series_idx" '
-                f'on "{ns}".revision_metadata(series)'
-            )
-
     # Create for main namespace
     create_revision_metadata_for_ns(engine, namespace)
 
