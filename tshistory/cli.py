@@ -40,12 +40,12 @@ def init_db(db_uri, namespace='tsh'):
 
 @tsh.command(name='migrate')
 @click.argument('db-uri')
-@click.option('--interactive/--no-interactive', is_flag=True, default=True)
+@click.option('--interactive/--no-interactive', is_flag=True, default=False)
 @click.option('--initial')
 @click.option('--force')
 @click.option('--last', is_flag=True, default=False)
 @click.option('--namespace', default='tsh')
-def migrate(db_uri, interactive=True, initial=None, force=None, last=False, namespace='tsh'):
+def migrate(db_uri, interactive=False, initial=None, force=None, last=False, namespace='tsh'):
     uri = configuration().find_dburi(db_uri)
     run_migrations(uri, interactive, initial, force, last, namespace)
 
