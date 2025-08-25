@@ -23,7 +23,6 @@ def get_actual_indexes(engine, namespace='tsh'):
     JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
     WHERE n.nspname = %(namespace)s
       AND NOT ix.indisprimary  -- skip primary keys
-      AND NOT ix.indisunique   -- skip unique constraints
     GROUP BY t.relname, i.relname, am.amname
     ORDER BY t.relname, i.relname
     """
@@ -60,35 +59,28 @@ def find_issues(expected, actual):
     for expected_idx in expected:
         matching = by_columns.get((expected_idx.table, expected_idx.columns), [])
 
-        if not matching:
+        same_type = [m for m in matching if m.type == expected_idx.type]
+
+        if not same_type:
             issues['missing'].append(
                 (expected_idx.table, expected_idx.columns, expected_idx.name)
             )
-        elif len(matching) > 1:
-            actual_names = [m.name for m in matching]
+        elif len(same_type) > 1:
+            actual_names = [m.name for m in same_type]
             issues['duplicates'].append(
                 (expected_idx.table, expected_idx.columns, actual_names)
             )
-            # also check if the name is wrong
-            if not any(m.name == expected_idx.name for m in matching):
-                issues['wrong_name'].append(
-                    (expected_idx.table, expected_idx.columns,
-                     actual_names[0], expected_idx.name)
-                )
-        elif matching[0].name != expected_idx.name:
+        elif same_type[0].name != expected_idx.name:
             issues['wrong_name'].append(
                 (expected_idx.table, expected_idx.columns,
-                 matching[0].name, expected_idx.name)
+                 same_type[0].name, expected_idx.name)
             )
 
     return issues
 
 
 def format_report(issues):
-    """Format issues into human-readable report"""
     lines = []
-
-    # count total issues
     total = len(issues['duplicates']) + len(issues['wrong_name']) + len(issues['missing'])
 
     if total == 0:
@@ -96,7 +88,6 @@ def format_report(issues):
 
     lines.append(f"Found {total} index issues:\n")
 
-    # duplicates
     if issues['duplicates']:
         lines.append(f"DUPLICATES ({len(issues['duplicates'])} tables with duplicates):")
         for table, columns, names in issues['duplicates']:
@@ -105,7 +96,6 @@ def format_report(issues):
             lines.append(f"    {', '.join(names)}")
         lines.append("")
 
-    # wrong names
     if issues['wrong_name']:
         lines.append(f"WRONG NAMES ({len(issues['wrong_name'])}):")
         for table, columns, actual, expected in issues['wrong_name']:
@@ -115,7 +105,6 @@ def format_report(issues):
             lines.append(f"    expected: {expected}")
         lines.append("")
 
-    # missing
     if issues['missing']:
         lines.append(f"MISSING ({len(issues['missing'])}):")
         for table, columns, expected in issues['missing']:
@@ -126,7 +115,6 @@ def format_report(issues):
 
 
 def diagnose_indexes(engine, namespace='tsh'):
-    """Main entry point - diagnose and return formatted report"""
     expected = parse_indexes(TSHISTORY_SQLFILES, namespace)
     actual = get_actual_indexes(engine, namespace)
     issues = find_issues(expected, actual)
@@ -138,16 +126,17 @@ def diagnose_indexes(engine, namespace='tsh'):
 def ensure_expected_indexes(engine, namespace, indexes):
     actual = get_actual_indexes(engine, namespace)
 
-    # group actual indexes by (table, columns)
-    by_columns = defaultdict(list)
+    # group actual indexes by (table, columns, type)
+    # This allows different index types on same columns (e.g. btree + gist)
+    by_columns_and_type = defaultdict(list)
     for idx in actual:
-        key = (idx.table, idx.columns)
-        by_columns[key].append(idx)
+        key = (idx.table, idx.columns, idx.type)
+        by_columns_and_type[key].append(idx)
 
     commands = []
 
     for idx in indexes:
-        matching = by_columns.get((idx.table, idx.columns), [])
+        matching = by_columns_and_type.get((idx.table, idx.columns, idx.type), [])
 
         if not matching:
             # missing - create it with the correct index type
@@ -192,7 +181,6 @@ def ensure_expected_indexes(engine, namespace, indexes):
 
 
 def drop_duplicates(engine, namespace, indexes):
-    """Phase 2: Drop all duplicate indexes (keep only the expected ones)"""
     actual = get_actual_indexes(engine, namespace)
 
     # group actual indexes by (table, columns)
@@ -201,16 +189,42 @@ def drop_duplicates(engine, namespace, indexes):
         key = (idx.table, idx.columns)
         by_columns[key].append(idx)
 
+    with engine.begin() as cn:
+        result = cn.execute("""
+            SELECT i.relname
+            FROM pg_index ix
+            JOIN pg_class i ON i.oid = ix.indexrelid
+            JOIN pg_namespace n ON n.oid = i.relnamespace
+            JOIN pg_constraint c ON c.conindid = i.oid
+            WHERE n.nspname = %(namespace)s
+        """, namespace=namespace).fetchall()
+
+        constraint_backed = {row[0] for row in result}
+
     commands = []
 
     for idx in indexes:
         matching = by_columns.get((idx.table, idx.columns), [])
 
-        # drop everything except the expected name
-        for m in matching:
-            if m.name != idx.name:
-                cmd = f'drop index if exists "{namespace}"."{m.name}"'
-                commands.append(cmd)
+        same_type = [m for m in matching if m.type == idx.type]
+
+        if len(same_type) > 1:
+            has_expected = any(m.name == idx.name for m in same_type)
+            has_constraint = any(m.name in constraint_backed for m in same_type)
+
+            if has_expected and has_constraint:
+                commands.append(f'drop index if exists "{namespace}"."{idx.name}"')
+
+            for m in same_type:
+                if m.name != idx.name:
+                    if m.name in constraint_backed:
+                        commands.append(
+                            f'alter index "{namespace}"."{m.name}" rename to "{idx.name}"'
+                        )
+                    else:
+                        commands.append(
+                            f'drop index if exists "{namespace}"."{m.name}"'
+                        )
 
     with engine.begin() as cn:
         for cmd in commands:

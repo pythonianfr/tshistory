@@ -7,7 +7,6 @@ create table "{ns}".group_registry (
   metadata jsonb not null default '{{}}'
 );
 
-create index "ix_{ns}_group_registry_idx" on "{ns}".group_registry(name);
 create index "{ns}_group_registry_internal_metadata_idx" on "{ns}".group_registry using gin(internal_metadata);
 create index "{ns}_group_registry_metadata_idx" on "{ns}".group_registry using gin(metadata);
 
@@ -37,5 +36,4 @@ create table "{ns}".gr_oldmeta (
   metadata jsonb not null
 );
 
-create index "{ns}_gr_oldmeta_moment_idx" on "{ns}".gr_oldmeta (moment);
 create index "{ns}_gr_oldmeta_groupid_idx" on "{ns}".gr_oldmeta (groupid);

@@ -494,9 +494,9 @@ def test_fix_missing_indexes(tsp, engine):
 
 
 @given(
-    to_duplicate_idx=st.sets(st.integers(0, 14), max_size=10),  # 15 indexes total (0-14)
-    to_drop_idx=st.sets(st.integers(0, 14), max_size=10),
-    to_misname_idx=st.sets(st.integers(0, 14), max_size=10)
+    to_duplicate_idx=st.sets(st.integers(0, 11), max_size=10),  # 12 indexes total (0-11)
+    to_drop_idx=st.sets(st.integers(0, 11), max_size=10),
+    to_misname_idx=st.sets(st.integers(0, 11), max_size=10)
 )
 @settings(max_examples=20, deadline=10000)
 def test_migration_fix_indexes_with_hypothesis(
@@ -542,14 +542,17 @@ def test_migration_fix_indexes_with_hypothesis(
     idempotent_report = dbdiag.diagnose_indexes(engine, 'tsh')
     assert idempotent_report == fixed_report
 
-    # property 3: all expected indexes should exist with correct names
+    # property 3: all expected indexes should exist with correct names and types
     actual = dbdiag.get_actual_indexes(engine, 'tsh')
 
     for expected_idx in expected_indexes:
+        # Match by table, columns AND type (e.g., GIST vs btree on same column)
         matching = [idx for idx in actual
-                   if idx.table == expected_idx.table and idx.columns == expected_idx.columns]
-        assert len(matching) == 1, f'expected exactly one index for {expected_idx.table}({expected_idx.columns})'
-        assert matching[0].name == expected_idx.name, f'wrong name for {expected_idx.table}({expected_idx.columns})'
+                   if idx.table == expected_idx.table
+                   and idx.columns == expected_idx.columns
+                   and idx.type == expected_idx.type]
+        assert len(matching) == 1, f'expected exactly one {expected_idx.type} index for {expected_idx.table}({expected_idx.columns})'
+        assert matching[0].name == expected_idx.name, f'wrong name for {expected_idx.type} index on {expected_idx.table}({expected_idx.columns})'
 
 
 def test_sql_parser(tmp_path):
@@ -617,3 +620,149 @@ def test_parsed_indexes_match_database(tsp, engine):
     """Test that SQL parser correctly identifies indexes created by schema"""
     report = dbdiag.diagnose_indexes(engine, 'tsh')
     assert '✓ All indexes are correct!' in report
+
+
+def test_auth_migration_bug(engine):
+    from pathlib import Path
+    import dbcache
+    from dbcache.schema import init
+
+    init(engine, 'auth', drop=True)
+
+    with engine.begin() as cn:
+        # simulate the exact live situation with multiple wrong-named duplicates
+        cn.execute('drop index "auth"."auth_version_idate_idx"')
+        cn.execute('drop index "auth"."auth_version_objid_idx"')
+
+        # create the wrong indexes as they exist in production
+        cn.execute('create index "version_idate_idx" ON "auth".version(idate)')
+        cn.execute('create index "version_idate_idx1" ON "auth".version(idate)')
+        cn.execute('create index "version_idate_idx2" ON "auth".version(idate)')
+        cn.execute('create index "version_objid_idx" ON "auth".version(objid)')
+        cn.execute('create index "version_objid_idx1" ON "auth".version(objid)')
+
+    actual_before = dbdiag.get_actual_indexes(engine, 'auth')
+
+    # Check initial state has wrong-named indexes
+    wrong_before = [idx.name for idx in actual_before
+                    if idx.table == 'version' and not idx.name.startswith('auth_')]
+    assert 'version_idate_idx' in wrong_before
+    assert 'version_idate_idx1' in wrong_before
+    assert 'version_idate_idx2' in wrong_before
+    assert 'version_objid_idx' in wrong_before
+    assert 'version_objid_idx1' in wrong_before
+
+    # verify unique indexes are now included
+    unique_indexes = [idx for idx in actual_before if 'key' in idx.name]
+    assert len(unique_indexes) > 0, "get_actual_indexes should now include unique indexes"
+
+    # run what the migration runs
+    dbcache_sql = Path(dbcache.__file__).parent / 'schema.sql'
+    expected = parse_indexes([dbcache_sql], 'auth')
+
+    from tshistory.migrate import do_fix_indexes
+    do_fix_indexes(engine, 'auth', False, expected)
+
+    actual_after = dbdiag.get_actual_indexes(engine, 'auth')
+
+    # verify indexes are fixed
+    version_indexes = [idx for idx in actual_after if idx.table == 'version']
+    assert any(idx.name == 'auth_version_idate_idx' for idx in version_indexes)
+    assert any(idx.name == 'auth_version_objid_idx' for idx in version_indexes)
+
+    # should not have wrong-named indexes anymore (except constraint-backed ones)
+    wrong_after = [idx.name for idx in actual_after
+                   if idx.table == 'version' and not idx.name.startswith('auth_')
+                   and not idx.name.endswith('_key')]  # Exclude constraint-backed indexes
+    assert len(wrong_after) == 0
+
+    # check that we can rename unique indexes
+    with engine.begin() as cn:
+        cn.execute('ALTER INDEX auth.things_key_key RENAME TO auth_things_key_key')
+
+        result = cn.execute("""
+            SELECT i.relname FROM pg_class i
+            JOIN pg_namespace n ON n.oid = i.relnamespace
+            WHERE i.relname = 'auth_things_key_key' AND n.nspname = 'auth'
+        """).fetchone()
+        assert result is not None, "Rename of unique constraint index failed!"
+
+    # verify the renamed index is reflected
+    actual_final = dbdiag.get_actual_indexes(engine, 'auth')
+    final_names = [idx.name for idx in actual_final]
+    assert 'auth_things_key_key' in final_names
+    assert 'things_key_key' not in final_names
+
+
+def test_find_wrong_indexes(engine):
+    import dbcache
+    from pathlib import Path
+    from dbcache.schema import init
+    from tshistory.migrate import do_fix_indexes
+
+    init(engine, 'test_wrong', drop=True)
+
+    with engine.begin() as cn:
+        cn.execute('drop index "test_wrong"."test_wrong_version_idate_idx"')
+        cn.execute('drop index "test_wrong"."test_wrong_version_objid_idx"')
+        cn.execute('create index "version_idate_idx" ON "test_wrong".version(idate)')
+        cn.execute('create index "version_objid_idx" ON "test_wrong".version(objid)')
+
+        result = cn.execute("""
+            SELECT i.relname
+            FROM pg_class i
+            JOIN pg_namespace n ON n.oid = i.relnamespace
+            JOIN pg_index ix ON i.oid = ix.indexrelid
+            JOIN pg_class t ON t.oid = ix.indrelid
+            WHERE n.nspname = 'test_wrong'
+            AND i.relname IN ('version_idate_idx', 'version_objid_idx')
+        """).fetchall()
+
+        assert len(result) == 2, "Should have 2 wrongly named indexes"
+
+    dbcache_sql = Path(dbcache.__file__).parent / 'schema.sql'
+    expected = parse_indexes([dbcache_sql], 'test_wrong')
+    do_fix_indexes(engine, 'test_wrong', False, expected)
+
+    with engine.begin() as cn:
+        result = cn.execute("""
+            SELECT i.relname
+            FROM pg_class i
+            JOIN pg_namespace n ON n.oid = i.relnamespace
+            WHERE n.nspname = 'test_wrong'
+            AND i.relname LIKE 'test_wrong_%'
+            ORDER BY i.relname
+        """).fetchall()
+
+        names = [r[0] for r in result]
+        assert 'test_wrong_version_idate_idx' in names
+        assert 'test_wrong_version_objid_idx' in names
+        assert 'version_idate_idx' not in names
+        assert 'version_objid_idx' not in names
+
+
+def test_indexes_created_in_correct_schema(engine):
+    """Test that fix_indexes handles indexes correctly across schemas"""
+    from pathlib import Path
+    import dbcache
+    from dbcache.schema import init
+    from tshistory.migrate import do_fix_indexes
+
+    init(engine, 'authtest', drop=True)
+
+    dbcache_sql = Path(dbcache.__file__).parent / 'schema.sql'
+    expected = parse_indexes([dbcache_sql], 'authtest')
+
+    initial_indexes = dbdiag.get_actual_indexes(engine, 'authtest')
+    initial_names = [idx.name for idx in initial_indexes]
+
+    for name in initial_names:
+        if not name.endswith('_key'):  # skip constraint-backed indexes
+            assert name.startswith('authtest_'), f"Index {name} lacks namespace prefix"
+
+    do_fix_indexes(engine, 'authtest', False, expected)
+
+    final_indexes = dbdiag.get_actual_indexes(engine, 'authtest')
+    final_names = [idx.name for idx in final_indexes]
+
+    assert set(initial_names) == set(final_names)

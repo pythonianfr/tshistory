@@ -180,6 +180,7 @@ def migrate_022(engine, namespace, interactive):
     do_enforce_series_metadata_integrity(engine, f'{namespace}.group', interactive)
     do_migrate_basket_kinds(engine, namespace, interactive)
     do_cleanup_kvstore(engine, f'{namespace}.group', interactive)
+    do_drop_redundant_indexes(engine, namespace, interactive)
 
     # Fix indexes with explicit expected indexes for tshistory
     from tshistory.sqlparser import (
@@ -446,6 +447,28 @@ def do_cleanup_kvstore(engine, namespace, interactive):
 
     with engine.begin() as cn:
         cn.execute(f'drop schema if exists "{kvstore_ns}" cascade')
+
+
+def do_drop_redundant_indexes(engine, namespace, interactive):
+    with engine.begin() as cn:
+        cn.execute(f'drop index if exists "{namespace}"."ix_{namespace}_group_registry_idx"')
+
+        for table in ['ts_oldmeta', 'gr_oldmeta']:
+            result = cn.execute(f"""
+                select i.relname
+                from pg_index ix
+                join pg_class i on i.oid = ix.indexrelid
+                join pg_class t on t.oid = ix.indrelid
+                join pg_namespace n on n.oid = t.relnamespace
+                join pg_attribute a on a.attrelid = t.oid and a.attnum = any(ix.indkey)
+                where n.nspname = '{namespace}'
+                and t.relname = '{table}'
+                and a.attname = 'moment'
+                and not ix.indisunique
+            """).fetchall()
+
+            for (index_name,) in result:
+                cn.execute(f'drop index if exists "{namespace}"."{index_name}"')
 
 
 def do_fix_indexes(engine, namespace, interactive, indexes):

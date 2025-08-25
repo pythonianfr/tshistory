@@ -22,7 +22,6 @@ create table "{ns}".ts_oldmeta (
   metadata jsonb not null
 );
 
-create index "{ns}_ts_oldmeta_moment_idx" on "{ns}".ts_oldmeta (moment);
 create index "{ns}_ts_oldmeta_seriesid_idx" on "{ns}".ts_oldmeta (seriesid);
 
 
