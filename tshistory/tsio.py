@@ -160,6 +160,7 @@ class base:
             _binary=False
         ).scalar()
 
+    @tx
     def set_in_tree(self, cn, name, path):
         if not path:  # unset
             cn.execute(

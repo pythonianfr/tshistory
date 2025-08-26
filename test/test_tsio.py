@@ -654,6 +654,49 @@ def test_changeset_metadata(engine, tsh):
     assert len(log) == 1
 
 
+def test_set_in_tree(engine, tsh):
+    with engine.begin() as cn:
+        cn.execute(f'delete from "{tsh.namespace}".tree')
+
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2025, 1, 1), freq='d', periods=3)
+    )
+    tsh.update(engine, ts, 'tree-test-series', 'test')
+
+    assert tsh.series_path(engine, 'tree-test-series') is None
+
+    tsh.set_in_tree(engine, 'tree-test-series', 'my.folder.path')
+    assert tsh.series_path(engine, 'tree-test-series') == 'my.folder.path'
+    assert tsh.tree(engine) == ['my.folder.path']
+
+    tsh.set_in_tree(engine, 'tree-test-series', 'another.path')
+    assert tsh.series_path(engine, 'tree-test-series') == 'another.path'
+    assert set(tsh.tree(engine)) == {'my.folder.path', 'another.path'}
+
+    tsh.set_in_tree(engine, 'tree-test-series', '')
+    assert tsh.series_path(engine, 'tree-test-series') is None
+    assert set(tsh.tree(engine)) == {'my.folder.path', 'another.path'}
+
+    tsh.set_in_tree(engine, 'tree-test-series', 'new.path')
+    assert tsh.series_path(engine, 'tree-test-series') == 'new.path'
+
+    tsh.set_in_tree(engine, 'tree-test-series', None)
+    assert tsh.series_path(engine, 'tree-test-series') is None
+    assert set(tsh.tree(engine)) == {'my.folder.path', 'another.path', 'new.path'}
+
+    tsh.set_in_tree(engine, 'tree-test-series', 'path.to.delete')
+    assert tsh.series_path(engine, 'tree-test-series') == 'path.to.delete'
+
+    tsh.delete_path(engine, 'path.to.delete')
+    assert tsh.series_path(engine, 'tree-test-series') is None
+    assert set(tsh.tree(engine)) == {'my.folder.path', 'another.path', 'new.path'}
+
+    tsh.set_in_tree(engine, 'does-not-exist', 'some.path')
+    assert 'some.path' in tsh.tree(engine)
+    assert tsh.series_path(engine, 'does-not-exist') is None
+
+
 def test_revision_date(engine, tsh):
     for i in range(1, 5):
         with engine.begin() as cn:
