@@ -1718,7 +1718,8 @@ def test_tree_parallel(tsx, tsh, engine):
 
     pool = threadpool(7)
     pool(put_in_folder, names)
-    assert tsx.metadata('series.a.tree') == {'tree': 'my.new.folder'}
+    assert tsx.series_path('series.a.tree') == 'my.new.folder'
+    assert tsx.metadata('series.a.tree') == {}
     assert not len(errors)
 
 
@@ -1753,8 +1754,9 @@ def test_tree_roundtrip(tsx):
 
     tsx.delete_path('a.b.c')
     assert tsx.tree() == ['a', 'a.b']
-    assert tsx.metadata('series-folder-2') == {'folders': 'a.b.c'}
-    # i.e. incoherent state
+    assert tsx.series_path('series-folder-2') is None  # path deleted from tree_series_map
+    assert tsx.metadata('series-folder-2') == {}
+    # i.e. incoherent state fixed - no more tree in metadata
 
     # restore previous state
     tsx.update_metadata('series-folder-2', {'folders': 'a.b'})
@@ -1764,8 +1766,10 @@ def test_tree_roundtrip(tsx):
     # intermediary node
     tsx.delete_path('a.b')
     assert tsx.tree() == ['a', 'a.b.c']
-    assert tsx.metadata('series-folder-1') == {'folders': 'a.b'}
-    assert tsx.metadata('series-folder-2') == {'folders': 'a.b.c'}
+    assert tsx.series_path('series-folder-1') is None  # path deleted from tree_series_map
+    assert tsx.series_path('series-folder-2') == 'a.b.c'
+    assert tsx.metadata('series-folder-1') == {}
+    assert tsx.metadata('series-folder-2') == {}
 
     # restore previous state
     tsx.update_metadata('series-folder-1', {'folders': 'a'})
@@ -1777,8 +1781,9 @@ def test_tree_roundtrip(tsx):
     # terminal node
     tsx.rename_path('a.b.c', 'a.b.x')
     assert tsx.tree() == ['a', 'a.b', 'a.b.x']
-    assert tsx.metadata('series-folder-2') == {'folders': 'a.b.c'}
-    # incoherent state
+    assert tsx.series_path('series-folder-2') == 'a.b.x'  # renamed in tree_series_map
+    assert tsx.metadata('series-folder-2') == {}
+    # no more incoherent state - tree attribute not stored in metadata
 
     # restore previous state
     tsx.rename_path('a.b.x', 'a.b.c')
@@ -1787,9 +1792,11 @@ def test_tree_roundtrip(tsx):
     # intermediary node
     tsx.rename_path('a.b.c', 'a.x.c')
     assert tsx.tree() == ['a', 'a.b', 'a.x.c']
-    assert tsx.metadata('series-folder-1') == {'folders': 'a.b'}
-    assert tsx.metadata('series-folder-2') == {'folders': 'a.b.c'}
-    # incoherent state
+    assert tsx.series_path('series-folder-1') == 'a.b'
+    assert tsx.series_path('series-folder-2') == 'a.x.c'  # renamed in tree_series_map
+    assert tsx.metadata('series-folder-1') == {}
+    assert tsx.metadata('series-folder-2') == {}
+    # no more incoherent state - tree attribute not stored in metadata
 
 
 # groups
