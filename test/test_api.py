@@ -1694,6 +1694,31 @@ def test_tree_api(tsx, engine):
     assert tsx.path_series('UE.RepubliqueFrancaise') == ['ue.france']
 
 
+def test_set_series_path(tsx):
+    tsx.set_tree_attribute('tree')
+
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
+    )
+
+    tsx.update('test.series', ts, 'Babar')
+    assert tsx.series_path('test.series') is None
+
+    tsx.set_series_path('test.series', 'My.Path')
+    assert tsx.series_path('test.series') == 'My.Path'
+    assert tsx.path_series('My.Path') == ['test.series']
+
+    tsx.set_series_path('test.series', 'Another.Path')
+    assert tsx.series_path('test.series') == 'Another.Path'
+    assert tsx.path_series('My.Path') == []
+    assert tsx.path_series('Another.Path') == ['test.series']
+
+    tsx.set_series_path('test.series', None)
+    assert tsx.series_path('test.series') is None
+    assert tsx.path_series('Another.Path') == []
+
+
 def test_tree_parallel(tsx, tsh, engine):
     tsx.set_tree_attribute('tree')
     ts = genserie(dt(2025, 1, 1), 'd', 10)

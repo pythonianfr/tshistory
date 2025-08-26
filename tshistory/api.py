@@ -757,6 +757,9 @@ class mainsource:
         with self.engine.begin() as cn:
             return self.tsh.series_path(cn, name)
 
+    def set_series_path(self, name: str, path: Optional[str]) -> NONETYPE:
+        self.tsh.set_in_tree(self.engine, name, path)
+
     def delete_path(self, path:str) -> NONETYPE:
         with self.engine.begin() as cn:
             self.tsh.delete_path(cn, path)

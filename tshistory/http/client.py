@@ -399,6 +399,17 @@ class httpclient:
         return res
 
     @unwraperror
+    def set_series_path(self, name: str, path: Optional[str]):
+        res = self.session.patch(f'{self.uri}/series/tree-path', data={
+            'name': name,
+            'path': path
+        }, timeout=DEFAULT_TIMEOUT)
+        if res.status_code == 200:
+            return
+
+        return res
+
+    @unwraperror
     def internal_metadata(self, name: str):
         res = self.session.get(f'{self.uri}/series/metadata', params={
             'name': name,

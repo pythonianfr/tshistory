@@ -179,6 +179,12 @@ treepath_rename.add_argument(
     help='new path name'
 )
 
+treepath_set = base.copy()
+treepath_set.add_argument(
+    'path', type=str, required=False, default=None,
+    help='tree path (None to unset)'
+)
+
 
 inferred_freq = base.copy()
 inferred_freq.add_argument(
@@ -821,6 +827,14 @@ Values must be scalars.
             def delete(self):
                 args = treepath_delete.parse_args()
                 return tsa.delete_path(args.path)
+
+            @api.doc(description='Set or unset tree path for a series')
+            @api.expect(treepath_set)
+            @onerror
+            @required_roles('admin', 'rw')
+            def patch(self):
+                args = treepath_set.parse_args()
+                return tsa.set_series_path(args.name, args.path)
 
         @nss.route('/tree')
         class timeseries_tree(Resource):
