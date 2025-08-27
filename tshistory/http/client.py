@@ -330,24 +330,6 @@ class httpclient:
         return res
 
     @unwraperror
-    def tree_attribute(self):
-        res = self.session.get(f'{self.uri}/series/tree-attribute', timeout=DEFAULT_TIMEOUT)
-        if res.status_code == 200:
-            return res.json()
-
-        return res
-
-    @unwraperror
-    def set_tree_attribute(self, attribute: str):
-        res = self.session.put(f'{self.uri}/series/tree-attribute', data={
-            'attribute': attribute
-        }, timeout=DEFAULT_TIMEOUT)
-        if res.status_code == 200:
-            return res.json()
-
-        return res
-
-    @unwraperror
     def path_series(self, pathname: str):
         res = self.session.get(f'{self.uri}/series/tree-path', params={
             'type': 'pathname',

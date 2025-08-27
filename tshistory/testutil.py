@@ -322,16 +322,6 @@ class with_http_bridge:
         )
 
         resp.add_callback(
-            responses.GET, uri + '/series/tree-attribute',
-            callback=partial(read_request_bridge, wsgitester)
-        )
-
-        resp.add_callback(
-            responses.PUT, uri + '/series/tree-attribute',
-            callback=write_request_bridge(wsgitester.put)
-        )
-
-        resp.add_callback(
             responses.GET, uri + '/series/tree-path',
             callback=partial(read_request_bridge, wsgitester)
         )

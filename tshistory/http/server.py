@@ -150,12 +150,6 @@ put_metadata.add_argument(
     help='set new metadata for a series'
 )
 
-tree = reqparse.RequestParser()
-tree.add_argument(
-    'attribute', type=str,
-    help='set the tree attribute'
-)
-
 treepath = reqparse.RequestParser()
 treepath.add_argument(
     'name', type=str, required=True,
@@ -774,26 +768,6 @@ Values must be scalars.
             @required_roles('admin', 'rw', 'ro')
             def get(self):
                 return tsa.list_metadata_keys()
-
-        @nss.route('/tree-attribute')
-        class timeseries_tree_attribute(Resource):
-
-            @api.doc(description='Get the metadata attribute used for the series tree organization')
-            @api.expect(nothing)
-            @onerror
-            @required_roles('admin', 'rw', 'ro')
-            def get(self):
-                return tsa.tree_attribute()
-
-            @api.doc(
-                description='Set the metadata attribute to use for series tree organization'
-            )
-            @api.expect(tree)
-            @onerror
-            @required_roles('admin')
-            def put(self):
-                args = tree.parse_args()
-                return tsa.set_tree_attribute(args.attribute)
 
         @nss.route('/tree-path')
         class timeseries_tree_path(Resource):

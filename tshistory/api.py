@@ -734,17 +734,6 @@ class mainsource:
             meta = self.othersources.internal_metadata(name)
         return meta
 
-    def tree_attribute(self) -> Optional[str]:
-        """Get the metadata attribute used for the tree. """
-        return self.kvstore.get('tree-attribute')
-
-    def set_tree_attribute(self, attribute: str):
-        """Define the metadata attribute used for the tree. """
-        if not attribute:
-            self.kvstore.delete('tree-attribute')
-        else:
-            self.kvstore.set('tree-attribute', attribute)
-
     def tree(self) -> List[str]:
         with self.engine.begin() as cn:
             return self.tsh.tree(cn)

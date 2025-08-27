@@ -1635,11 +1635,6 @@ def test_insertion_dates_tznaive(tsx):
 # tree stuff
 
 def test_tree_api(tsx, engine):
-    tsx.set_tree_attribute(None)
-    assert tsx.tree_attribute() is None
-    tsx.set_tree_attribute('tree')
-    assert tsx.tree_attribute() == 'tree'
-
     ts = pd.Series(
         [1, 2, 3],
         index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
@@ -1655,7 +1650,7 @@ def test_tree_api(tsx, engine):
             ts,
             'Babar'
         )
-        tsx.update_metadata(sname, {'tree': name})
+        tsx.set_series_path(sname, name)
 
     assert tsx.path_series('UE.France') == ['ue.france']
     assert tsx.path_series('UE.Italy') == ['ue.italy']
@@ -1683,7 +1678,7 @@ def test_tree_api(tsx, engine):
     assert tsx.find('(by.without-path)') == ['ue.italy']
     assert tsx.find('(by.at-path "UE" #:children #t)') == ['ue.france']
 
-    tsx.update_metadata('ue.france', {'tree': "a.name"})
+    tsx.set_series_path('ue.france', 'a.name')
     assert tsx.series_path('ue.france') == 'a.name'
     assert tsx.path_series('a.name') == ['ue.france']
     assert tsx.tree() == ['UE.France', 'a.name']
@@ -1695,8 +1690,6 @@ def test_tree_api(tsx, engine):
 
 
 def test_set_series_path(tsx):
-    tsx.set_tree_attribute('tree')
-
     ts = pd.Series(
         [1, 2, 3],
         index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
@@ -1720,7 +1713,6 @@ def test_set_series_path(tsx):
 
 
 def test_tree_parallel(tsx, tsh, engine):
-    tsx.set_tree_attribute('tree')
     ts = genserie(dt(2025, 1, 1), 'd', 10)
     path = 'my.new.folder'
     names = [
@@ -1737,7 +1729,7 @@ def test_tree_parallel(tsx, tsh, engine):
 
     def put_in_folder(sn, path):
         try:
-            tsx.update_metadata(sn, {'tree': path})
+            tsx.set_series_path(sn, path)
         except Exception as e:
             errors.append(e)
 
@@ -1749,9 +1741,6 @@ def test_tree_parallel(tsx, tsh, engine):
 
 
 def test_tree_roundtrip(tsx):
-    # setup tree-attribute
-    tsx.set_tree_attribute('folders')
-
     # Create empty node
     # Nothing yet
 
@@ -1761,16 +1750,16 @@ def test_tree_roundtrip(tsx):
         index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
     )
     name = 'series-folder-0'
-    tsx.update( name, ts, 'test')
-    tsx.update_metadata(name, {'folders': 'a'})
+    tsx.update(name, ts, 'test')
+    tsx.set_series_path(name, 'a')
 
     name = 'series-folder-1'
-    tsx.update( name, ts, 'test')
-    tsx.update_metadata(name, {'folders': 'a.b'})
+    tsx.update(name, ts, 'test')
+    tsx.set_series_path(name, 'a.b')
 
     name = 'series-folder-2'
-    tsx.update( name, ts, 'test')
-    tsx.update_metadata(name, {'folders': 'a.b.c'})
+    tsx.update(name, ts, 'test')
+    tsx.set_series_path(name, 'a.b.c')
 
     assert tsx.tree() == ['a', 'a.b', 'a.b.c']
 
@@ -1784,8 +1773,8 @@ def test_tree_roundtrip(tsx):
     # i.e. incoherent state fixed - no more tree in metadata
 
     # restore previous state
-    tsx.update_metadata('series-folder-2', {'folders': 'a.b'})
-    tsx.update_metadata('series-folder-2', {'folders': 'a.b.c'})
+    tsx.set_series_path('series-folder-2', 'a.b')
+    tsx.set_series_path('series-folder-2', 'a.b.c')
     assert tsx.tree() == ['a', 'a.b', 'a.b.c']
 
     # intermediary node
@@ -1797,8 +1786,8 @@ def test_tree_roundtrip(tsx):
     assert tsx.metadata('series-folder-2') == {}
 
     # restore previous state
-    tsx.update_metadata('series-folder-1', {'folders': 'a'})
-    tsx.update_metadata('series-folder-1', {'folders': 'a.b'})
+    tsx.set_series_path('series-folder-1', 'a')
+    tsx.set_series_path('series-folder-1', 'a.b')
     assert tsx.tree() == ['a', 'a.b.c', 'a.b']
     # NB: the path are given in another order
 
@@ -1808,7 +1797,6 @@ def test_tree_roundtrip(tsx):
     assert tsx.tree() == ['a', 'a.b', 'a.b.x']
     assert tsx.series_path('series-folder-2') == 'a.b.x'  # renamed in tree_series_map
     assert tsx.metadata('series-folder-2') == {}
-    # no more incoherent state - tree attribute not stored in metadata
 
     # restore previous state
     tsx.rename_path('a.b.x', 'a.b.c')
@@ -1821,7 +1809,6 @@ def test_tree_roundtrip(tsx):
     assert tsx.series_path('series-folder-2') == 'a.x.c'  # renamed in tree_series_map
     assert tsx.metadata('series-folder-1') == {}
     assert tsx.metadata('series-folder-2') == {}
-    # no more incoherent state - tree attribute not stored in metadata
 
 
 # groups

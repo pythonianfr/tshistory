@@ -230,12 +230,6 @@ class base:
         if existing_metadata == oldmeta:
             return
 
-        if self.kvstore:
-            ta = self.kvstore.get('tree-attribute')
-            if ta and ta in metadata:
-                self.set_in_tree(cn, name, metadata[ta])
-                existing_metadata.pop(ta)
-
         cn.execute(
             f'update "{self.namespace}".registry '
             'set metadata = %(metadata)s '
@@ -259,12 +253,6 @@ class base:
         oldmeta = self.metadata(cn, name) or {}
         if oldmeta == metadata:
             return
-
-        if self.kvstore:
-            ta = self.kvstore.get('tree-attribute')
-            if ta and ta in metadata:
-                self.set_in_tree(cn, name, metadata.get(ta, ''))
-                metadata.pop(ta)
 
         cn.execute(
             f'update "{self.namespace}".registry '
