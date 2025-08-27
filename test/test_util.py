@@ -446,7 +446,7 @@ def test_fix_missing_indexes(tsp, engine):
         cn.execute('DROP INDEX tsh.tsh_registry_metadata_idx')
 
         # Drop a GIST index (for ltree)
-        cn.execute('DROP INDEX tsh.tree_path_idx')
+        cn.execute('DROP INDEX tsh.tsh_tree_path_idx')
 
         # Drop a foreign key index
         cn.execute('DROP INDEX tsh.tsh_ts_oldmeta_seriesid_idx')
@@ -475,7 +475,7 @@ def test_fix_missing_indexes(tsp, engine):
             FROM pg_indexes
             WHERE schemaname='tsh'
             AND indexname IN ('tsh_basket_kind_idx', 'tsh_registry_metadata_idx',
-                              'tree_path_idx', 'tsh_ts_oldmeta_seriesid_idx')
+                              'tsh_tree_path_idx', 'tsh_ts_oldmeta_seriesid_idx')
             ORDER BY indexname
         """).fetchall()
 
@@ -606,10 +606,10 @@ def test_sql_parser_actual_files():
         'tsh_basket_kind_idx', 'tsh', 'basket', ('kind',), 'btree'
     )
 
-    tree_idx = [idx for idx in indexes if idx.name == 'tree_path_idx']
+    tree_idx = [idx for idx in indexes if idx.name == 'tsh_tree_path_idx']
     assert len(tree_idx) == 1
     assert tree_idx[0] == Index(
-        'tree_path_idx', 'tsh', 'tree', ('path',), 'gist'
+        'tsh_tree_path_idx', 'tsh', 'tree', ('path',), 'gist'
     )
 
     gin_indexes = [idx for idx in indexes if idx.type == 'gin']

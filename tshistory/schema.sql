@@ -34,7 +34,7 @@ create table "{ns}".tree (
   path ltree unique
 );
 
-create index tree_path_idx on "{ns}".tree using gist (path);
+create index "{ns}_tree_path_idx" on "{ns}".tree using gist (path);
 
 
 create table "{ns}".tree_series_map (
@@ -42,4 +42,4 @@ create table "{ns}".tree_series_map (
   treeid integer references "{ns}".tree (id) on delete cascade
 );
 
-create index tree_series_map_idx on "{ns}".tree_series_map (treeid);
+create index "{ns}_tree_series_map_idx" on "{ns}".tree_series_map (treeid);

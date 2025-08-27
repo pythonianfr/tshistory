@@ -292,7 +292,7 @@ create table if not exists "{ns}".tree (
   path ltree
 );
 
-create index if not exists tree_path_idx on "{ns}".tree using gist (path);
+create index if not exists "{ns}_tree_path_idx" on "{ns}".tree using gist (path);
 
 
 create table if not exists "{ns}".tree_series_map (
@@ -300,7 +300,7 @@ create table if not exists "{ns}".tree_series_map (
   treeid integer references "{ns}".tree (id) on delete cascade
 );
 
-create index if not exists tree_series_map_idx on "{ns}".tree_series_map (treeid);
+create index if not exists "{ns}_tree_series_map_idx" on "{ns}".tree_series_map (treeid);
 """, _binary=False)
 
 
@@ -326,7 +326,6 @@ create table if not exists "{ns}".ts_oldmeta (
   metadata jsonb not null
 );
 
-create index if not exists "{ns}_ts_oldmeta_moment_idx" on "{ns}".ts_oldmeta (moment);
 create index if not exists "{ns}_ts_oldmeta_seriesid_idx" on "{ns}".ts_oldmeta (seriesid);
 
 create table if not exists "{ns}".gr_oldmeta (
@@ -336,7 +335,6 @@ create table if not exists "{ns}".gr_oldmeta (
   metadata jsonb not null
 );
 
-create index if not exists "{ns}_gr_oldmeta_moment_idx" on "{ns}".gr_oldmeta (moment);
 create index if not exists "{ns}_gr_oldmeta_groupid_idx" on "{ns}".gr_oldmeta (groupid);
 """, _binary=False)
 
