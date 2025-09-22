@@ -214,9 +214,12 @@ class base:
     @tx
     def rename_path(self, cn, path, newpath):
         cn.execute(
-            f'update "{self.namespace}".tree  '
-            f'set path = %(newpath)s '
-            f'where path = %(path)s',
+            f'update "{self.namespace}".tree '
+            f'set path = case '
+            f'  when path = text2ltree(%(path)s) then text2ltree(%(newpath)s) '
+            f'  else text2ltree(%(newpath)s) || subpath(path, nlevel(text2ltree(%(path)s))) '
+            f'end '
+            f'where path <@ text2ltree(%(path)s)',
             path=path,
             newpath=newpath
         )

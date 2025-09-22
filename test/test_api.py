@@ -1802,11 +1802,11 @@ def test_tree_roundtrip(tsx):
     tsx.rename_path('a.b.x', 'a.b.c')
     assert tsx.tree() == ['a', 'a.b', 'a.b.c']
 
-    # intermediary node
-    tsx.rename_path('a.b.c', 'a.x.c')
-    assert tsx.tree() == ['a', 'a.b', 'a.x.c']
-    assert tsx.series_path('series-folder-1') == 'a.b'
-    assert tsx.series_path('series-folder-2') == 'a.x.c'  # renamed in tree_series_map
+    # intermediary node - test cascading rename
+    tsx.rename_path('a.b', 'a.x')
+    assert tsx.tree() == ['a', 'a.x', 'a.x.c']
+    assert tsx.series_path('series-folder-1') == 'a.x'
+    assert tsx.series_path('series-folder-2') == 'a.x.c'  # cascaded rename
     assert tsx.metadata('series-folder-1') == {}
     assert tsx.metadata('series-folder-2') == {}
 
