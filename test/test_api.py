@@ -1779,17 +1779,16 @@ def test_tree_roundtrip(tsx):
 
     # intermediary node
     tsx.delete_path('a.b')
-    assert tsx.tree() == ['a', 'a.b.c']
+    assert tsx.tree() == ['a']
     assert tsx.series_path('series-folder-1') is None  # path deleted from tree_series_map
-    assert tsx.series_path('series-folder-2') == 'a.b.c'
+    assert tsx.series_path('series-folder-2') is None
     assert tsx.metadata('series-folder-1') == {}
     assert tsx.metadata('series-folder-2') == {}
 
     # restore previous state
-    tsx.set_series_path('series-folder-1', 'a')
     tsx.set_series_path('series-folder-1', 'a.b')
-    assert tsx.tree() == ['a', 'a.b.c', 'a.b']
-    # NB: the path are given in another order
+    tsx.set_series_path('series-folder-2', 'a.b.c')
+    assert tsx.tree() == ['a', 'a.b', 'a.b.c']
 
     # rename
     # terminal node

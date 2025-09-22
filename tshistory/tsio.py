@@ -207,7 +207,7 @@ class base:
     def delete_path(self, cn, path):
         cn.execute(
             f'delete from "{self.namespace}".tree where '
-            f'path = %(path)s',
+            f'path <@ text2ltree(%(path)s)',
             path=path
         )
 
