@@ -911,7 +911,14 @@ undocumented.
                         dtype = meta and meta['value_type'] or None
                     # data given in parameter
                     if args.series is not None:
-                        series = pd.Series(args.series, dtype=dtype)
+                        if isinstance(args.series, str):
+                            try:
+                                series_data = json.loads(args.series)
+                            except json.JSONDecodeError:
+                                api.abort(400, 'Invalid JSON format for series data')
+                            series = pd.Series(series_data, dtype=dtype)
+                        else:
+                            series = pd.Series(args.series, dtype=dtype)
                     # data given as file
                     else:
                         series = pd.Series(json.loads(args.bseries.stream.read()), dtype=dtype)

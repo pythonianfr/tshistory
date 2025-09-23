@@ -108,6 +108,42 @@ def test_no_series(http):
     }
 
 
+def test_swagger_json_string_input(http):
+    # test for issue #157: api/swagger crash with json string input
+    # when someone sends a json string directly instead of a parsed dict
+    json_string = '{"2025-01-01T00:00:00": 42.5, "2025-01-02T00:00:00": 172.3}'
+
+    res = http.patch_json('/series/state', params={
+        'name': 'test-json-string',
+        'series': json_string,  # sending string instead of dict
+        'author': 'Babar',
+        'insertion_date': str(utcdt(2025, 1, 1, 10)),
+        'tzaware': False
+    })
+
+    # should work now that we parse JSON strings
+    assert res.status_code == 201
+
+    # verify the series was created correctly
+    res = http.get('/series/state?name=test-json-string')
+    assert res.status_code == 200
+    assert res.json == {
+        '2025-01-01T00:00:00': 42.5,
+        '2025-01-02T00:00:00': 172.3
+    }
+
+    # test invalid JSON string
+    res = http.patch_json('/series/state', params={
+        'name': 'test-bad-json',
+        'series': 'not valid json',
+        'author': 'Babar',
+        'insertion_date': str(utcdt(2025, 1, 1, 10)),
+        'tzaware': False
+    })
+    assert res.status_code == 400
+    assert 'Invalid JSON format' in res.json.get('message', '')
+
+
 def test_naive(http):
     series_in = genserie(pd.Timestamp('2018-1-1'), 'h', 3)
     res = http.patch_json('/series/state', params={
