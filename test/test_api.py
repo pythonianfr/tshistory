@@ -1662,8 +1662,8 @@ def test_tree_api(tsx, engine):
     assert tsx.tree() == ['UE.Italy', 'UE.France']
 
     assert tsx.find('(by.without-path)') == []
-    assert tsx.find('(by.at-path "UE")') == ['ue.france', 'ue.italy']
-    assert tsx.find('(by.at-path "UE" #:childen #f)') == []
+    assert tsx.find('(by.at-path "UE")') == []
+    assert tsx.find('(by.at-path "UE" #:childen #t)') ==  ['ue.france', 'ue.italy']
     assert tsx.find('(by.at-path "UE.France")') == ['ue.france']
 
     tsx.delete_path('UE.Italy')

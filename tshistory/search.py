@@ -382,7 +382,7 @@ class bywithoutpath(query):
 
 class byatpath(query):
 
-    def __init__(self, path, children=True):
+    def __init__(self, path, children=False):
         self.path = path
         self.children = children
 
@@ -394,7 +394,7 @@ class byatpath(query):
     def __sig__():
         return {
             'path': 'str',
-            'children': 'bool',
+            'children': 'Default[bool=False]',
             'return': 'query'
         }
 
