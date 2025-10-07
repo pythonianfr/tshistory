@@ -1741,10 +1741,6 @@ def test_tree_parallel(tsx, tsh, engine):
 
 
 def test_tree_roundtrip(tsx):
-    # Create empty node
-    # Nothing yet
-
-    # insert series and put in tree
     ts = pd.Series(
         [1, 2, 3],
         index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
@@ -1768,7 +1764,7 @@ def test_tree_roundtrip(tsx):
 
     tsx.delete_path('a.b.c')
     assert tsx.tree() == ['a', 'a.b']
-    assert tsx.series_path('series-folder-2') is None  # path deleted from tree_series_map
+    assert tsx.series_path('series-folder-2') is None
     assert tsx.metadata('series-folder-2') == {}
     # i.e. incoherent state fixed - no more tree in metadata
 
@@ -1780,7 +1776,7 @@ def test_tree_roundtrip(tsx):
     # intermediary node
     tsx.delete_path('a.b')
     assert tsx.tree() == ['a']
-    assert tsx.series_path('series-folder-1') is None  # path deleted from tree_series_map
+    assert tsx.series_path('series-folder-1') is None
     assert tsx.series_path('series-folder-2') is None
     assert tsx.metadata('series-folder-1') == {}
     assert tsx.metadata('series-folder-2') == {}
@@ -1794,7 +1790,7 @@ def test_tree_roundtrip(tsx):
     # terminal node
     tsx.rename_path('a.b.c', 'a.b.x')
     assert tsx.tree() == ['a', 'a.b', 'a.b.x']
-    assert tsx.series_path('series-folder-2') == 'a.b.x'  # renamed in tree_series_map
+    assert tsx.series_path('series-folder-2') == 'a.b.x'
     assert tsx.metadata('series-folder-2') == {}
 
     # restore previous state
@@ -1808,6 +1804,40 @@ def test_tree_roundtrip(tsx):
     assert tsx.series_path('series-folder-2') == 'a.x.c'  # cascaded rename
     assert tsx.metadata('series-folder-1') == {}
     assert tsx.metadata('series-folder-2') == {}
+
+
+def test_tree_special_characters(tsx):
+    ts = pd.Series(
+        [1, 2, 3],
+        index=pd.date_range(utcdt(2020, 1, 1), freq='d', periods=3)
+    )
+
+    # test characters in ltree paths
+    # since postgres 16, dashes are allowed in ltree labels (max 1000 chars)
+    # postgres < 16 only allowed alphanumerics and underscores (max 256 chars)
+
+    tsx.update('test-series-0', ts, 'test')
+
+    tsx.set_series_path('test-series-0', 'folder-with-dash')
+    tsx.set_series_path('test-series-0', 'folder_with_underscore')
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.set_series_path('test-series-0', 'folder with spaces')
+    assert excinfo.value.args[0] == (
+        "ltree syntax error at character 7\nCONTEXT:  unnamed portal parameter $1 = '...'"
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.set_series_path('test-series-0', 'folder/with/slash')
+    assert excinfo.value.args[0] == (
+        "ltree syntax error at character 7\nCONTEXT:  unnamed portal parameter $1 = '...'"
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        tsx.set_series_path('test-series-0', 'folder(with)parentheses')
+    assert excinfo.value.args[0] == (
+        "ltree syntax error at character 7\nCONTEXT:  unnamed portal parameter $1 = '...'"
+    )
 
 
 # groups
