@@ -369,7 +369,10 @@ class Postgres(base):
         return allchuks - reachable_chunks
 
     def reclaim(self) -> None:
-        todelete = ','.join(str(id) for id in self.garbage())
+        garbage = self.garbage()
+        if not garbage:
+            return
+        todelete = ','.join(str(id) for id in garbage)
         sql = (f'delete from "{self.tsh.namespace}.snapshot"."{self.tablename}" '
                f'where id in ({todelete})')
         self.cn.execute(sql)
