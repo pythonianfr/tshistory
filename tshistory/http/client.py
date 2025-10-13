@@ -65,10 +65,13 @@ def setup_cache():
 
 def oauth2_auth(auth):
     setup_cache()
-    domain = auth['domain']
-    meta = requests.get(
-        f'https://{domain}/.well-known/openid-configuration'
-    ).json()
+    issuer = auth.get('issuer')
+    if issuer:
+        discovery_url = f'{issuer}/.well-known/openid-configuration'
+    else:
+        domain = auth['domain']
+        discovery_url = f'https://{domain}/.well-known/openid-configuration'
+    meta = requests.get(discovery_url).json()
     tokenurl = meta['token_endpoint']
     clientid = auth['client_id']
     clientsecret = auth['client_secret']
@@ -82,10 +85,13 @@ def oauth2_auth(auth):
 
 def pkce_auth(uri, auth):
     setup_cache()
-    domain = auth['domain']
-    meta = requests.get(
-        f'https://{domain}/.well-known/openid-configuration'
-    ).json()
+    issuer = auth.get('issuer')
+    if issuer:
+        discovery_url = f'{issuer}/.well-known/openid-configuration'
+    else:
+        domain = auth['domain']
+        discovery_url = f'https://{domain}/.well-known/openid-configuration'
+    meta = requests.get(discovery_url).json()
     return OAuth2AuthorizationCodePKCE(
         authorization_url=meta['authorization_endpoint'],
         token_url=meta['token_endpoint'],
