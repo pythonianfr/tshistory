@@ -1821,22 +1821,25 @@ def test_tree_special_characters(tsx):
     tsx.set_series_path('test-series-0', 'folder-with-dash')
     tsx.set_series_path('test-series-0', 'folder_with_underscore')
 
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         tsx.set_series_path('test-series-0', 'folder with spaces')
-    assert excinfo.value.args[0] == (
-        "ltree syntax error at character 7\nCONTEXT:  unnamed portal parameter $1 = '...'"
+    assert str(excinfo.value) == (
+        "invalid tree path: ltree syntax error at position 6 "
+        "(character ' '): folder[ ]with spaces"
     )
 
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         tsx.set_series_path('test-series-0', 'folder/with/slash')
-    assert excinfo.value.args[0] == (
-        "ltree syntax error at character 7\nCONTEXT:  unnamed portal parameter $1 = '...'"
+    assert str(excinfo.value) == (
+        "invalid tree path: ltree syntax error at position 6 "
+        "(character '/'): folder[/]with/slash"
     )
 
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         tsx.set_series_path('test-series-0', 'folder(with)parentheses')
-    assert excinfo.value.args[0] == (
-        "ltree syntax error at character 7\nCONTEXT:  unnamed portal parameter $1 = '...'"
+    assert str(excinfo.value) == (
+        "invalid tree path: ltree syntax error at position 6 "
+        "(character '('): folder[(]with)parentheses"
     )
 
 

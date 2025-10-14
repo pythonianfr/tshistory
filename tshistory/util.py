@@ -1107,3 +1107,23 @@ def checkdiffs_for_name(
             print('-> start', ts.index[0], start)
         if ts.index[-1] != end:
             print('-> end', ts.index[0], end)
+
+
+# ltree error formatting
+
+def format_ltree_error(path: str, pg_error: str) -> str:
+    """format a postgresql ltree syntax error with context"""
+    match = re.search(r'at character (\d+)', pg_error)
+    if not match:
+        return f'invalid tree path "{path}": {pg_error}'
+
+    pos = int(match.group(1)) - 1
+    if not (0 <= pos < len(path)):
+        return f'invalid tree path "{path}": {pg_error}'
+
+    bad_char = repr(path[pos])
+    context = f'{path[:pos]}[{path[pos]}]{path[pos+1:]}'
+    return (
+        f'invalid tree path: ltree syntax error at position {pos} '
+        f'(character {bad_char}): {context}'
+    )

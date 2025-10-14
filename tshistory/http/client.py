@@ -115,6 +115,8 @@ def unwraperror(func):
                 raise Exception('404 - please check your base uri')
             if res.status_code == 400:
                 raise Exception(f'Bad Query: {res.text}')
+            if res.status_code == 405:
+                raise ValueError(res.json().get('message', res.text))
             if res.status_code == 401:
                 raise Exception('401 - Unauthorized. Check your tshistory.cfg file.')
             if res.status_code == 403:
@@ -244,9 +246,6 @@ class httpclient:
             },
             timeout=DEFAULT_TIMEOUT
         )
-
-        if res.status_code == 405:
-            raise ValueError(res.json()['message'])
 
         if res.status_code in (200, 201):
             return unpack_series(name, res.content)

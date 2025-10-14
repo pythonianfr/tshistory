@@ -808,7 +808,12 @@ Values must be scalars.
             @required_roles('admin', 'rw')
             def patch(self):
                 args = treepath_set.parse_args()
-                return tsa.set_series_path(args.name, args.path)
+                try:
+                    return tsa.set_series_path(args.name, args.path)
+                except ValueError as err:
+                    if 'invalid tree path:' in str(err):
+                        api.abort(405, str(err))
+                    raise
 
         @nss.route('/tree')
         class timeseries_tree(Resource):

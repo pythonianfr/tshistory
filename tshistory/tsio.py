@@ -7,6 +7,7 @@ import shutil
 
 import pandas as pd
 import numpy as np
+import psycopg.errors
 
 from sqlhelp import sqlfile, select, insert
 
@@ -19,6 +20,7 @@ from tshistory.util import (
     diffs,
     empty_series,
     ensuretz,
+    format_ltree_error,
     guard_insert,
     guard_query_dates,
     hash64,
@@ -176,15 +178,32 @@ class base:
                 f'select pg_advisory_xact_lock({self.tree_lock_id})'
             )
         # does the path exist ?
-        if not cn.execute(
+        try:
+            path_exists = cn.execute(
                 f'select id from "{self.namespace}".tree '
                 f'where path = %(path)s',
-                path=path).scalar():
-            cn.execute(
-                f'insert into "{self.namespace}".tree (path) '
-                f'values (%(path)s)',
                 path=path
-            )
+            ).scalar()
+        except psycopg.errors.SyntaxError as err:
+            if 'ltree syntax error' in str(err):
+                raise ValueError(
+                    format_ltree_error(path, str(err))
+                ) from None
+            raise
+
+        if not path_exists:
+            try:
+                cn.execute(
+                    f'insert into "{self.namespace}".tree (path) '
+                    f'values (%(path)s)',
+                    path=path
+                )
+            except psycopg.errors.SyntaxError as err:
+                if 'ltree syntax error' in str(err):
+                    raise ValueError(
+                        format_ltree_error(path, str(err))
+                    ) from None
+                raise
 
         cn.execute(
             f'with tsid as '
