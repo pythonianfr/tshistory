@@ -173,6 +173,14 @@ class httpclient:
             elif 'client_id' in auth:
                 self.session.auth = oauth2_auth(auth)
 
+            # add custom headers if configured
+            if 'extraheaders' in auth:
+                try:
+                    headers = json.loads(auth['extraheaders'])
+                except json.JSONDecodeError as e:
+                    raise ValueError(f'invalid extraheaders JSON: {e}')
+                self.session.headers.update(headers)
+
         # immediately check the uri
         healthcheck(self.session, uri)
 
