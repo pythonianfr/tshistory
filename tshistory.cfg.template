@@ -5,6 +5,32 @@ refinery = postgresql://user@passwd/refinery
 refinery.meteo = http://refinery-meteo.info/api, tsh
 
 [auth]
-meteo.uri = http://refinery-meteo.info/api
-meteo.login = <login>
-meteo.passwd = <passwd>
+# authentication configuration examples
+
+# basic http authentication
+# myapp.uri = https://api.example.com/api
+# myapp.login = username
+# myapp.password = secret
+
+# oauth2 client credentials (machine-to-machine)
+# myapp.uri = https://api.example.com/api
+# myapp.client_id = your_client_id
+# myapp.client_secret = your_client_secret
+# myapp.domain = auth.example.com
+# or with issuer for aws cognito:
+# myapp.issuer = https://cognito-idp.region.amazonaws.com/user-pool-id
+
+# oauth2 pkce (user authentication)
+# for public clients (mobile, spa):
+# myapp.uri = https://api.example.com/api
+# myapp.pkce =
+# myapp.client_id = your_client_id
+# myapp.domain = auth.example.com
+# or with issuer for aws cognito:
+# myapp.issuer = https://cognito-idp.region.amazonaws.com/user-pool-id
+
+# for confidential clients (oauth 2.1 best practice):
+# myapp.client_secret = your_client_secret
+
+# custom http headers (for api gateways)
+# myapp.extraheaders = {"x-api-key": "your-key", "x-custom": "value"}
