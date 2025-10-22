@@ -642,13 +642,44 @@ If it comes from the main source it returns the "local" string.
             @api.doc(
                 responses={200: 'Got content',
                            404: 'Does not exist'},
-                description="""Get a series metadata
+                description="""Get series metadata - multiplexed endpoint
 
-The "type" field decides which kind of metadata is returned.
-* exists -> tells if the series exists (bool)
-* type -> returns the type of the series ("primary" or "formula")
-* standard -> return the user defined metadata (str -> scalar dict)
-* internal -> return the internal metadata (str -> scalar dict)
+This single route provides access to 6 different metadata operations via the "type" parameter.
+
+**exists** - Test series existence
+  Returns: HTTP 404 if series doesn't exist, OR true with HTTP 200 if it exists
+  Use: lightweight existence check (client checks HTTP status, not return value)
+  Example: `?name=my-series&type=exists`
+
+**type** - Get series implementation type
+  Returns: "primary" | "formula" | <plugin-type> (str)
+  Use: determine if series is raw data, computed, or plugin-specific
+  Example: `?name=my-series&type=type`
+
+**standard** - Get user-defined metadata
+  Returns: {key: value, ...} (dict) - may be empty {}
+  Use: retrieve arbitrary metadata set by users via update_metadata()
+  Example: `?name=my-series&type=standard`
+  Deprecated: parameter "all" (formerly merged standard+internal, now use type=internal separately)
+
+**internal** - Get system-managed metadata
+  Returns: dict with keys: tzaware (bool), index_type (str), index_dtype (str),
+           value_type (str), value_dtype (str), tablename (str),
+           left (iso_date), right (iso_date), path (str), etc.
+  Use: inspect technical properties (timezone, dtypes, time bounds, storage location)
+  Example: `?name=my-series&type=internal`
+
+**archive** - Get metadata modification history
+  Returns: [[timestamp_iso, metadata_dict, username], ...] (list of tuples)
+  Use: audit trail of metadata changes ordered by modification time (newest first)
+  Example: `?name=my-series&type=archive`
+
+**interval** - Get time range of available data
+  Returns: [tzaware, min_date_iso, max_date_iso] (tuple)
+          OR [tzaware, null, null] if series is empty
+          OR HTTP 204 (No Content) on error
+  Use: find temporal boundaries without loading series data
+  Example: `?name=my-series&type=interval`
 """
             )
             @api.expect(metadata)
