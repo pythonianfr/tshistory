@@ -76,7 +76,6 @@ def oauth2_auth(auth):
     clientid = auth['client_id']
     clientsecret = auth['client_secret']
     return OAuth2ClientCredentials(
-        audience=auth['uri'],
         token_url=tokenurl,
         client_id=clientid,
         client_secret=clientsecret
@@ -96,8 +95,8 @@ def pkce_auth(uri, auth):
         authorization_url=meta['authorization_endpoint'],
         token_url=meta['token_endpoint'],
         redirect_uri_endpoint='pkce',
-        audience=auth['uri'],
-        client_id=auth['client_id']
+        client_id=auth['client_id'],
+        scope='openid profile email'
     )
 
 
