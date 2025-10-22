@@ -91,13 +91,20 @@ def pkce_auth(uri, auth):
         domain = auth['domain']
         discovery_url = f'https://{domain}/.well-known/openid-configuration'
     meta = requests.get(discovery_url).json()
-    return OAuth2AuthorizationCodePKCE(
-        authorization_url=meta['authorization_endpoint'],
-        token_url=meta['token_endpoint'],
-        redirect_uri_endpoint='pkce',
-        client_id=auth['client_id'],
-        scope='openid profile email'
-    )
+
+    pkce_params = {
+        'authorization_url': meta['authorization_endpoint'],
+        'token_url': meta['token_endpoint'],
+        'redirect_uri_endpoint': 'pkce',
+        'client_id': auth['client_id'],
+        'scope': 'openid profile email'
+    }
+
+    # confidential client: pass client_secret for token exchange
+    if 'client_secret' in auth:
+        pkce_params['client_secret'] = auth['client_secret']
+
+    return OAuth2AuthorizationCodePKCE(**pkce_params)
 
 
 def unwraperror(func):
