@@ -586,8 +586,34 @@ class httpapi:
         class global_properties(Resource):
 
             @api.doc(
-                responses={200: 'Got content'},
-                description='Return global properties of the local instance.'
+                responses={200: 'Got content', 400: 'Invalid property'},
+                description="""Get global instance properties - multiplexed endpoint
+
+This single route provides access to 2 different global information types via the "property" parameter.
+
+**sources** - List all configured secondary sources
+  Returns: list of source names (strings)
+  Example: `["meteo", "fundamentals"]`
+
+**info** - Get information about all sources including local
+  Returns: dict mapping source names to metadata
+  Example:
+  ```json
+  {
+    "local": {
+      "type": "primary",
+      "series_count": 1234
+    },
+    "meteo": {
+      "type": "remote",
+      "uri": "postgresql://meteo-db/tsdb"
+    }
+  }
+  ```
+
+**Parameters:**
+- property: "sources" or "info" (required)
+"""
             )
             @api.expect(properties)
             @onerror
@@ -607,10 +633,18 @@ class httpapi:
 
             @api.doc(
                 responses={200: 'Got content', 404: 'Does not exist'},
-                description="""Return the source of a series.
+                description="""Return the source location of a series
 
-If it comes from a secondary source, it returns the source name.
-If it comes from the main source it returns the "local" string.
+Identifies which refinery instance stores a series:
+- Returns "local" if stored in the main refinery instance
+- Returns the source name (e.g., "remote-refinery") if stored in a secondary refinery
+
+**Parameters:**
+- name: series name
+
+**Returns:** "local" | <source-name> (str)
+
+**Example:** `?name=my-series`
 """
             )
             @api.expect(source)
@@ -628,7 +662,20 @@ If it comes from the main source it returns the "local" string.
 
             @api.doc(
                 responses={200: 'Got content'},
-                description='Returns the sources of a Refinery'
+                description="""List configured remote time series sources
+
+Returns all secondary refinery instances configured as data sources.
+
+**Returns:** list of [name, uri] pairs for each configured source
+
+**Example:**
+```json
+[
+  ["remote-prod", "postgresql://prod.example.com/tsdb"],
+  ["remote-backup", "postgresql://backup.example.com/tsdb"]
+]
+```
+"""
             )
             @api.expect(nothing)
             @onerror
@@ -730,15 +777,26 @@ This single route provides access to 6 different metadata operations via the "ty
 
             @api.doc(
                 responses={
-                    200: 'Got content',
+                    200: 'Success',
                     404: 'Does not exist',
                     405: 'Not allowed'
                 },
-                description="""Replace the user metadata of a series
+                description="""Replace series metadata
 
-The metadata must be provided as a json string.
-The format is a key-value mapping.
-Values must be scalars.
+Completely replaces user metadata with new values. Previous metadata is archived and can be retrieved via GET with type=archive.
+
+**Parameters:**
+- name: series name
+- metadata: JSON string with new metadata dict (values must be scalars)
+
+**Example metadata:**
+```json
+{
+  "unit": "MW",
+  "description": "Power production",
+  "source": "EDF"
+}
+```
 """
             )
             @api.expect(put_metadata)
@@ -762,13 +820,15 @@ Values must be scalars.
 
             @api.doc(
                 responses={204: 'Success', 404: 'Does not exist'},
-                description="""Update the user metadata of a series
+                description="""Update series metadata
 
-The unmodified entries are left unmodified.
+Updates specific metadata keys while preserving others. Previous metadata state is archived and can be retrieved via GET with type=archive.
 
-The metadata must be provided as a json string.
-The format is a key-value mapping.
-Values must be scalars.
+**Parameters:**
+- name: series name
+- metadata: JSON string with metadata dict (only specified keys are updated, values must be scalars)
+
+**Example:** If existing metadata is `{"unit": "MW", "source": "EDF"}` and you send `{"unit": "GW"}`, result will be `{"unit": "GW", "source": "EDF"}`.
 """
             )
             @api.expect(put_metadata)
@@ -793,7 +853,21 @@ Values must be scalars.
         @nss.route('/metadata-keys')
         class timeseries_metadata_keys(Resource):
 
-            @api.doc(description='List available metadata keys across all series')
+            @api.doc(
+                responses={200: 'Got content'},
+                description="""List all metadata keys used across all series
+
+Returns a sorted list of all unique metadata key names that exist in the registry.
+Useful for metadata discovery and validation.
+
+**Returns:** list of string keys
+
+**Example:**
+```json
+["author", "category", "description", "unit"]
+```
+"""
+            )
             @api.expect(nothing)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -804,7 +878,19 @@ Values must be scalars.
         class timeseries_tree_path(Resource):
 
             @api.doc(
-                description='Get series name from tree path or tree path from series name'
+                responses={200: 'Got content'},
+                description="""Navigate series tree paths - bidirectional lookup
+
+Supports two lookup modes via the `type` parameter:
+- **pathname**: find series name from tree path
+- **seriesname**: find tree path from series name
+
+**Parameters:**
+- type: "pathname" or "seriesname"
+- name: path or series name (depending on type)
+
+**Returns:** string (series name or path), or null if not found
+"""
             )
             @api.expect(treepath)
             @onerror
@@ -817,7 +903,17 @@ Values must be scalars.
                 assert args.type == 'seriesname'
                 return tsa.series_path(args.name)
 
-            @api.doc(description='Rename a tree path to a new path name')
+            @api.doc(
+                responses={200: 'Success'},
+                description="""Rename a tree path
+
+Renames a tree path and updates all series under that path.
+
+**Parameters:**
+- path: current path
+- newpath: new path name
+"""
+            )
             @api.expect(treepath_rename)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -825,7 +921,16 @@ Values must be scalars.
                 args = treepath_rename.parse_args()
                 return tsa.rename_path(args.path, args.newpath)
 
-            @api.doc(description='Delete a tree path')
+            @api.doc(
+                responses={200: 'Success'},
+                description="""Delete a tree path
+
+Removes a path from the tree structure. Series under this path are unaffected but lose their path association.
+
+**Parameters:**
+- path: tree path to delete
+"""
+            )
             @api.expect(treepath_delete)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -833,7 +938,17 @@ Values must be scalars.
                 args = treepath_delete.parse_args()
                 return tsa.delete_path(args.path)
 
-            @api.doc(description='Set or unset tree path for a series')
+            @api.doc(
+                responses={200: 'Success', 405: 'Invalid path'},
+                description="""Set or unset tree path for a series
+
+Assigns a series to a tree path for hierarchical organization.
+
+**Parameters:**
+- name: series name
+- path: tree path (set to null to unset)
+"""
+            )
             @api.expect(treepath_set)
             @onerror
             @required_roles('admin', 'rw')
@@ -849,7 +964,20 @@ Values must be scalars.
         @nss.route('/tree')
         class timeseries_tree(Resource):
 
-            @api.doc(description='Get the complete series tree structure')
+            @api.doc(
+                responses={200: 'Got content'},
+                description="""List all tree paths
+
+Returns all available tree paths in the hierarchy. Paths use dot notation (ltree format).
+
+**Returns:** list of path strings (dot-separated)
+
+**Example:**
+```json
+["energy.electricity", "energy.gas", "weather.temperature"]
+```
+"""
+            )
             @api.expect(nothing)
             @onerror
             @required_roles('admin', 'rw', 'ro')
@@ -860,21 +988,27 @@ Values must be scalars.
         class timeseries_freq(Resource):
 
             @api.doc(
-                responses={200: 'Got Content', 404: 'Does not exist'},
-                description="""Return the inferred period and a quality indicator of a series
+                responses={200: 'Got content', 404: 'Does not exist'},
+                description="""Infer the period frequency of a series with quality indicator
 
-The return format is a mapping from "inferred_freq" to a tuple.
-Tuple element 1 contains the freq as an ISO9601 time delta.
-Tuple element 2 contains the quality indicator as a float (from 0 to 1).
+Analyzes the series index to detect its frequency pattern.
 
-Example:
+**Parameters:**
+- name: series name
+- revision_date, from_value_date, to_value_date: optional date filters
 
+**Returns:** object with inferred_freq tuple [iso_duration, quality]
+- Element 0: frequency as ISO8601 duration string
+- Element 1: quality indicator from 0.0 (poor) to 1.0 (perfect)
+
+**Example:**
+```json
 {
- "inferred_freq": [
-  "P0DT0H0M3600S",
-  "1.0"
- ]
+  "inferred_freq": ["P0DT0H0M3600S", "1.0"]
 }
+```
+
+Returns null if frequency cannot be determined.
 """
             )
             @api.expect(inferred_freq)
@@ -913,23 +1047,36 @@ Example:
                     201: 'Created',
                     405: 'Not allowed'
                 },
-                description="""Create or update a series
+                description="""Create or update a series with data
 
-The series field should receive a json mapping encoded series, like
+Inserts new data points into a series or creates a new series. Returns the diff (changed points).
+
+**Parameters:**
+- name: series name
+- author: user performing the operation
+- series: JSON object mapping timestamps to values (format: {"2023-01-01T00:00:00": 42.5})
+- tzaware: true if series has timezone-aware timestamps (required)
+- replace: true for replace operation (overwrites), false for update (merges, default)
+- insertion_date: override insertion timestamp (ISO8601, optional)
+- metadata: initial metadata for new series (JSON string, optional)
+- keepnans: preserve NaN values (default: false)
+- supervision: mark as manual data entry (default: false)
+- dtype: data type for new series (e.g., "float64", optional)
+
+**Returns:** diff series showing only changed points (format=json default)
+
+**Example request:**
+```json
 {
- "2023-1-1T00:00:00": 42.5,
- "2023-1-2T00:00:00": 172.3
+  "name": "power.prod",
+  "author": "operator",
+  "tzaware": true,
+  "series": {
+    "2023-01-01T00:00:00+00:00": 100.5,
+    "2023-01-02T00:00:00+00:00": 105.2
+  }
 }
-
-The tzaware field must be set to indicate if the
-series is timezone aware or not.
-
-The replace boolean indicates if we are doing an
-"update" or a "replace" api call.
-
-The format fields accept another value than "json" but
-this is used by the Python client and will be left
-undocumented.
+```
 """
             )
             @api.expect(update)
@@ -1019,7 +1166,15 @@ undocumented.
                     405: 'Not allowed',
                     409: 'Target already exists',
                 },
-                description='rename a series'
+                description="""Rename a series
+
+Changes the name of an existing series.
+
+**Parameters:**
+- name: current series name
+- newname: new series name
+- propagate: update formula references (default: true)
+"""
             )
             @api.expect(rename)
             @onerror
@@ -1042,31 +1197,30 @@ undocumented.
 
             @api.doc(
                 responses={200: 'Got content', 404: 'Does not exist'},
-                description="""Return a series in json format
+                description="""Get series data
 
-The return format is like this:
+Returns series data as a mapping of timestamps to values. By default returns the latest version over full horizon.
+
+**Parameters:**
+- name: series name
+- insertion_date: get version at this timestamp (ISO8601, optional, default: latest)
+- from_value_date, to_value_date: restrict time range (ISO8601, optional)
+- tzone: timezone for index conversion (default: "UTC")
+- nocache: bypass cache for computed series (default: false)
+- live: for computed series, combine cached data with live uncached points (default: false)
+- inferred_freq: include inferred frequency metadata (default: false)
+- format: "json" or "tshpack" (default: json)
+
+**Returns (format=json):** object mapping timestamps to values
+
+**Example:**
+```json
 {
- "2023-1-1T00:00:00": 42.5,
- "2023-1-2T00:00:00": 172.3
+  "2023-01-01T00:00:00+00:00": 100.5,
+  "2023-01-02T00:00:00+00:00": 105.2,
+  "2023-01-03T00:00:00+00:00": 98.7
 }
-
-By default one gets the latest version of the series
-over its full horizon.
-
-By specifying the "insertion_date" argument, one can
-get the series version closest to the provided date
-(in ISO8601 string format).
-
-The "from_value_date" and "to_value_date" parameters
-allow to restrict the query horizon. The must be
-encoded as ISO8601 dates.
-
-The "nocache" parameter allows to read a computed
-series by bypassing its cache if it has one.
-
-The "live" parameter allows to read a computed series
-by getting its cached content (if it has a cache) and
-provide the latest uncached points.
+```
 """
             )
             @api.expect(get)
@@ -1116,13 +1270,18 @@ provide the latest uncached points.
 
             @api.doc(
                 responses={
-                    204: 'Sucess',
+                    204: 'Success',
                     404: 'Does not exist',
                     405: 'Not allowed'
                 },
                 description="""Delete a series
 
-Warning: this is an irreversible operation.
+Permanently removes a series and all its revisions. This is an irreversible operation.
+
+**Parameters:**
+- name: series name
+
+**Warning:** This deletes all historical data and metadata. The operation cannot be undone.
 """
             )
             @api.expect(delete)
@@ -1146,11 +1305,19 @@ Warning: this is an irreversible operation.
         @nss.route('/strip')
         class timeseries_strip(Resource):
 
-            @api.doc(description="""Strip a series
+            @api.doc(
+                responses={204: 'Success', 404: 'Does not exist'},
+                description="""Strip series revisions from a given date
 
-Remove all versions starting from the "insertion_date" parameter.
-This is an irreversible operation.
-""")
+Removes all revisions starting from the specified insertion date. This is an irreversible operation.
+
+**Parameters:**
+- name: series name
+- insertion_date: remove all revisions from this date onward (ISO8601)
+
+**Warning:** This permanently deletes data and cannot be undone.
+"""
+            )
             @api.expect(strip)
             @onerror
             @required_roles('admin', 'rw')
@@ -1168,18 +1335,29 @@ This is an irreversible operation.
 
             @api.doc(
                 responses={200: 'Got content', 404: 'Does not exist'},
-                description="""Return the revisions of a series
+                description="""Get all revision timestamps for a series
 
-It comes as a json list of ISO8601 string encoded dates.
+Returns the list of insertion dates (revision history) for a series.
 
-It is possible to restrict the horizon by using the
-"from_insertion_date" / "to_insertion_date" /
-"from_value_date" / "to_value_date" / "limit"
-parameters, all (but limit) encoded as ISO8601 strings.
+**Parameters:**
+- name: series name
+- from_insertion_date, to_insertion_date: filter by insertion date range (ISO8601, optional)
+- from_value_date, to_value_date: filter by value date range (ISO8601, optional)
+- limit: maximum number of dates to return (optional)
+- nocache: bypass cache for computed series (default: false)
 
-The "nocache" parameter allows to bypass the cache of
-a computed series (if it exists) and get the revisions
-of the live formula.
+**Returns:** object with insertion_dates array
+
+**Example:**
+```json
+{
+  "insertion_dates": [
+    "2022-01-15T10:30:00+00:00",
+    "2022-01-16T14:20:00+00:00",
+    "2022-01-17T09:15:00+00:00"
+  ]
+}
+```
 """
             )
             @api.expect(insertion_dates)
@@ -1212,7 +1390,35 @@ of the live formula.
 
             @api.doc(
                 responses={200: 'Got content', 404: 'Does not exist'},
-                description='Return the complete history of a series with all its revisions'
+                description="""Get complete revision history for a series
+
+Returns all revisions of a series, optionally in diff mode.
+
+**Parameters:**
+- name: series name
+- from_insertion_date, to_insertion_date: filter by insertion date range (ISO8601, optional)
+- from_value_date, to_value_date: filter by value date range (ISO8601, optional)
+- diffmode: return diffs between revisions instead of full series (default: false)
+- nocache: bypass cache for computed series (default: false)
+- format: "json" or "tshpack" (default: json)
+
+**Returns (format=json):** dict mapping insertion dates to series data
+
+**Example:**
+```json
+{
+  "2022-01-15T10:30:00+00:00": {
+    "2022-01-01T00:00:00": 100.0,
+    "2022-01-02T00:00:00": 105.0
+  },
+  "2022-01-16T14:20:00+00:00": {
+    "2022-01-01T00:00:00": 100.0,
+    "2022-01-02T00:00:00": 105.0,
+    "2022-01-03T00:00:00": 110.0
+  }
+}
+```
+"""
             )
             @api.expect(history)
             @onerror
@@ -1255,7 +1461,16 @@ of the live formula.
 
             @api.doc(
                 responses={200: 'Got content', 404: 'Does not exist'},
-                description='Compute a series staircase whose values are constrained by delta time after insertion dates'
+                description="""Build a staircase series for vintage data analysis
+
+Constructs a series where each value is constrained by a time delta after its insertion date.
+Useful for analyzing how data looked at different points in time.
+
+**Parameters:**
+- name: series name
+- delta: time offset from insertion date (e.g., "1 day")
+- from_value_date, to_value_date: optional date range filters
+"""
             )
             @api.expect(staircase)
             @onerror
@@ -1293,7 +1508,19 @@ of the live formula.
 
             @api.doc(
                 responses={200: 'Got content', 404: 'Does not exist'},
-                description='Compute a block staircase series with revision frequency and maturity offset parameters'
+                description="""Build a block staircase series with revision and maturity parameters
+
+Advanced staircase construction for block-structured time series with configurable revision patterns and maturity offsets.
+
+**Parameters:**
+- name: series name
+- from_value_date, to_value_date: optional date range filters
+- revision_freq: revision frequency as dict (e.g., {"days": 1})
+- revision_time: time of day for revisions as dict (e.g., {"hour": 9})
+- revision_tz: timezone for revision times (default: "UTC")
+- maturity_offset: maturity offset as dict
+- maturity_time: time of day for maturity
+"""
             )
             @api.expect(block_staircase)
             @onerror
@@ -1357,54 +1584,56 @@ This is a deprecated method, you should use "/find" instead.
 
             @api.doc(
                 responses={200: 'Got content'},
-                description="""Return a list of series descriptor from a filter query
+                description="""Search for series using filter query language
 
-A filter query is a lisp expression.
-Examples:
-* (by.everything) will return descriptors for all series
-* (by.name ".fcst") will return descriptos for all
-  series whose name contains the ".fcst" string
+Query series using lisp-like filter expressions. Results are sorted by series name.
 
-The complete description of the filter language can be
-found in the main documentation.
+**Parameters:**
+- query: lisp filter expression (see examples below)
+- limit: maximum number of results (optional)
+- meta: include internal and user metadata in results (default: false)
+- sources: filter by specific sources (optional)
 
-It is possible to specify a limit argument to limit
-the results. Results are sorted by series name.
+**Query Examples:**
+- `(by.everything)` - return all series
+- `(by.name ".fcst")` - series whose name contains ".fcst"
+- `(by.key "unit" "MW")` - series with metadata unit=MW
 
-By setting the "meta" argument to true, one gets the
-internal and user metadata in the returned series
-descriptors.
+See main documentation for complete filter language reference.
 
-The series descriptor is an object with fixed fields.
-Without metadata it looks like this:
+**Returns:** list of series descriptors
 
+**Descriptor format without metadata:**
+```json
 {
- "name": "series0",
- "imeta": null,
- "meta": null,
- "source": "local",
- "kind": "primary"
+  "name": "series0",
+  "imeta": null,
+  "meta": null,
+  "source": "local",
+  "kind": "primary"
 }
+```
 
-With metadata, we have this:
-
+**Descriptor format with metadata (meta=true):**
+```json
 {
- "name": "series0",
- "imeta": {
-  "tzaware": false,
-  "tablename": "series0",
-  "index_type": "datetime64[ns]",
-  "value_type": "float64",
-  "index_dtype": "<M8[ns]",
-  "value_dtype": "<f8",
-  "supervision_status": "supervised"
- },
- "meta": {
-  "foo": "bar"
- },
- "source": "local",
- "kind": "primary"
+  "name": "series0",
+  "imeta": {
+    "tzaware": false,
+    "tablename": "series0",
+    "index_type": "datetime64[ns]",
+    "value_type": "float64",
+    "index_dtype": "<M8[ns]",
+    "value_dtype": "<f8",
+    "supervision_status": "supervised"
+  },
+  "meta": {
+    "foo": "bar"
+  },
+  "source": "local",
+  "kind": "primary"
 }
+```
 """
             )
             @api.expect(find)
@@ -1428,7 +1657,52 @@ With metadata, we have this:
 
             @api.doc(
                 responses={200: 'Got content'},
-                description='Returns the list of series descriptors associated with a basket'
+                description="""Get series descriptors from a named basket
+
+Returns series matching a basket's stored query. Baskets are saved queries for easy reuse.
+
+**Parameters:**
+- name: basket name
+- limit: maximum results (optional)
+- meta: include metadata in descriptors (default: false)
+- sources: filter by sources (optional)
+- group: basket is for groups (default: false)
+
+**Returns:** list of series descriptors (same format as /find)
+
+**Without metadata:**
+```json
+[{
+  "name": "series0",
+  "imeta": null,
+  "meta": null,
+  "source": "local",
+  "kind": "primary"
+}]
+```
+
+**With metadata (meta=true):**
+```json
+[{
+  "name": "series0",
+  "imeta": {
+    "tzaware": false,
+    "tablename": "series0",
+    "index_type": "datetime64[ns]",
+    "value_type": "float64",
+    "index_dtype": "<M8[ns]",
+    "value_dtype": "<f8",
+    "supervision_status": "supervised"
+  },
+  "meta": {
+    "unit": "MW",
+    "description": "Power output"
+  },
+  "source": "local",
+  "kind": "primary"
+}]
+```
+"""
             )
             @api.expect(basket)
             @onerror
@@ -1447,8 +1721,16 @@ With metadata, we have this:
                 ]
 
             @api.doc(
-                responses={200: 'Got content'},
-                description='Register a new basket with a name and query string'
+                responses={200: 'Success'},
+                description="""Create or update a basket
+
+Registers a basket with a name and filter query for reuse.
+
+**Parameters:**
+- name: basket name
+- query: filter query in lisp format (e.g., "(by.name \".prod\")")
+- group: basket is for groups instead of series (default: false)
+"""
             )
             @api.expect(register_basket)
             @onerror
@@ -1463,8 +1745,15 @@ With metadata, we have this:
                 return '', 200
 
             @api.doc(
-                responses={200: 'Got content'},
-                description='Delete a basket'
+                responses={200: 'Success'},
+                description="""Delete a basket
+
+Removes a basket definition. Does not affect the series it references.
+
+**Parameters:**
+- name: basket name
+- group: basket is for groups (default: false)
+"""
             )
             @api.expect(basket)
             @onerror
@@ -1481,7 +1770,20 @@ With metadata, we have this:
 
             @api.doc(
                 responses={200: 'Got content'},
-                description='Return the list of available basket names'
+                description="""List all basket names
+
+Returns names of all registered baskets.
+
+**Parameters:**
+- group: list group baskets instead of series baskets (default: false)
+
+**Returns:** list of basket names
+
+**Example:**
+```json
+["production", "forecasts", "validated"]
+```
+"""
             )
             @api.expect(list_baskets)
             @onerror
@@ -1495,7 +1797,21 @@ With metadata, we have this:
 
             @api.doc(
                 responses={200: 'Got content'},
-                description='Returns the query string associated with a basket'
+                description="""Get basket query definition
+
+Returns the filter query associated with a basket.
+
+**Parameters:**
+- name: basket name
+- group: basket is for groups (default: false)
+
+**Returns:** query string (lisp expression)
+
+**Example:**
+```json
+"(by.name \".prod\")"
+```
+"""
             )
             @api.expect(basket)
             @onerror
@@ -1512,24 +1828,33 @@ With metadata, we have this:
 
             @api.doc(
                 responses={200: 'Got content', 404: 'Does not exist'},
-                description="""Return the insertion log of a series, as a list.
+                description="""Get insertion log history for a series
 
-Individual items as returned as such:
+Returns the list of all insertion operations on a series with revision metadata.
 
-{
- "rev": 2,
- "author": "webui",
- "date": "2022-10-27T13:46:34.777338+00:00",
- "meta": {
-  "edited": true
- }
-}
+**Parameters:**
+- name: series name
+- limit: maximum number of entries (optional)
+- fromdate: start date filter (ISO8601)
+- todate: end date filter (ISO8601)
 
-It is possible to specify a limit.
+**Returns:** list of log entries, each containing:
+- rev: revision number
+- author: user who made the insertion
+- date: insertion timestamp (ISO8601)
+- meta: insertion metadata (e.g., edited flag)
 
-Also the fromdate/todate parameters allow to restrict
-the versions horizon. Dates should be provided as
-ISO8601 strings.
+**Example:**
+```json
+[{
+  "rev": 2,
+  "author": "webui",
+  "date": "2022-10-27T13:46:34.777338+00:00",
+  "meta": {
+    "edited": true
+  }
+}]
+```
 """
             )
             @api.expect(log)
@@ -1558,10 +1883,16 @@ ISO8601 strings.
 
             @api.doc(
                 responses={200: 'Got content', 404: 'Does not exist'},
-                description="""Return the source of a group
+                description="""Return the source location of a group
 
-If it comes from a secondary source, it returns the source name.
-If it comes from the main source it returns the "local" string.
+Identifies which refinery instance stores a group:
+- Returns "local" if stored in the main refinery instance
+- Returns the source name (e.g., "remote-refinery") if stored in a secondary refinery
+
+**Parameters:**
+- name: group name
+
+**Returns:** source name string ("local" or configured source name)
 """
             )
             @api.expect(groupsource)
@@ -1579,7 +1910,19 @@ If it comes from the main source it returns the "local" string.
 
             @api.doc(
                 responses={200: 'Updated', 201: 'Created'},
-                description='Create or update a group of series'
+                description="""Create or update a group of series
+
+A group is a DataFrame where each column is a time series. Returns empty body (unlike series which return a diff).
+
+**Parameters:**
+- name: group name
+- author: user creating/updating the group
+- bgroup: binary-encoded DataFrame (format: tshpack)
+- insertion_date: override insertion timestamp (ISO8601, optional)
+- replace: true for replace operation, false for update (default)
+
+**Returns:** empty body with HTTP 201 on creation, 200 on update
+"""
             )
             @api.expect(groupupdate)
             @onerror
@@ -1611,7 +1954,31 @@ If it comes from the main source it returns the "local" string.
 
             @api.doc(
                 responses={200: 'Got content', 404: 'Does not exist'},
-                description='Return a group of series in json or binary format'
+                description="""Get a group of series
+
+Returns a group as a dict of series (column_name → {timestamp → value}).
+
+**Parameters:**
+- name: group name
+- insertion_date: retrieve version at this timestamp (ISO8601, optional)
+- from_value_date, to_value_date: date range filters (ISO8601, optional)
+- tzone: timezone for index conversion (default: "UTC")
+- format: "json" or "tshpack" (default: json)
+
+**Returns (format=json):**
+```json
+{
+  "column_a": {
+    "2021-01-01T00:00:00": 2.0,
+    "2021-01-02T00:00:00": 3.0
+  },
+  "column_b": {
+    "2021-01-01T00:00:00": 5.0,
+    "2021-01-02T00:00:00": 6.0
+  }
+}
+```
+"""
             )
             @api.expect(groupget)
             @onerror
@@ -1645,7 +2012,14 @@ If it comes from the main source it returns the "local" string.
                 responses={204: 'Success',
                            404: 'Does not exist',
                            409: 'Target already exists'},
-                description='Rename a group'
+                description="""Rename a group
+
+Changes the name of an existing group.
+
+**Parameters:**
+- name: current group name
+- newname: new group name
+"""
             )
             @api.expect(grouprename)
             @onerror
@@ -1668,7 +2042,13 @@ If it comes from the main source it returns the "local" string.
 
             @api.doc(
                 responses={204: 'Success', 404: 'Does not exist'},
-                description='Delete a group'
+                description="""Delete a group
+
+Permanently removes a group. This is an irreversible operation.
+
+**Parameters:**
+- name: group name
+"""
             )
             @api.expect(groupdelete)
             @onerror
@@ -1693,7 +2073,26 @@ If it comes from the main source it returns the "local" string.
             @api.doc(
                 responses={200: 'Got content',
                            404: 'Does not exist'},
-                description='Return the insertion dates of a group as a list of ISO8601 string encoded dates'
+                description="""Get revision history timestamps for a group
+
+Returns all insertion dates (revisions) for a group.
+
+**Parameters:**
+- name: group name
+- from_insertion_date, to_insertion_date: filter by insertion date range (ISO8601, optional)
+
+**Returns:** object with insertion_dates array
+
+**Example:**
+```json
+{
+  "insertion_dates": [
+    "2022-03-01T00:00:00+00:00",
+    "2022-03-02T00:00:00+00:00"
+  ]
+}
+```
+"""
             )
             @api.expect(group_insertion_dates)
             @onerror
@@ -1722,7 +2121,17 @@ If it comes from the main source it returns the "local" string.
             @api.doc(
                 responses={200: 'Got content',
                            404: 'Does not exist'},
-                description='Return the complete history of a group with all its revisions'
+                description="""Get complete revision history for a group
+
+Returns all revisions of a group in binary format (tshpack).
+
+**Parameters:**
+- name: group name
+- from_insertion_date, to_insertion_date: filter by insertion date range (ISO8601, optional)
+- from_value_date, to_value_date: filter by value date range (ISO8601, optional)
+
+**Returns:** binary-encoded history (format: tshpack, application/octet-stream)
+"""
             )
             @api.expect(group_history)
             @onerror
@@ -1751,7 +2160,15 @@ If it comes from the main source it returns the "local" string.
 
             @api.doc(
                 responses={200: 'Got content'},
-                description='Return the groups catalog'
+                description="""List all groups (deprecated)
+
+Returns dict mapping source URI to list of column names for each group.
+
+**Deprecated:** This endpoint is deprecated. Use `/group/find` with `(by.everything)` instead.
+
+**Parameters:**
+- allsources: include groups from all configured sources (default: true)
+"""
             )
             @api.expect(groupcatalog)
             @onerror
@@ -1770,7 +2187,26 @@ If it comes from the main source it returns the "local" string.
             @api.doc(
                 responses={200: 'Got content',
                            404: 'Does not exist'},
-                description='Get group metadata - type, standard, internal or archive'
+                description="""Get group metadata - multiplexed endpoint
+
+This single route provides access to 4 different metadata operations via the "type" parameter.
+
+**type** - Get group type (e.g., "primary", "bound")
+  Returns: string with group type
+
+**standard** - Get user-defined metadata (default if type not specified)
+  Returns: dict of user metadata key-value pairs
+
+**internal** - Get system metadata (tzaware, tablename, value_type, etc.)
+  Returns: dict of internal metadata
+
+**archive** - Get historical metadata changes
+  Returns: list of [timestamp, metadata, user] tuples
+
+**Parameters:**
+- name: group name
+- type: operation type (default: "standard")
+"""
             )
             @api.expect(groupmetadata)
             @onerror
@@ -1801,7 +2237,14 @@ If it comes from the main source it returns the "local" string.
 
             @api.doc(
                 responses={200: 'Success', 404: 'Does not exist', 405: 'Not allowed'},
-                description='Replace the user metadata of a group'
+                description="""Replace group metadata
+
+Completely replaces user metadata with new values. Previous metadata is archived and can be retrieved via GET with type=archive.
+
+**Parameters:**
+- name: group name
+- metadata: JSON string with new metadata dict
+"""
             )
             @api.expect(put_groupmetadata)
             @onerror
@@ -1826,7 +2269,14 @@ If it comes from the main source it returns the "local" string.
                 responses={200: 'Success',
                            404: 'Does not exist',
                            405: 'Not allowed'},
-                description='Update the user metadata of a group'
+                description="""Update group metadata
+
+Updates specific metadata keys while preserving others. Previous metadata state is archived and can be retrieved via GET with type=archive.
+
+**Parameters:**
+- name: group name
+- metadata: JSON string with metadata dict (only specified keys are updated)
+"""
             )
             @api.expect(put_groupmetadata)
             @onerror
@@ -1852,21 +2302,29 @@ If it comes from the main source it returns the "local" string.
 
             @api.doc(
                 responses={200: 'Got content', 404: 'Does not exist'},
-                description="""Return the insertion log of a group, as a list.
+                description="""Get insertion log history for a group
 
-Individual items as returned as such:
+Returns the list of all insertion operations on a group with revision metadata.
 
-{
- "rev": 2,
- "author": "webui",
- "date": "2022-10-27T13:46:34.777338+00:00",
-}
+**Parameters:**
+- name: group name
+- limit: maximum number of entries (optional)
+- fromdate: start date filter (ISO8601)
+- todate: end date filter (ISO8601)
 
-It is possible to specify a limit.
+**Returns:** list of log entries, each containing:
+- rev: revision number
+- author: user who made the insertion
+- date: insertion timestamp (ISO8601)
 
-Also the fromdate/todate parameters allow to restrict
-the versions horizon. Dates should be provided as
-ISO8601 strings.
+**Example:**
+```json
+[{
+  "rev": 2,
+  "author": "webui",
+  "date": "2022-10-27T13:46:34.777338+00:00"
+}]
+```
 """
             )
             @api.expect(log)
@@ -1893,54 +2351,56 @@ ISO8601 strings.
 
             @api.doc(
                 responses={200: 'Got content'},
-                description="""Return a list of group descriptor from a filter query
+                description="""Search for groups using filter query language
 
-A filter query is a lisp expression.
-Examples:
-* (by.everything) will return descriptors for all series
-* (by.name ".fcst") will return descriptos for all
-  series whose name contains the ".fcst" string
+Query groups using lisp-like filter expressions. Results are sorted by group name.
 
-The complete description of the filter language can be
-found in the main documentation.
+**Parameters:**
+- query: lisp filter expression (see examples below)
+- limit: maximum number of results (optional)
+- meta: include internal and user metadata in results (default: false)
+- sources: filter by specific sources (optional)
 
-It is possible to specify a limit argument to limit
-the results. Results are sorted by series name.
+**Query Examples:**
+- `(by.everything)` - return all groups
+- `(by.name ".prod")` - groups whose name contains ".prod"
+- `(by.key "category" "forecast")` - groups with metadata category=forecast
 
-By setting the "meta" argument to true, one gets the
-internal and user metadata in the returned series
-descriptors.
+See main documentation for complete filter language reference.
 
-The group descriptor is an object with fixed fields.
-Without metadata it looks like this:
+**Returns:** list of group descriptors
 
+**Descriptor format without metadata:**
+```json
 {
- "name": "series0",
- "imeta": null,
- "meta": null,
- "source": "local",
- "kind": "primary"
+  "name": "group0",
+  "imeta": null,
+  "meta": null,
+  "source": "local",
+  "kind": "primary"
 }
+```
 
-With metadata, we have this:
-
+**Descriptor format with metadata (meta=true):**
+```json
 {
- "name": "series0",
- "imeta": {
-  "tzaware": false,
-  "tablename": "series0",
-  "index_type": "datetime64[ns]",
-  "value_type": "float64",
-  "index_dtype": "<M8[ns]",
-  "value_dtype": "<f8",
-  "supervision_status": "supervised"
- },
- "meta": {
-  "foo": "bar"
- },
- "source": "local",
- "kind": "primary"
+  "name": "group0",
+  "imeta": {
+    "tzaware": false,
+    "tablename": "group0",
+    "index_type": "datetime64[ns]",
+    "value_type": "float64",
+    "index_dtype": "<M8[ns]",
+    "value_dtype": "<f8"
+  },
+  "meta": {
+    "category": "forecast",
+    "unit": "MW"
+  },
+  "source": "local",
+  "kind": "primary"
 }
+```
 """
             )
             @api.expect(find)
