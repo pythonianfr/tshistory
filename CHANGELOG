@@ -1,6 +1,31 @@
 # Changelog
 
-## [Unreleased] - 0.22.0
+## [Unreleased]
+
+## [0.22.1] - 2025-11-05
+
+### Added
+- http/client: OpenID Connect enhancements
+  - scope support for OIDC PKCE flow
+  - confidential client support for PKCE
+  - issuer-based OpenID discovery
+  - custom headers support via extraheaders config
+- config: oauth2 examples in tshistory.cfg.template
+
+### Changed
+- search: by.at-path children argument is now optional
+- http/doc: standardized endpoint documentation format
+- http/error: improved ltree syntax error handling with 405 status
+
+### Fixed
+- tree/folders: cascading rename for child nodes
+- tree/folders: cascading delete for child nodes
+- api/patch: json string input handling from swagger
+- storage: reclaim crash on empty garbage set
+- http/client: error messages now include full error text
+- http/server/metadata: documentation fixes
+
+## [0.22.0] - 2025-08-29
 
 ### Added
 - tree structure support for organizing time series hierarchically
