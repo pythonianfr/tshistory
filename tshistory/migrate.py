@@ -170,7 +170,7 @@ class Migrator:
 
 
 @version('tshistory', '0.22.0')
-def migrate_022(engine, namespace, interactive):
+def migrate_022(engine: pgdb, namespace: str, interactive: bool) -> None:
     do_migrate_tree(engine, namespace, interactive)
     do_make_ltree_unique(engine, namespace, interactive)
     do_migrate_old_metadata(engine, namespace, interactive)
@@ -219,7 +219,7 @@ def create_revision_metadata_for_ns(engine, ns):
         )
 
 
-def do_migrate_revision_metadata(engine, namespace, interactive):
+def do_migrate_revision_metadata(engine: pgdb, namespace: str, interactive: bool) -> None:
     """Create revision_metadata table for commit history support"""
     # Create for main namespace
     create_revision_metadata_for_ns(engine, namespace)
@@ -228,7 +228,7 @@ def do_migrate_revision_metadata(engine, namespace, interactive):
     create_revision_metadata_for_ns(engine, f'{namespace}.group')
 
 
-def do_migrate_basket_kinds(engine, namespace, interactive):
+def do_migrate_basket_kinds(engine: pgdb, namespace: str, interactive: bool) -> None:
     """Add kind column to basket table for group support"""
     ns = namespace
 
@@ -281,7 +281,7 @@ def do_migrate_basket_kinds(engine, namespace, interactive):
         )
 
 
-def do_migrate_tree(engine, namespace, interactive):
+def do_migrate_tree(engine: pgdb, namespace: str, interactive: bool) -> None:
     ns = namespace
     with engine.begin() as cn:
         cn.execute(f"""
@@ -304,7 +304,7 @@ create index if not exists "{ns}_tree_series_map_idx" on "{ns}".tree_series_map 
 """, _binary=False)
 
 
-def do_make_ltree_unique(engine, namespace, interactive):
+def do_make_ltree_unique(engine: pgdb, namespace: str, interactive: bool) -> None:
     ns = namespace
     with engine.begin() as cn:
         cn.execute(
@@ -315,7 +315,7 @@ def do_make_ltree_unique(engine, namespace, interactive):
         )
 
 
-def do_migrate_old_metadata(engine, namespace, interactive):
+def do_migrate_old_metadata(engine: pgdb, namespace: str, interactive: bool) -> None:
     ns = namespace
     with engine.begin() as cn:
         cn.execute(f"""
@@ -339,7 +339,7 @@ create index if not exists "{ns}_gr_oldmeta_groupid_idx" on "{ns}".gr_oldmeta (g
 """, _binary=False)
 
 
-def do_enforce_series_metadata_integrity(engine, namespace, interactive):
+def do_enforce_series_metadata_integrity(engine: pgdb, namespace: str, interactive: bool) -> None:
     print(f'enforce series metadata integrity for {namespace}')
 
     with engine.begin() as cn:
@@ -387,7 +387,7 @@ def do_enforce_series_metadata_integrity(engine, namespace, interactive):
             )
 
 
-def do_enforce_groups_metadata_integrity(engine, namespace, interactive):
+def do_enforce_groups_metadata_integrity(engine: pgdb, namespace: str, interactive: bool) -> None:
     print(f'enforce groups metadata integrity for {namespace}')
 
     with engine.begin() as cn:
@@ -434,7 +434,7 @@ def do_enforce_groups_metadata_integrity(engine, namespace, interactive):
             )
 
 
-def do_cleanup_kvstore(engine, namespace, interactive):
+def do_cleanup_kvstore(engine: pgdb, namespace: str, interactive: bool) -> None:
     kvstore_ns = f'{namespace}-kvstore'
 
     if interactive:
@@ -447,7 +447,7 @@ def do_cleanup_kvstore(engine, namespace, interactive):
         cn.execute(f'drop schema if exists "{kvstore_ns}" cascade')
 
 
-def do_drop_redundant_indexes(engine, namespace, interactive):
+def do_drop_redundant_indexes(engine: pgdb, namespace: str, interactive: bool) -> None:
     with engine.begin() as cn:
         cn.execute(f'drop index if exists "{namespace}"."ix_{namespace}_group_registry_idx"')
 
@@ -497,7 +497,7 @@ def do_fix_indexes(engine, namespace, interactive, indexes):
 
 
 @version('tshistory', '0.21.0')
-def do_migrate_intervals(engine, namespace, interactive):
+def do_migrate_intervals(engine: pgdb, namespace: str, interactive: bool) -> None:
     migrate_intervals(engine, namespace, interactive)
     migrate_intervals(engine, f'{namespace}.group', interactive)
 
@@ -508,7 +508,7 @@ def do_migrate_intervals(engine, namespace, interactive):
         )
 
 
-def migrate_intervals(engine, namespace, interactive):
+def migrate_intervals(engine: pgdb, namespace: str, interactive: bool) -> None:
     tsh = tshclass(namespace)
     with engine.begin() as cn:
         tables = {
@@ -543,7 +543,7 @@ def migrate_intervals(engine, namespace, interactive):
 
 
 @version('tshistory', '0.20.0')
-def migrate_series_versions(engine, namespace, interactive):
+def migrate_series_versions(engine: pgdb, namespace: str, interactive: bool) -> None:
     migrate_add_diffstart_diffend(engine, namespace, interactive)
     migrate_add_diffstart_diffend(engine, f'{namespace}.group', interactive)
 
@@ -730,7 +730,7 @@ def migrate_seriesdata_diffstart_diffend(engine, namespace, name):
             populatedata(pid, cn, tsh, namespace, name, tablename)
 
 
-def migrate_metadata(engine, namespace, interactive):
+def migrate_metadata(engine: pgdb, namespace: str, interactive: bool) -> None:
     ns = namespace
 
     print(f'migrate metadata for {ns}')
@@ -798,7 +798,7 @@ def migrate_metadata(engine, namespace, interactive):
         )
 
 
-def migrate_groups_metadata(engine, namespace, interactive):
+def migrate_groups_metadata(engine: pgdb, namespace: str, interactive: bool) -> None:
     ns = namespace
 
     print(f'migrate group metadata for {ns}')
@@ -856,7 +856,7 @@ def migrate_groups_metadata(engine, namespace, interactive):
             )
 
 
-def fix_user_metadata(engine, namespace, interactive):
+def fix_user_metadata(engine: pgdb, namespace: str, interactive: bool) -> None:
     ns = namespace
 
     print(f'fix user metadata for {ns}')
@@ -918,7 +918,7 @@ def fix_groups_metadata(engine, namespace, interactive, deletebroken=False):
         print(f'updated `{name}` with {grmeta}')
 
 
-def migrate_to_baskets(engine, namespace, interactive):
+def migrate_to_baskets(engine: pgdb, namespace: str, interactive: bool) -> None:
     print(f'migrate to baskets for {namespace}')
 
     sql = f"""
