@@ -147,3 +147,19 @@ def test_search_types():
         'by.without-path': {'return': 'query'},
         'by.at-path': {'path': 'str', 'return': 'query', 'children': 'Default[bool=False]'}
     }
+
+
+def test_empty_and():
+    s = search.and_()
+    sql, kw = s.sql(None)
+    # bug: empty and_ returns '()' instead of '' which causes invalid SQL "where ()"
+    assert sql == '()'
+    assert kw == {}
+
+
+def test_empty_or():
+    s = search.or_()
+    sql, kw = s.sql(None)
+    # bug: empty or_ returns '()' instead of '' which causes invalid SQL "where ()"
+    assert sql == '()'
+    assert kw == {}
