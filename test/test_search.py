@@ -152,14 +152,12 @@ def test_search_types():
 def test_empty_and():
     s = search.and_()
     sql, kw = s.sql(None)
-    # bug: empty and_ returns '()' instead of '' which causes invalid SQL "where ()"
-    assert sql == '()'
+    assert sql == ''
     assert kw == {}
 
 
 def test_empty_or():
     s = search.or_()
     sql, kw = s.sql(None)
-    # bug: empty or_ returns '()' instead of '' which causes invalid SQL "where ()"
-    assert sql == '()'
+    assert sql == ''
     assert kw == {}

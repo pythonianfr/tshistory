@@ -118,6 +118,8 @@ class and_(query):
         return cls(*items)
 
     def sql(self, namespace='tsh'):
+        if not self.items:
+            return '', {}
         sqls = []
         kws = {}
         for item in self.items:
@@ -153,6 +155,8 @@ class or_(query):
         return cls(*items)
 
     def sql(self, namespace='tsh'):
+        if not self.items:
+            return '', {}
         sqls = []
         kws = {}
         for item in self.items:
