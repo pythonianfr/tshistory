@@ -370,6 +370,17 @@ register_basket.add_argument(
     'group', type=inputs.boolean, default=False
 )
 
+rename_basket = reqparse.RequestParser()
+rename_basket.add_argument(
+    'oldname', type=str
+)
+rename_basket.add_argument(
+    'newname', type=str
+)
+rename_basket.add_argument(
+    'group', type=inputs.boolean, default=False
+)
+
 nothing = reqparse.RequestParser()
 
 list_baskets = reqparse.RequestParser()
@@ -1740,6 +1751,36 @@ Registers a basket with a name and filter query for reuse.
                 tsa.register_basket(
                     name=args.name,
                     query=args.query,
+                    group=args.group
+                )
+                return '', 200
+
+            @api.doc(
+                responses={
+                    200: 'Success',
+                    404: 'Does not exist',
+                    409: 'Target already exists'
+                },
+                description="""Rename a basket
+
+**Parameters:**
+- oldname: current basket name
+- newname: new basket name
+- group: basket is for groups (default: false)
+"""
+            )
+            @api.expect(rename_basket)
+            @onerror
+            @required_roles('admin', 'rw')
+            def patch(self):
+                args = rename_basket.parse_args()
+                if tsa.basket_definition(args.oldname, group=args.group) is None:
+                    api.abort(404, f'basket `{args.oldname}` does not exist')
+                if tsa.basket_definition(args.newname, group=args.group) is not None:
+                    api.abort(409, f'basket `{args.newname}` already exists')
+                tsa.rename_basket(
+                    oldname=args.oldname,
+                    newname=args.newname,
                     group=args.group
                 )
                 return '', 200

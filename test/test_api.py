@@ -1110,6 +1110,29 @@ def test_no_basket(tsx):
     assert tsx.basket('<nope>') == []
 
 
+def test_rename_basket(tsx):
+    tsx.register_basket('rename-me', '(by.name "foo")')
+    assert 'rename-me' in tsx.list_baskets()
+
+    tsx.rename_basket('rename-me', 'renamed')
+    assert 'renamed' in tsx.list_baskets()
+    assert 'rename-me' not in tsx.list_baskets()
+    assert tsx.basket_definition('renamed') == '(by.name "foo")'
+    assert tsx.basket_definition('rename-me') is None
+
+    with pytest.raises(ValueError) as err:
+        tsx.rename_basket('no-such-basket', 'whatever')
+    assert 'does not exist' in str(err.value)
+
+    tsx.register_basket('already-exists', '(by.name "bar")')
+    with pytest.raises(ValueError) as err:
+        tsx.rename_basket('renamed', 'already-exists')
+    assert 'already exists' in str(err.value)
+
+    tsx.delete_basket('renamed')
+    tsx.delete_basket('already-exists')
+
+
 def test_group_basket(tsx):
     # test group support in basket operations through API layer
 

@@ -904,6 +904,26 @@ class httpclient:
             return res.json()
 
     @unwraperror
+    def rename_basket(self, oldname: str, newname: str, group: bool=False):
+        res = self.session.patch(
+            f'{self.uri}/series/basket',
+            data={
+                'oldname': oldname,
+                'newname': newname,
+                'group': group
+            },
+            timeout=DEFAULT_TIMEOUT
+        )
+        if res.status_code == 200:
+            return
+        if res.status_code == 404:
+            raise ValueError(f'basket `{oldname}` does not exist')
+        if res.status_code == 409:
+            raise ValueError(f'basket `{newname}` already exists')
+
+        return res
+
+    @unwraperror
     def delete_basket(self, name: str, group: bool=False):
         res = self.session.delete(
             f'{self.uri}/series/basket',

@@ -428,6 +428,21 @@ class base:
             kind=kind
         )
 
+    @tx
+    def rename_basket(self, cn, oldname, newname, group=False):
+        if self.basket_definition(cn, oldname, group=group) is None:
+            raise ValueError(f'basket `{oldname}` does not exist')
+        if self.basket_definition(cn, newname, group=group) is not None:
+            raise ValueError(f'basket `{newname}` already exists')
+        kind = 'Group' if group else 'Series'
+        cn.execute(
+            f'update "{self.namespace}".basket set name = %(newname)s '
+            f'where name = %(oldname)s and kind = %(kind)s',
+            oldname=oldname,
+            newname=newname,
+            kind=kind
+        )
+
     def infer_freq(self, cn, name,
                    revision_date=None,
                    from_value_date=None,

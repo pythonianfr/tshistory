@@ -951,6 +951,11 @@ class mainsource:
         with self.engine.begin() as cn:
             return self.tsh.list_baskets(cn, group=group)
 
+    def rename_basket(self, oldname: str, newname: str, group: bool=False):
+        """Rename a basket."""
+        with self.engine.begin() as cn:
+            return self.tsh.rename_basket(cn, oldname, newname, group=group)
+
     def delete_basket(self, name, group: bool=False):
         """Delete a basket."""
         with self.engine.begin() as cn:
