@@ -591,7 +591,7 @@ def _populate(
     outindex: np.ndarray,
     outvalues: np.ndarray
 ) -> None:
-    mask = np.in1d(outindex, index, assume_unique=True)
+    mask = np.isin(outindex, index)
     outvalues[
         mask
     ] = values
